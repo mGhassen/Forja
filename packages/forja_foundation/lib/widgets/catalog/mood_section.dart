@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:forja_foundation/components/crossfade_swap.dart';
 import 'package:forja_foundation/components/mood_circle.dart';
 import 'package:forja_foundation/tokens/forja_theme_extension.dart';
+import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 import 'package:forja_foundation/widgets/chrome/shell_section_title.dart';
 
 /// Horizontal mood section — wraps host-built strips or [children] chips.
@@ -20,6 +21,7 @@ class MoodSection extends StatelessWidget {
     this.padding,
     this.rowHeight,
     this.gap,
+    this.revealIncludesTitle = false,
   });
 
   final String? title;
@@ -42,6 +44,13 @@ class MoodSection extends StatelessWidget {
   /// Chip separator gap — omit → theme `spaceMd`.
   final double? gap;
 
+  /// Wrap [title] + chip row in [ShellPaintEnsureVisibleExtent] so a focus
+  /// reveal (TV D-pad) scrolls the whole header into view instead of pinning
+  /// the focused chip flush to the viewport edge with its title cut off.
+  /// Leave false when [chipStrip] scrolls horizontally — the extent sits
+  /// outside that scroller and would skip its horizontal reveal.
+  final bool revealIncludesTitle;
+
   @override
   Widget build(BuildContext context) {
     final theme = ForjaThemeExtension.of(context);
@@ -61,7 +70,7 @@ class MoodSection extends StatelessWidget {
           ),
         );
 
-    return Column(
+    Widget header = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -83,6 +92,17 @@ class MoodSection extends StatelessWidget {
                   ),
           ),
         chips,
+      ],
+    );
+    if (revealIncludesTitle) {
+      header = ShellPaintEnsureVisibleExtent(child: header);
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        header,
         if (results != null) ...[
           SizedBox(height: theme.spaceMd),
           results!,

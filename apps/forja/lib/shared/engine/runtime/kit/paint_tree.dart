@@ -3293,10 +3293,20 @@ class _HubTvCinematicHeroState extends State<_HubTvCinematicHero> {
   /// off Featured back onto View details via autofocus.
   bool _ctaAutofocusConsumed = false;
 
+  /// Leanback: D-pad focus somewhere inside the hero subtree (CTA, pin,
+  /// gallery). Off → the carousel holds so slides do not rotate while the
+  /// user browses rows below.
+  bool _focusWithin = false;
+
   @override
   void initState() {
     super.initState();
     _bindTv();
+  }
+
+  void _onHeroFocusWithin(bool within) {
+    if (_focusWithin == within) return;
+    setState(() => _focusWithin = within);
   }
 
   @override
@@ -3397,12 +3407,16 @@ class _HubTvCinematicHeroState extends State<_HubTvCinematicHero> {
     final tab = widget.tabId;
     final compact = widget.compact;
     final pack = widget.pack;
+    // Remote-only shells pause the carousel while focus is outside the hero.
+    // Desktop keeps mouse behaviour (CTA hover / focus holds only).
+    final pauseWhenUnfocused = policy.leanbackOnly;
 
-    return CinematicHero(
+    final hero = CinematicHero(
       key: _heroKey,
       slides: widget.slides,
       pageBottomChild: widget.pageBottomChild,
       height: pack.height,
+      advancePaused: pauseWhenUnfocused && !_focusWithin,
       galleryOverlayBuilder: tv ? _galleryOverlay : null,
       layout: CinematicHeroLayout(
         compact: compact,
@@ -3578,6 +3592,16 @@ class _HubTvCinematicHeroState extends State<_HubTvCinematicHero> {
           child: row,
         );
       },
+    );
+    if (!pauseWhenUnfocused) return hero;
+    // Focus-within sensor only: cannot take focus, skipped by traversal, and
+    // not a scope — the hero's own nodes and the TV focus graph are untouched.
+    return Focus(
+      canRequestFocus: false,
+      skipTraversal: true,
+      includeSemantics: false,
+      onFocusChange: _onHeroFocusWithin,
+      child: hero,
     );
   }
 }
@@ -3764,16 +3788,11 @@ class _MoodMountState extends State<_MoodMount> {
         },
       );
     }
-    return MoodSection(
-      title: title.isEmpty ? null : title,
-      titlePadding: EdgeInsets.fromLTRB(
-        pad,
-        titlePad.top,
-        pad,
-        titlePad.bottom,
-      ),
-      chipStrip: LayoutBuilder(
-        builder: (context, constraints) {
+    // Section-level width: the chip strip fills the section, so one measure
+    // decides both the strip shape and whether the TV reveal may include the
+    // title (centered strip only — a horizontal scroller keeps its own reveal).
+    return LayoutBuilder(
+      builder: (context, constraints) {
           final layout = ShellMoodCircleLayout.resolve(
             context,
             itemCount: parsed.length,
@@ -3842,54 +3861,69 @@ class _MoodMountState extends State<_MoodMount> {
             );
           }
 
-          if (tvNav) {
-            final packFocusUp = LayoutScope.maybeOf(context)
-                ?.resolveFocusEdge((widget.spec['focusUp'] ?? '').toString());
-            final packFocusDown = LayoutScope.maybeOf(context)
-                ?.resolveFocusEdge(
-                  (widget.spec['focusDown'] ?? '').toString(),
-                  down: true,
-                );
-            return TvChipStrip(
-              tabId: tab.isEmpty ? null : tab,
-              rowId: chipRowId,
-              sortOrder: PackPaintArtifact.stableSortOrder(
-                tab.isEmpty ? TvFocusGraph.tabIdOf(context) : tab,
-                chipRowId,
-              ),
+          Widget chipStrip() {
+            if (tvNav) {
+              final packFocusUp = LayoutScope.maybeOf(context)
+                  ?.resolveFocusEdge((widget.spec['focusUp'] ?? '').toString());
+              final packFocusDown = LayoutScope.maybeOf(context)
+                  ?.resolveFocusEdge(
+                    (widget.spec['focusDown'] ?? '').toString(),
+                    down: true,
+                  );
+              return TvChipStrip(
+                tabId: tab.isEmpty ? null : tab,
+                rowId: chipRowId,
+                sortOrder: PackPaintArtifact.stableSortOrder(
+                  tab.isEmpty ? TvFocusGraph.tabIdOf(context) : tab,
+                  chipRowId,
+                ),
+                itemCount: parsed.length,
+                resultsRowId: resultsRowId,
+                onFocusUp: packFocusUp,
+                // Pack focusDown used when mood-results is empty / unmounted —
+                // chip ↓ still prefers results via shellTvChipDownToRow first.
+                onFocusDown: packFocusDown,
+                builder: (context, edgesFor) {
+                  if (fits) {
+                    return centeredRow(scaleToFit: true, edgesFor: edgesFor);
+                  }
+                  return HorizontalScroller(
+                    height: rowHeight,
+                    padding: EdgeInsets.symmetric(horizontal: pad),
+                    itemCount: parsed.length,
+                    separatorBuilder: (_, _) => SizedBox(width: chipGap),
+                    itemBuilder: (context, i) =>
+                        chipAt(i, edges: edgesFor(i)),
+                  );
+                },
+              );
+            }
+
+            if (fits) return centeredRow(scaleToFit: false);
+            return HorizontalScroller(
+              height: rowHeight,
+              padding: EdgeInsets.symmetric(horizontal: pad),
               itemCount: parsed.length,
-              resultsRowId: resultsRowId,
-              onFocusUp: packFocusUp,
-              // Pack focusDown used when mood-results is empty / unmounted —
-              // chip ↓ still prefers results via shellTvChipDownToRow first.
-              onFocusDown: packFocusDown,
-              builder: (context, edgesFor) {
-                if (fits) {
-                  return centeredRow(scaleToFit: true, edgesFor: edgesFor);
-                }
-                return HorizontalScroller(
-                  height: rowHeight,
-                  padding: EdgeInsets.symmetric(horizontal: pad),
-                  itemCount: parsed.length,
-                  separatorBuilder: (_, _) => SizedBox(width: chipGap),
-                  itemBuilder: (context, i) =>
-                      chipAt(i, edges: edgesFor(i)),
-                );
-              },
+              separatorBuilder: (_, _) => SizedBox(width: chipGap),
+              itemBuilder: (context, i) => chipAt(i),
             );
           }
 
-          if (fits) return centeredRow(scaleToFit: false);
-          return HorizontalScroller(
-            height: rowHeight,
-            padding: EdgeInsets.symmetric(horizontal: pad),
-            itemCount: parsed.length,
-            separatorBuilder: (_, _) => SizedBox(width: chipGap),
-            itemBuilder: (context, i) => chipAt(i),
+          return MoodSection(
+            title: title.isEmpty ? null : title,
+            titlePadding: EdgeInsets.fromLTRB(
+              pad,
+              titlePad.top,
+              pad,
+              titlePad.bottom,
+            ),
+            // Focused chip reveal keeps "title + chips" on screen instead of
+            // pinning the chip flush to the top with its title cut off.
+            revealIncludesTitle: fits,
+            chipStrip: chipStrip(),
+            results: results,
           );
-        },
-      ),
-      results: results,
+      },
     );
   }
 }

@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| **Progress** | **5 / 13** components · **0 / 11** acceptance (leanback slice) |
+| **Progress** | **7 / 13** components · **0 / 11** acceptance (leanback slice) |
 | **Current slice** | T01–T04 and T09 landed on branch `feat/tv-remote-ux` with unit tests and emulator checks (one-level Back, fixed-column rows, ←/→ hold accel, honest Live Sports loading); T05–T08, T10–T12 in progress or not started |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
@@ -27,9 +27,9 @@
 | 5 | R122-C05 | T05 — Column memory when moving ↑/↓ between rows and chip strips (nearest-x target, not first item) | ⬜ |
 | 6 | R122-C06 | T06 — Unified focus chrome tokens (ring + scale + glow) across cards, chips, top menu, nav rail; rail pill behind the focused icon | ⬜ |
 | 7 | R122-C07 | T07 — Honest loading states: centered spinner + label on details load and player resolve; "Back cancels" hint | ⬜ |
-| 8 | R122-C08 | T08 — Layout stability: top-menu scrim over scrolled posters; sticky chip strip never clipped; hero carousel pauses while focus is outside the hero; fixed-width hero buttons | ⬜ |
+| 8 | R122-C08 | T08 — Layout stability: top-menu scrim over scrolled posters; sticky chip strip never clipped; hero carousel pauses while focus is outside the hero; fixed-width hero buttons | ✅ |
 | 9 | R122-C09 | T09 — Live Sports: no empty-state copy while catalog loaders are still running | ✅ |
-| 10 | R122-C10 | T10 — Faster first frame: measure resolve → first frame on a profile build; start on the first verified source while others continue; tighten per-server timeouts | 🔄 |
+| 10 | R122-C10 | T10 — Faster first frame: measure resolve → first frame on a profile build; start on the first verified source while others continue; tighten per-server timeouts | ✅ |
 | 11 | R122-C11 | T11 — Long-press OK on a poster opens a quick menu (Play / Details / My List); MENU key opens the same | ⬜ |
 | 12 | R122-C12 | T12 — Security review of the branch diff plus the deep-link install and stream URL paths | ⬜ |
 | 13 | R122-C13 | T13 — Keep the next verified sources as fallbacks after the first probe win (no "Playback failed" dead end when the first source dies); provider hop after fallbacks are exhausted | ⬜ |

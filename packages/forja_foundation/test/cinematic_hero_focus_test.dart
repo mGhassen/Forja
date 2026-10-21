@@ -541,4 +541,117 @@ void main() {
     await tester.pump(ShellTokens.heroAutoAdvanceDuration * 0.2);
     expect(key.currentState!.heroAdvanceProgress, greaterThan(resumed));
   });
+
+  testWidgets('advancePaused holds auto-advance and resumes when cleared', (
+    tester,
+  ) async {
+    final key = GlobalKey<CinematicHeroState>();
+    final paused = ValueNotifier<bool>(false);
+    addTearDown(paused.dispose);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: SizedBox(
+            height: 420,
+            width: 900,
+            child: ValueListenableBuilder<bool>(
+              valueListenable: paused,
+              builder: (context, isPaused, _) => CinematicHero(
+                key: key,
+                advancePaused: isPaused,
+                slides: const [
+                  CinematicHeroSlide(
+                    id: 'a',
+                    title: 'Alpha',
+                    backdropUrl: 'https://example.com/a.jpg',
+                    overview: 'First',
+                  ),
+                  CinematicHeroSlide(
+                    id: 'b',
+                    title: 'Beta',
+                    backdropUrl: 'https://example.com/b.jpg',
+                    overview: 'Second',
+                  ),
+                ],
+                layout: const CinematicHeroLayout(
+                  kenBurns: false,
+                  compact: true,
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.pump(ShellTokens.heroAutoAdvanceDuration * 0.25);
+    final pausedAt = key.currentState!.heroAdvanceProgress;
+    expect(pausedAt, greaterThan(0.1));
+    expect(key.currentState!.heroAdvancePaused, isFalse);
+
+    // Host: D-pad focus left the hero.
+    paused.value = true;
+    await tester.pump();
+    expect(key.currentState!.heroAdvancePaused, isTrue);
+    expect(find.byIcon(Icons.pause_rounded), findsOneWidget);
+
+    await tester.pump(const Duration(seconds: 3));
+    expect(key.currentState!.heroAdvanceProgress, closeTo(pausedAt, 0.02));
+    expect(key.currentState!.heroIndex, 0, reason: 'no rotation while held');
+
+    // Focus returned.
+    paused.value = false;
+    await tester.pump();
+    expect(key.currentState!.heroAdvancePaused, isFalse);
+    expect(find.byIcon(Icons.pause_rounded), findsNothing);
+    await tester.pump(const Duration(milliseconds: 50));
+    await tester.pump(ShellTokens.heroAutoAdvanceDuration * 0.2);
+    expect(
+      key.currentState!.heroAdvanceProgress,
+      greaterThan(pausedAt + 0.05),
+      reason: 'resumes from where it paused',
+    );
+  });
+
+  testWidgets('advancePaused at mount never starts the carousel', (
+    tester,
+  ) async {
+    final key = GlobalKey<CinematicHeroState>();
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: SizedBox(
+            height: 420,
+            width: 900,
+            child: CinematicHero(
+              key: key,
+              advancePaused: true,
+              slides: const [
+                CinematicHeroSlide(
+                  id: 'a',
+                  title: 'Alpha',
+                  backdropUrl: 'https://example.com/a.jpg',
+                ),
+                CinematicHeroSlide(
+                  id: 'b',
+                  title: 'Beta',
+                  backdropUrl: 'https://example.com/b.jpg',
+                ),
+              ],
+              layout: const CinematicHeroLayout(
+                kenBurns: false,
+                compact: true,
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.pump(ShellTokens.heroAutoAdvanceDuration * 0.5);
+    expect(key.currentState!.heroAdvancePaused, isTrue);
+    expect(key.currentState!.heroAdvanceProgress, 0);
+    expect(key.currentState!.heroIndex, 0);
+  });
 }

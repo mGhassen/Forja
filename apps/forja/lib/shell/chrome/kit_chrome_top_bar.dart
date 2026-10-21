@@ -1,9 +1,8 @@
-import 'dart:math' as math;
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:forja/shared/engine/runtime/nav/chrome_menu_item.dart';
 import 'package:forja/shared/engine/runtime/nav/vertical_filters.dart';
+import 'package:forja/shell/chrome/kit_top_bar_fade.dart';
 import 'package:forja/shell/chrome/vertical_filters_rail.dart';
 import 'package:forja/shell/core/forja_shell_layout.dart';
 import 'package:forja/shell/core/forja_shell_scope.dart';
@@ -14,6 +13,8 @@ import 'package:forja/shell/tv/tv_focus_graph.dart';
 import 'package:forja_foundation/blocks/shell/catalog_density.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
+import 'package:forja_foundation/tokens/top_bar_scrim_tokens.dart';
+import 'package:forja_foundation/widgets/chrome/top_bar_scrim.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 export 'package:forja_foundation/widgets/chrome/hub_top_bar.dart' show HubTopBar;
@@ -312,16 +313,38 @@ class _KitChromeTopBarState extends State<KitChromeTopBar> {
               builder: (context, heroHeight, menu) {
                 final topInset = MediaQuery.paddingOf(context).top;
                 final barHeight = topInset + barContentHeight;
-                final hideStart = math.max(0.0, heroHeight - barHeight);
-                final hideProgress = heroHeight <= 0
-                    ? 0.0
-                    : ((scrollOffset - hideStart) /
-                              KitChromeTopBar.hideSlideDistance)
-                          .clamp(0.0, 1.0);
+                final hideProgress = kitTopBarHideProgress(
+                  scrollOffset: scrollOffset,
+                  heroHeight: heroHeight,
+                  barHeight: barHeight,
+                  slideDistance: KitChromeTopBar.hideSlideDistance,
+                );
+                final scrimOpacity = kitTopBarScrimOpacity(
+                  scrollOffset: scrollOffset,
+                  hideProgress: hideProgress,
+                );
 
                 return Transform.translate(
                   offset: Offset(0, -barHeight * hideProgress),
-                  child: child,
+                  // Scrim behind the labels while content can scroll under
+                  // the bar. Overflows below the bar (Clip.none) and ignores
+                  // pointers — the Stack still hit-tests only the bar's box.
+                  child: Stack(
+                    clipBehavior: Clip.none,
+                    fit: StackFit.passthrough,
+                    children: [
+                      Positioned(
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        child: TopBarScrim(
+                          height: barHeight * TopBarScrimTokens.heightFactor,
+                          opacity: scrimOpacity,
+                        ),
+                      ),
+                      child!,
+                    ],
+                  ),
                 );
               },
             );
