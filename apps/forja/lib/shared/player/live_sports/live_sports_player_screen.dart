@@ -1046,7 +1046,15 @@ class _LiveSportsPlayerScreenState extends ConsumerState<LiveSportsPlayerScreen>
   Future<CastSubtitle?> _castSubtitle() async {
     final player = _player;
     if (!_mediaKitBackend || player == null) return null;
-    return castSubtitleForPlayer(player, delaySeconds: _subtitleDelay);
+    final src = _activeCastSource;
+    return castSubtitleForPlayer(
+      player,
+      delaySeconds: _subtitleDelay,
+      headers: hlsInStreamRequestHeaders(
+        streamHeaders: src == null || src.headers.isEmpty ? null : src.headers,
+        playbackHeaders: currentPlaybackHttpHeaders(player),
+      ),
+    );
   }
 
   Future<Duration> _castStartTime() async {

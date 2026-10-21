@@ -5,7 +5,6 @@ import 'package:flutter/foundation.dart';
 import 'package:forja/shared/downloads/hls_subtitle_sidecar.dart';
 import 'package:forja/shared/player/resolvers/track_auto_select.dart';
 import 'package:forja/shared/player/screens/utils.dart';
-import 'package:http/http.dart' as http;
 import 'package:media_kit/media_kit.dart';
 
 enum CastSubtitleKind {
@@ -78,6 +77,7 @@ class CastSubtitle {
 Future<CastSubtitle> castSubtitleForPlayer(
   Player player, {
   double delaySeconds = 0,
+  Map<String, String>? headers,
 }) async {
   final active =
       await resolveActiveSubtitleTrack(player) ?? SubtitleTrack.no();
@@ -89,26 +89,51 @@ Future<CastSubtitle> castSubtitleForPlayer(
     active,
     delaySeconds: delaySeconds,
     index: index < 0 ? null : index,
+    headers: headers,
   );
 }
 
 /// What [track] means for a cast.
+///
+/// HLS in-stream renditions Forja loads as `SubtitleTrack.uri` (often an
+/// `.m3u8`) are merged to WebVTT the same way offline save does, then sent
+/// as [CastSubtitleKind.external] for the AirPlay subtitle relay.
 Future<CastSubtitle> castSubtitleFor(
   SubtitleTrack track, {
   double delaySeconds = 0,
   int? index,
+  Map<String, String>? headers,
+  Future<String> Function(Uri uri)? fetchText,
 }) async {
   if (track.id == 'no' || track.id == 'auto') return const CastSubtitle.off();
   if (track.uri || track.data || isSideloadedExternalSubtitleTrack(track)) {
-    final raw = track.data ? track.id : await _readSubtitle(track.id);
-    // SRT and WebVTT carry `-->` cue timings; ASS and image subtitles do not.
-    if (raw == null || !raw.contains('-->')) {
+    final fetch = fetchText ?? ((uri) => fetchSubtitleText(uri, headers));
+    final raw = track.data
+        ? track.id
+        : await _readSubtitleSource(track.id, fetch: fetch);
+    if (raw == null) return const CastSubtitle.unsupported();
+
+    String? vtt;
+    final trimmed = raw.trimLeft();
+    if (trimmed.startsWith('#EXTM3U')) {
+      final playlistUri = Uri.tryParse(track.id);
+      if (playlistUri == null) return const CastSubtitle.unsupported();
+      vtt = await hlsSubtitleRenditionToVtt(
+        body: raw,
+        playlistUri: playlistUri,
+        fetchText: fetch,
+        delaySeconds: delaySeconds,
+      );
+    } else if (raw.contains('-->')) {
+      // SRT and WebVTT carry cue timings; ASS and image subtitles do not.
+      vtt = mergeWebVttParts(
+        [HlsSubtitleSegmentPart(duration: 0, body: raw)],
+        delaySeconds: delaySeconds,
+      );
+    }
+    if (vtt == null || !vtt.contains('-->')) {
       return const CastSubtitle.unsupported();
     }
-    final vtt = mergeWebVttParts(
-      [HlsSubtitleSegmentPart(duration: 0, body: raw)],
-      delaySeconds: delaySeconds,
-    );
     return CastSubtitle.external(
       vtt: vtt,
       name: _label(track),
@@ -144,15 +169,17 @@ String? _label(SubtitleTrack track) {
   return null;
 }
 
-Future<String?> _readSubtitle(String source) async {
+Future<String?> _readSubtitleSource(
+  String source, {
+  required Future<String> Function(Uri uri) fetch,
+}) async {
   try {
     final uri = Uri.tryParse(source);
     if (uri != null && (uri.scheme == 'http' || uri.scheme == 'https')) {
-      final res = await http.get(uri);
-      if (res.statusCode != 200) return null;
-      return utf8.decode(res.bodyBytes, allowMalformed: true);
+      return await fetch(uri);
     }
-    final path = uri != null && uri.scheme == 'file' ? uri.toFilePath() : source;
+    final path =
+        uri != null && uri.scheme == 'file' ? uri.toFilePath() : source;
     final bytes = await File(path).readAsBytes();
     return utf8.decode(bytes, allowMalformed: true);
   } catch (e) {

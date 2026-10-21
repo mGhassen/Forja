@@ -199,7 +199,7 @@ Future<void> saveHlsInStreamSubtitles({
     if (isPausedOrCanceled?.call() == true) return;
     try {
       final body = await fetchText(rendition.uri);
-      final vtt = await _renditionToVtt(
+      final vtt = await hlsSubtitleRenditionToVtt(
         body: body,
         playlistUri: rendition.uri,
         fetchText: fetchText,
@@ -398,11 +398,16 @@ Future<void> deleteHlsSubtitleSidecar(String videoPath) async {
   }
 }
 
-Future<String?> _renditionToVtt({
+/// Merge one subtitle rendition (media playlist or single SRT/VTT) into WebVTT.
+///
+/// Used by offline save and by AirPlay cast for HLS in-stream tracks that
+/// Forja attaches as `SubtitleTrack.uri` pointing at an `.m3u8`.
+Future<String?> hlsSubtitleRenditionToVtt({
   required String body,
   required Uri playlistUri,
   required Future<String> Function(Uri uri) fetchText,
   bool Function()? isPausedOrCanceled,
+  double delaySeconds = 0,
 }) async {
   final trimmed = body.trimLeft();
   if (trimmed.startsWith('#EXTM3U')) {
@@ -417,13 +422,13 @@ Future<String?> _renditionToVtt({
         HlsSubtitleSegmentPart(duration: segment.duration, body: seg),
       );
     }
-    return mergeWebVttParts(parts);
+    return mergeWebVttParts(parts, delaySeconds: delaySeconds);
   }
   if (!_looksLikeTextSub(body)) return null;
-  if (trimmed.startsWith('WEBVTT')) return body;
+  if (trimmed.startsWith('WEBVTT') && delaySeconds == 0) return body;
   return mergeWebVttParts([
     HlsSubtitleSegmentPart(duration: 0, body: body),
-  ]);
+  ], delaySeconds: delaySeconds);
 }
 
 String _uniqueFileName(

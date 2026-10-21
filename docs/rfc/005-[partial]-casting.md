@@ -7,8 +7,8 @@
 
 | | |
 |--|--|
-| **Progress** | **6 / 7** components · **0 / 4** acceptance |
-| **Current slice** | AirPlay online + offline + seek sync + chrome + next-episode handoff (macOS + iOS); Chromecast not started |
+| **Progress** | **7 / 8** components · **0 / 4** acceptance |
+| **Current slice** | AirPlay online + offline + seek sync + chrome + next-episode handoff + HLS in-stream subs (macOS + iOS); Chromecast not started |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -25,6 +25,7 @@
 | 5 | R05-C05 | AirPlay playhead + transport sync: periodic `position`, `seek`, `play`/`pause`, rate mirror; Forja seek bar and play/pause control the receiver ([451](../issues/fixed/451-[fixed]-airplay-seek-bar-not-synced.md)) | ✅ |
 | 6 | R05-C06 | AirPlay casting chrome: sticky "Playing on AirPlay" + active cast button while `airPlayActive` ([452](../issues/fixed/452-[fixed]-airplay-no-casting-indicator.md)) | ✅ |
 | 7 | R05-C07 | AirPlay survives next episode: retain across player replace + native `replace` URL ([453](../issues/fixed/453-[fixed]-airplay-drops-on-next-episode.md)) | ✅ |
+| 8 | R05-C08 | AirPlay HLS in-stream subs: merge subtitle media playlist to WebVTT for the LAN relay ([455](../issues/fixed/455-[fixed]-airplay-hls-instream-subtitles.md)) | ✅ |
 
 ---
 

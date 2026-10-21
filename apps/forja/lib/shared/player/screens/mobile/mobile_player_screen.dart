@@ -557,8 +557,14 @@ class _MobilePlayerScreenState extends ConsumerState<MobilePlayerScreen>
   }
 
   /// The subtitle on screen now, for a cast receiver.
-  Future<CastSubtitle?> _castSubtitle() =>
-      castSubtitleForPlayer(_player, delaySeconds: _subtitleDelay);
+  Future<CastSubtitle?> _castSubtitle() => castSubtitleForPlayer(
+        _player,
+        delaySeconds: _subtitleDelay,
+        headers: hlsInStreamRequestHeaders(
+          streamHeaders: _hlsMasterHeaders ?? widget.headers,
+          playbackHeaders: currentPlaybackHttpHeaders(_player),
+        ),
+      );
 
   /// The stream's first timestamp — where a cast subtitle's zero sits.
   Future<Duration> _castStartTime() => mpvStreamStartTime(_player);

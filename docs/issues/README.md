@@ -425,6 +425,7 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [452-[fixed]-…](fixed/452-[fixed]-airplay-no-casting-indicator.md) | AirPlay no casting indicator while active | P1 | Medium | fixed | Complete · 2/2 · A 0/1 | [RFC-005](../rfc/005-[partial]-casting.md) |
 | [453-[fixed]-…](fixed/453-[fixed]-airplay-drops-on-next-episode.md) | AirPlay drops on next episode | P1 | Medium | fixed | Complete · 5/5 · A 0/1 | [RFC-005](../rfc/005-[partial]-casting.md) |
 | [454-[fixed]-…](fixed/454-[fixed]-continue-watching-drops-finished-episode.md) | Continue Watching drops show when an episode finishes | P1 | High | fixed | Complete · 5/5 · A 0/2 | — |
+| [455-[fixed]-…](fixed/455-[fixed]-airplay-hls-instream-subtitles.md) | AirPlay drops HLS in-stream subtitles | P1 | Medium | fixed | Complete · 3/3 · A 0/1 | [RFC-005](../rfc/005-[partial]-casting.md) |
 | [424-[fixed]-…](fixed/424-[fixed]-mediakit-double-subtitle-paint.md) | MediaKit paints the same subtitle cue twice | P1 | Medium | fixed | Complete · 3/3 · A 0/1 | — |
 | [425-[open]-…](425-[open]-home-stream-language-filter.md) | Home stream language multiselect filters providers | P1 | Medium | open | 6/6 · A 0/3 | — |
 | [441-[fixed]-…](fixed/441-[fixed]-anime-dub-language-dropdown.md) | Anime dub language dropdown (Home-style, dub-only) | P2 | Medium | fixed | Complete · 4/4 · A 0/2 | [425](425-[open]-home-stream-language-filter.md) · [443](fixed/443-[fixed]-anime-stream-languages-like-home.md) |
