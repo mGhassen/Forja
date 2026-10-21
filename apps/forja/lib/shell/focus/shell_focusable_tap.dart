@@ -276,7 +276,8 @@ void shellTvUpdateRowCount({
   ShellTvFocusCoordinator.updateRowItemCount(tabId, rowId, itemCount);
 }
 
-/// D-pad down from a chip strip → results row (its last index), or next row.
+/// D-pad down from a chip strip → results row (the result nearest the chip's
+/// x, else its last index), or next row.
 VoidCallback shellTvChipDownToRow({
   required String tabId,
   required String chipRowId,
@@ -291,7 +292,8 @@ VoidCallback shellTvChipDownToRow({
   };
 }
 
-/// D-pad up from a results row → chip strip (its last index).
+/// D-pad up from a results row → chip strip (the chip nearest the card's x,
+/// else its last index).
 VoidCallback shellTvResultsUpToChips({
   required String tabId,
   required String chipRowId,
