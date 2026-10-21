@@ -6,7 +6,7 @@ part of 'live_sports_player_screen.dart';
 /// Live Sports lavf reconnect — v1.5.36 direct string always.
 mixin _LiveSportsPlayerLavf on _LiveSportsPlayerEngineCore {
   void _armTransientHwDecodeIgnore();
-  Future<void> _enginePlay();
+  Future<void> _enginePlay({bool allowCast = true});
   void _applyCacheAheadSample(double aheadSecs, {required String source});
 
   Future<void> _applyStreamLavfReconnect(

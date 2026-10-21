@@ -1254,13 +1254,19 @@ class PlayerTopBarActions extends StatelessWidget {
             onDownEdge: playerOnDownEdge,
           ),
         if (showCast && onCast != null)
-          PlayerFlatIconButton(
-            icon: Icons.cast_rounded,
-            tooltip: 'Cast',
-            onPressed: onCast!,
-            size: size,
-            iconSize: iconSize,
-            tvFocusable: tvFocusable,
+          ValueListenableBuilder<bool>(
+            valueListenable: CastingService.instance.airPlayActive,
+            builder: (context, casting, _) => PlayerFlatIconButton(
+              icon: casting
+                  ? Icons.cast_connected_rounded
+                  : Icons.cast_rounded,
+              tooltip: casting ? 'Playing on AirPlay' : 'Cast',
+              active: casting,
+              onPressed: onCast!,
+              size: size,
+              iconSize: iconSize,
+              tvFocusable: tvFocusable,
+            ),
           ),
         if (showInAppMini && onInAppMini != null)
           PlayerFlatIconButton(
@@ -1424,15 +1430,13 @@ Future<void> showPlayerCastPicker(
           : CastHandoff(
               onStarted: () {
                 handoff.onStarted();
-                _showCastFeedback(
-                  context,
-                  statusController: statusController,
-                  message: 'Playing on AirPlay',
-                  kind: StatusRouletteKind.success,
-                );
+                // Sticky "Playing on AirPlay" comes from
+                // [PlayerStatusOverlay] / [PlayerAirPlayCastingNotice].
               },
               onEnded: (resumeAt) {
                 handoff.onEnded(resumeAt);
+                statusController?.remove(kAirPlayCastingStatusId);
+                statusController?.remove('cast');
                 _showCastFeedback(
                   context,
                   statusController: statusController,
@@ -1441,6 +1445,8 @@ Future<void> showPlayerCastPicker(
               },
               onFailed: (message) {
                 handoff.onFailed?.call(message);
+                statusController?.remove(kAirPlayCastingStatusId);
+                statusController?.remove('cast');
                 _showCastFeedback(
                   context,
                   statusController: statusController,
@@ -1459,6 +1465,7 @@ Future<void> showPlayerCastPicker(
                 );
               },
               onPosition: handoff.onPosition,
+              onPlaying: handoff.onPlaying,
             ),
     );
     if (!context.mounted || opened) return;

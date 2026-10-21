@@ -1476,6 +1476,8 @@ mixin _LiveSportsPlayerUi on ConsumerState<LiveSportsPlayerScreen> {
                 ],
               ),
                 ),
+                if (!hideFullChrome && !mini && !pipMode)
+                  const PlayerAirPlayCastingNotice(),
                 if (!hideFullChrome && DesktopWindowChrome.isDesktop)
                   DesktopWindowChrome.overlayDragStrip(
                     showCaption: _s._controlsVisible,
@@ -1770,12 +1772,14 @@ mixin _LiveSportsPlayerUi on ConsumerState<LiveSportsPlayerScreen> {
     VoidCallback? onRightEdge,
     FocusNode? focusNode,
     int? tvFocusOrder,
+    bool active = false,
   }) {
     assert(onPressed != null || onPressedWithContext != null);
     final tv = liveUseTvFocus(context);
     final button = PlayerFlatIconButton(
       icon: icon,
       tooltip: tooltip,
+      active: active,
       size: ShellTokens.playerChromeTopBtnSize,
       iconSize: ShellTokens.playerChromeRoundIconSize,
       tvFocusable: tv,
@@ -1977,23 +1981,28 @@ mixin _LiveSportsPlayerUi on ConsumerState<LiveSportsPlayerScreen> {
               onLeftEdge: tv ? () => claim(_s._playerMenuFocus) : null,
             ),
             if (showCast)
-              _topBarFlatAction(
-                icon: Icons.cast_rounded,
-                tooltip: 'Cast',
-                tvFocusOrder: castOrder,
-                onPressed: () {
-                  final src = _s._activeCastSource;
-                  showPlayerCastPicker(
-                    context,
-                    streamUrl: src?.url,
-                    title: _s._title,
-                    headers: src == null || src.headers.isEmpty
-                        ? null
-                        : src.headers,
-                    position: _s._position,
-                    duration: _s._duration,
-                    startTime: _s._castStartTime,
-                    subtitle: _s._castSubtitle,
+              ValueListenableBuilder<bool>(
+                valueListenable: CastingService.instance.airPlayActive,
+                builder: (context, casting, _) => _topBarFlatAction(
+                  icon: casting
+                      ? Icons.cast_connected_rounded
+                      : Icons.cast_rounded,
+                  tooltip: casting ? 'Playing on AirPlay' : 'Cast',
+                  active: casting,
+                  tvFocusOrder: castOrder,
+                  onPressed: () {
+                    final src = _s._activeCastSource;
+                    showPlayerCastPicker(
+                      context,
+                      streamUrl: src?.url,
+                      title: _s._title,
+                      headers: src == null || src.headers.isEmpty
+                          ? null
+                          : src.headers,
+                      position: _s._position,
+                      duration: _s._duration,
+                      startTime: _s._castStartTime,
+                      subtitle: _s._castSubtitle,
                     handoff: CastHandoff(
                       onStarted: () => unawaited(_s._pauseForCast()),
                       onEnded: (resumeAt) =>
@@ -2007,11 +2016,24 @@ mixin _LiveSportsPlayerUi on ConsumerState<LiveSportsPlayerScreen> {
                           _s._position = pos;
                         }
                       },
+                      onPlaying: (playing) {
+                        if (_s._disposed || !mounted) return;
+                        setState(() {
+                          _s._playing = playing;
+                          _s._userPlayWhenReady = playing;
+                          if (!playing) {
+                            _s._pausedAt ??= DateTime.now();
+                          } else {
+                            _s._pausedAt = null;
+                          }
+                        });
+                      },
                     ),
-                  );
-                  _scheduleHideControls();
-                },
-                onDownEdge: downFromTop,
+                    );
+                    _scheduleHideControls();
+                  },
+                  onDownEdge: downFromTop,
+                ),
               ),
             if (showInAppMini)
               _topBarFlatAction(

@@ -1486,6 +1486,8 @@ mixin _MobilePlayerPlayback
 
     _s._playingSub = _s._player.stream.playing.listen((playing) {
       if (_s._disposed) return;
+      // AirPlay owns play/pause — local mpv is paused and must not overwrite.
+      if (CastingService.instance.airPlayActive.value) return;
       _s._isPlayingNotifier.value = playing;
       _s._postSeekStall?.onPlaying(playing);
       if (playing) {

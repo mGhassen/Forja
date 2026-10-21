@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:rust/rust.dart';
+import 'package:forja/shared/casting/casting.dart';
 import 'package:forja/shared/engine/details/pack_details_host.dart';
 import 'package:forja/shared/engine/runtime/nav/plugin_nav.dart';
 import 'package:forja/shared/engine/runtime/open/legacy_movie_meta.dart';
@@ -312,6 +313,10 @@ class AppRouter {
     // demoted mini (or a stale session) when opening from outside the player.
     final replacingPlayer =
         ModalRoute.of(context)?.settings.name == playerRouteName;
+    if (replacingPlayer) {
+      // Next episode / in-player source switch — keep AirPlay on the TV.
+      CastingService.instance.retainAcrossPlayerHandoff();
+    }
     if (!replacingPlayer) {
       await InAppMiniPlayerController.instance.stopForNewPlay();
       if (!context.mounted) return null;

@@ -73,6 +73,7 @@ import 'package:forja/shared/player/controls/chrome/player_back_exit_gate.dart';
 import 'package:forja/shared/player/controls/chrome/player_escape_exit_hint.dart';
 import 'package:forja/shared/player/controls/chrome/player_chrome_overlay.dart';
 import 'package:forja/shared/player/controls/chrome/player_chrome_overlays.dart';
+import 'package:forja/shared/player/controls/chrome/player_status_roulette.dart';
 import 'package:forja/shared/player/controls/episodes/player_episode_panel.dart';
 import 'package:forja/shared/player/controls/episodes/catalog_episode.dart';
 import 'package:forja/shared/player/controls/menus/player_popup_panel.dart';
@@ -1058,7 +1059,12 @@ class _LiveSportsPlayerScreenState extends ConsumerState<LiveSportsPlayerScreen>
     if (_disposed) return;
     _userPlayWhenReady = false;
     _pausedAt = DateTime.now();
-    await _enginePause();
+    // Local only — AirPlay is already playing; do not pause the receiver.
+    await _enginePause(allowCast: false);
+    if (!_disposed) {
+      _playing = true;
+      if (mounted) setState(() {});
+    }
   }
 
   /// AirPlay handed playback back — VOD resumes at the TV position; live

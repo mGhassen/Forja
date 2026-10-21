@@ -452,10 +452,45 @@ class _DesktopPlayerScreenState extends ConsumerState<DesktopPlayerScreen>
       _sessionFirstConfirmedAt ??= now;
       // Media open resets mpv subtitle - re-apply preferred after the wipe.
       unawaited(_reapplyPreferredSubtitle());
+      unawaited(_continueAirPlayIfActive());
     } else {
       // Keep session mid / first-confirm across source switches for credits
       // re-open; open mid stays cleared above.
       _playbackConfirmedAt = null;
+    }
+  }
+
+  /// Next episode replaced this route while AirPlay stayed up — load the new
+  /// stream on the TV and keep local paused.
+  Future<void> _continueAirPlayIfActive() async {
+    if (_disposed) return;
+    if (!CastingService.instance.airPlayActive.value) return;
+    final url = _hlsMasterUrl ??
+        _currentQualityUrl ??
+        _currentUrl ??
+        (isLocalTorrentStreamUrl(widget.mediaPath) ? widget.mediaPath : null);
+    if (url == null || url.isEmpty) return;
+    final handoff = CastHandoff(
+      onStarted: () => unawaited(_player.pause()),
+      onEnded: (resumeAt) => unawaited(_resumeAfterCast(resumeAt)),
+      onPosition: (pos) {
+        if (_disposed || _lockSeekBarPosition) return;
+        _positionNotifier.value = pos;
+      },
+    );
+    final ok = await CastingService.instance.replaceActiveCast(
+      url: url,
+      headers: widget.headers,
+      position: Duration.zero,
+      duration: _durationNotifier.value,
+      startTime: await _castStartTime(),
+      subtitle: await _castSubtitle(),
+      handoff: handoff,
+    );
+    if (_disposed) return;
+    if (ok) {
+      _positionNotifier.value = Duration.zero;
+      await _player.pause();
     }
   }
 
@@ -486,7 +521,26 @@ class _DesktopPlayerScreenState extends ConsumerState<DesktopPlayerScreen>
     if (_disposed) return;
     if (position > Duration.zero) await _seekTo(position);
     if (_disposed) return;
-    await _player.play();
+    await _setPlaying(true);
+  }
+
+  Future<void> _togglePlayPause() async {
+    await _setPlaying(!_isPlayingNotifier.value);
+  }
+
+  /// Local play/pause, or the AirPlay receiver while casting.
+  Future<void> _setPlaying(bool play) async {
+    if (_disposed) return;
+    if (await CastingService.instance.setPlayingIfCasting(play)) {
+      if (!_disposed) _isPlayingNotifier.value = play;
+      return;
+    }
+    if (!_playerReady) return;
+    if (play) {
+      await _player.play();
+    } else {
+      await _player.pause();
+    }
   }
 
   Future<void> _seekTo(Duration position) async {

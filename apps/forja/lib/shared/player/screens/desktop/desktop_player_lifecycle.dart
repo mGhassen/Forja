@@ -620,6 +620,8 @@ mixin _DesktopPlayerLifecycle
     }
     if (SettingsService.keepsPlayingInBackground) return;
     if (!_s._playerReady) return;
+    // AirPlay keeps playing on the TV — do not touch the local player.
+    if (CastingService.instance.airPlayActive.value) return;
     if (_s._player.state.playing) {
       _s._pausedByLifecycle = true;
       _s._postSeekStall?.clearPendingSeek();
@@ -636,6 +638,7 @@ mixin _DesktopPlayerLifecycle
       return;
     }
     if (!_s._playerReady) return;
+    if (CastingService.instance.airPlayActive.value) return;
     unawaited(_s._player.play());
   }
 

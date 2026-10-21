@@ -191,6 +191,8 @@ mixin _LiveSportsPlayerEngine on _LiveSportsPlayerEngineCore {
         _noteVideoFrame(reason: '${_s._playerEngine.storageKey} ready');
         break;
       case 'playing':
+        // AirPlay owns play/pause — local engine is paused.
+        if (CastingService.instance.airPlayActive.value) return;
         final playing = event['value'] == true;
         setState(() {
           _s._playing = playing;
@@ -303,6 +305,8 @@ mixin _LiveSportsPlayerEngine on _LiveSportsPlayerEngineCore {
         _noteVideoFrame(reason: 'exo ready');
         break;
       case 'playing':
+        // AirPlay owns play/pause — local engine is paused.
+        if (CastingService.instance.airPlayActive.value) return;
         final playing = event['value'] == true;
         if (playing != _s._playing || (playing && _s._statusBanner != null)) {
           setState(() {
@@ -523,7 +527,15 @@ mixin _LiveSportsPlayerEngine on _LiveSportsPlayerEngineCore {
     setState(() {});
   }
 
-  Future<void> _enginePlay() async {
+  Future<void> _enginePlay({bool allowCast = true}) async {
+    if (allowCast &&
+        await CastingService.instance.setPlayingIfCasting(true)) {
+      if (!_s._disposed) {
+        _s._playing = true;
+        if (mounted) setState(() {});
+      }
+      return;
+    }
     if (_s._exoBackend) {
       await ExoPlayerBridge.play(_s._exoViewId!);
     } else if (_s._avPlayerBackend) {
@@ -535,7 +547,15 @@ mixin _LiveSportsPlayerEngine on _LiveSportsPlayerEngineCore {
     }
   }
 
-  Future<void> _enginePause() async {
+  Future<void> _enginePause({bool allowCast = true}) async {
+    if (allowCast &&
+        await CastingService.instance.setPlayingIfCasting(false)) {
+      if (!_s._disposed) {
+        _s._playing = false;
+        if (mounted) setState(() {});
+      }
+      return;
+    }
     if (_s._exoBackend) {
       await ExoPlayerBridge.pause(_s._exoViewId!);
     } else if (_s._avPlayerBackend) {
@@ -992,6 +1012,8 @@ mixin _LiveSportsPlayerEngine on _LiveSportsPlayerEngineCore {
     });
     _s._playingSub = player.stream.playing.listen((p) {
       if (!mounted || _s._disposed) return;
+      // AirPlay owns play/pause — local engine is paused.
+      if (CastingService.instance.airPlayActive.value) return;
       final goLiveBanner = _s._statusBanner == 'Reconnecting…';
       setState(() {
         _s._playing = p;

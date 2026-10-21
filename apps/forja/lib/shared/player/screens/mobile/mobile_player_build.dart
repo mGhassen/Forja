@@ -284,11 +284,7 @@ mixin _MobilePlayerBuild on ConsumerState<MobilePlayerScreen> {
         }
       },
       onPlayPause: () {
-        if (_s._player.state.playing) {
-          _s._player.pause();
-        } else {
-          _s._player.play();
-        }
+        unawaited(_s._togglePlayPause());
       },
       onShowControls: () {
         setState(() => _s._showControls = true);
@@ -474,11 +470,18 @@ mixin _MobilePlayerBuild on ConsumerState<MobilePlayerScreen> {
                         startTime: _s._castStartTime,
                         subtitle: _s._castSubtitle,
                         handoff: CastHandoff(
-                          onStarted: () => unawaited(_s._player.pause()),
+                          onStarted: () {
+                            unawaited(_s._player.pause());
+                            _s._isPlayingNotifier.value = true;
+                          },
                           onEnded: (resumeAt) => unawaited(_s._resumeAfterCast(resumeAt)),
                           onPosition: (pos) {
                             if (_s._disposed || _s._lockSeekBarPosition) return;
                             _s._positionNotifier.value = pos;
+                          },
+                          onPlaying: (playing) {
+                            if (_s._disposed) return;
+                            _s._isPlayingNotifier.value = playing;
                           },
                         ),
                       );
@@ -578,7 +581,7 @@ mixin _MobilePlayerBuild on ConsumerState<MobilePlayerScreen> {
                                 size: 80,
                                 iconSize: 44,
                                 onPressed: () {
-                                  playing ? _s._player.pause() : _s._player.play();
+                                  unawaited(_s._togglePlayPause());
                                   _s._startHideTimer();
                                 },
                               ),
@@ -694,9 +697,7 @@ mixin _MobilePlayerBuild on ConsumerState<MobilePlayerScreen> {
                                     size: btnSize,
                                     iconSize: iconSz,
                                     onPressed: () {
-                                      playing
-                                          ? _s._player.pause()
-                                          : _s._player.play();
+                                      unawaited(_s._togglePlayPause());
                                       _s._startHideTimer();
                                     },
                                   ),
@@ -871,11 +872,7 @@ mixin _MobilePlayerBuild on ConsumerState<MobilePlayerScreen> {
       streamPickerLines: streamPickerLines,
       playingOffline: playingOffline,
       onPlayPause: () {
-        if (_s._isPlayingNotifier.value) {
-          _s._player.pause();
-        } else {
-          _s._player.play();
-        }
+        unawaited(_s._togglePlayPause());
         _s._syncChromeHideTimer();
       },
       onRewind10: _s._seekBack10Seconds,

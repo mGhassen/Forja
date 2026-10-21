@@ -328,11 +328,18 @@ mixin _DesktopPlayerBuild on ConsumerState<DesktopPlayerScreen>, WidgetsBindingO
                   startTime: _s._castStartTime,
                   subtitle: _s._castSubtitle,
                   handoff: CastHandoff(
-                    onStarted: () => unawaited(_s._player.pause()),
+                    onStarted: () {
+                      unawaited(_s._player.pause());
+                      _s._isPlayingNotifier.value = true;
+                    },
                     onEnded: (resumeAt) => unawaited(_s._resumeAfterCast(resumeAt)),
                     onPosition: (pos) {
                       if (_s._disposed || _s._lockSeekBarPosition) return;
                       _s._positionNotifier.value = pos;
+                    },
+                    onPlaying: (playing) {
+                      if (_s._disposed) return;
+                      _s._isPlayingNotifier.value = playing;
                     },
                   ),
                 );
@@ -435,7 +442,7 @@ mixin _DesktopPlayerBuild on ConsumerState<DesktopPlayerScreen>, WidgetsBindingO
                             size: 80,
                             iconSize: 44,
                             onPressed: () {
-                              _s._player.playOrPause();
+                              unawaited(_s._togglePlayPause());
                               _s._onMouseMove();
                             },
                           ),
@@ -548,7 +555,7 @@ mixin _DesktopPlayerBuild on ConsumerState<DesktopPlayerScreen>, WidgetsBindingO
                                     : Icons.play_arrow_rounded,
                                 tooltip: playing ? 'Pause' : 'Play',
                                 onPressed: () {
-                                  _s._player.playOrPause();
+                                  unawaited(_s._togglePlayPause());
                                   _s._onMouseMove();
                                 },
                               ),

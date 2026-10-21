@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:forja/shell/desktop/desktop_window_chrome.dart';
+import 'package:forja/shared/casting/casting.dart';
 import 'package:forja/shared/playback/stream_provider_probe.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
@@ -195,6 +196,42 @@ double statusNotificationTop(BuildContext context) {
   return top + 44 + 6 + 4;
 }
 
+const kAirPlayCastingStatusId = 'cast-active';
+
+const kAirPlayCastingStatusEntry = StatusRouletteEntry(
+  id: kAirPlayCastingStatusId,
+  label: 'Playing on AirPlay',
+  kind: StatusRouletteKind.success,
+);
+
+/// Top-center notice while AirPlay owns playback (no status controller needed).
+class PlayerAirPlayCastingNotice extends StatelessWidget {
+  const PlayerAirPlayCastingNotice({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return ValueListenableBuilder<bool>(
+      valueListenable: CastingService.instance.airPlayActive,
+      builder: (context, active, _) {
+        if (!active) return const SizedBox.shrink();
+        return Positioned(
+          top: statusNotificationTop(context),
+          left: 56,
+          right: 56,
+          child: const IgnorePointer(
+            child: Align(
+              alignment: Alignment.topCenter,
+              child: StatusNotificationView(
+                entries: [kAirPlayCastingStatusEntry],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
 class PlayerStatusOverlay extends StatelessWidget {
   const PlayerStatusOverlay({
     super.key,
@@ -222,11 +259,23 @@ class PlayerStatusOverlay extends StatelessWidget {
     return const [];
   }
 
+  List<StatusRouletteEntry> _notificationEntries({required bool airPlayActive}) {
+    final fromController = statusNotificationEntries(controller.entries)
+        .where((e) => e.id != kAirPlayCastingStatusId && e.id != 'cast')
+        .toList();
+    if (airPlayActive) {
+      // Last wins in [StatusNotificationView] — keep cast notice on top.
+      return [...fromController, kAirPlayCastingStatusEntry];
+    }
+    return fromController;
+  }
+
   @override
   Widget build(BuildContext context) {
-    Widget buildOverlay(bool buffering) {
+    Widget buildOverlay(bool buffering, bool airPlayActive) {
       final rouletteEntries = _rouletteEntries(buffering);
-      final notificationEntries = statusNotificationEntries(controller.entries);
+      final notificationEntries =
+          _notificationEntries(airPlayActive: airPlayActive);
       if (rouletteEntries.isEmpty && notificationEntries.isEmpty) {
         return const SizedBox.shrink();
       }
@@ -272,19 +321,21 @@ class PlayerStatusOverlay extends StatelessWidget {
       );
     }
 
+    final airPlay = CastingService.instance.airPlayActive;
     if (bufferingListenable == null) {
       return ListenableBuilder(
-        listenable: controller,
-        builder: (context, _) => buildOverlay(false),
+        listenable: Listenable.merge([controller, airPlay]),
+        builder: (context, _) => buildOverlay(false, airPlay.value),
       );
     }
 
     return ListenableBuilder(
-      listenable: playerStatusOverlayListenable(
-        controller,
-        bufferingListenable,
-      ),
-      builder: (context, _) => buildOverlay(bufferingListenable!.value),
+      listenable: Listenable.merge([
+        playerStatusOverlayListenable(controller, bufferingListenable),
+        airPlay,
+      ]),
+      builder: (context, _) =>
+          buildOverlay(bufferingListenable!.value, airPlay.value),
     );
   }
 }

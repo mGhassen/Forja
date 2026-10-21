@@ -10,6 +10,7 @@ final class ForjaAirPlayPlugin: NSObject, FlutterPlugin, FlutterStreamHandler {
   private var player: AVPlayer?
   private var externalObservation: NSKeyValueObservation?
   private var statusObservation: NSKeyValueObservation?
+  private var rateObservation: NSKeyValueObservation?
   private var timeObserver: Any?
   private var pickerView: AVRoutePickerView?
   private var pickTimeout: DispatchWorkItem?
@@ -60,6 +61,35 @@ final class ForjaAirPlayPlugin: NSObject, FlutterPlugin, FlutterStreamHandler {
       let ms = (args["positionMs"] as? NSNumber)?.int64Value ?? 0
       seek(toMs: ms)
       result(nil)
+    case "replace":
+      guard let urlString = args["url"] as? String, let url = Self.parseURL(urlString) else {
+        result(FlutterError(code: "bad_args", message: "Missing url", details: nil))
+        return
+      }
+      let headers = (args["headers"] as? [String: String]) ?? [:]
+      let ok = replace(
+        url: url,
+        headers: headers,
+        positionMs: (args["positionMs"] as? NSNumber)?.int64Value ?? 0,
+        durationMs: (args["durationMs"] as? NSNumber)?.int64Value ?? 0,
+        startTimeMs: (args["startTimeMs"] as? NSNumber)?.int64Value ?? 0,
+        subtitle: args["subtitle"] as? [String: Any]
+      )
+      result(ok)
+    case "play":
+      guard external, let player else {
+        result(false)
+        return
+      }
+      player.play()
+      result(true)
+    case "pause":
+      guard external, let player else {
+        result(false)
+        return
+      }
+      player.pause()
+      result(true)
     case "stop":
       let ms = positionMs()
       teardown()
@@ -102,12 +132,64 @@ final class ForjaAirPlayPlugin: NSObject, FlutterPlugin, FlutterStreamHandler {
     // The picker opens right away; the stream item follows once ready.
     armPickTimeout()
     _ = showPicker()
+    loadStream(
+      url: url,
+      headers: headers,
+      positionMs: positionMs,
+      durationMs: durationMs,
+      startTimeMs: startTimeMs,
+      subtitle: subtitle,
+      advanceClockWhileLoading: true
+    )
+  }
 
+  /// Swap the AirPlay item without dropping the external route (next episode).
+  @discardableResult
+  private func replace(
+    url: URL,
+    headers: [String: String],
+    positionMs: Int64,
+    durationMs: Int64,
+    startTimeMs: Int64,
+    subtitle: [String: Any]?
+  ) -> Bool {
+    guard external, player != nil else { return false }
+    relay?.stop()
+    relay = nil
+    fileRelay?.stop()
+    fileRelay = nil
+    statusObservation?.invalidate()
+    statusObservation = nil
+    generation += 1
+    loadStream(
+      url: url,
+      headers: headers,
+      positionMs: positionMs,
+      durationMs: durationMs,
+      startTimeMs: startTimeMs,
+      subtitle: subtitle,
+      advanceClockWhileLoading: false
+    )
+    emit(["event": "position", "positionMs": positionMs])
+    return true
+  }
+
+  private func loadStream(
+    url: URL,
+    headers: [String: String],
+    positionMs: Int64,
+    durationMs: Int64,
+    startTimeMs: Int64,
+    subtitle: [String: Any]?,
+    advanceClockWhileLoading: Bool
+  ) {
     let openedAt = Date()
     let session = generation
     let open: (URL, [String: String], SubtitleChoice) -> Void = { [weak self] itemURL, itemHeaders, choice in
       guard let self, self.generation == session else { return }
-      let elapsedMs = Int64(Date().timeIntervalSince(openedAt) * 1000)
+      let elapsedMs = advanceClockWhileLoading
+        ? Int64(Date().timeIntervalSince(openedAt) * 1000)
+        : 0
       self.openItem(
         itemURL,
         headers: itemHeaders,
@@ -372,12 +454,29 @@ final class ForjaAirPlayPlugin: NSObject, FlutterPlugin, FlutterStreamHandler {
       player.isMuted = false
       if player.rate == 0 { player.play() }
       startTimeObserver()
-      emit(["event": "active", "positionMs": positionMs()])
+      startRateObserver()
+      emit(["event": "active", "positionMs": positionMs(), "playing": true])
     } else {
       guard external else { return }
       let ms = positionMs()
       teardown()
       emit(["event": "inactive", "positionMs": ms])
+    }
+  }
+
+  private func startRateObserver() {
+    rateObservation?.invalidate()
+    rateObservation = nil
+    guard let player else { return }
+    rateObservation = player.observe(\.rate, options: [.new]) { [weak self] player, _ in
+      DispatchQueue.main.async {
+        guard let self, self.external else { return }
+        self.emit([
+          "event": "playing",
+          "playing": player.rate > 0,
+          "positionMs": self.positionMs(),
+        ])
+      }
     }
   }
 
@@ -424,6 +523,8 @@ final class ForjaAirPlayPlugin: NSObject, FlutterPlugin, FlutterStreamHandler {
     externalObservation = nil
     statusObservation?.invalidate()
     statusObservation = nil
+    rateObservation?.invalidate()
+    rateObservation = nil
     player?.pause()
     player?.replaceCurrentItem(with: nil)
     player = nil

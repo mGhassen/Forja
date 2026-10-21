@@ -7,8 +7,8 @@
 
 | | |
 |--|--|
-| **Progress** | **4 / 5** components · **0 / 4** acceptance |
-| **Current slice** | AirPlay online + offline + in-app seek sync (macOS + iOS); Chromecast not started |
+| **Progress** | **6 / 7** components · **0 / 4** acceptance |
+| **Current slice** | AirPlay online + offline + seek sync + chrome + next-episode handoff (macOS + iOS); Chromecast not started |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -22,7 +22,9 @@
 | 2 | R05-C02 | AirPlay hand-off: `ForjaAirPlayChannel.swift` (iOS + macOS) — AVPlayer + AVRoutePickerView, local player pauses on external playback and resumes at the receiver's position | ✅ |
 | 3 | R05-C03 | AirPlay subtitles: in-stream track selected on the receiver; external SRT/VTT added as a WebVTT rendition by `ForjaAirPlaySubtitleRelay.swift` (tokenized LAN HLS wrapper, HLS sources only) | ✅ |
 | 4 | R05-C04 | AirPlay offline: `ForjaAirPlayLocalFileRelay.swift` serves `file://` downloads over LAN HTTP with Range so the TV can fetch them ([422](../issues/fixed/422-[fixed]-airplay-offline-file-cannot-open.md)) | ✅ |
-| 5 | R05-C05 | AirPlay playhead sync: periodic `position` events + `seek` while casting; Forja seek bar mirrors TV and scrub seeks the receiver ([451](../issues/fixed/451-[fixed]-airplay-seek-bar-not-synced.md)) | ✅ |
+| 5 | R05-C05 | AirPlay playhead + transport sync: periodic `position`, `seek`, `play`/`pause`, rate mirror; Forja seek bar and play/pause control the receiver ([451](../issues/fixed/451-[fixed]-airplay-seek-bar-not-synced.md)) | ✅ |
+| 6 | R05-C06 | AirPlay casting chrome: sticky "Playing on AirPlay" + active cast button while `airPlayActive` ([452](../issues/fixed/452-[fixed]-airplay-no-casting-indicator.md)) | ✅ |
+| 7 | R05-C07 | AirPlay survives next episode: retain across player replace + native `replace` URL ([453](../issues/fixed/453-[fixed]-airplay-drops-on-next-episode.md)) | ✅ |
 
 ---
 

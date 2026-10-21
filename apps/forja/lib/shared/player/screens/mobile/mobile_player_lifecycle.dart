@@ -719,6 +719,8 @@ mixin _MobilePlayerLifecycle
   void _pauseForAppBackground() {
     if (_s._disposed || _s._isPipMode) return;
     if (SettingsService.keepsPlayingInBackground) return;
+    // AirPlay keeps playing on the TV — do not touch the local player.
+    if (CastingService.instance.airPlayActive.value) return;
     if (_s._player.state.playing) {
       _s._pausedByLifecycle = true;
       _s._postSeekStall?.clearPendingSeek();
@@ -730,6 +732,7 @@ mixin _MobilePlayerLifecycle
     if (_s._disposed || !_s._pausedByLifecycle) return;
     _s._pausedByLifecycle = false;
     if (_s._isPipMode) return;
+    if (CastingService.instance.airPlayActive.value) return;
     unawaited(_s._player.play());
   }
 

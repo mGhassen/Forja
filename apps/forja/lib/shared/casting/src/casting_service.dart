@@ -15,6 +15,7 @@ class CastHandoff {
     this.onFailed,
     this.onSubtitlesUnavailable,
     this.onPosition,
+    this.onPlaying,
   });
 
   /// The receiver took over — pause local playback.
@@ -31,6 +32,9 @@ class CastHandoff {
 
   /// Receiver playhead while casting — keep the in-app seek bar in sync.
   final void Function(Duration position)? onPosition;
+
+  /// Receiver play/pause while casting — keep the in-app transport icon in sync.
+  final void Function(bool playing)? onPlaying;
 }
 
 class CastingService {
@@ -43,11 +47,20 @@ class CastingService {
   StreamSubscription<dynamic>? _airPlaySub;
   CastHandoff? _handoff;
 
+  /// Skip [stopCasting] once when the player route is replaced (next episode).
+  bool _retainAcrossPlayer = false;
+
+  /// URL currently loaded on the AirPlay receiver (for same-URL remounts).
+  String? _boundUrl;
+
   /// True while an AirPlay device is playing the stream.
   final ValueNotifier<bool> airPlayActive = ValueNotifier(false);
 
   /// Last known receiver playhead while [airPlayActive] is true.
   final ValueNotifier<Duration> position = ValueNotifier(Duration.zero);
+
+  /// Receiver play/pause while [airPlayActive] is true.
+  final ValueNotifier<bool> playing = ValueNotifier(false);
 
   bool get isAirPlayAvailable =>
       !kIsWeb && (Platform.isMacOS || Platform.isIOS);
@@ -57,6 +70,13 @@ class CastingService {
       (Platform.isAndroid ||
           Platform.isIOS ||
           Platform.isWindows);
+
+  /// Keep AirPlay alive across the next player [dispose] (in-player openPlayer).
+  void retainAcrossPlayerHandoff() {
+    if (!airPlayActive.value) return;
+    _retainAcrossPlayer = true;
+    _handoff = null;
+  }
 
   /// Starts a cast. For AirPlay this opens the system device picker; the
   /// hand-off fires once a device is chosen. Returns false when [target]
@@ -111,6 +131,7 @@ class CastingService {
       }
       _handoff = handoff;
       this.position.value = position;
+      _boundUrl = url;
       final opened = await _airPlay.invokeMethod<bool>('start', {
             'url': url,
             'headers': headers ?? const <String, String>{},
@@ -127,9 +148,54 @@ class CastingService {
     } on PlatformException catch (e) {
       debugPrint('[Casting] AirPlay start failed: ${e.message}');
       _handoff = null;
+      _boundUrl = null;
       return false;
     } on MissingPluginException {
       _handoff = null;
+      _boundUrl = null;
+      return false;
+    }
+  }
+
+  /// Load a new URL on the active AirPlay session (next episode / source).
+  /// Same URL only re-attaches [handoff] and pauses local via [onStarted].
+  Future<bool> replaceActiveCast({
+    required String url,
+    Map<String, String>? headers,
+    Duration position = Duration.zero,
+    Duration duration = Duration.zero,
+    Duration startTime = Duration.zero,
+    CastSubtitle? subtitle,
+    CastHandoff? handoff,
+  }) async {
+    if (!airPlayActive.value || !isAirPlayAvailable) return false;
+    if (handoff != null) _handoff = handoff;
+    if (_boundUrl == url) {
+      handoff?.onStarted();
+      return true;
+    }
+    try {
+      final ok = await _airPlay.invokeMethod<bool>('replace', {
+            'url': url,
+            'headers': headers ?? const <String, String>{},
+            'positionMs': position.inMilliseconds,
+            'durationMs': duration.inMilliseconds,
+            'startTimeMs': startTime.inMilliseconds,
+            'subtitle': subtitle?.toChannel(),
+          }) ??
+          false;
+      if (!ok) return false;
+      _boundUrl = url;
+      this.position.value = position;
+      handoff?.onStarted();
+      if (subtitle?.kind == CastSubtitleKind.unsupported) {
+        handoff?.onSubtitlesUnavailable?.call();
+      }
+      return true;
+    } on PlatformException catch (e) {
+      debugPrint('[Casting] AirPlay replace failed: ${e.message}');
+      return false;
+    } on MissingPluginException {
       return false;
     }
   }
@@ -153,6 +219,28 @@ class CastingService {
     }
   }
 
+  /// Play/pause the AirPlay receiver. Returns false when nothing is casting.
+  Future<bool> setPlayingIfCasting(bool play) async {
+    if (!airPlayActive.value) return false;
+    try {
+      final ok = await _airPlay.invokeMethod<bool>(play ? 'play' : 'pause') ??
+          false;
+      if (!ok) return false;
+      _setPlaying(play);
+      return true;
+    } on PlatformException catch (e) {
+      debugPrint('[Casting] AirPlay ${play ? 'play' : 'pause'} failed: ${e.message}');
+      return false;
+    } on MissingPluginException {
+      return false;
+    }
+  }
+
+  void _setPlaying(bool play) {
+    playing.value = play;
+    _handoff?.onPlaying?.call(play);
+  }
+
   void _onAirPlayEvent(dynamic raw) {
     if (raw is! Map) return;
     final event = raw['event'];
@@ -163,21 +251,36 @@ class CastingService {
       case 'active':
         airPlayActive.value = true;
         position.value = at;
+        // Pause local first, then mark the receiver as playing for chrome.
         handoff?.onStarted();
+        _setPlaying(raw['playing'] != false);
         if (ms > 0) handoff?.onPosition?.call(at);
       case 'position':
         if (!airPlayActive.value) return;
         position.value = at;
         handoff?.onPosition?.call(at);
+      case 'playing':
+        if (!airPlayActive.value) return;
+        _setPlaying(raw['playing'] == true);
+        if (ms > 0) {
+          position.value = at;
+          handoff?.onPosition?.call(at);
+        }
       case 'inactive':
         airPlayActive.value = false;
+        _boundUrl = null;
+        _retainAcrossPlayer = false;
         _handoff = null;
+        playing.value = false;
         position.value = at;
         handoff?.onEnded(at);
       case 'error':
         final wasActive = airPlayActive.value;
         airPlayActive.value = false;
+        _boundUrl = null;
+        _retainAcrossPlayer = false;
         _handoff = null;
+        playing.value = false;
         debugPrint('[Casting] AirPlay error: ${raw['message']}');
         handoff?.onFailed?.call("AirPlay can't play this stream");
         if (wasActive) handoff?.onEnded(at);
@@ -189,9 +292,20 @@ class CastingService {
   }
 
   /// Ends any cast without handing playback back (the player is going away).
-  Future<void> stopCasting() async {
+  ///
+  /// When [retainAcrossPlayerHandoff] was set, skips tearing down AirPlay so
+  /// the next player can [replaceActiveCast].
+  Future<void> stopCasting({bool force = false}) async {
+    if (_retainAcrossPlayer && !force) {
+      _retainAcrossPlayer = false;
+      _handoff = null;
+      return;
+    }
+    _retainAcrossPlayer = false;
     _handoff = null;
+    _boundUrl = null;
     airPlayActive.value = false;
+    playing.value = false;
     position.value = Duration.zero;
     if (_airPlaySub == null) return;
     try {

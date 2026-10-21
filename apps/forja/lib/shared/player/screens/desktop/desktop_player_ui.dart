@@ -133,18 +133,18 @@ mixin _DesktopPlayerUi on ConsumerState<DesktopPlayerScreen>, WidgetsBindingObse
   }
 
   Future<void> pauseForMini() async {
-    if (_s._disposed || !_s._playerReady) return;
+    if (_s._disposed) return;
     try {
-      await _s._player.pause();
+      await _s._setPlaying(false);
     } catch (e) {
       debugPrint('[DesktopPlayer] pauseForMini: $e');
     }
   }
 
   Future<void> playFromMini() async {
-    if (_s._disposed || !_s._playerReady) return;
+    if (_s._disposed) return;
     try {
-      await _s._player.play();
+      await _s._setPlaying(true);
     } catch (e) {
       debugPrint('[DesktopPlayer] playFromMini: $e');
     }
@@ -289,6 +289,7 @@ mixin _DesktopPlayerUi on ConsumerState<DesktopPlayerScreen>, WidgetsBindingObse
       _s._durationNotifier.value = d;
     });
     _s._playingSub = _s._player.stream.playing.listen((v) {
+      if (CastingService.instance.airPlayActive.value) return;
       _s._isPlayingNotifier.value = v;
     });
     _s._bufferingSub = _s._player.stream.buffering.listen((v) {
@@ -489,7 +490,7 @@ mixin _DesktopPlayerUi on ConsumerState<DesktopPlayerScreen>, WidgetsBindingObse
 
     // Space toggles playback only — do not reveal chrome (mouse / other keys do).
     if (key == LogicalKeyboardKey.space) {
-      _s._player.playOrPause();
+      unawaited(_s._togglePlayPause());
       if (_s._showControls) _startHideTimer();
       return true;
     }

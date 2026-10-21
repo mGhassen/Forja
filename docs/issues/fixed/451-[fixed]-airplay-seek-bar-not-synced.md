@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| **Progress** | **Complete · 3/3** tasks · **0/1** acceptance (device QA) |
+| **Progress** | **Complete · 4/4** tasks · **0/2** acceptance (device QA) |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -22,6 +22,7 @@
 | 1 | I451-T01 | Native iOS + macOS AirPlay: periodic position events + `seek` channel | ✅ |
 | 2 | I451-T02 | CastingService `position` / `seekIfCasting` + `CastHandoff.onPosition` | ✅ |
 | 3 | I451-T03 | Desktop / mobile / Live Sports: mirror cast playhead; route scrub to AirPlay | ✅ |
+| 4 | I451-T04 | Native play/pause + rate mirror; route Forja transport to AirPlay | ✅ |
 
 ---
 
@@ -30,6 +31,7 @@
 | # | ID | Description | Status |
 |--:|----|-------------|--------|
 | 1 | I451-A01 | Cast VOD to Apple TV; Forja seek bar advances; scrub in Forja seeks the TV | ⬜ |
+| 2 | I451-A02 | Pause / play in Forja pauses / resumes the TV; TV remote pause updates Forja chrome | ⬜ |
 
 ---
 
@@ -43,4 +45,4 @@ AirPlay uses a separate muted `AVPlayer`. Events were only `active` / `inactive`
 
 ## Fix
 
-Native channels emit `position` ~2 Hz while external playback is active and accept `seek`. CastingService forwards ticks to `CastHandoff.onPosition` and `seekIfCasting` from player scrub paths. Local position listeners ignore updates while AirPlay is active.
+Native channels emit `position` ~2 Hz while external playback is active and accept `seek` / `play` / `pause`. Rate KVO mirrors TV-side pause. CastingService forwards ticks and play state to `CastHandoff`; players route scrub and transport through `seekIfCasting` / `setPlayingIfCasting`. Local position/playing listeners ignore updates while AirPlay is active.

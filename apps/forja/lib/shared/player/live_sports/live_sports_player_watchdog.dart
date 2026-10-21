@@ -11,7 +11,7 @@ mixin _LiveSportsPlayerWatchdog on _LiveSportsPlayerEngineCore {
   bool get _livePlaybackProfile;
   bool get _liveSportsSurface;
   void _syncPlaybackBannerVisibility();
-  Future<void> _enginePlay();
+  Future<void> _enginePlay({bool allowCast = true});
 
   /// Sample cache health every watchdog tick (MediaKit).
   ///
