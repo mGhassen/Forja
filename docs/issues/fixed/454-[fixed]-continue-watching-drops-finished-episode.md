@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| **Progress** | **Complete · 4/4** tasks · **0 / 2** acceptance |
+| **Progress** | **Complete · 5/5** tasks · **0 / 2** acceptance |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -23,6 +23,7 @@
 | 2 | I454-T02 | On ≥85% auto-mark: seed next aired hub / TMDB episode into CW | ✅ |
 | 3 | I454-T03 | Card copy shows next ep (Up next); resume opens that ep from 0 | ✅ |
 | 4 | I454-T04 | Unit tests for eligibility + next-ep seed helpers | ✅ |
+| 5 | I454-T05 | Do not write ≥85% into hub CW before up-next; always seed next even when already marked | ✅ |
 
 ---
 
@@ -49,4 +50,4 @@ Finish ep N → if a next aired episode exists, CW becomes that episode (up-next
 
 ## Fix
 
-On first ≥85% auto-mark, seed the next aired episode into hub `WatchHistory` / Home `WatchHistoryService` with `upNext: true`. Continue Watching eligibility includes those seeds. Finished last episode still drops off.
+On ≥85%, seed the next aired episode into hub `WatchHistory` / Home `WatchHistoryService` with `upNext: true` **before** writing finished progress into the CW row. Seed runs even when the episode was already auto-marked. Continue Watching eligibility includes those seeds. Finished last episode still drops off.

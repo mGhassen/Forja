@@ -219,6 +219,46 @@ PlaySaveProgress? catalogPlaySaveProgressCallback({
   final seasonNum = season ?? 1;
 
   return (pos, dur, {sourceId, streamUrl}) async {
+    final finished = isWatchFinished(
+      pos.inMilliseconds,
+      dur.inMilliseconds,
+    );
+    // Never write ≥85% into the hub CW row first — that hides the show before
+    // up-next can seed. In-progress heartbeats still record normally.
+    if (!finished) {
+      await _recordWatchHistory(
+        session: session,
+        ep: ep,
+        season: seasonNum,
+        position: pos,
+        duration: dur,
+        sourceId: sourceId,
+        streamUrl: streamUrl,
+      );
+      return;
+    }
+
+    if (session.useHomeEpisodeWatched && movie.mediaType == 'movie') {
+      await ListFollowFromWatched.markMovieCompletedIfFinished(
+        movie,
+        positionMs: pos.inMilliseconds,
+        durationMs: dur.inMilliseconds,
+      );
+      return;
+    }
+
+    final advanced = await _syncEpisodeWatched(
+      session: session,
+      movie: movie,
+      ep: ep,
+      season: seasonNum,
+      pos: pos,
+      dur: dur,
+      episodes: episodes,
+    );
+    if (advanced) return;
+
+    // Last episode (or advance failed): persist finished — CW filter drops it.
     await _recordWatchHistory(
       session: session,
       ep: ep,
@@ -227,36 +267,6 @@ PlaySaveProgress? catalogPlaySaveProgressCallback({
       duration: dur,
       sourceId: sourceId,
       streamUrl: streamUrl,
-    );
-    // Home TMDB provider+URL is owned by the player WatchHistoryService path
-    // (usesHomeWatchHistory when useHomeEpisodeWatched) — do not wipe sourceId.
-    if (session.useHomeEpisodeWatched) {
-      if (movie.mediaType == 'movie') {
-        await ListFollowFromWatched.markMovieCompletedIfFinished(
-          movie,
-          positionMs: pos.inMilliseconds,
-          durationMs: dur.inMilliseconds,
-        );
-      }
-      await _syncEpisodeWatched(
-        session: session,
-        movie: movie,
-        ep: ep,
-        season: seasonNum,
-        pos: pos,
-        dur: dur,
-        episodes: episodes,
-      );
-      return;
-    }
-    await _syncEpisodeWatched(
-      session: session,
-      movie: movie,
-      ep: ep,
-      season: seasonNum,
-      pos: pos,
-      dur: dur,
-      episodes: episodes,
     );
   };
 }
@@ -276,7 +286,8 @@ PlaySaveProgress? hubEngineSaveProgressCallback({
       episodes: episodes,
     );
 
-Future<void> _syncEpisodeWatched({
+/// Mark watched + seed next CW. Returns true when up-next was written.
+Future<bool> _syncEpisodeWatched({
   required PlaySession session,
   required Movie movie,
   required int ep,
@@ -288,11 +299,12 @@ Future<void> _syncEpisodeWatched({
   final pluginId = session.pluginId;
   final meta = session.metaItem;
   final open = session.effectiveOpen;
-  if (pluginId == null || meta == null || open == null) return;
+  if (pluginId == null || meta == null || open == null) return false;
+  if (!isWatchFinished(pos.inMilliseconds, dur.inMilliseconds)) return false;
 
   if (session.useHomeEpisodeWatched) {
     final tmdbId = meta.numericId('tmdb') ?? open.idInt;
-    if (tmdbId == null) return;
+    if (tmdbId == null) return false;
     final marked = await EpisodeWatchedService().markWatchedIfFinished(
       mediaId: tmdbId,
       season: season,
@@ -300,18 +312,19 @@ Future<void> _syncEpisodeWatched({
       positionMs: pos.inMilliseconds,
       durationMs: dur.inMilliseconds,
     );
-    if (!marked) return;
-    await ListFollowFromWatched.applyTmdbAfterAutoMark(movie: movie);
-    await advanceHomeContinueAfterFinish(
+    if (marked) {
+      await ListFollowFromWatched.applyTmdbAfterAutoMark(movie: movie);
+    }
+    // Always seed next — even when already marked (rewatch near end).
+    return advanceHomeContinueAfterFinish(
       movie: movie,
       season: season,
       episode: ep,
     );
-    return;
   }
 
   final mediaId = open.idInt;
-  if (mediaId == null) return;
+  if (mediaId == null) return false;
   final catalog = pluginId;
   final marked = await EpisodeWatchedService().markWatchedIfFinished(
     mediaId: mediaId,
@@ -321,21 +334,22 @@ Future<void> _syncEpisodeWatched({
     durationMs: dur.inMilliseconds,
     catalog: catalog,
   );
-  if (!marked) return;
-  final target = ListFollowTarget.fromMeta(
-    pluginId: pluginId,
-    meta: meta,
-  );
-  if (target != null) {
-    ListFollow.syncEpisodeWatched(target, episode: ep);
-    await ListFollowFromWatched.applyHubAfterAutoMark(
-      target: target,
-      mediaId: mediaId,
-      catalog: catalog,
-      totalEpisodes: metaDeclaredEpisodeCount(meta),
+  if (marked) {
+    final target = ListFollowTarget.fromMeta(
+      pluginId: pluginId,
+      meta: meta,
     );
+    if (target != null) {
+      ListFollow.syncEpisodeWatched(target, episode: ep);
+      await ListFollowFromWatched.applyHubAfterAutoMark(
+        target: target,
+        mediaId: mediaId,
+        catalog: catalog,
+        totalEpisodes: metaDeclaredEpisodeCount(meta),
+      );
+    }
   }
-  await advanceHubContinueAfterFinish(
+  return advanceHubContinueAfterFinish(
     session: session,
     finishedEpisode: ep,
     season: season,

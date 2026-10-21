@@ -762,15 +762,19 @@ mixin _DesktopPlayerLifecycle
             positionMs: pos,
             durationMs: dur,
           );
-          if (!marked) return;
-          await ListFollowFromWatched.applyTmdbAfterAutoMark(
-            movie: widget.movie!,
-          );
-          await advanceHomeContinueAfterFinish(
-            movie: widget.movie!,
-            season: season,
-            episode: episode,
-          );
+          if (marked) {
+            await ListFollowFromWatched.applyTmdbAfterAutoMark(
+              movie: widget.movie!,
+            );
+          }
+          // Always seed next when finished — even if already marked.
+          if (isWatchFinished(pos, dur)) {
+            await advanceHomeContinueAfterFinish(
+              movie: widget.movie!,
+              season: season,
+              episode: episode,
+            );
+          }
         }());
       } else if (widget.movie!.mediaType == 'movie') {
         unawaited(

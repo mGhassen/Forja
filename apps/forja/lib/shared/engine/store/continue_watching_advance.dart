@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:forja/shared/engine/store/watch_history.dart';
 import 'package:forja/shared/playback/kit_episodes.dart';
 import 'package:forja/shared/playback/play_session.dart';
@@ -6,8 +7,9 @@ import 'package:forja/shared/player/screens/utils.dart';
 import 'package:forja_foundation/protocol/protocol.dart';
 import 'package:rust/rust.dart';
 
-/// After ≥85% auto-mark: keep the show on Continue Watching as the next ep.
-Future<void> advanceHubContinueAfterFinish({
+/// After ≥85%: keep the show on Continue Watching as the next ep.
+/// Returns true when an up-next row was written.
+Future<bool> advanceHubContinueAfterFinish({
   required PlaySession session,
   required int finishedEpisode,
   int? season,
@@ -15,17 +17,17 @@ Future<void> advanceHubContinueAfterFinish({
 }) async {
   final pluginId = session.pluginId;
   final meta = session.metaItem;
-  if (pluginId == null || meta == null) return;
+  if (pluginId == null || meta == null) return false;
 
   final list = _resolveHubEpisodes(meta: meta, episodes: episodes);
-  if (list == null || list.isEmpty) return;
-  final idx = hubEpisodeIndex(list, finishedEpisode);
-  if (idx == null) return;
-  final next = nextAiredHubEpisode(list, idx);
-  if (next == null) return;
-
-  final nextEp = next.number.round();
-  if (nextEp <= 0) return;
+  final nextEp = _nextEpisodeNumber(list, finishedEpisode);
+  if (nextEp == null) {
+    debugPrint(
+      '[CW] no next after ep $finishedEpisode '
+      '(list=${list?.length ?? 0}) — show leaves Continue Watching',
+    );
+    return false;
+  }
 
   await WatchHistory.record(
     pluginId: pluginId,
@@ -40,21 +42,28 @@ Future<void> advanceHubContinueAfterFinish({
     duration: Duration.zero,
     upNext: true,
   );
+  debugPrint('[CW] up-next $pluginId → ep $nextEp (after $finishedEpisode)');
+  return true;
 }
 
 /// Home / TMDB TV: seed the next aired S/E into [WatchHistoryService].
-Future<void> advanceHomeContinueAfterFinish({
+Future<bool> advanceHomeContinueAfterFinish({
   required Movie movie,
   required int season,
   required int episode,
 }) async {
-  if (movie.mediaType != 'tv' || movie.id < 0) return;
+  if (movie.mediaType != 'tv' || movie.id < 0) return false;
   final next = await nextAiredTmdbEpisode(
     tvId: movie.id,
     season: season,
     episode: episode,
   );
-  if (next == null) return;
+  if (next == null) {
+    debugPrint(
+      '[CW] no next TMDB after S${season}E$episode for ${movie.id}',
+    );
+    return false;
+  }
 
   await WatchHistoryService().seedUpNext(
     tmdbId: movie.id,
@@ -66,6 +75,10 @@ Future<void> advanceHomeContinueAfterFinish({
     episode: next.episode,
     mediaType: movie.mediaType,
   );
+  debugPrint(
+    '[CW] up-next tmdb:${movie.id} → S${next.season}E${next.episode}',
+  );
+  return true;
 }
 
 List<PlayerKitEpisode>? _resolveHubEpisodes({
@@ -78,4 +91,29 @@ List<PlayerKitEpisode>? _resolveHubEpisodes({
     if (fromMeta.isNotEmpty) return fromMeta;
   } catch (_) {}
   return null;
+}
+
+/// Next aired number after [finished], or null when the show is done.
+int? _nextEpisodeNumber(List<PlayerKitEpisode>? list, int finished) {
+  if (list == null || list.isEmpty) {
+    // No list at save time — still keep CW as ep+1 (Play re-resolves).
+    return finished + 1;
+  }
+  final idx = hubEpisodeIndex(list, finished);
+  if (idx != null) {
+    final next = nextAiredHubEpisode(list, idx);
+    if (next == null) return null;
+    final n = next.number.round();
+    return n > 0 ? n : null;
+  }
+  // Number miss (remap / int vs double): first aired with number > finished.
+  PlayerKitEpisode? best;
+  for (final e in list) {
+    if (e.notShippedYet) continue;
+    if (e.number <= finished) continue;
+    if (best == null || e.number < best.number) best = e;
+  }
+  if (best == null) return null;
+  final n = best.number.round();
+  return n > 0 ? n : null;
 }
