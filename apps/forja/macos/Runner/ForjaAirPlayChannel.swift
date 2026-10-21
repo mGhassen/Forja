@@ -10,6 +10,7 @@ final class ForjaAirPlayPlugin: NSObject, FlutterPlugin, FlutterStreamHandler {
   private var player: AVPlayer?
   private var externalObservation: NSKeyValueObservation?
   private var statusObservation: NSKeyValueObservation?
+  private var timeObserver: Any?
   private var pickerView: AVRoutePickerView?
   private var pickTimeout: DispatchWorkItem?
   private var external = false
@@ -55,6 +56,10 @@ final class ForjaAirPlayPlugin: NSObject, FlutterPlugin, FlutterStreamHandler {
       result(true)
     case "showPicker":
       result(showPicker())
+    case "seek":
+      let ms = (args["positionMs"] as? NSNumber)?.int64Value ?? 0
+      seek(toMs: ms)
+      result(nil)
     case "stop":
       let ms = positionMs()
       teardown()
@@ -366,6 +371,7 @@ final class ForjaAirPlayPlugin: NSObject, FlutterPlugin, FlutterStreamHandler {
       pickTimeout?.cancel()
       player.isMuted = false
       if player.rate == 0 { player.play() }
+      startTimeObserver()
       emit(["event": "active", "positionMs": positionMs()])
     } else {
       guard external else { return }
@@ -373,6 +379,36 @@ final class ForjaAirPlayPlugin: NSObject, FlutterPlugin, FlutterStreamHandler {
       teardown()
       emit(["event": "inactive", "positionMs": ms])
     }
+  }
+
+  private func seek(toMs ms: Int64) {
+    guard let player, external else { return }
+    let target = max(ms, 0)
+    player.seek(
+      to: CMTime(value: target, timescale: 1000),
+      toleranceBefore: .zero,
+      toleranceAfter: .zero
+    )
+    emit(["event": "position", "positionMs": target])
+  }
+
+  private func startTimeObserver() {
+    stopTimeObserver()
+    guard let player else { return }
+    let interval = CMTime(seconds: 0.5, preferredTimescale: 600)
+    timeObserver = player.addPeriodicTimeObserver(forInterval: interval, queue: .main) {
+      [weak self] time in
+      guard let self, self.external, time.isNumeric else { return }
+      let ms = Int64(CMTimeGetSeconds(time) * 1000)
+      self.emit(["event": "position", "positionMs": ms])
+    }
+  }
+
+  private func stopTimeObserver() {
+    if let timeObserver, let player {
+      player.removeTimeObserver(timeObserver)
+    }
+    timeObserver = nil
   }
 
   private func positionMs() -> Int64 {
@@ -383,6 +419,7 @@ final class ForjaAirPlayPlugin: NSObject, FlutterPlugin, FlutterStreamHandler {
   private func teardown() {
     pickTimeout?.cancel()
     pickTimeout = nil
+    stopTimeObserver()
     externalObservation?.invalidate()
     externalObservation = nil
     statusObservation?.invalidate()

@@ -212,6 +212,8 @@ mixin _LiveSportsPlayerEngine on _LiveSportsPlayerEngineCore {
         unawaited(_s._failoverIptvEngineOnce(msg));
         break;
       case 'progress':
+        // AirPlay owns the playhead — local engine is paused.
+        if (CastingService.instance.airPlayActive.value) return;
         final posMs = (event['position'] as num?)?.toInt() ?? 0;
         final durMs = (event['duration'] as num?)?.toInt() ?? 0;
         final bufMs = (event['buffered'] as num?)?.toInt() ?? 0;
@@ -358,6 +360,8 @@ mixin _LiveSportsPlayerEngine on _LiveSportsPlayerEngineCore {
         _syncPlaybackBannerVisibility();
         break;
       case 'progress':
+        // AirPlay owns the playhead — local engine is paused.
+        if (CastingService.instance.airPlayActive.value) return;
         final posMs = (event['position'] as num?)?.toInt() ?? 0;
         final durMs = (event['duration'] as num?)?.toInt() ?? 0;
         final bufMs = (event['buffered'] as num?)?.toInt() ?? 0;
@@ -544,6 +548,10 @@ mixin _LiveSportsPlayerEngine on _LiveSportsPlayerEngineCore {
   }
 
   Future<void> _engineSeek(Duration target) async {
+    if (await CastingService.instance.seekIfCasting(target)) {
+      if (!_s._disposed) _s._position = target;
+      return;
+    }
     if (_s._exoBackend) {
       await ExoPlayerBridge.seekTo(_s._exoViewId!, target);
     } else if (_s._avPlayerBackend) {
@@ -947,6 +955,8 @@ mixin _LiveSportsPlayerEngine on _LiveSportsPlayerEngineCore {
     final player = _s._player!;
     _s._posSub = player.stream.position.listen((pos) {
       if (!mounted || _s._disposed) return;
+      // AirPlay owns the playhead — local engine is paused.
+      if (CastingService.instance.airPlayActive.value) return;
       if (!_s._isSeeking && pos != _s._position) {
         // Don't pump setState on every tick if duration is 0 (pure live).
         if (_s._isVod) {

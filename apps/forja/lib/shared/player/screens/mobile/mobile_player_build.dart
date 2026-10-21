@@ -476,6 +476,10 @@ mixin _MobilePlayerBuild on ConsumerState<MobilePlayerScreen> {
                         handoff: CastHandoff(
                           onStarted: () => unawaited(_s._player.pause()),
                           onEnded: (resumeAt) => unawaited(_s._resumeAfterCast(resumeAt)),
+                          onPosition: (pos) {
+                            if (_s._disposed || _s._lockSeekBarPosition) return;
+                            _s._positionNotifier.value = pos;
+                          },
                         ),
                       );
                       _s._startHideTimer();

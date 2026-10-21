@@ -421,6 +421,7 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [420-[open]-…](420-[open]-arabic-hub-larozaa-coverage.md) | Arabic hub (Larozaa) misses most of the site; details and servers broken | P2 | Medium | open | 8/8 · A 0/5 | [419](419-[open]-aflem-hub-home-page-only.md) |
 | [421-[open]-…](421-[open]-cartoon-kids-hubs-first-page-only.md) | كرتون and Kids hubs show only the first page of their catalogs | P2 | Medium | open | 7/7 · A 0/4 | [419](419-[open]-aflem-hub-home-page-only.md) |
 | [422-[fixed]-…](fixed/422-[fixed]-airplay-offline-file-cannot-open.md) | AirPlay offline file Cannot Open | P1 | High | fixed | Complete · 2/2 · A 0/1 | [RFC-005](../rfc/005-[partial]-casting.md) |
+| [451-[fixed]-…](fixed/451-[fixed]-airplay-seek-bar-not-synced.md) | AirPlay seek bar not synced while casting | P1 | Medium | fixed | Complete · 3/3 · A 0/1 | [RFC-005](../rfc/005-[partial]-casting.md) |
 | [424-[fixed]-…](fixed/424-[fixed]-mediakit-double-subtitle-paint.md) | MediaKit paints the same subtitle cue twice | P1 | Medium | fixed | Complete · 3/3 · A 0/1 | — |
 | [425-[open]-…](425-[open]-home-stream-language-filter.md) | Home stream language multiselect filters providers | P1 | Medium | open | 6/6 · A 0/3 | — |
 | [441-[fixed]-…](fixed/441-[fixed]-anime-dub-language-dropdown.md) | Anime dub language dropdown (Home-style, dub-only) | P2 | Medium | fixed | Complete · 4/4 · A 0/2 | [425](425-[open]-home-stream-language-filter.md) · [443](fixed/443-[fixed]-anime-stream-languages-like-home.md) |

@@ -1998,6 +1998,15 @@ mixin _LiveSportsPlayerUi on ConsumerState<LiveSportsPlayerScreen> {
                       onStarted: () => unawaited(_s._pauseForCast()),
                       onEnded: (resumeAt) =>
                           unawaited(_s._resumeAfterCast(resumeAt)),
+                      onPosition: (pos) {
+                        if (_s._disposed || _s._isSeeking) return;
+                        if (!mounted) return;
+                        if (_s._isVod) {
+                          setState(() => _s._position = pos);
+                        } else {
+                          _s._position = pos;
+                        }
+                      },
                     ),
                   );
                   _scheduleHideControls();

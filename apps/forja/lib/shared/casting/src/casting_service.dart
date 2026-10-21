@@ -14,6 +14,7 @@ class CastHandoff {
     required this.onEnded,
     this.onFailed,
     this.onSubtitlesUnavailable,
+    this.onPosition,
   });
 
   /// The receiver took over — pause local playback.
@@ -27,6 +28,9 @@ class CastHandoff {
 
   /// The stream plays on the receiver, but without Forja's subtitle.
   final VoidCallback? onSubtitlesUnavailable;
+
+  /// Receiver playhead while casting — keep the in-app seek bar in sync.
+  final void Function(Duration position)? onPosition;
 }
 
 class CastingService {
@@ -41,6 +45,9 @@ class CastingService {
 
   /// True while an AirPlay device is playing the stream.
   final ValueNotifier<bool> airPlayActive = ValueNotifier(false);
+
+  /// Last known receiver playhead while [airPlayActive] is true.
+  final ValueNotifier<Duration> position = ValueNotifier(Duration.zero);
 
   bool get isAirPlayAvailable =>
       !kIsWeb && (Platform.isMacOS || Platform.isIOS);
@@ -103,6 +110,7 @@ class CastingService {
         return await _airPlay.invokeMethod<bool>('showPicker') ?? false;
       }
       _handoff = handoff;
+      this.position.value = position;
       final opened = await _airPlay.invokeMethod<bool>('start', {
             'url': url,
             'headers': headers ?? const <String, String>{},
@@ -126,26 +134,53 @@ class CastingService {
     }
   }
 
+  /// Scrub the AirPlay receiver. Returns false when nothing is casting.
+  Future<bool> seekIfCasting(Duration position) async {
+    if (!airPlayActive.value) return false;
+    final clamped = position < Duration.zero ? Duration.zero : position;
+    try {
+      await _airPlay.invokeMethod<void>('seek', {
+        'positionMs': clamped.inMilliseconds,
+      });
+      this.position.value = clamped;
+      _handoff?.onPosition?.call(clamped);
+      return true;
+    } on PlatformException catch (e) {
+      debugPrint('[Casting] AirPlay seek failed: ${e.message}');
+      return false;
+    } on MissingPluginException {
+      return false;
+    }
+  }
+
   void _onAirPlayEvent(dynamic raw) {
     if (raw is! Map) return;
     final event = raw['event'];
     final ms = (raw['positionMs'] as num?)?.toInt() ?? 0;
+    final at = Duration(milliseconds: ms);
     final handoff = _handoff;
     switch (event) {
       case 'active':
         airPlayActive.value = true;
+        position.value = at;
         handoff?.onStarted();
+        if (ms > 0) handoff?.onPosition?.call(at);
+      case 'position':
+        if (!airPlayActive.value) return;
+        position.value = at;
+        handoff?.onPosition?.call(at);
       case 'inactive':
         airPlayActive.value = false;
         _handoff = null;
-        handoff?.onEnded(Duration(milliseconds: ms));
+        position.value = at;
+        handoff?.onEnded(at);
       case 'error':
         final wasActive = airPlayActive.value;
         airPlayActive.value = false;
         _handoff = null;
         debugPrint('[Casting] AirPlay error: ${raw['message']}');
         handoff?.onFailed?.call("AirPlay can't play this stream");
-        if (wasActive) handoff?.onEnded(Duration(milliseconds: ms));
+        if (wasActive) handoff?.onEnded(at);
       case 'subtitles':
         if (raw['status'] == 'unavailable') handoff?.onSubtitlesUnavailable?.call();
       case 'cancelled':
@@ -157,6 +192,7 @@ class CastingService {
   Future<void> stopCasting() async {
     _handoff = null;
     airPlayActive.value = false;
+    position.value = Duration.zero;
     if (_airPlaySub == null) return;
     try {
       await _airPlay.invokeMethod<int>('stop');

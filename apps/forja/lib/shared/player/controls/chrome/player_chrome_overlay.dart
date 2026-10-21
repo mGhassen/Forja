@@ -1458,6 +1458,7 @@ Future<void> showPlayerCastPicker(
                   key: 'cast-subtitle',
                 );
               },
+              onPosition: handoff.onPosition,
             ),
     );
     if (!context.mounted || opened) return;

@@ -490,6 +490,10 @@ class _DesktopPlayerScreenState extends ConsumerState<DesktopPlayerScreen>
   }
 
   Future<void> _seekTo(Duration position) async {
+    if (await CastingService.instance.seekIfCasting(position)) {
+      if (!_disposed) _positionNotifier.value = position;
+      return;
+    }
     final url =
         _hlsMasterUrl ??
         _currentQualityUrl ??

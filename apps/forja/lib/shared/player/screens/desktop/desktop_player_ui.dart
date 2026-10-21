@@ -282,6 +282,7 @@ mixin _DesktopPlayerUi on ConsumerState<DesktopPlayerScreen>, WidgetsBindingObse
   void _wirePlayerSubscriptionsAfterPipRestore() {
     // Re-use the same listeners _initPlayback attaches after open.
     _s._positionSub = _s._player.stream.position.listen((p) {
+      if (CastingService.instance.airPlayActive.value) return;
       _s._positionNotifier.value = p;
     });
     _s._durationSub = _s._player.stream.duration.listen((d) {

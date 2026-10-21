@@ -17,12 +17,13 @@ In the movie player or **Live Sports** player, tap **Cast** in the top-right. On
 - Send the current video to an AirPlay receiver; Forja pauses while the TV plays
 - Cast a finished offline download over Wi-Fi the same way (phone and TV on the same network)
 - Keep the subtitle you picked in Forja on the TV (stream tracks always; online and addon subtitles on HLS streams)
+- Watch the seek bar move with the TV, and scrub in Forja to seek on the TV
 - Pick your own device again to come back — Forja resumes where the TV stopped
 
 ## Coming soon
 
 - Cast to a Chromecast receiver
-- Control playback from your phone while the TV plays
+- Play / pause from Forja while the TV is casting
 
 ## Related
 

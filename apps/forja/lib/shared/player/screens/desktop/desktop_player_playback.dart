@@ -1374,6 +1374,8 @@ mixin _DesktopPlayerPlayback
     _s._positionSub = _s._player.stream.position.listen((pos) {
       if (_s._disposed) return;
       if (_s._lockSeekBarPosition) return;
+      // AirPlay owns the playhead — local mpv is paused and must not overwrite.
+      if (CastingService.instance.airPlayActive.value) return;
       // Ignore ephemeral demux while hunting a playable source - otherwise the
       // seek bar flashes full/empty as each CDN briefly reports duration.
       if (!_s._playbackConfirmed) return;
