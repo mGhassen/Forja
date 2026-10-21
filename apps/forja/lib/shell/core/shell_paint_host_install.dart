@@ -4,7 +4,6 @@ import 'package:forja/shell/core/shell_paint_host.dart';
 import 'package:forja/shell/focus/shell_focusable_tap.dart';
 import 'package:forja/shell/tv/shell_tv_coordinator.dart';
 import 'package:forja/shell/tv/tv_focus_graph.dart';
-import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 
 /// Wire host TV/focus into [ShellPaintScope]. Call once at app bootstrap.
@@ -97,9 +96,10 @@ void installShellPaintHostAdapters() {
             child: child,
             onTap: onTap,
             borderRadius: borderRadius,
-            scaleOnFocus: scaleOnFocus == 1.04
-                ? ShellTokens.focusActiveScale
-                : scaleOnFocus,
+            // Foundation resolves the scale (motion preset or card default);
+            // pass it through — a 1.04 sentinel remap turned every chipLift
+            // into card lift.
+            scaleOnFocus: scaleOnFocus,
             onLeftEdge: onLeftEdge,
             onUpEdge: onUpEdge,
             onDownEdge: onDownEdge,

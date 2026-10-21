@@ -26,8 +26,10 @@ import 'package:forja/shell/core/forja_shell_profile.dart';
 import 'package:forja/shell/brand/forja_profile_avatar.dart';
 import 'package:forja/shell/nav/pack_update_nav_chrome.dart';
 import 'package:forja_foundation/blocks/shell/shell_nav_placement.dart';
+import 'package:forja_foundation/tokens/focus_chrome_tokens.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
+import 'package:forja_foundation/widgets/chrome/focus_chrome.dart';
 
 /// Scroll a focused rail tab into view only when it is clipped.
 void revealNavRailItem(BuildContext context) {
@@ -389,7 +391,8 @@ class _ShellNavRailState extends State<ShellNavRail> {
                         labelSlotHeight: preferredLabelSlot,
                       );
                       final navExtent =
-                          _navIds.length * (oneItem + metrics.navRailItemSpacing);
+                          _navIds.length *
+                          (oneItem + metrics.navRailItemSpacing);
 
                       return Column(
                         children: [
@@ -1059,6 +1062,11 @@ class _ShellNavRailItemState extends State<_ShellNavRailItem> {
     final policy = ShellScope.inputPolicyOf(context);
     final active = _activeFor(context, policy);
     final selectedFocused = widget.selected && active;
+    // Leanback D-pad focus: shared accent backplate + ring behind the icon,
+    // in addition to the label reveal. Desktop hover is unchanged.
+    final leanbackFocused =
+        policy.leanbackOnly &&
+        policy.focusChromeVisible(context, focused: _focused);
     final iconSize = widget.iconSize ?? shellNavRailIconSize(context);
     final renderedIconSize = widget.customIconSize ?? iconSize;
     final labelFontSize =
@@ -1321,15 +1329,29 @@ class _ShellNavRailItemState extends State<_ShellNavRailItem> {
                           child: Align(
                             alignment: Alignment.bottomCenter,
                             child: RepaintBoundary(
-                              child: AnimatedScale(
-                                alignment: Alignment.bottomCenter,
-                                scale: _scaleFor(policy),
-                                duration: chromeAnim,
-                                curve: Curves.easeOutCubic,
-                                child: SizedBox(
-                                  width: iconBox,
-                                  height: iconBox,
-                                  child: Center(child: icon),
+                              child: FocusChromeRing(
+                                active: leanbackFocused,
+                                behind: true,
+                                borderRadius: BorderRadius.circular(
+                                  FocusChromeTokens.railBackplateRadius,
+                                ),
+                                inset: const EdgeInsets.fromLTRB(
+                                  FocusChromeTokens.railBackplateInset,
+                                  FocusChromeTokens.railBackplateInset,
+                                  FocusChromeTokens.railBackplateInset,
+                                  FocusChromeTokens.railBackplateInsetBottom,
+                                ),
+                                fill: FocusChromeTokens.backplateFill(),
+                                child: AnimatedScale(
+                                  alignment: Alignment.bottomCenter,
+                                  scale: _scaleFor(policy),
+                                  duration: chromeAnim,
+                                  curve: Curves.easeOutCubic,
+                                  child: SizedBox(
+                                    width: iconBox,
+                                    height: iconBox,
+                                    child: Center(child: icon),
+                                  ),
                                 ),
                               ),
                             ),
