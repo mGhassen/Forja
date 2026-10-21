@@ -1479,10 +1479,16 @@ abstract final class ShellTvFocusCoordinator {
     final stride = step < 1 ? 1 : step;
     final dir = right ? 1 : -1;
     if (handle == null) {
+      // No handle: try the full stride, then shorter ones, clamped at 0 so a
+      // held ← near the start lands on the first card instead of leaking to
+      // spatial traversal.
       for (var n = stride; n >= 1; n--) {
         final next = currentIndex + dir * n;
-        if (next < 0) return false;
+        if (next < 0) continue;
         if (focusRowItemExact(tabId, rowId, next)) return true;
+      }
+      if (!right && currentIndex > 0 && focusRowItemExact(tabId, rowId, 0)) {
+        return true;
       }
       return false;
     }
@@ -1495,6 +1501,20 @@ abstract final class ShellTvFocusCoordinator {
     // tracks focus one-by-one (exact focus alone skips scroll).
     if (handle.orientation == ShellTvRowOrientation.vertical) {
       _invokeRowScroll(tabId, rowId, target);
+      return focusRowItemRemembered(tabId, rowId, index: target);
+    }
+    // Horizontal hold accel: lazy rails only mount ~1 viewport past the focus
+    // column, so a long stride may target an unbuilt card. Without a
+    // scroll-to-index closure, land on the farthest mounted card toward the
+    // target instead of stalling on retries.
+    if (stride > 1 &&
+        !_rowScrollIntoView.containsKey(_rowOwnerKey(tabId, rowId))) {
+      if (focusRowItemExact(tabId, rowId, target)) return true;
+      for (var n = (target - currentIndex).abs() - 1; n >= 1; n--) {
+        if (focusRowItemExact(tabId, rowId, currentIndex + dir * n)) {
+          return true;
+        }
+      }
     }
     // Lazy rails (IPTV cats): jump then focus — same as Portals / classic.
     return focusRowItemRemembered(tabId, rowId, index: target);
@@ -1515,7 +1535,13 @@ abstract final class ShellTvFocusCoordinator {
     final row = currentIndex ~/ columns;
     final col = currentIndex % columns;
     var nextRow = row + rowDelta;
-    final nextCol = col + colDelta;
+    var nextCol = col + colDelta;
+    // Accel overshoot (held ←/→): clamp inside the current grid row.
+    if (colDelta.abs() > 1) {
+      if (nextCol < 0) nextCol = 0;
+      if (nextCol > columns - 1) nextCol = columns - 1;
+      if (nextCol == col && rowDelta == 0) return true;
+    }
     if (nextCol < 0 || nextCol >= columns) return false;
     final maxRow = (handle.itemCount - 1) ~/ columns;
     // Accel overshoot: clamp inside the grid (first-row exit uses onFocusUp).
@@ -1963,7 +1989,7 @@ class ShellTvFocusMeta {
           currentIndex: idx,
           columns: cols,
           rowDelta: 0,
-          colDelta: -1,
+          colDelta: -ShellTvHoldAccel.lastStep,
         );
       };
     }
@@ -2003,9 +2029,15 @@ class ShellTvFocusMeta {
         rowId: rid,
         currentIndex: idx,
         right: false,
+        step: _horizontalHoldStep(),
       );
     };
   }
+
+  /// Held ←/→ stride for catalog rails and grids. Chip strips / top bars stay
+  /// one-per-repeat — their items are few and wrap-around traps differ.
+  int _horizontalHoldStep() =>
+      zone == ShellTvZone.row ? ShellTvHoldAccel.lastStep : 1;
 
   bool Function()? resolveRightEdge() {
     if (rowId == null || itemIndex == null) return null;
@@ -2025,7 +2057,7 @@ class ShellTvFocusMeta {
           currentIndex: idx,
           columns: cols,
           rowDelta: 0,
-          colDelta: 1,
+          colDelta: ShellTvHoldAccel.lastStep,
         );
       };
     }
@@ -2046,6 +2078,7 @@ class ShellTvFocusMeta {
         rowId: rid,
         currentIndex: idx,
         right: true,
+        step: _horizontalHoldStep(),
       );
       return true;
     };
@@ -2243,6 +2276,65 @@ void shellTvEnsureVisibleKeepVisible(BuildContext context) {
     duration: zero,
     alignmentPolicy: ScrollPositionAlignmentPolicy.keepVisibleAtEnd,
   );
+}
+
+/// Leanback "focus column" for horizontal catalog rails.
+///
+/// Scrolls the **nearest** horizontal [Scrollable] so the focused item's
+/// leading edge sits at a fixed column — the rail's own leading padding
+/// ([ListView.padding]; [ShellTokens.tvKitRowFocusColumnInset] when the rail
+/// declares none). Clamped to the scroll extent: the first cards keep their
+/// natural position and the last cards stay packed at the end.
+///
+/// [animate] false (held key) jumps so a repeat burst never outruns the
+/// tween; true tweens with [ShellTokens.tvKitRowFocusScrollAnimation]. Each
+/// call retargets any running tween (no queue).
+///
+/// Returns false when [context] is not inside a horizontal scroller (caller
+/// keeps its vertical keep-visible path).
+bool shellTvAlignRowFocusColumn(BuildContext context, {bool animate = true}) {
+  final scrollable = Scrollable.maybeOf(context);
+  if (scrollable == null) return false;
+  final position = scrollable.position;
+  if (axisDirectionToAxis(position.axisDirection) != Axis.horizontal) {
+    return false;
+  }
+  if (!position.hasContentDimensions || !position.hasPixels) return false;
+
+  final box = context.findRenderObject();
+  if (box is! RenderBox || !box.hasSize || !box.attached) return false;
+  final viewportBox = scrollable.context.findRenderObject();
+  if (viewportBox is! RenderBox || !viewportBox.hasSize) return false;
+
+  final rtl = Directionality.maybeOf(context) == TextDirection.rtl;
+  final topLeft = box.localToGlobal(Offset.zero, ancestor: viewportBox);
+  // Distance from the viewport's leading edge to the item's leading edge.
+  final leadingInViewport = rtl
+      ? viewportBox.size.width - (topLeft.dx + box.size.width)
+      : topLeft.dx;
+
+  final padding = context.findAncestorWidgetOfExactType<ListView>()?.padding;
+  final column = padding == null
+      ? ShellTokens.tvKitRowFocusColumnInset
+      : (rtl
+            ? padding.resolve(TextDirection.rtl).right
+            : padding.resolve(TextDirection.ltr).left);
+
+  final target = (position.pixels + leadingInViewport - column).clamp(
+    position.minScrollExtent,
+    position.maxScrollExtent,
+  );
+  if ((target - position.pixels).abs() < 0.5) return true;
+  if (animate) {
+    position.animateTo(
+      target,
+      duration: ShellTokens.tvKitRowFocusScrollAnimation,
+      curve: Curves.easeOutCubic,
+    );
+  } else {
+    position.jumpTo(target);
+  }
+  return true;
 }
 
 /// Lift a focused catalog card in the **vertical** page scroller.

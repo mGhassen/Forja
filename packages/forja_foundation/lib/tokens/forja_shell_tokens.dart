@@ -689,6 +689,18 @@ abstract final class ShellTokens {
   /// Catalog row D-pad focus: keep this fraction of viewport below the row.
   static const double tvKitRowFocusBottomInsetFraction = 0.10;
 
+  /// Horizontal catalog rail D-pad focus (Leanback "focus column"): the
+  /// focused card's leading edge scrolls to a fixed column so the cards after
+  /// it stay visible. The column is the rail's own leading padding when the
+  /// scroller declares one; this is the fallback for rails without padding.
+  static const double tvKitRowFocusColumnInset = tvHomeSectionHorizontalPadding;
+
+  /// Tween for the rail focus-column scroll on a discrete ←/→ press. Held
+  /// keys (OS repeat) jump instantly so the burst never outruns the tween.
+  static const Duration tvKitRowFocusScrollAnimation = Duration(
+    milliseconds: 180,
+  );
+
   /// Settings / vertical menus: keep this fraction of viewport below the
   /// focused control so the next row peeks and ATV overscan does not clip
   /// the last item (flush keepVisibleAtEnd hid the final pack).

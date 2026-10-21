@@ -709,92 +709,91 @@ void main() {
     },
   );
 
-  testWidgets(
-    'nav RIGHT restores row without marking hero Play first',
-    (tester) async {
-      final homeNav = FocusNode(debugLabel: 'nav-home');
-      final play = FocusNode(debugLabel: 'hero-play');
-      final card = FocusNode(debugLabel: 'catalog-card');
-      ShellTvFocus.registerNav('home', homeNav);
-      ShellTvFocus.currentNavTabId = 'home';
+  testWidgets('nav RIGHT restores row without marking hero Play first', (
+    tester,
+  ) async {
+    final homeNav = FocusNode(debugLabel: 'nav-home');
+    final play = FocusNode(debugLabel: 'hero-play');
+    final card = FocusNode(debugLabel: 'catalog-card');
+    ShellTvFocus.registerNav('home', homeNav);
+    ShellTvFocus.currentNavTabId = 'home';
 
-      shellTvRegisterRow(
-        tabId: 'home',
+    shellTvRegisterRow(
+      tabId: 'home',
+      rowId: 'genre_mystery',
+      sortOrder: 5,
+      itemCount: 1,
+    );
+    ShellTvFocusCoordinator.registerItemNode(
+      tabId: 'home',
+      rowId: 'genre_mystery',
+      index: 0,
+      node: card,
+    );
+    ShellTvFocusCoordinator.saveFocus(
+      'home',
+      ShellTvFocusMemory(
+        zone: ShellTvZone.row,
         rowId: 'genre_mystery',
-        sortOrder: 5,
-        itemCount: 1,
-      );
-      ShellTvFocusCoordinator.registerItemNode(
-        tabId: 'home',
-        rowId: 'genre_mystery',
-        index: 0,
+        itemIndex: 0,
         node: card,
-      );
-      ShellTvFocusCoordinator.saveFocus(
-        'home',
-        ShellTvFocusMemory(
-          zone: ShellTvZone.row,
-          rowId: 'genre_mystery',
-          itemIndex: 0,
-          node: card,
+      ),
+    );
+    ShellTvFocusCoordinator.registerTabDefaults(
+      'home',
+      defaultFocus: () => play,
+    );
+
+    await tester.pumpWidget(
+      _wrapTv(
+        Row(
+          children: [
+            Focus(
+              focusNode: homeNav,
+              child: const SizedBox(width: 40, height: 40),
+            ),
+            Focus(
+              focusNode: play,
+              child: const SizedBox(width: 40, height: 40),
+            ),
+            Focus(
+              focusNode: card,
+              child: const SizedBox(width: 40, height: 40),
+            ),
+          ],
         ),
-      );
-      ShellTvFocusCoordinator.registerTabDefaults(
-        'home',
-        defaultFocus: () => play,
-      );
+      ),
+    );
+    await tester.pump();
+    homeNav.requestFocus();
+    FocusManager.instance.applyFocusChangesIfNeeded();
+    await tester.pump();
+    expect(homeNav.hasFocus, isTrue);
 
-      await tester.pumpWidget(
-        _wrapTv(
-          Row(
-            children: [
-              Focus(
-                focusNode: homeNav,
-                child: const SizedBox(width: 40, height: 40),
-              ),
-              Focus(
-                focusNode: play,
-                child: const SizedBox(width: 40, height: 40),
-              ),
-              Focus(
-                focusNode: card,
-                child: const SizedBox(width: 40, height: 40),
-              ),
-            ],
-          ),
-        ),
-      );
-      await tester.pump();
-      homeNav.requestFocus();
-      FocusManager.instance.applyFocusChangesIfNeeded();
-      await tester.pump();
-      expect(homeNav.hasFocus, isTrue);
+    final focused = <String>[];
+    void track() {
+      final label = FocusManager.instance.primaryFocus?.debugLabel;
+      if (label != null) focused.add(label);
+    }
 
-      final focused = <String>[];
-      void track() {
-        final label = FocusManager.instance.primaryFocus?.debugLabel;
-        if (label != null) focused.add(label);
-      }
+    FocusManager.instance.addListener(track);
+    expect(
+      ShellTvFocusCoordinator.handleNavKey(LogicalKeyboardKey.arrowRight),
+      isTrue,
+    );
+    FocusManager.instance.applyFocusChangesIfNeeded();
+    FocusManager.instance.removeListener(track);
 
-      FocusManager.instance.addListener(track);
-      expect(
-        ShellTvFocusCoordinator.handleNavKey(LogicalKeyboardKey.arrowRight),
-        isTrue,
-      );
-      FocusManager.instance.applyFocusChangesIfNeeded();
-      FocusManager.instance.removeListener(track);
+    expect(card.hasFocus, isTrue);
+    expect(play.hasFocus, isFalse);
+    expect(focused, isNot(contains('hero-play')));
+    expect(focused, contains('catalog-card'));
 
-      expect(card.hasFocus, isTrue);
-      expect(play.hasFocus, isFalse);
-      expect(focused, isNot(contains('hero-play')));
-      expect(focused, contains('catalog-card'));
-
-      ShellTvFocusCoordinator.clearTab('home');
-      homeNav.dispose();
-      play.dispose();
-      card.dispose();
-    },
-  );
+    ShellTvFocusCoordinator.clearTab('home');
+    homeNav.dispose();
+    play.dispose();
+    card.dispose();
+  });
 
   testWidgets(
     'nav RIGHT restores details episode after Play pollutes leave memory',
@@ -1022,7 +1021,10 @@ void main() {
 
     await tester.pumpWidget(
       _wrapTv(
-        Focus(focusNode: pageNode, child: const SizedBox(width: 40, height: 40)),
+        Focus(
+          focusNode: pageNode,
+          child: const SizedBox(width: 40, height: 40),
+        ),
       ),
     );
     await tester.pump();
@@ -1605,177 +1607,289 @@ void main() {
     play.dispose();
   });
 
-  test('row unregister from stale PageView owner keeps active registration', () {
+  test(
+    'row unregister from stale PageView owner keeps active registration',
+    () {
+      const tab = 'home';
+      const row = MediaDetailsTv.heroRowId;
+      final ownerA = Object();
+      final ownerB = Object();
+
+      shellTvRegisterRow(
+        tabId: tab,
+        rowId: row,
+        sortOrder: MediaDetailsTv.heroRowSortOrder,
+        itemCount: 2,
+        owner: ownerA,
+      );
+      // Active slide registers after (or before) the inactive sibling.
+      shellTvRegisterRow(
+        tabId: tab,
+        rowId: row,
+        sortOrder: MediaDetailsTv.heroRowSortOrder,
+        itemCount: 2,
+        owner: ownerB,
+      );
+      // Deactivating slide must not wipe the active owner.
+      shellTvUnregisterRow(tabId: tab, rowId: row, owner: ownerA);
+
+      expect(ShellTvFocusCoordinator.rowHandle(tab, row), isNotNull);
+      expect(ShellTvFocusCoordinator.rowHandle(tab, row)!.itemCount, 2);
+
+      shellTvUnregisterRow(tabId: tab, rowId: row, owner: ownerB);
+      expect(ShellTvFocusCoordinator.rowHandle(tab, row), isNull);
+    },
+  );
+
+  testWidgets('shared hero Play item node survives stale PageView unregister', (
+    tester,
+  ) async {
     const tab = 'home';
     const row = MediaDetailsTv.heroRowId;
-    final ownerA = Object();
-    final ownerB = Object();
+    final play = FocusNode(debugLabel: 'hero-play-shared');
+    final pin = FocusNode(debugLabel: 'hero-pin');
 
+    await tester.pumpWidget(
+      _wrapTv(
+        Row(
+          children: [
+            Focus(
+              focusNode: play,
+              child: const SizedBox(width: 40, height: 40),
+            ),
+            Focus(focusNode: pin, child: const SizedBox(width: 40, height: 40)),
+          ],
+        ),
+      ),
+    );
+    await tester.pump();
+
+    ShellTvFocusCoordinator.registerItemNode(
+      tabId: tab,
+      rowId: row,
+      index: 0,
+      node: play,
+    );
+    ShellTvFocusCoordinator.registerItemNode(
+      tabId: tab,
+      rowId: row,
+      index: 1,
+      node: pin,
+    );
     shellTvRegisterRow(
       tabId: tab,
       rowId: row,
       sortOrder: MediaDetailsTv.heroRowSortOrder,
       itemCount: 2,
-      owner: ownerA,
     );
-    // Active slide registers after (or before) the inactive sibling.
-    shellTvRegisterRow(
+
+    // Stale sibling unregisters the shared Play node while it is still
+    // attached to the active slide's Focus widget.
+    ShellTvFocusCoordinator.unregisterItemNode(
       tabId: tab,
       rowId: row,
-      sortOrder: MediaDetailsTv.heroRowSortOrder,
-      itemCount: 2,
-      owner: ownerB,
+      index: 0,
+      node: play,
     );
-    // Deactivating slide must not wipe the active owner.
-    shellTvUnregisterRow(tabId: tab, rowId: row, owner: ownerA);
+    expect(ShellTvFocusCoordinator.itemNode(tab, row, 0), same(play));
 
-    expect(ShellTvFocusCoordinator.rowHandle(tab, row), isNotNull);
-    expect(ShellTvFocusCoordinator.rowHandle(tab, row)!.itemCount, 2);
+    pin.requestFocus();
+    await tester.pump();
+    expect(
+      ShellTvFocusCoordinator.focusAdjacentInRow(
+        tabId: tab,
+        rowId: row,
+        currentIndex: 1,
+        right: false,
+      ),
+      isTrue,
+    );
+    await tester.pump();
+    expect(play.hasFocus, isTrue);
 
-    shellTvUnregisterRow(tabId: tab, rowId: row, owner: ownerB);
-    expect(ShellTvFocusCoordinator.rowHandle(tab, row), isNull);
+    play.dispose();
+    pin.dispose();
+    ShellTvFocusCoordinator.clearTab(tab);
   });
 
   testWidgets(
-    'shared hero Play item node survives stale PageView unregister',
+    'focusAdjacentInRow → with step 3 lands on index+3, clamps at the end, '
+    'and falls back to the farthest mounted card',
     (tester) async {
-      const tab = 'home';
-      const row = MediaDetailsTv.heroRowId;
-      final play = FocusNode(debugLabel: 'hero-play-shared');
-      final pin = FocusNode(debugLabel: 'hero-pin');
+      const tab = 'test-tab';
+      const row = 'test-rail';
+      // Items 0..4 mounted; the handle claims 7 so 5 and 6 are "unbuilt".
+      final nodes = List.generate(5, (i) => FocusNode(debugLabel: 'card-$i'));
 
       await tester.pumpWidget(
         _wrapTv(
           Row(
             children: [
-              Focus(
-                focusNode: play,
-                child: const SizedBox(width: 40, height: 40),
-              ),
-              Focus(
-                focusNode: pin,
-                child: const SizedBox(width: 40, height: 40),
-              ),
+              for (final n in nodes)
+                Focus(
+                  focusNode: n,
+                  child: const SizedBox(width: 40, height: 40),
+                ),
             ],
           ),
         ),
       );
       await tester.pump();
 
-      ShellTvFocusCoordinator.registerItemNode(
-        tabId: tab,
-        rowId: row,
-        index: 0,
-        node: play,
-      );
-      ShellTvFocusCoordinator.registerItemNode(
-        tabId: tab,
-        rowId: row,
-        index: 1,
-        node: pin,
-      );
-      shellTvRegisterRow(
-        tabId: tab,
-        rowId: row,
-        sortOrder: MediaDetailsTv.heroRowSortOrder,
-        itemCount: 2,
-      );
+      for (var i = 0; i < nodes.length; i++) {
+        ShellTvFocusCoordinator.registerItemNode(
+          tabId: tab,
+          rowId: row,
+          index: i,
+          node: nodes[i],
+        );
+      }
+      shellTvRegisterRow(tabId: tab, rowId: row, sortOrder: 10, itemCount: 7);
 
-      // Stale sibling unregisters the shared Play node while it is still
-      // attached to the active slide's Focus widget.
-      ShellTvFocusCoordinator.unregisterItemNode(
-        tabId: tab,
-        rowId: row,
-        index: 0,
-        node: play,
-      );
-      expect(ShellTvFocusCoordinator.itemNode(tab, row, 0), same(play));
-
-      pin.requestFocus();
+      nodes[0].requestFocus();
       await tester.pump();
+
+      // Stride 3 from 0 → 3.
+      expect(
+        ShellTvFocusCoordinator.focusAdjacentInRow(
+          tabId: tab,
+          rowId: row,
+          currentIndex: 0,
+          right: true,
+          step: 3,
+        ),
+        isTrue,
+      );
+      await tester.pump();
+      expect(nodes[3].hasFocus, isTrue);
+
+      // Stride 3 from 3 → 6 (clamped in range) is unbuilt → farthest mounted (4).
+      expect(
+        ShellTvFocusCoordinator.focusAdjacentInRow(
+          tabId: tab,
+          rowId: row,
+          currentIndex: 3,
+          right: true,
+          step: 3,
+        ),
+        isTrue,
+      );
+      await tester.pump();
+      expect(nodes[4].hasFocus, isTrue);
+
+      // Stride 3 back from 4 → 1.
+      expect(
+        ShellTvFocusCoordinator.focusAdjacentInRow(
+          tabId: tab,
+          rowId: row,
+          currentIndex: 4,
+          right: false,
+          step: 3,
+        ),
+        isTrue,
+      );
+      await tester.pump();
+      expect(nodes[1].hasFocus, isTrue);
+
+      // Stride 3 back from 1 clamps to 0.
       expect(
         ShellTvFocusCoordinator.focusAdjacentInRow(
           tabId: tab,
           rowId: row,
           currentIndex: 1,
           right: false,
+          step: 3,
         ),
         isTrue,
       );
       await tester.pump();
-      expect(play.hasFocus, isTrue);
+      expect(nodes[0].hasFocus, isTrue);
 
-      play.dispose();
-      pin.dispose();
+      // Clamp with nowhere to go stays put and still reports handled.
+      expect(
+        ShellTvFocusCoordinator.focusAdjacentInRow(
+          tabId: tab,
+          rowId: row,
+          currentIndex: 0,
+          right: false,
+          step: 5,
+        ),
+        isTrue,
+      );
+      await tester.pump();
+      expect(nodes[0].hasFocus, isTrue);
+
+      for (final n in nodes) {
+        n.dispose();
+      }
       ShellTvFocusCoordinator.clearTab(tab);
     },
   );
 
-  testWidgets(
-    'restoreTabFocusAfterNav falls back when row memory is dead',
-    (tester) async {
-      final settingsNav = FocusNode(debugLabel: 'nav-settings');
-      final category = FocusNode(debugLabel: 'settings-category');
-      ShellTvFocus.registerNav('settings', settingsNav);
-      ShellTvFocus.currentNavTabId = 'settings';
-      ShellTvFocusCoordinator.setNavOrder(['settings']);
+  testWidgets('restoreTabFocusAfterNav falls back when row memory is dead', (
+    tester,
+  ) async {
+    final settingsNav = FocusNode(debugLabel: 'nav-settings');
+    final category = FocusNode(debugLabel: 'settings-category');
+    ShellTvFocus.registerNav('settings', settingsNav);
+    ShellTvFocus.currentNavTabId = 'settings';
+    ShellTvFocusCoordinator.setNavOrder(['settings']);
 
-      // Stale empty-shell memory — row was never registered (gate dismissed).
-      ShellTvFocusCoordinator.saveFocus(
-        'settings',
-        const ShellTvFocusMemory(
-          zone: ShellTvZone.row,
-          rowId: 'empty-shell-cards',
-          itemIndex: 0,
+    // Stale empty-shell memory — row was never registered (gate dismissed).
+    ShellTvFocusCoordinator.saveFocus(
+      'settings',
+      const ShellTvFocusMemory(
+        zone: ShellTvZone.row,
+        rowId: 'empty-shell-cards',
+        itemIndex: 0,
+      ),
+    );
+    ShellTvFocusCoordinator.registerTabDefaults(
+      'settings',
+      defaultFocus: () => category,
+      restoreFocus: () {
+        if (!category.canRequestFocus) return false;
+        category.requestFocus();
+        return true;
+      },
+      preferCustomRestoreFromNav: true,
+    );
+
+    await tester.pumpWidget(
+      _wrapTv(
+        Row(
+          children: [
+            Focus(
+              focusNode: settingsNav,
+              child: const SizedBox(width: 40, height: 40),
+            ),
+            Focus(
+              focusNode: category,
+              child: const SizedBox(width: 40, height: 40),
+            ),
+          ],
         ),
-      );
-      ShellTvFocusCoordinator.registerTabDefaults(
-        'settings',
-        defaultFocus: () => category,
-        restoreFocus: () {
-          if (!category.canRequestFocus) return false;
-          category.requestFocus();
-          return true;
-        },
-        preferCustomRestoreFromNav: true,
-      );
+      ),
+    );
+    await tester.pump();
+    settingsNav.requestFocus();
+    await tester.pump();
 
-      await tester.pumpWidget(
-        _wrapTv(
-          Row(
-            children: [
-              Focus(
-                focusNode: settingsNav,
-                child: const SizedBox(width: 40, height: 40),
-              ),
-              Focus(
-                focusNode: category,
-                child: const SizedBox(width: 40, height: 40),
-              ),
-            ],
-          ),
-        ),
-      );
-      await tester.pump();
-      settingsNav.requestFocus();
-      await tester.pump();
+    ShellTvFocusCoordinator.restoreTabFocusAfterNav('settings');
+    FocusManager.instance.applyFocusChangesIfNeeded();
+    await tester.pump();
+    await tester.pump();
+    await tester.pump();
+    await tester.pump();
+    await tester.pump();
 
-      ShellTvFocusCoordinator.restoreTabFocusAfterNav('settings');
-      FocusManager.instance.applyFocusChangesIfNeeded();
-      await tester.pump();
-      await tester.pump();
-      await tester.pump();
-      await tester.pump();
-      await tester.pump();
+    expect(category.hasFocus, isTrue);
+    expect(settingsNav.hasFocus, isFalse);
 
-      expect(category.hasFocus, isTrue);
-      expect(settingsNav.hasFocus, isFalse);
-
-      settingsNav.dispose();
-      category.dispose();
-      ShellTvFocusCoordinator.clearTab('settings');
-    },
-  );
+    settingsNav.dispose();
+    category.dispose();
+    ShellTvFocusCoordinator.clearTab('settings');
+  });
 
   testWidgets(
     'restoreTabFocusAfterNav drops dead row memory without custom prefer',
@@ -1833,112 +1947,110 @@ void main() {
     },
   );
 
-  testWidgets(
-    'focusActiveNavTab no-ops when Settings is the only nav tab',
-    (tester) async {
-      final settingsNav = FocusNode(debugLabel: 'nav-settings');
-      final page = FocusNode(debugLabel: 'page-item');
-      ShellTvFocus.registerNav('settings', settingsNav);
-      ShellTvFocus.currentNavTabId = 'settings';
-      ShellTvFocusCoordinator.setNavOrder(['settings']);
+  testWidgets('focusActiveNavTab no-ops when Settings is the only nav tab', (
+    tester,
+  ) async {
+    final settingsNav = FocusNode(debugLabel: 'nav-settings');
+    final page = FocusNode(debugLabel: 'page-item');
+    ShellTvFocus.registerNav('settings', settingsNav);
+    ShellTvFocus.currentNavTabId = 'settings';
+    ShellTvFocusCoordinator.setNavOrder(['settings']);
 
-      await tester.pumpWidget(
-        _wrapTv(
-          Row(
-            children: [
-              Focus(
-                focusNode: settingsNav,
-                child: const SizedBox(width: 40, height: 40),
-              ),
-              Focus(
-                focusNode: page,
-                child: const SizedBox(width: 40, height: 40),
-              ),
-            ],
-          ),
+    await tester.pumpWidget(
+      _wrapTv(
+        Row(
+          children: [
+            Focus(
+              focusNode: settingsNav,
+              child: const SizedBox(width: 40, height: 40),
+            ),
+            Focus(
+              focusNode: page,
+              child: const SizedBox(width: 40, height: 40),
+            ),
+          ],
         ),
-      );
-      await tester.pump();
-      page.requestFocus();
-      await tester.pump();
+      ),
+    );
+    await tester.pump();
+    page.requestFocus();
+    await tester.pump();
 
-      expect(ShellTvFocusCoordinator.focusActiveNavTab(), isFalse);
-      await tester.pump();
-      expect(page.hasFocus, isTrue);
-      expect(settingsNav.hasFocus, isFalse);
+    expect(ShellTvFocusCoordinator.focusActiveNavTab(), isFalse);
+    await tester.pump();
+    expect(page.hasFocus, isTrue);
+    expect(settingsNav.hasFocus, isFalse);
 
-      settingsNav.dispose();
-      page.dispose();
-    },
-  );
+    settingsNav.dispose();
+    page.dispose();
+  });
 
-  testWidgets(
-    'pageBack-only bind keeps Settings enterFromNav + preferCustom',
-    (tester) async {
-      final settingsNav = FocusNode(debugLabel: 'nav-settings');
-      final category = FocusNode(debugLabel: 'settings-hub-selected');
-      var pageBackCalls = 0;
-      ShellTvFocus.registerNav('settings', settingsNav);
-      ShellTvFocus.currentNavTabId = 'settings';
-      ShellTvFocusCoordinator.setNavOrder(['home', 'settings']);
+  testWidgets('pageBack-only bind keeps Settings enterFromNav + preferCustom', (
+    tester,
+  ) async {
+    final settingsNav = FocusNode(debugLabel: 'nav-settings');
+    final category = FocusNode(debugLabel: 'settings-hub-selected');
+    var pageBackCalls = 0;
+    ShellTvFocus.registerNav('settings', settingsNav);
+    ShellTvFocus.currentNavTabId = 'settings';
+    ShellTvFocusCoordinator.setNavOrder(['home', 'settings']);
 
-      // SettingsScreen bind, then SettingsHubScaffold pageBack-only merge.
-      ShellTvFocusCoordinator.registerTabDefaults(
-        'settings',
-        defaultFocus: () => category,
-        enterFromNavFocus: () {
-          if (category.canRequestFocus) category.requestFocus();
-        },
-        restoreFocus: () {
-          if (!category.canRequestFocus) return false;
-          category.requestFocus();
-          return true;
-        },
-        preferCustomRestoreFromNav: true,
-      );
-      ShellTvFocusCoordinator.registerTabDefaults(
-        'settings',
-        pageBack: () {
-          pageBackCalls++;
-          return true;
-        },
-      );
+    // SettingsScreen bind, then SettingsHubScaffold pageBack-only merge.
+    ShellTvFocusCoordinator.registerTabDefaults(
+      'settings',
+      defaultFocus: () => category,
+      enterFromNavFocus: () {
+        if (category.canRequestFocus) category.requestFocus();
+      },
+      restoreFocus: () {
+        if (!category.canRequestFocus) return false;
+        category.requestFocus();
+        return true;
+      },
+      preferCustomRestoreFromNav: true,
+    );
+    ShellTvFocusCoordinator.registerTabDefaults(
+      'settings',
+      pageBack: () {
+        pageBackCalls++;
+        return true;
+      },
+    );
 
-      await tester.pumpWidget(
-        _wrapTv(
-          Row(
-            children: [
-              Focus(
-                focusNode: settingsNav,
-                child: const SizedBox(width: 40, height: 40),
-              ),
-              Focus(
-                focusNode: category,
-                child: const SizedBox(width: 40, height: 40),
-              ),
-            ],
-          ),
+    await tester.pumpWidget(
+      _wrapTv(
+        Row(
+          children: [
+            Focus(
+              focusNode: settingsNav,
+              child: const SizedBox(width: 40, height: 40),
+            ),
+            Focus(
+              focusNode: category,
+              child: const SizedBox(width: 40, height: 40),
+            ),
+          ],
         ),
-      );
+      ),
+    );
+    await tester.pump();
+    settingsNav.requestFocus();
+    await tester.pump();
+
+    ShellTvFocusCoordinator.enterTabFromNav('settings');
+    for (var i = 0; i < 8; i++) {
       await tester.pump();
-      settingsNav.requestFocus();
-      await tester.pump();
+    }
 
-      ShellTvFocusCoordinator.enterTabFromNav('settings');
-      for (var i = 0; i < 8; i++) {
-        await tester.pump();
-      }
+    expect(category.hasFocus, isTrue);
+    expect(settingsNav.hasFocus, isFalse);
+    expect(ShellTvFocusCoordinator.tryPageBack('settings'), isTrue);
+    expect(pageBackCalls, 1);
 
-      expect(category.hasFocus, isTrue);
-      expect(settingsNav.hasFocus, isFalse);
-      expect(ShellTvFocusCoordinator.tryPageBack('settings'), isTrue);
-      expect(pageBackCalls, 1);
-
-      settingsNav.dispose();
-      category.dispose();
-      ShellTvFocusCoordinator.clearTab('settings');
-    },
-  );
+    settingsNav.dispose();
+    category.dispose();
+    ShellTvFocusCoordinator.clearTab('settings');
+  });
 
   test('clearTabPageBack drops a stale Back ladder', () {
     var calls = 0;
@@ -2049,7 +2161,8 @@ void main() {
       expect(
         outer.offset,
         greaterThan(0),
-        reason: 'must scroll the outer SingleChildScrollView, not the '
+        reason:
+            'must scroll the outer SingleChildScrollView, not the '
             'shrink-wrap NeverScrollable ListView nest',
       );
 
