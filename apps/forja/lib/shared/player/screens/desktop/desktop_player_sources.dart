@@ -516,7 +516,7 @@ mixin _DesktopPlayerSources
       onSelectSource: _switchToStreamSource,
       onCheckSource: _checkStreamSource,
       onTogglePlayPause: () {
-        _s._player.playOrPause();
+        unawaited(_s._togglePlayPause());
         _s._onMouseMove();
       },
       anchorContext: anchorContext,

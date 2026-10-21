@@ -37,6 +37,7 @@ import 'package:forja/shared/playback/open/stream_open_pipeline.dart';
 import 'package:forja/shared/playback/cache/player_stream_extract_cache.dart';
 import 'package:forja/shared/playback/stream_provider_probe.dart';
 import 'package:forja/shared/services/tracker/simkl_service.dart';
+import 'package:forja/shared/engine/store/continue_watching_advance.dart';
 import 'package:forja/shared/engine/store/list_follow_from_watched.dart';
 import 'package:rust/rust.dart' as site111477_proxy;
 import 'package:forja/shared/player/controls/menus/hls_instream_subtitles.dart';
@@ -542,6 +543,13 @@ class _DesktopPlayerScreenState extends ConsumerState<DesktopPlayerScreen>
     if (_disposed) return;
     if (await CastingService.instance.setPlayingIfCasting(play)) {
       if (!_disposed) _isPlayingNotifier.value = play;
+      // Keep local silent — surface taps used to playOrPause the local player
+      // under AirPlay and left audio running while buttons only hit the TV.
+      if (_playerReady) {
+        try {
+          await _player.pause();
+        } catch (_) {}
+      }
       return;
     }
     if (!_playerReady) return;

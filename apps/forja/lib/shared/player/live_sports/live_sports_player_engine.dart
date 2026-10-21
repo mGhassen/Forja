@@ -534,6 +534,8 @@ mixin _LiveSportsPlayerEngine on _LiveSportsPlayerEngineCore {
         _s._playing = true;
         if (mounted) setState(() {});
       }
+      // Keep local silent under AirPlay.
+      await _enginePause(allowCast: false);
       return;
     }
     if (_s._exoBackend) {
@@ -554,6 +556,7 @@ mixin _LiveSportsPlayerEngine on _LiveSportsPlayerEngineCore {
         _s._playing = false;
         if (mounted) setState(() {});
       }
+      await _enginePause(allowCast: false);
       return;
     }
     if (_s._exoBackend) {

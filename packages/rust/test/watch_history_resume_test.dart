@@ -103,6 +103,38 @@ void main() {
     });
   });
 
+  group('isContinueWatchingEligible', () {
+    test('keeps up-next seeds with zero progress', () {
+      expect(isContinueWatchingEligible(0, 0), isFalse);
+      expect(isContinueWatchingEligible(0, 0, upNext: true), isTrue);
+      expect(isContinueWatchingEligible(90_000, 100_000), isFalse);
+      expect(isContinueWatchingEligible(20_000, 100_000), isTrue);
+    });
+
+    test('inProgressPoolByShow includes up-next rows', () {
+      final pool = inProgressPoolByShow([
+        {
+          'tmdbId': 1,
+          'position': 90_000,
+          'duration': 100_000,
+          'updatedAt': 100,
+          'episode': 2,
+        },
+        {
+          'tmdbId': 1,
+          'position': 0,
+          'duration': 0,
+          'updatedAt': 200,
+          'episode': 3,
+          'upNext': true,
+        },
+      ]);
+      expect(pool, hasLength(1));
+      expect(pool.first['episode'], 3);
+      expect(pool.first['upNext'], isTrue);
+    });
+  });
+
   group('latestHistoryForShow', () {
     test('picks newest row for tmdbId including finished', () {
       final history = [

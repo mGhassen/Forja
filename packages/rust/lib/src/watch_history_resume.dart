@@ -15,6 +15,19 @@ bool isContinueWatchingRowEntry(int position, int duration) {
   return isInProgressResume(position, duration);
 }
 
+/// True when history was advanced to the next episode after a finish (≥85%).
+bool isUpNextContinueFlag(Object? value) => value == true;
+
+/// CW pool: in-progress (2–85%) **or** an explicit up-next seed.
+bool isContinueWatchingEligible(
+  int position,
+  int duration, {
+  bool upNext = false,
+}) {
+  if (upNext) return true;
+  return isContinueWatchingRowEntry(position, duration);
+}
+
 /// Resume from saved progress when CW would list the title (matches save gate).
 bool canResumeFromSavedProgress(int position, int duration) {
   if (position <= 5000) return false;
@@ -79,6 +92,9 @@ bool hasSavedEpisodePlayback(Map<String, dynamic>? progress) {
   if (method == null || method.isEmpty || method == 'trakt_import') {
     return false;
   }
+  if (method == 'up_next' || isUpNextContinueFlag(progress['upNext'])) {
+    return false;
+  }
   return true;
 }
 
@@ -92,7 +108,7 @@ Duration resumeStartPositionFromProgress(Map<String, dynamic> progress) {
   return Duration.zero;
 }
 
-/// Latest in-progress history entry for a TV show (by [updatedAt]).
+/// Latest in-progress / up-next history entry for a TV show (by [updatedAt]).
 Map<String, dynamic>? latestInProgressForShow(
   int tmdbId,
   List<Map<String, dynamic>> history,
@@ -102,7 +118,8 @@ Map<String, dynamic>? latestInProgressForShow(
     if (watchHistoryInt(item['tmdbId'], -1) != tmdbId) continue;
     final pos = watchHistoryInt(item['position']);
     final dur = watchHistoryInt(item['duration']);
-    if (!isContinueWatchingRowEntry(pos, dur)) continue;
+    final upNext = isUpNextContinueFlag(item['upNext']);
+    if (!isContinueWatchingEligible(pos, dur, upNext: upNext)) continue;
     final ts = watchHistoryInt(item['updatedAt']);
     final bestTs = best == null ? -1 : watchHistoryInt(best['updatedAt'], -1);
     if (ts > bestTs) best = item;
@@ -125,7 +142,7 @@ Map<String, dynamic>? latestHistoryForShow(
   return best;
 }
 
-/// One latest in-progress item per tmdbId (Continue Watching pool).
+/// One latest in-progress / up-next item per tmdbId (Continue Watching pool).
 List<Map<String, dynamic>> inProgressPoolByShow(
   List<Map<String, dynamic>> history,
 ) {
@@ -133,7 +150,8 @@ List<Map<String, dynamic>> inProgressPoolByShow(
   for (final item in history) {
     final pos = watchHistoryInt(item['position']);
     final dur = watchHistoryInt(item['duration']);
-    if (!isContinueWatchingRowEntry(pos, dur)) continue;
+    final upNext = isUpNextContinueFlag(item['upNext']);
+    if (!isContinueWatchingEligible(pos, dur, upNext: upNext)) continue;
     final tmdbId = watchHistoryInt(item['tmdbId'], -1);
     if (tmdbId < 0) continue;
     final existing = byShow[tmdbId];

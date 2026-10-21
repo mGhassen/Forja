@@ -766,6 +766,11 @@ mixin _DesktopPlayerLifecycle
           await ListFollowFromWatched.applyTmdbAfterAutoMark(
             movie: widget.movie!,
           );
+          await advanceHomeContinueAfterFinish(
+            movie: widget.movie!,
+            season: season,
+            episode: episode,
+          );
         }());
       } else if (widget.movie!.mediaType == 'movie') {
         unawaited(

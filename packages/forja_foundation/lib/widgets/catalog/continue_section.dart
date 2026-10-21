@@ -337,18 +337,21 @@ class ContinueEntry {
     final extraLabel = extras is Map
         ? (extras['category'] ?? extras['label'])?.toString()
         : null;
+    final upNext = entry['upNext'] == true;
     final subtitle = extraLabel != null && extraLabel.isNotEmpty
         ? 'Ep $ep · ${extraLabel.toUpperCase()}'
         : 'Ep $ep';
     final position = (entry['positionMs'] as num?)?.toInt() ?? 0;
     final duration = (entry['durationMs'] as num?)?.toInt() ?? 0;
-    final progress =
-        duration > 0 ? (position / duration).clamp(0.0, 1.0) : 0.0;
-    final remaining = duration > 0
+    final progress = upNext
+        ? 0.0
+        : (duration > 0 ? (position / duration).clamp(0.0, 1.0) : 0.0);
+    final remaining = !upNext && duration > 0
         ? Duration(milliseconds: duration - position)
         : Duration.zero;
-    final remainingText =
-        remaining.inMinutes > 0 ? '${remaining.inMinutes}m left' : '';
+    final remainingText = upNext
+        ? 'Up next'
+        : (remaining.inMinutes > 0 ? '${remaining.inMinutes}m left' : '');
     return ContinueEntry(
       metaId: (entry['metaId'] ?? '').toString(),
       title: title,

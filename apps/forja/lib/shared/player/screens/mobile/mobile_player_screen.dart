@@ -16,6 +16,7 @@ import 'package:wakelock_plus/wakelock_plus.dart';
 import 'package:screen_brightness/screen_brightness.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:forja/shared/services/tracker/simkl_service.dart';
+import 'package:forja/shared/engine/store/continue_watching_advance.dart';
 import 'package:forja/shared/engine/store/list_follow_from_watched.dart';
 import 'package:forja/shared/engine/engine.dart';
 import 'package:forja/shared/playback/open/stream_loading.dart';
@@ -578,6 +579,11 @@ class _MobilePlayerScreenState extends ConsumerState<MobilePlayerScreen>
     if (_disposed) return;
     if (await CastingService.instance.setPlayingIfCasting(play)) {
       if (!_disposed) _isPlayingNotifier.value = play;
+      // Keep local silent — stray local play under AirPlay left audio running
+      // while buttons only hit the TV.
+      try {
+        await _player.pause();
+      } catch (_) {}
       return;
     }
     if (play) {

@@ -511,7 +511,7 @@ mixin _MobilePlayerSources on ConsumerState<MobilePlayerScreen> {
       onSelectSource: _switchToStreamSource,
       onCheckSource: _checkStreamSource,
       onTogglePlayPause: () {
-        _s._player.playOrPause();
+        unawaited(_s._togglePlayPause());
         _s._startHideTimer();
       },
       anchorContext: anchorContext,

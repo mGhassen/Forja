@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| **Progress** | **Complete · 4/4** tasks · **0/2** acceptance (device QA) |
+| **Progress** | **Complete · 5/5** tasks · **0/2** acceptance (device QA) |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -23,6 +23,7 @@
 | 2 | I451-T02 | CastingService `position` / `seekIfCasting` + `CastHandoff.onPosition` | ✅ |
 | 3 | I451-T03 | Desktop / mobile / Live Sports: mirror cast playhead; route scrub to AirPlay | ✅ |
 | 4 | I451-T04 | Native play/pause + rate mirror; route Forja transport to AirPlay | ✅ |
+| 5 | I451-T05 | Surface / Sources playOrPause routes through cast-aware toggle; keep local paused under AirPlay | ✅ |
 
 ---
 

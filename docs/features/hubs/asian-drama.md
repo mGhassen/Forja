@@ -19,7 +19,7 @@ Tap **Asian Drama** in the navigation bar.
 - **View details** on KissKH cards → [Hub details](hub-details.md) (episodes, KissKH native play, Sources with TMDB/IMDb handoff for Forja scrapers when enrich matches).
 - **Torrents in Sources** — pack sets `open.torrentEp` (`Title 05` search) and enrich can supply IMDb for Torrentio (see [Torrent scrapers](../scrapers/torrent.md)).
 - Films vs series use the TMDB movie/TV type for Forja scrapers (Sources chips stay under Drama).
-- **Continue watching** — resume from hub row or details; clear progress with trash on details hero.
+- **Continue watching** — resume from hub row or details; finishing an episode advances to the next one when more exist; clear progress with trash on details hero.
 
 ## Tips
 

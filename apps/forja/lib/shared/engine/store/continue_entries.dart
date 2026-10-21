@@ -65,6 +65,7 @@ Map<String, dynamic> catalogEntryFromHomeWatchHistory(Map<String, dynamic> item)
     'positionMs': watchHistoryInt(item['position']),
     'durationMs': watchHistoryInt(item['duration']),
     'updatedAt': watchHistoryInt(item['updatedAt']),
+    if (isUpNextContinueFlag(item['upNext'])) 'upNext': true,
     'homeHistory': item,
     'meta': meta.toJson(),
   };
@@ -117,7 +118,8 @@ Future<List<Map<String, dynamic>>> _catalogPackContinueEntries(
   for (final entry in await WatchHistory.getAll(pluginId)) {
     final pos = (entry['positionMs'] as num?)?.toInt() ?? 0;
     final dur = (entry['durationMs'] as num?)?.toInt() ?? 0;
-    if (!isContinueWatchingRowEntry(pos, dur)) continue;
+    final upNext = isUpNextContinueFlag(entry['upNext']);
+    if (!isContinueWatchingEligible(pos, dur, upNext: upNext)) continue;
     out.add(entry);
   }
   return out;

@@ -178,6 +178,63 @@ class WatchHistoryService {
     }
   }
 
+  /// After finishing an episode, keep the show on Continue Watching as the
+  /// next aired S/E (start from 0). No stream pin — Play re-resolves.
+  Future<void> seedUpNext({
+    required int tmdbId,
+    String? imdbId,
+    required String title,
+    required String posterPath,
+    String? backdropPath,
+    required int season,
+    required int episode,
+    String? mediaType,
+  }) async {
+    final uniqueId = '${tmdbId}_S${season}_E$episode';
+    final entry = <String, dynamic>{
+      'uniqueId': uniqueId,
+      'tmdbId': tmdbId,
+      'imdbId': imdbId,
+      'title': title,
+      'posterPath': posterPath,
+      if (backdropPath != null && backdropPath.isNotEmpty)
+        'backdropPath': backdropPath,
+      'method': 'up_next',
+      'sourceId': '',
+      'position': 0,
+      'duration': 0,
+      'season': season,
+      'episode': episode,
+      'episodeTitle': 'Episode $episode',
+      'mediaType': mediaType ?? 'tv',
+      'upNext': true,
+      'updatedAt': DateTime.now().millisecondsSinceEpoch,
+    };
+    try {
+      final list = await getHistory();
+      list.removeWhere((item) => item['uniqueId'] == uniqueId);
+      list.insert(0, entry);
+      if (list.length > 50) {
+        list.removeRange(50, list.length);
+      }
+      await _writeJsonList(_key, list);
+
+      final dismissed = await _readJsonStringList(_dismissedKey);
+      if (dismissed.contains(uniqueId)) {
+        dismissed.remove(uniqueId);
+        await _writeJsonStringList(_dismissedKey, dismissed);
+      }
+
+      debugPrint(
+        '[WatchHistory] Seeded up-next $title ($uniqueId)',
+      );
+      _current = list;
+      _controller.add(_current);
+    } catch (e) {
+      debugPrint('[WatchHistory] Error seeding up-next: $e');
+    }
+  }
+
   Future<List<Map<String, dynamic>>> getHistory() async {
     try {
       await _ensureKvMigrated();

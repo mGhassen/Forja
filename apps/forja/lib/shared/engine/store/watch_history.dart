@@ -50,6 +50,8 @@ class WatchHistory {
     Duration? duration,
     String? sourceId,
     String? streamUrl,
+    /// After finishing an ep — keep the show on CW as the next episode.
+    bool upNext = false,
   }) async {
     final p = await SharedPreferences.getInstance();
     final list = <String>[
@@ -59,6 +61,22 @@ class WatchHistory {
     String? prevStreamUrl;
     int? prevPositionMs;
     int? prevDurationMs;
+    // Heartbeat after ≥85% must not clobber an up-next seed for a later ep.
+    if (!upNext &&
+        position != null &&
+        duration != null &&
+        isWatchFinished(position.inMilliseconds, duration.inMilliseconds)) {
+      for (final line in list) {
+        try {
+          final m = jsonDecode(line) as Map<String, dynamic>;
+          if (m['metaId'] != meta.id) continue;
+          if (m['upNext'] != true) break;
+          final seeded = (m['episodeNumber'] as num?)?.toInt() ?? 0;
+          if (seeded > episodeNumber) return;
+          break;
+        } catch (_) {}
+      }
+    }
     list.removeWhere((line) {
       try {
         final m = jsonDecode(line) as Map<String, dynamic>;
@@ -74,11 +92,17 @@ class WatchHistory {
         return true;
       }
     });
-    final sid = (sourceId ?? prevSourceId)?.trim();
-    final url = (streamUrl ?? prevStreamUrl)?.trim();
+    // Up-next clears the finished ep's stream pin — Play re-resolves.
+    final sid = upNext ? null : (sourceId ?? prevSourceId)?.trim();
+    final url = upNext ? null : (streamUrl ?? prevStreamUrl)?.trim();
     // Null position/duration = seed / metadata-only write — keep prior resume.
-    final posMs = position?.inMilliseconds ?? prevPositionMs ?? 0;
-    final durMs = duration?.inMilliseconds ?? prevDurationMs ?? 0;
+    // Up-next always starts at 0 (do not inherit finished progress).
+    final posMs = upNext
+        ? 0
+        : (position?.inMilliseconds ?? prevPositionMs ?? 0);
+    final durMs = upNext
+        ? 0
+        : (duration?.inMilliseconds ?? prevDurationMs ?? 0);
     list.insert(
       0,
       jsonEncode({
@@ -96,6 +120,7 @@ class WatchHistory {
         if (url != null && url.isNotEmpty) 'streamUrl': url,
         'positionMs': posMs,
         'durationMs': durMs,
+        if (upNext) 'upNext': true,
         'updatedAt': DateTime.now().millisecondsSinceEpoch,
         'meta': meta.toJson(),
       }),

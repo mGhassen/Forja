@@ -1,11 +1,12 @@
 import 'package:forja/shared/engine/details/details_meta.dart';
 import 'package:forja/shared/engine/runtime/open/meta_movie.dart';
-import 'package:forja/shared/playback/play_session.dart';
-import 'package:forja_foundation/protocol/protocol.dart';
-import 'package:forja/shared/engine/store/watch_history.dart';
-import 'package:forja/shared/player/controls/episodes/catalog_episode.dart';
+import 'package:forja/shared/engine/store/continue_watching_advance.dart';
 import 'package:forja/shared/engine/store/list_follow.dart';
 import 'package:forja/shared/engine/store/list_follow_from_watched.dart';
+import 'package:forja/shared/engine/store/watch_history.dart';
+import 'package:forja/shared/playback/play_session.dart';
+import 'package:forja/shared/player/controls/episodes/catalog_episode.dart';
+import 'package:forja_foundation/protocol/protocol.dart';
 import 'package:rust/rust.dart';
 
 /// Player / kit progress save — optional [sourceId]/[streamUrl] for resume pin.
@@ -244,6 +245,7 @@ PlaySaveProgress? catalogPlaySaveProgressCallback({
         season: seasonNum,
         pos: pos,
         dur: dur,
+        episodes: episodes,
       );
       return;
     }
@@ -254,6 +256,7 @@ PlaySaveProgress? catalogPlaySaveProgressCallback({
       season: seasonNum,
       pos: pos,
       dur: dur,
+      episodes: episodes,
     );
   };
 }
@@ -280,6 +283,7 @@ Future<void> _syncEpisodeWatched({
   required int season,
   required Duration pos,
   required Duration dur,
+  List<PlayerKitEpisode>? episodes,
 }) async {
   final pluginId = session.pluginId;
   final meta = session.metaItem;
@@ -298,6 +302,11 @@ Future<void> _syncEpisodeWatched({
     );
     if (!marked) return;
     await ListFollowFromWatched.applyTmdbAfterAutoMark(movie: movie);
+    await advanceHomeContinueAfterFinish(
+      movie: movie,
+      season: season,
+      episode: ep,
+    );
     return;
   }
 
@@ -317,12 +326,19 @@ Future<void> _syncEpisodeWatched({
     pluginId: pluginId,
     meta: meta,
   );
-  if (target == null) return;
-  ListFollow.syncEpisodeWatched(target, episode: ep);
-  await ListFollowFromWatched.applyHubAfterAutoMark(
-    target: target,
-    mediaId: mediaId,
-    catalog: catalog,
-    totalEpisodes: metaDeclaredEpisodeCount(meta),
+  if (target != null) {
+    ListFollow.syncEpisodeWatched(target, episode: ep);
+    await ListFollowFromWatched.applyHubAfterAutoMark(
+      target: target,
+      mediaId: mediaId,
+      catalog: catalog,
+      totalEpisodes: metaDeclaredEpisodeCount(meta),
+    );
+  }
+  await advanceHubContinueAfterFinish(
+    session: session,
+    finishedEpisode: ep,
+    season: season,
+    episodes: episodes,
   );
 }

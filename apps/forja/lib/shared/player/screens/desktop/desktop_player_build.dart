@@ -140,7 +140,7 @@ mixin _DesktopPlayerBuild on ConsumerState<DesktopPlayerScreen>, WidgetsBindingO
             child: GestureDetector(
               behavior: HitTestBehavior.translucent,
               onTap: () {
-                _s._player.playOrPause();
+                unawaited(_s._togglePlayPause());
                 _s._onMouseMove();
               },
               onDoubleTap: () => unawaited(_s._toggleFullscreen()),

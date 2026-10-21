@@ -56,6 +56,7 @@ import 'package:rust/rust.dart'
         MediaTrailer,
         WatchHistoryService,
         canResumeFromSavedProgress,
+        isContinueWatchingEligible,
         isContinueWatchingRowEntry,
         latestHistoryForShow,
         latestInProgressForShow,
@@ -509,7 +510,13 @@ class _PackDetailsHostState extends ConsumerState<PackDetailsHost> {
         final hubPos = (hit?['positionMs'] as num?)?.toInt() ?? 0;
         final hubDur = (hit?['durationMs'] as num?)?.toInt() ?? 0;
         // Seed-only hub rows (pos 0) must not hide real Home resume progress.
-        if (hit == null || !isContinueWatchingRowEntry(hubPos, hubDur)) {
+        final hubUpNext = hit != null && hit['upNext'] == true;
+        if (hit == null ||
+            !isContinueWatchingEligible(
+              hubPos,
+              hubDur,
+              upNext: hubUpNext,
+            )) {
           final home = await _homeWatchHistoryProgress();
           if (home != null) hit = home;
         }
