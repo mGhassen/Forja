@@ -92,3 +92,7 @@ apps/web/.env.local
 # Supabase CLI local cache (keep migrations/config tracked)
 **/.temp/
 apps/web/supabase/.branches/
+
+# Claude Code — personal overrides (keep settings.json, agents, hooks, rules tracked)
+.claude/settings.local.json
+CLAUDE.local.md
