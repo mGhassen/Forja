@@ -514,6 +514,24 @@ class _SettingsPackPromptPaneState extends State<SettingsPackPromptPane> {
   }
 }
 
+/// Where the manifest is fetched from — host for https, otherwise the local
+/// folder marker. Shown under the pack name so a link cannot borrow a known
+/// pack name while pointing somewhere else. Non-official rows add a neutral
+/// "Community source" tag.
+String packPromptSourceLabel(String manifestUrl, {required bool official}) {
+  final t = manifestUrl.trim();
+  final uri = Uri.tryParse(t);
+  String host;
+  if (uri != null && uri.hasScheme && uri.host.isNotEmpty) {
+    host = uri.host.toLowerCase();
+  } else if (t.startsWith('/') || t.startsWith('file:')) {
+    host = 'Local folder';
+  } else {
+    host = t;
+  }
+  return official ? host : '$host · Community source';
+}
+
 /// Flat checkbox row — no card chrome (matches Community Packs list rows).
 class _PackPromptRow extends StatelessWidget {
   const _PackPromptRow({
@@ -560,6 +578,10 @@ class _PackPromptRow extends StatelessWidget {
       ...candidate.tags.map(_labelize).where((t) => t.isNotEmpty),
     ].join(' · ');
     final version = candidate.version?.trim();
+    final source = packPromptSourceLabel(
+      candidate.manifestUrl,
+      official: candidate.official,
+    );
     final muted = settled
         ? ForjaShellColors.textSecondary
         : ForjaShellColors.textPrimary;
@@ -721,6 +743,20 @@ class _PackPromptRow extends StatelessWidget {
                     fontWeight: FontWeight.w600,
                   ),
                 ),
+                if (source.isNotEmpty) ...[
+                  const SizedBox(height: 2),
+                  Text(
+                    source,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: ForjaShellColors.textSecondary
+                          .withValues(alpha: 0.7),
+                      fontSize: SettingsTokens.groupLabelSizeOf(context),
+                      fontFamily: 'monospace',
+                    ),
+                  ),
+                ],
                 if (tagsLine.isNotEmpty) ...[
                   const SizedBox(height: 2),
                   Text(

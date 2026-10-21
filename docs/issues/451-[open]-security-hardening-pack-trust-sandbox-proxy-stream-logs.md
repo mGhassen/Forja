@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| **Progress** | **0 / 10** fix · **0 / 8** acceptance |
+| **Progress** | **9 / 12** fix · **0 / 8** acceptance |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -19,16 +19,18 @@
 
 | # | ID | Description | Status |
 |--:|----|-------------|--------|
-| 1 | I451-T01 | Plugin `id` charset check in `PluginContract.validateManifest` (`apps/forja/lib/shared/engine/packs/registry/plugin_contract.dart:63`, `:231-237`): accept only `[A-Za-z0-9._-]`; reject `/`, `\`, `..`. The disk path join in `plugin_script_disk_store.dart:180-186` writes `plugins/<id>.js` under the pack dir, so an id containing `../` lands outside it | ⬜ |
-| 2 | I451-T02 | https floor for the manifest URL and every resolved script / prelude URL: `plugin_registry.dart` `_fetchBytes` (`:263-285`) and `resolveScriptUrl` (`:877-879`), `forja_plugin_deeplink.dart:90-105`. Local `file` paths stay allowed for dev. Optional: per-file `sha256` in manifests, checked after download | ⬜ |
-| 3 | I451-T03 | Install prompt shows the manifest host under the display name (`apps/forja/lib/features/settings/packs/pack_prompt_pane.dart:552-562` renders `displayName` / `description` / tags only) | ⬜ |
-| 4 | I451-T04 | QuickJS runtime limits in `crates/engine/src/extract.rs`: memory limit, max stack size, and an interrupt handler tied to the cancel token and job deadline (`AsyncRuntime::new()` at `:694`, context at `:706`; today only the outer `tokio::time::timeout` at `:630-633` bounds the job, and a busy JS loop is not interruptible) | ⬜ |
-| 5 | I451-T05 | Provider fetch hardening in `native_fetch` (`extract.rs:506-576`) and `chrome_fetch` (`crates/engine/src/chrome_fetch.rs:46-60`): refuse loopback, link-local, RFC1918, CGNAT, and the app's own proxy / LAN ports unless the pack opts in; drop pack-supplied `Host` and `Content-Length` headers (`:540-542` forwards every header verbatim); cap the response body at 16 MiB | ⬜ |
-| 6 | I451-T06 | Loopback proxy (`crates/proxy/src/lib.rs`): per-process token required on media routes (`query_proxy_handler` `:241-253` accepts any `?url=`); no wildcard `Access-Control-Allow-Origin` / `Allow-Headers` in `forward_response` (`:208-217`); `build_upstream_request` (`:170-207`) forwards pack-supplied `Cookie` / `Authorization` to any target | ⬜ |
-| 7 | I451-T07 | Host-side `isPlayableStreamUrl` allowlist: `http(s)`, the loopback proxy, and `file://` only under the downloads dir. Apply in `classifyStremioStream` (`packages/rust/lib/src/playback/stremio/stremio_stream_resolver.dart:152-161` returns any non-torrent `url` as playable), the sources probe (`apps/forja/lib/shared/playback/probe/engine_catalog_stream_probe.dart:37-47`), `ExoPlayerBridge.open` (`apps/forja/lib/shared/player/exo/exo_player_bridge.dart:219`), and `android_player_launcher.dart:23-33` (any `url` becomes an `ACTION_VIEW` intent) | ⬜ |
-| 8 | I451-T08 | Release builds: `debugPrint` no-op, and redact credentials / headers in player, portal, casting, and external-player logs (`mobile_player_playback.dart:154-281` logs full stream URLs; `android_player_launcher.dart:33`; `casting_service.dart:83`; `external_player_service.dart:446-450` prints every header value; `pack_auth_session_handoff.dart:124` prints the full handoff `uri`) | ⬜ |
-| 9 | I451-T09 | `apps/forja/android/app/src/main/AndroidManifest.xml` `<application>` (`:17`) declares neither `android:allowBackup="false"` nor `dataExtractionRules`; set one of them and exclude `shared_prefs` | ⬜ |
+| 1 | I451-T01 | Plugin `id` charset check in `PluginContract.validateManifest` (`apps/forja/lib/shared/engine/packs/registry/plugin_contract.dart:63`, `:231-237`): accept only `[A-Za-z0-9._-]`; reject `/`, `\`, `..`. The disk path join in `plugin_script_disk_store.dart:180-186` writes `plugins/<id>.js` under the pack dir, so an id containing `../` lands outside it | ✅ |
+| 2 | I451-T02 | https floor for the manifest URL and every resolved script / prelude URL: `plugin_registry.dart` `_fetchBytes` (`:263-285`) and `resolveScriptUrl` (`:877-879`), `forja_plugin_deeplink.dart:90-105`. Local `file` paths stay allowed for dev. Optional: per-file `sha256` in manifests, checked after download | ✅ |
+| 3 | I451-T03 | Install prompt shows the manifest host under the display name (`apps/forja/lib/features/settings/packs/pack_prompt_pane.dart:552-562` renders `displayName` / `description` / tags only) | ✅ |
+| 4 | I451-T04 | QuickJS runtime limits in `crates/engine/src/extract.rs`: memory limit, max stack size, and an interrupt handler tied to the cancel token and job deadline (`AsyncRuntime::new()` at `:694`, context at `:706`; today only the outer `tokio::time::timeout` at `:630-633` bounds the job, and a busy JS loop is not interruptible) | ✅ |
+| 5 | I451-T05 | Provider fetch hardening in `native_fetch` (`extract.rs:506-576`) and `chrome_fetch` (`crates/engine/src/chrome_fetch.rs:46-60`): refuse loopback, link-local, RFC1918, CGNAT, and the app's own proxy / LAN ports unless the pack opts in; drop pack-supplied `Host` and `Content-Length` headers (`:540-542` forwards every header verbatim); cap the response body at 16 MiB (no manifest opt-in yet; see T12) | ✅ |
+| 6 | I451-T06 | Loopback proxy (`crates/proxy/src/lib.rs`): per-process token required on media routes (`query_proxy_handler` `:241-253` accepts any `?url=`); no wildcard `Access-Control-Allow-Origin` / `Allow-Headers` in `forward_response` (`:208-217`); `build_upstream_request` (`:170-207`) forwards pack-supplied `Cookie` / `Authorization` to any target | ✅ |
+| 7 | I451-T07 | Host-side `isPlayableStreamUrl` allowlist: `http(s)`, the loopback proxy, and `file://` only under the downloads dir. Apply in `classifyStremioStream` (`packages/rust/lib/src/playback/stremio/stremio_stream_resolver.dart:152-161` returns any non-torrent `url` as playable), the sources probe (`apps/forja/lib/shared/playback/probe/engine_catalog_stream_probe.dart:37-47`), `ExoPlayerBridge.open` (`apps/forja/lib/shared/player/exo/exo_player_bridge.dart:219`), and `android_player_launcher.dart:23-33` (any `url` becomes an `ACTION_VIEW` intent) | ✅ |
+| 8 | I451-T08 | Release builds: `debugPrint` no-op, and redact credentials / headers in player, portal, casting, and external-player logs (`mobile_player_playback.dart:154-281` logs full stream URLs; `android_player_launcher.dart:33`; `casting_service.dart:83`; `external_player_service.dart:446-450` prints every header value; `pack_auth_session_handoff.dart:124` prints the full handoff `uri`) | ✅ |
+| 9 | I451-T09 | `apps/forja/android/app/src/main/AndroidManifest.xml` `<application>` (`:17`) declares neither `android:allowBackup="false"` nor `dataExtractionRules`; set one of them and exclude `shared_prefs` | ✅ |
 | 10 | I451-T10 | OTA update verifies a `sha256` from `latest/manifest.json` before install (`apps/forja/lib/shell/update/update_dialog.dart:1023-1027` passes `downloadUrl` straight to `OtaUpdate().execute`; `app_updater_manifest.dart:85-116` reads `version` / `assets` / `published_at` only) | ⬜ |
+| 11 | I451-T11 | Guard the media_kit/mpv open path (`openPlayerStream`) with the same playable-URL allowlist | ⬜ |
+| 12 | I451-T12 | Pack manifest opt-in for local-network fetches (`allow_local_fetch`), documented in the pack contract before Dart sends true | ⬜ |
 
 ---
 

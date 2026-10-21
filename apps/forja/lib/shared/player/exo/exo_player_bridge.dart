@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:forja/shared/platform/platform_info.dart';
+import 'package:forja/shared/playback/playable_stream_url.dart';
 
 /// One selectable Media3 track exposed to Dart menus.
 class ExoTrackInfo {
@@ -231,6 +232,9 @@ class ExoPlayerBridge {
     /// Widevine / ClearKey license (Android Exo — RFC-101).
     Map<String, dynamic>? drm,
   }) async {
+    // Throws [UnsupportedStreamAddressException] before anything reaches
+    // Media3 — callers show its message as the open failure.
+    assertPlayableStreamUrl(url);
     await _channel.invokeMethod<void>('open', {
       'viewId': viewId,
       'url': url,

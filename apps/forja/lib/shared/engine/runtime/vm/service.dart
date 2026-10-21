@@ -1449,6 +1449,8 @@ class EngineService {
         'ctx': ctx,
         'timeout_ms': timeout.inMilliseconds,
         'allow_host_fallback': false,
+        // Provider fetches to loopback / LAN stay refused (no manifest opt-in).
+        'allow_local_fetch': false,
         'hops': <Map<String, Object?>>[],
         'hop_depth': 0,
       });
@@ -1789,6 +1791,8 @@ class EngineService {
           'ctx': ctx,
           'timeout_ms': timeout.inMilliseconds,
           'allow_host_fallback': allowHostFallback,
+          // Provider fetches to loopback / LAN stay refused (no manifest opt-in).
+          'allow_local_fetch': false,
           'hops': hopPayload,
           'hop_depth': 0,
         },

@@ -78,7 +78,9 @@ pub async fn toky_proxy_handler(
     }
 
     let port = *state.listen_port.read().await;
-    let proxy_base = format!("http://127.0.0.1:{port}/toky-proxy");
+    // Builder appends `/toky-proxy`; children carry the loopback token.
+    let proxy_base = format!("http://127.0.0.1:{port}");
+    let proxy_token = state.auth_token().to_string();
 
     if query.url.ends_with(".m3u8") {
         let body = resp.text().await.map_err(|_| StatusCode::BAD_GATEWAY)?;
@@ -112,7 +114,16 @@ pub async fn toky_proxy_handler(
                 } else {
                     format!("{base_src_dir}{line}")
                 };
-                build_toky_proxy_url(&proxy_base, &segment_url, audiobook_id, token, &segment_src)
+                crate::with_proxy_token(
+                    &build_toky_proxy_url(
+                        &proxy_base,
+                        &segment_url,
+                        audiobook_id,
+                        token,
+                        &segment_src,
+                    ),
+                    &proxy_token,
+                )
             })
             .collect::<Vec<_>>()
             .join("\n");
@@ -131,7 +142,6 @@ pub async fn toky_proxy_handler(
     Response::builder()
         .status(StatusCode::OK)
         .header(header::CONTENT_TYPE, content_type.as_str())
-        .header(header::ACCESS_CONTROL_ALLOW_ORIGIN, "*")
         .body(axum::body::Body::from(bytes))
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)
 }

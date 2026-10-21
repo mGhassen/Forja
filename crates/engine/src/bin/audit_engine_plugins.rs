@@ -104,51 +104,45 @@ impl PackSource {
         }
     }
 
-    async fn load_entry(
-        &self,
-        client: &reqwest::Client,
-        entry: &str,
-    ) -> Option<String> {
+    async fn load_entry(&self, client: &reqwest::Client, entry: &str) -> Option<String> {
         if entry.is_empty() {
             return None;
         }
         match self {
-            Self::Remote { base, .. } => {
-                fetch_text(client, &format!("{base}{entry}")).await.ok()
-            }
+            Self::Remote { base, .. } => fetch_text(client, &format!("{base}{entry}")).await.ok(),
             Self::Local(dir) => read_entry_local(dir, entry),
         }
     }
 }
 
 fn local_providers_manifest_from_cwd() -> Option<String> {
-  let mut dir = env::current_dir().ok()?;
-  for _ in 0..10 {
-    let path = dir.join("plugins/providers/manifest.json");
-    if path.is_file() {
-      return Some(path.to_string_lossy().to_string());
+    let mut dir = env::current_dir().ok()?;
+    for _ in 0..10 {
+        let path = dir.join("plugins/providers/manifest.json");
+        if path.is_file() {
+            return Some(path.to_string_lossy().to_string());
+        }
+        if !dir.pop() {
+            break;
+        }
     }
-    if !dir.pop() {
-      break;
-    }
-  }
-  None
+    None
 }
 
 async fn env_manifest_url(_client: &reqwest::Client) -> Result<String, String> {
-  if let Ok(url) = env::var("FORJA_HQ_PROVIDERS_MANIFEST_URL") {
-    let url = url.trim().to_string();
-    if !url.is_empty() {
-      return Ok(url);
+    if let Ok(url) = env::var("FORJA_HQ_PROVIDERS_MANIFEST_URL") {
+        let url = url.trim().to_string();
+        if !url.is_empty() {
+            return Ok(url);
+        }
     }
-  }
-  if let Ok(repo_root) = env::var("FORJA_REPO_ROOT") {
-    let path = Path::new(&repo_root).join("plugins/providers/manifest.json");
-    if path.is_file() {
-      return Ok(path.to_string_lossy().to_string());
+    if let Ok(repo_root) = env::var("FORJA_REPO_ROOT") {
+        let path = Path::new(&repo_root).join("plugins/providers/manifest.json");
+        if path.is_file() {
+            return Ok(path.to_string_lossy().to_string());
+        }
     }
-  }
-  local_providers_manifest_from_cwd().ok_or_else(|| {
+    local_providers_manifest_from_cwd().ok_or_else(|| {
     "providers manifest missing — set FORJA_HQ_PROVIDERS_MANIFEST_URL, FORJA_REPO_ROOT, \
      or run from Forja checkout (plugins/providers/manifest.json); or pass --manifest-url / --assets"
       .into()
@@ -171,9 +165,7 @@ async fn fetch_text(client: &reqwest::Client, url: &str) -> Result<String, Strin
     if !resp.status().is_success() {
         return Err(format!("HTTP {} for {url}", resp.status()));
     }
-    resp.text()
-        .await
-        .map_err(|e| format!("body {url}: {e}"))
+    resp.text().await.map_err(|e| format!("body {url}: {e}"))
 }
 
 fn usage() {
@@ -425,6 +417,7 @@ async fn main() -> ExitCode {
             allow_host_fallback: false,
             hops: hops.clone(),
             hop_depth: 0,
+            allow_local_fetch: false,
         })
         .await;
         let ms = sw.elapsed().as_millis() as u64;
@@ -505,7 +498,11 @@ fn print_row(row: &Value, json_out: bool) {
         .get("needs_host")
         .and_then(|v| v.as_str())
         .unwrap_or("-");
-    let unsup = if row.get("unsupported").and_then(|v| v.as_bool()).unwrap_or(false) {
+    let unsup = if row
+        .get("unsupported")
+        .and_then(|v| v.as_bool())
+        .unwrap_or(false)
+    {
         "yes"
     } else {
         "-"
@@ -518,9 +515,7 @@ fn print_row(row: &Value, json_out: bool) {
     } else {
         format!("  err={}", truncate(err, 60))
     };
-    println!(
-        "{id:<20} {n:>5} {bucket:<14} {needs:<12} {unsup:<8} {ms:>6} {flags}{err_short}"
-    );
+    println!("{id:<20} {n:>5} {bucket:<14} {needs:<12} {unsup:<8} {ms:>6} {flags}{err_short}");
 }
 
 fn truncate(s: &str, max: usize) -> String {

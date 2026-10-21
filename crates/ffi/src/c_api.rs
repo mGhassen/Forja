@@ -533,6 +533,12 @@ pub extern "C" fn ffi_proxy_port() -> u16 {
     crate::proxy_port().min(u16::MAX as u32) as u16
 }
 
+/// Loopback proxy auth token (hex). Free with `ffi_free_string`.
+#[no_mangle]
+pub extern "C" fn ffi_proxy_token() -> *mut c_char {
+    to_c_string(crate::proxy_token())
+}
+
 #[no_mangle]
 pub unsafe extern "C" fn ffi_proxy_register_route(
     token: *const c_char,
@@ -643,10 +649,10 @@ pub unsafe extern "C" fn ffi_metadata_request_json(request_json: *const c_char) 
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn ffi_media_extra_request_json(
-    request_json: *const c_char,
-) -> *mut c_char {
-    to_c_string(media_extra::media_extra_request_json(&from_c_str(request_json)))
+pub unsafe extern "C" fn ffi_media_extra_request_json(request_json: *const c_char) -> *mut c_char {
+    to_c_string(media_extra::media_extra_request_json(&from_c_str(
+        request_json,
+    )))
 }
 
 #[no_mangle]

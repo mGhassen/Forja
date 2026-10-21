@@ -498,6 +498,16 @@ class RustLib {
 
   int proxyPort() => _native.ffi_proxy_port();
 
+  /// Per-start loopback proxy token. Media routes (`/proxy`, `/hls-proxy`,
+  /// `/toky-proxy`, `/comic-proxy`, `/jellyfin-stream`,
+  /// `/subtitlecat-translate`) answer 403 without it. Empty when the proxy is
+  /// not running or the native library predates the token.
+  String proxyToken() {
+    final fn = _native.ffi_proxy_token;
+    if (fn == null) return '';
+    return _readString(fn());
+  }
+
   bool proxyRegisterRoute(String token, String upstreamUrl) => using((arena) {
     final tokenPtr = token.toNativeUtf8(allocator: arena).cast<ffi.Char>();
     final urlPtr = upstreamUrl.toNativeUtf8(allocator: arena).cast<ffi.Char>();
@@ -965,6 +975,7 @@ final class _FfiNative {
       ffi_proxy_port = lib
           .lookup<ffi.NativeFunction<_ProxyPortNative>>('ffi_proxy_port')
           .asFunction(),
+      ffi_proxy_token = _lookupOptionalString(lib, 'ffi_proxy_token'),
       ffi_proxy_register_route = lib
           .lookup<ffi.NativeFunction<_ProxyRegisterNative>>(
             'ffi_proxy_register_route',
@@ -1232,6 +1243,9 @@ final class _FfiNative {
   final int Function(int) ffi_proxy_start;
   final void Function() ffi_proxy_stop;
   final int Function() ffi_proxy_port;
+
+  /// Null when the loaded library has no `ffi_proxy_token` export.
+  final ffi.Pointer<ffi.Char> Function()? ffi_proxy_token;
   final bool Function(ffi.Pointer<ffi.Char>, ffi.Pointer<ffi.Char>)
   ffi_proxy_register_route;
   final ffi.Pointer<ffi.Char> Function(
@@ -1273,6 +1287,20 @@ final class _FfiNative {
 
 typedef _FreeStringNative = ffi.Void Function(ffi.Pointer<ffi.Char>);
 typedef _VersionNative = ffi.Pointer<ffi.Char> Function();
+
+/// No-arg string export that may be absent from an older native build.
+ffi.Pointer<ffi.Char> Function()? _lookupOptionalString(
+  ffi.DynamicLibrary lib,
+  String symbol,
+) {
+  try {
+    return lib
+        .lookup<ffi.NativeFunction<_VersionNative>>(symbol)
+        .asFunction<ffi.Pointer<ffi.Char> Function()>();
+  } on ArgumentError {
+    return null;
+  }
+}
 typedef _AddNative = ffi.Int64 Function(ffi.Int64, ffi.Int64);
 typedef _EpisodeMatchesNative =
     ffi.Bool Function(ffi.Pointer<ffi.Char>, ffi.Int32, ffi.Int32);

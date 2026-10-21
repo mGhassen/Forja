@@ -153,6 +153,14 @@ StremioResolveOutcome? classifyStremioStream(
   // Magnet / .torrent in `url` must go through magnet resolve — never open as
   // a file path (mpv treats relative paths under temp → "File name too long").
   if (url != null && url.isNotEmpty && !isStremioTorrentUrl(url)) {
+    // Allowlist: http(s), loopback proxy, file:// under the downloads folder.
+    // content: / intent: / javascript: / data: / rtmp: rows are unsupported.
+    if (!isPlayableStreamUrl(url)) {
+      return StremioResolveFailure(
+        error: StremioPlaybackError.unsupported,
+        message: 'Unsupported stream address.',
+      );
+    }
     return StremioPlayable(
       streamUrl: url,
       headers: stremioStreamRequestHeaders(stream),

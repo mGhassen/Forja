@@ -16,6 +16,36 @@ abstract final class PluginContract {
     'debrid',
   };
 
+  /// Plugin ids become on-disk file names (`plugins/<id>.js`) — one path
+  /// segment, ASCII letters / digits / `_` / `.` / `-`, never `..`.
+  static final RegExp pluginIdPattern = RegExp(r'^[A-Za-z0-9][A-Za-z0-9_.-]*$');
+
+  static bool isValidPluginId(String? raw) {
+    final id = raw?.trim() ?? '';
+    if (id.isEmpty || id.contains('..')) return false;
+    return pluginIdPattern.hasMatch(id);
+  }
+
+  /// Manifest-declared file reference (`entry`, `prelude` part, `bundle` row):
+  /// either an `https://` URL or a pack-relative path that stays inside the
+  /// pack folder (no leading `/`, no `\`, no `..`, no empty segment, no NUL).
+  static bool isSafeManifestFileRef(String? raw) {
+    final ref = raw?.trim() ?? '';
+    if (ref.isEmpty) return false;
+    if (ref.contains('\u0000')) return false;
+    final lower = ref.toLowerCase();
+    if (lower.startsWith('https://')) {
+      return Uri.tryParse(ref)?.host.isNotEmpty ?? false;
+    }
+    if (ref.contains('://') || lower.startsWith('file:')) return false;
+    if (ref.startsWith('/') || ref.contains('\\')) return false;
+    if (RegExp(r'^[A-Za-z]:').hasMatch(ref)) return false;
+    for (final seg in ref.split('/')) {
+      if (seg.isEmpty || seg == '.' || seg == '..') return false;
+    }
+    return true;
+  }
+
   static const catalogErrorCodes = {
     'INVALID_ACTION',
     'INVALID_PARAMS',
@@ -48,6 +78,14 @@ abstract final class PluginContract {
     if (prelude != null && !_nonEmptyString(prelude)) {
       throw const FormatException('manifest prelude must be a non-empty string');
     }
+    if (prelude != null) _requireSafePreludeSpec(prelude.toString());
+    final bundle = map['bundle'];
+    if (bundle is List) {
+      for (final row in bundle) {
+        if (row is! String) continue;
+        _requireSafeFileRef(row, what: 'bundle file');
+      }
+    }
 
     final pluginsRaw = map['plugins'];
     if (pluginsRaw is! List || pluginsRaw.isEmpty) {
@@ -61,6 +99,11 @@ abstract final class PluginContract {
       }
       final plugin = Map<String, dynamic>.from(raw);
       final id = _requireString(plugin, 'id');
+      if (!isValidPluginId(id)) {
+        throw FormatException(
+          'This pack has an invalid plugin id ("$id") and was not installed.',
+        );
+      }
       if (!seenIds.add(id)) {
         throw FormatException('duplicate plugin id in manifest: $id');
       }
@@ -73,6 +116,11 @@ abstract final class PluginContract {
       final entry = plugin['entry'] ?? plugin['filename'];
       if (!_nonEmptyString(entry)) {
         throw FormatException('plugin $id missing entry');
+      }
+      _requireSafeFileRef(entry.toString(), what: 'plugin $id entry');
+      final pluginPrelude = plugin['prelude'];
+      if (pluginPrelude != null && _nonEmptyString(pluginPrelude)) {
+        _requireSafePreludeSpec(pluginPrelude.toString());
       }
       final kind = plugin['kind'];
       final kindName = kind?.toString().trim() ?? '';
@@ -226,6 +274,30 @@ abstract final class PluginContract {
       return Map<String, dynamic>.from(raw.first as Map);
     }
     return null;
+  }
+
+  /// `prelude` may be comma-separated (`_kit.js,_search.js`).
+  static void _requireSafePreludeSpec(String spec) {
+    for (final part in spec.split(',')) {
+      final ref = part.trim();
+      if (ref.isEmpty) continue;
+      _requireSafeFileRef(ref, what: 'prelude');
+    }
+  }
+
+  static void _requireSafeFileRef(String ref, {required String what}) {
+    if (isSafeManifestFileRef(ref)) return;
+    final lower = ref.trim().toLowerCase();
+    if (lower.startsWith('http://')) {
+      throw FormatException(
+        'This pack loads "$ref" over plain http and was not installed. '
+        'Pack files must use https://.',
+      );
+    }
+    throw FormatException(
+      'This pack points $what at "$ref", outside its own folder, '
+      'and was not installed.',
+    );
   }
 
   static String _requireString(Map<String, dynamic> map, String key) {

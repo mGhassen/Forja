@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
+import 'package:rust/rust.dart' show PlayableStreamFileRoots;
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// Resolves the on-disk folder for VOD offline downloads.
@@ -35,6 +36,8 @@ class DownloadPathHelper {
   static Future<void> setCustomDownloadsDirectoryPath(String path) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_customPathKey, path);
+    // Files under the new folder become playable `file://` streams too.
+    PlayableStreamFileRoots.add(path);
   }
 
   /// Clears a custom folder so the next resolve uses the platform default.
