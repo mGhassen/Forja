@@ -9,8 +9,8 @@
 
 | | |
 |--|--|
-| **Progress** | **3 / 12** components · **0 / 11** acceptance (leanback slice) |
-| **Current slice** | T01–T02 (one-level Back on details and player) landed on branch `feat/tv-remote-ux` with unit tests; device check pending — T03–T12 not started |
+| **Progress** | **5 / 12** components · **0 / 11** acceptance (leanback slice) |
+| **Current slice** | T01–T04 and T09 landed on branch `feat/tv-remote-ux` with unit tests and emulator checks (one-level Back, fixed-column rows, ←/→ hold accel, honest Live Sports loading); T05–T08, T10–T12 in progress or not started |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -22,8 +22,8 @@
 |--:|----|-------------|--------|
 | 1 | R122-C01 | T01 — Details Back pops in one press (drop the Back-chevron focus step); keep last-card restore on the catalog | ✅ |
 | 2 | R122-C02 | T02 — Player Back while resolving / loading exits in one press; while playing: hide chrome, then leave (no third arm / toast step) | ✅ |
-| 3 | R122-C03 | T03 — Horizontal rows: focused card held at a fixed column with animated scroll (150–200 ms); next card always visible; column / duration tokens in foundation | ⬜ |
-| 4 | R122-C04 | T04 — Horizontal hold acceleration: reuse the `ShellTvHoldAccel` curve for ←/→ in rows and grids | ⬜ |
+| 3 | R122-C03 | T03 — Horizontal rows: focused card held at a fixed column with animated scroll (150–200 ms); next card always visible; column / duration tokens in foundation | ✅ |
+| 4 | R122-C04 | T04 — Horizontal hold acceleration: reuse the `ShellTvHoldAccel` curve for ←/→ in rows and grids | ✅ |
 | 5 | R122-C05 | T05 — Column memory when moving ↑/↓ between rows and chip strips (nearest-x target, not first item) | ⬜ |
 | 6 | R122-C06 | T06 — Unified focus chrome tokens (ring + scale + glow) across cards, chips, top menu, nav rail; rail pill behind the focused icon | ⬜ |
 | 7 | R122-C07 | T07 — Honest loading states: centered spinner + label on details load and player resolve; "Back cancels" hint | ⬜ |

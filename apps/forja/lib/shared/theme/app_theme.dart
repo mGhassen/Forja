@@ -484,12 +484,13 @@ class _FocusableControlState extends State<FocusableControl>
     if (widget.ensureVisibleMode == ShellPaintEnsureVisible.off) return;
 
     // Prefer an ancestor extent (Popular rank digit left of poster chrome) so
-    // keepVisible does not scroll the digit off the leading edge.
+    // the focus column / keepVisible aligns the digit, not the poster alone.
     final scrollContext =
         ShellPaintEnsureVisibleExtent.maybeContext(context) ?? context;
 
-    // TV: jump instantly (no 200ms tween). Animated scroll leaves the focused
-    // control clipped / hidden until the tween ends, and stacks into stutter.
+    // Vertical lists jump instantly (no tween): an animated vertical scroll
+    // leaves the focused control clipped until the tween ends and stacks into
+    // stutter. Horizontal rails tween on a discrete press (below).
     if (widget.ensureVisibleMode == ShellPaintEnsureVisible.item) {
       // Settings / vertical menus: first control snaps to content top so
       // section labels above it stay visible (keepVisible alone pins flush).
@@ -497,21 +498,36 @@ class _FocusableControlState extends State<FocusableControl>
       return;
     }
 
-    // Run start+end keepVisible so ↑ and ↓ only nudge by the clipped edge.
-    // Horizontal row ListViews still need this; vertical hub lift is below.
-    const zero = Duration.zero;
-    Scrollable.ensureVisible(
-      scrollContext,
-      alignment: 0.0,
-      duration: zero,
-      alignmentPolicy: ScrollPositionAlignmentPolicy.keepVisibleAtStart,
-    );
-    Scrollable.ensureVisible(
-      scrollContext,
-      alignment: 1.0,
-      duration: zero,
-      alignmentPolicy: ScrollPositionAlignmentPolicy.keepVisibleAtEnd,
-    );
+    // Catalog rails (zone row, or unregistered cards in a horizontal list):
+    // Leanback focus column — the card's leading edge scrolls to the rail's
+    // leading padding so the next cards stay visible. keepVisibleAtEnd used
+    // to park the focused card clipped at the right edge. Chip strips / top
+    // bars keep the nudge-by-clipped-edge path below.
+    final zone = widget.tvMeta?.zone;
+    final columnAligned =
+        (zone == null || zone == ShellTvZone.row) &&
+        shellTvAlignRowFocusColumn(
+          scrollContext,
+          animate: !ShellTvHoldAccel.isHolding,
+        );
+
+    if (!columnAligned) {
+      // Run start+end keepVisible so ↑ and ↓ only nudge by the clipped edge.
+      // Vertical hub lift is below.
+      const zero = Duration.zero;
+      Scrollable.ensureVisible(
+        scrollContext,
+        alignment: 0.0,
+        duration: zero,
+        alignmentPolicy: ScrollPositionAlignmentPolicy.keepVisibleAtStart,
+      );
+      Scrollable.ensureVisible(
+        scrollContext,
+        alignment: 1.0,
+        duration: zero,
+        alignmentPolicy: ScrollPositionAlignmentPolicy.keepVisibleAtEnd,
+      );
+    }
 
     // Catalog rows: nearest Scrollable is the horizontal ListView, so the
     // keepVisible pair above often never moves the page. Lift in the vertical
