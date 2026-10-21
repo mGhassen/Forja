@@ -2,6 +2,7 @@ import AVFoundation
 import AVKit
 import Cocoa
 import FlutterMacOS
+import IOKit.pwr_mgt
 
 /// AirPlay hand-off: a muted AVPlayer follows the stream, the system route
 /// picker opens, and the player goes external once an AirPlay device is chosen.
@@ -19,6 +20,9 @@ final class ForjaAirPlayPlugin: NSObject, FlutterPlugin, FlutterStreamHandler {
   private var fileRelay: ForjaAirPlayLocalFileRelay?
   /// Bumped on teardown so late callbacks from an old cast are dropped.
   private var generation = 0
+  /// Keeps the Mac awake while AirPlay owns playback (local mpv is paused).
+  private var idleSleepAssertionID: IOPMAssertionID = 0
+  private var idleSleepHeld = false
 
   /// Picker left open without a choice — release the hidden player.
   private static let pickTimeoutSeconds: TimeInterval = 90
@@ -451,6 +455,7 @@ final class ForjaAirPlayPlugin: NSObject, FlutterPlugin, FlutterStreamHandler {
       guard !external else { return }
       external = true
       pickTimeout?.cancel()
+      holdIdleSleep(true)
       player.isMuted = false
       if player.rate == 0 { player.play() }
       startTimeObserver()
@@ -461,6 +466,25 @@ final class ForjaAirPlayPlugin: NSObject, FlutterPlugin, FlutterStreamHandler {
       let ms = positionMs()
       teardown()
       emit(["event": "inactive", "positionMs": ms])
+    }
+  }
+
+  /// Local media_kit drops its display-sleep wakelock when paused under AirPlay;
+  /// hold system idle sleep separately so the AVPlayer + LAN relays stay alive.
+  private func holdIdleSleep(_ hold: Bool) {
+    if hold {
+      guard !idleSleepHeld else { return }
+      idleSleepHeld =
+        IOPMAssertionCreateWithName(
+          kIOPMAssertionTypeNoIdleSleep as CFString,
+          IOPMAssertionLevel(kIOPMAssertionLevelOn),
+          "Forja AirPlay casting" as CFString,
+          &idleSleepAssertionID
+        ) == kIOReturnSuccess
+    } else if idleSleepHeld {
+      IOPMAssertionRelease(idleSleepAssertionID)
+      idleSleepAssertionID = 0
+      idleSleepHeld = false
     }
   }
 
@@ -525,6 +549,7 @@ final class ForjaAirPlayPlugin: NSObject, FlutterPlugin, FlutterStreamHandler {
     statusObservation = nil
     rateObservation?.invalidate()
     rateObservation = nil
+    holdIdleSleep(false)
     player?.pause()
     player?.replaceCurrentItem(with: nil)
     player = nil

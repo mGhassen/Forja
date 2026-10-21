@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
+import 'package:wakelock_plus/wakelock_plus.dart';
 
 import 'cast_subtitle.dart';
 
@@ -46,6 +47,8 @@ class CastingService {
 
   StreamSubscription<dynamic>? _airPlaySub;
   CastHandoff? _handoff;
+  Timer? _castWakeKick;
+  bool _castWakeHeld = false;
 
   /// Skip [stopCasting] once when the player route is replaced (next episode).
   bool _retainAcrossPlayer = false;
@@ -241,6 +244,23 @@ class CastingService {
     _handoff?.onPlaying?.call(play);
   }
 
+  /// Local media_kit releases wakelock when paused under AirPlay — hold one for
+  /// the whole cast session (iOS idle timer + Mac display sleep).
+  void _setCastWakeHeld(bool held) {
+    _castWakeKick?.cancel();
+    _castWakeKick = null;
+    _castWakeHeld = held;
+    if (held) {
+      unawaited(WakelockPlus.enable());
+      // Pause → media_kit disable lands async; re-hold after it.
+      _castWakeKick = Timer(const Duration(milliseconds: 250), () {
+        if (_castWakeHeld) unawaited(WakelockPlus.enable());
+      });
+    } else {
+      unawaited(WakelockPlus.disable());
+    }
+  }
+
   void _onAirPlayEvent(dynamic raw) {
     if (raw is! Map) return;
     final event = raw['event'];
@@ -253,6 +273,7 @@ class CastingService {
         position.value = at;
         // Pause local first, then mark the receiver as playing for chrome.
         handoff?.onStarted();
+        _setCastWakeHeld(true);
         _setPlaying(raw['playing'] != false);
         if (ms > 0) handoff?.onPosition?.call(at);
       case 'position':
@@ -268,6 +289,7 @@ class CastingService {
         }
       case 'inactive':
         airPlayActive.value = false;
+        _setCastWakeHeld(false);
         _boundUrl = null;
         _retainAcrossPlayer = false;
         _handoff = null;
@@ -277,6 +299,7 @@ class CastingService {
       case 'error':
         final wasActive = airPlayActive.value;
         airPlayActive.value = false;
+        _setCastWakeHeld(false);
         _boundUrl = null;
         _retainAcrossPlayer = false;
         _handoff = null;
@@ -305,6 +328,7 @@ class CastingService {
     _handoff = null;
     _boundUrl = null;
     airPlayActive.value = false;
+    _setCastWakeHeld(false);
     playing.value = false;
     position.value = Duration.zero;
     if (_airPlaySub == null) return;

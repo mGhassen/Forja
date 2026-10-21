@@ -7,8 +7,8 @@
 
 | | |
 |--|--|
-| **Progress** | **7 / 8** components · **0 / 4** acceptance |
-| **Current slice** | AirPlay online + offline + seek sync + chrome + next-episode handoff + HLS in-stream subs (macOS + iOS); Chromecast not started |
+| **Progress** | **8 / 9** components · **0 / 4** acceptance |
+| **Current slice** | AirPlay online + offline + seek sync + chrome + next-episode handoff + HLS in-stream subs + idle wake hold (macOS + iOS); Chromecast not started |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -26,6 +26,7 @@
 | 6 | R05-C06 | AirPlay casting chrome: sticky "Playing on AirPlay" + active cast button while `airPlayActive` ([452](../issues/fixed/452-[fixed]-airplay-no-casting-indicator.md)) | ✅ |
 | 7 | R05-C07 | AirPlay survives next episode: retain across player replace + native `replace` URL ([453](../issues/fixed/453-[fixed]-airplay-drops-on-next-episode.md)) | ✅ |
 | 8 | R05-C08 | AirPlay HLS in-stream subs: merge subtitle media playlist to WebVTT for the LAN relay ([455](../issues/fixed/455-[fixed]-airplay-hls-instream-subtitles.md)) | ✅ |
+| 9 | R05-C09 | AirPlay keeps the host awake while casting — macOS `NoIdleSleep` + session `WakelockPlus` ([456](../issues/fixed/456-[fixed]-airplay-mac-idle-stops-cast.md)) | ✅ |
 
 ---
 
