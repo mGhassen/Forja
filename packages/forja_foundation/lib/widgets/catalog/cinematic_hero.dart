@@ -240,6 +240,7 @@ class CinematicHero extends StatefulWidget {
     this.onIndexChanged,
     this.onHeight,
     this.pageController,
+    this.advancePaused = false,
   });
 
   final List<CinematicHeroSlide> slides;
@@ -258,11 +259,17 @@ class CinematicHero extends StatefulWidget {
   final Widget? shimmer;
   final ValueChanged<int>? onIndexChanged;
 
-  /// Reports computed backdrop height for shell chrome fade.
+  /// Reports the hero band height that shell chrome may overlay — see
+  /// [CinematicHeroState.chromeFadeHeight]. Shell top bars hide once this
+  /// scrolls under them so catalog rows never slide beneath menu labels.
   final ValueChanged<double>? onHeight;
 
   /// Host interactive may own the controller; otherwise one is created.
   final PageController? pageController;
+
+  /// Hold auto-advance from outside (host: D-pad focus left the hero). Same
+  /// hold as CTA hover / focus — progress freezes and resumes where it was.
+  final bool advancePaused;
 
   @override
   State<CinematicHero> createState() => CinematicHeroState();
@@ -327,6 +334,46 @@ class CinematicHeroState extends State<CinematicHero>
         FocusHighlightMode.traditional;
   }
 
+  /// Any reason to hold auto-advance: host [CinematicHero.advancePaused] or
+  /// CTA engagement. [advancePaused] overrides the widget value (old widget).
+  bool _holdNow({bool? advancePaused}) {
+    if (advancePaused ?? widget.advancePaused) return true;
+    return _ctaEngagedNow();
+  }
+
+  /// Space reserved under the hero text column: the bleed rail region (wide
+  /// layouts with [CinematicHero.pageBottomChild]) plus the column's own
+  /// bottom breathing room. Shared by the paint and [chromeFadeHeight].
+  static double textColumnBottomInset(
+    CinematicHeroLayout layout, {
+    required bool pageBleed,
+  }) {
+    final textBottom = layout.scaledChrome(16, floor: 8.0, ceil: 16.0);
+    if (!pageBleed) return textBottom;
+    return layout.firstCatalogRowHeight +
+        layout.scaledChrome(ShellTokens.homePageBottomSectionTopPadding) +
+        layout.resolvedBleedDownOffset +
+        textBottom;
+  }
+
+  /// Bottom of the hero text column (title → CTA row) in page coordinates.
+  ///
+  /// Shell top bars overlay the hero; they must be fully hidden by the time
+  /// this edge reaches them so title / CTA pills never slide under menu
+  /// labels. Catalog rows (bleed rail) sit below this edge and are covered
+  /// implicitly.
+  static double chromeFadeHeight({
+    required double imageHeight,
+    required CinematicHeroLayout layout,
+    required bool pageBleed,
+  }) {
+    final full = imageHeight + layout.topBarBleed;
+    return math.max(
+      0.0,
+      full - textColumnBottomInset(layout, pageBleed: pageBleed),
+    );
+  }
+
   /// [PageController.page] asserts exactly one attached [PageView].
   /// [hasClients] is only "≥1" — remount / reparent can briefly attach two.
   bool get _heroHasSingleClient => _heroController.positions.length == 1;
@@ -353,6 +400,7 @@ class CinematicHeroState extends State<CinematicHero>
       duration: ShellTokens.heroAutoAdvanceDuration,
     )..addStatusListener(_onHeroProgressStatus);
     FocusManager.instance.addHighlightModeListener(_onHighlightModeChanged);
+    _heroAdvancePaused = widget.advancePaused;
     _restartHeroProgress();
   }
 
@@ -368,6 +416,12 @@ class CinematicHeroState extends State<CinematicHero>
     }
     if (!_slidesImageUrlsEqual(oldWidget.slides, widget.slides)) {
       _warmSlideBackdropImages();
+    }
+    if (oldWidget.advancePaused != widget.advancePaused) {
+      _onCtaEngagementChanged(
+        wasEngaged: _holdNow(advancePaused: oldWidget.advancePaused),
+        nowEngaged: _holdNow(),
+      );
     }
   }
 
@@ -465,7 +519,7 @@ class CinematicHeroState extends State<CinematicHero>
   }
 
   void _resumeHeroAdvance() {
-    if (_ctaEngagedNow()) return;
+    if (_holdNow()) return;
     if (_heroAdvancePaused) {
       if (mounted) {
         setState(() => _heroAdvancePaused = false);
@@ -498,7 +552,7 @@ class CinematicHeroState extends State<CinematicHero>
   /// Re-check after keyboard↔pointer chrome flips while focus stays on the CTA.
   void _syncCtaEngagement() {
     if (!mounted) return;
-    final engaged = _ctaEngagedNow();
+    final engaged = _holdNow();
     if (engaged && !_heroAdvancePaused) {
       _pauseHeroAdvance();
     } else if (!engaged && _heroAdvancePaused) {
@@ -508,21 +562,21 @@ class CinematicHeroState extends State<CinematicHero>
 
   void _setCtaHover(bool hovering) {
     if (_ctaHover == hovering) return;
-    final wasEngaged = _ctaEngagedNow();
+    final wasEngaged = _holdNow();
     _ctaHover = hovering;
     _onCtaEngagementChanged(
       wasEngaged: wasEngaged,
-      nowEngaged: _ctaEngagedNow(),
+      nowEngaged: _holdNow(),
     );
   }
 
   void _setCtaFocus(bool focused) {
     if (_ctaFocus == focused) return;
-    final wasEngaged = _ctaEngagedNow();
+    final wasEngaged = _holdNow();
     _ctaFocus = focused;
     _onCtaEngagementChanged(
       wasEngaged: wasEngaged,
-      nowEngaged: _ctaEngagedNow(),
+      nowEngaged: _holdNow(),
     );
   }
 
@@ -633,9 +687,14 @@ class CinematicHeroState extends State<CinematicHero>
     final imageHeight = _backdropHeight(context);
     final onHeight = widget.onHeight;
     if (onHeight != null) {
+      final fadeHeight = chromeFadeHeight(
+        imageHeight: imageHeight,
+        layout: layout,
+        pageBleed: pageBleed,
+      );
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
-        onHeight(imageHeight + layout.topBarBleed);
+        onHeight(fadeHeight);
       });
     }
     final textTop =
@@ -649,13 +708,10 @@ class CinematicHeroState extends State<CinematicHero>
             ceil: compactRightInset,
           )
         : layout.scaledChrome(48, floor: 24.0, ceil: 48.0);
-    final textBottom = layout.scaledChrome(16, floor: 8.0, ceil: 16.0);
-    final textBottomInset = pageBleed
-        ? layout.firstCatalogRowHeight +
-              layout.scaledChrome(ShellTokens.homePageBottomSectionTopPadding) +
-              layout.resolvedBleedDownOffset +
-              textBottom
-        : textBottom;
+    final textBottomInset = textColumnBottomInset(
+      layout,
+      pageBleed: pageBleed,
+    );
     final textLeft = layout.scaledChrome(layout.sectionHorizontalPadding);
     final desktopTextWidth = math.min(
       MediaQuery.sizeOf(context).width * ShellTokens.heroTextWidthFraction,
