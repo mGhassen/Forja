@@ -14,6 +14,9 @@ List<Map<String, dynamic>> sortEngineMetaStreamRows(
 ///
 /// Player open/decode is separate — pass [streamsPrevalidated: true] when this
 /// list is handed to the player so reachability is not re-probed on open.
+///
+/// [probe] false skips the HTTP reachability check and keeps every playable
+/// row: used for race backups handed to the player behind verified rows.
 Future<List<StreamSource>> buildProbedEngineCatalogSources({
   required PlaybackProfile profile,
   required SettingsService settings,
@@ -21,6 +24,7 @@ Future<List<StreamSource>> buildProbedEngineCatalogSources({
   required bool Function() isAborted,
   Map<String, dynamic>? preferFirst,
   ValueNotifier<String>? messageNotifier,
+  bool probe = true,
 }) async {
   var ordered = sortEngineMetaStreamRows(rows);
   if (preferFirst != null) {
@@ -68,7 +72,7 @@ Future<List<StreamSource>> buildProbedEngineCatalogSources({
     final probeRow = Map<String, dynamic>.from(row)
       ..['url'] = proxied.url
       ..['headers'] = proxied.headers;
-    if (!await probeSourcesPanelStream(probeRow)) continue;
+    if (probe && !await probeSourcesPanelStream(probeRow)) continue;
     final url = proxied.url;
     final resolvedCatalogUrl = row['url']?.toString() ?? url;
     final drm = StreamDrmConfig.tryParse(row['drm']);

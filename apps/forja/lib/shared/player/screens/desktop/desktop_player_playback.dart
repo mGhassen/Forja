@@ -771,51 +771,66 @@ mixin _DesktopPlayerPlayback
     }
 
     try {
-      if (widget.onReloadStreams != null) {
-        final fresh = await widget.onReloadStreams!();
-        if (_fallbackAborted(chainGen)) return false;
-        if (fresh == null || fresh.isEmpty) {
-          _s._statusController.complete();
-          return false;
-        }
-        final playable = dedupeStreamSources(
-          fresh,
-        ).where((s) => !isUnplayableCachedStreamUrl(s.url)).toList();
-        if (playable.isEmpty) {
-          _s._statusController.complete();
-          return false;
-        }
-        // Prefer a provider that already has these URLs cached from the race;
-        // do not dump every stream under the dead current server.
-        String pid = '';
-        for (final e in _s._liveProviderSourcesCache.value.entries) {
-          if (e.value.any((s) => s.url == playable.first.url)) {
-            pid = e.key;
+      final reload = widget.onReloadStreams;
+      if (reload != null) {
+        // Pass 1 usually returns the race backups; a later pass runs the full
+        // race again. Stop when a batch brings nothing this chain has not
+        // tried.
+        final tried = <String>{
+          for (final s in _s._currentSources ?? const <StreamSource>[]) s.url,
+        };
+        for (
+          var pass = 0;
+          pass < EngineRaceFallbackPolicy.reloadPasses;
+          pass++
+        ) {
+          final fresh = await reload();
+          if (_fallbackAborted(chainGen)) return false;
+          if (fresh == null || fresh.isEmpty) break;
+          final playable = dedupeStreamSources(
+            fresh,
+          ).where((s) => !isUnplayableCachedStreamUrl(s.url)).toList();
+          if (playable.isEmpty) break;
+          // Pass 1 keeps the pre-T13 behaviour; later passes must bring a
+          // URL this chain has not opened yet.
+          if (pass > 0 &&
+              !reloadBatchHasUntriedUrl(batch: playable, triedUrls: tried)) {
             break;
           }
+          tried.addAll(playable.map((s) => s.url));
+          // Prefer a provider that already has these URLs cached from the race;
+          // do not dump every stream under the dead current server.
+          String pid = '';
+          for (final e in _s._liveProviderSourcesCache.value.entries) {
+            if (e.value.any((s) => s.url == playable.first.url)) {
+              pid = e.key;
+              break;
+            }
+          }
+          if (pid.isEmpty) {
+            pid = _s._currentProvider ?? widget.activeProvider ?? '';
+          }
+          if (pid.isNotEmpty) {
+            _s._cacheProviderSources(pid, playable);
+            _s._markProviderLoadSucceeded(pid);
+          }
+          setState(() {
+            if (pid.isNotEmpty) _s._currentProvider = pid;
+            _s._currentSources = playable;
+            _s._currentUrl = playable.first.url;
+            _s._currentPlayingCatalogUrl = playable.first.url;
+            _s._currentFallbackSourceIndex = 0;
+            _s._failedSourceIndices.clear();
+            _s._checkingSourceIndices.clear();
+            _s._hasError = false;
+          });
+          final played = await _trySourcesFromIndex(
+            0,
+            chainGen: chainGen,
+            seekAfterOpen: seekAfterOpen,
+          );
+          if (played || _fallbackAborted(chainGen)) return played;
         }
-        if (pid.isEmpty) {
-          pid = _s._currentProvider ?? widget.activeProvider ?? '';
-        }
-        if (pid.isNotEmpty) {
-          _s._cacheProviderSources(pid, playable);
-          _s._markProviderLoadSucceeded(pid);
-        }
-        setState(() {
-          if (pid.isNotEmpty) _s._currentProvider = pid;
-          _s._currentSources = playable;
-          _s._currentUrl = playable.first.url;
-          _s._currentPlayingCatalogUrl = playable.first.url;
-          _s._currentFallbackSourceIndex = 0;
-          _s._failedSourceIndices.clear();
-          _s._checkingSourceIndices.clear();
-          _s._hasError = false;
-        });
-        return _trySourcesFromIndex(
-          0,
-          chainGen: chainGen,
-          seekAfterOpen: seekAfterOpen,
-        );
       }
 
       _s._statusController.complete();
@@ -838,12 +853,13 @@ mixin _DesktopPlayerPlayback
     // Prevalidated streams skip re-probing, not re-resolving: a host reload
     // hook fetches fresh links, so a dead stream after reconnect can hop.
     final hostOwnsReload = widget.onReloadStreams != null;
-    final canAutoHop =
-        !pinned &&
-        (!widget.streamsPrevalidated || hostOwnsReload) &&
-        widget.movie != null &&
-        ((widget.providers != null && widget.providers!.isNotEmpty) ||
-            hostOwnsReload);
+    final canAutoHop = canAutoHopAfterSourcesExhausted(
+      pinned: pinned,
+      streamsPrevalidated: widget.streamsPrevalidated,
+      hasMovie: widget.movie != null,
+      hasProviders: widget.providers != null && widget.providers!.isNotEmpty,
+      hostOwnsReload: hostOwnsReload,
+    );
 
     if (!canAutoHop) {
       debugPrint(

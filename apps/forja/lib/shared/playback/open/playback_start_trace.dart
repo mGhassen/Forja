@@ -54,6 +54,12 @@ class PlaybackStartTrace {
 
   bool get isActive => _enabled && _active;
 
+  int _session = 0;
+
+  /// Increments on every [start]. Long-running work captures it so marks
+  /// from a previous Play do not land in a session started later.
+  int get sessionId => _session;
+
   /// Marks recorded since [start], in order.
   List<PlaybackTraceMark> get marks => List.unmodifiable(_marks);
 
@@ -74,6 +80,7 @@ class PlaybackStartTrace {
     if (!_enabled) return;
     _marks.clear();
     _onceSeen.clear();
+    _session++;
     _active = true;
     if (_nowMs != null) {
       _startMs = _nowMs();
