@@ -29,15 +29,11 @@ mixin _DesktopPlayerLifecycle
     unawaited(InAppMiniPlayerController.readSettingEnabled());
     PlayerBackExitGate.setTryFocusBack(() {
       if (!mounted || _s._disposed) return false;
-      return PlayerBackExitGate.consumeChromeOrArmExit(
+      // TV-policy Back only; the desktop Escape ladder keeps its own arm.
+      return PlayerBackExitGate.consumeChromeOrExit(
         chromeVisible: _s._showControls,
-        armed: _s._escapeExitArmed,
+        mediaStarted: _s._sessionFirstConfirmedAt != null && !_s._hasError,
         hideChrome: () => _s._hideChromeIntentional(),
-        setArmed: (v) {
-          if (!mounted || _s._disposed) return;
-          if (_s._escapeExitArmed == v) return;
-          setState(() => _s._escapeExitArmed = v);
-        },
       );
     });
     PlayerBackExitGate.setForceExitPlayer(_s._forceLeavePlayer);

@@ -188,6 +188,7 @@ mixin _TrailerPlayerPlayback on State<TrailerPlayerScreen> {
         _s._streams = opened;
         _s._resolving = false;
         _s._ready = true;
+        _s._sessionHadFrame = true;
         _s._selectedQualityHeight = _qualityMenuHeightFor(opened);
       });
       _s._claimPlayFocus();
@@ -214,6 +215,7 @@ mixin _TrailerPlayerPlayback on State<TrailerPlayerScreen> {
       _s._resolveError = null;
       _s._embedFallback = true;
       _s._ready = true;
+      _s._sessionHadFrame = true;
       _s._playing = true;
     });
     _s._claimPlayFocus();

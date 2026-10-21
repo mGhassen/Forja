@@ -1264,7 +1264,6 @@ class _PackDetailsHostState extends ConsumerState<PackDetailsHost> {
     return MediaDetailsScrollPage(
       scrollController: _scrollController,
       tvHeroPlayFocus: _heroPlayFocus,
-      tvBackFocus: _backFocus,
       bodyOverlap: firstRowOverlap,
       topSpacing: 0,
       backgroundColor: AppTheme.bgDark,

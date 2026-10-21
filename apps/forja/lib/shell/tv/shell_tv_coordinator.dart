@@ -142,10 +142,6 @@ abstract final class ShellTvFocusCoordinator {
     return miss;
   }
 
-  /// Details overlay Back control - first remote Back focuses it, second pops.
-  static FocusNode? _detailBackFocus;
-  static bool _detailBackExitArmed = false;
-
   /// Per-tab default focus and hero scroll - survives multi-tab mount order.
   ///
   /// Partial updates merge: omitted handlers and a null
@@ -290,33 +286,6 @@ abstract final class ShellTvFocusCoordinator {
     if (id.isEmpty) return false;
     final pageBack = _tabPageBack[id];
     return pageBack != null && pageBack();
-  }
-
-  /// Register the media-details Back chevron for TV remote Back.
-  static void registerDetailBackFocus(FocusNode? node) {
-    _detailBackFocus = node;
-    _detailBackExitArmed = false;
-  }
-
-  static void unregisterDetailBackFocus(FocusNode? node) {
-    if (identical(_detailBackFocus, node)) {
-      _detailBackFocus = null;
-      _detailBackExitArmed = false;
-    }
-  }
-
-  /// First Back on details focuses the Back chevron; returns true when stayed.
-  static bool _tryFocusDetailBack() {
-    final back = _detailBackFocus;
-    if (back == null || !back.canRequestFocus) return false;
-    if (back.hasFocus || _detailBackExitArmed) {
-      _detailBackExitArmed = false;
-      return false;
-    }
-    _detailBackExitArmed = true;
-    back.requestFocus();
-    debugPrint('[NavBack] focused details back - stay on details');
-    return true;
   }
 
   /// Nav Enter on a tab - e.g. search field browse focus (not last page memory).
@@ -505,14 +474,58 @@ abstract final class ShellTvFocusCoordinator {
   /// so a real second Back can confirm after a stay step.
   static const Duration _backTwinWindow = Duration(milliseconds: 80);
 
-  /// True after a Back that only moved focus (player/details Back control) so
-  /// the confirming Back is not swallowed by [_backDebounceWindow].
+  /// True after a Back that was a stay step (player chrome hide, tab pageBack)
+  /// so the next Back is not swallowed by [_backDebounceWindow].
   static bool _backStepPending = false;
+
+  /// Physical Back press tracking. Android delivers one press twice: the
+  /// HardwareKeyboard KeyDown (handled here) and later an Activity
+  /// `didPopRoute`. The pop lands after KeyUp — a held key or emulator lag
+  /// pushes it far past [_backTwinWindow] / [_backDebounceWindow], so a time
+  /// window alone treats it as a new press (loading → details → Home on one
+  /// Back). Key the guard on the press: a pop that arrives while the handled
+  /// key is still down, or within [_popRouteAfterKeyUpGrace] of its KeyUp,
+  /// belongs to that press. Time windows stay as the fallback for devices that
+  /// send only one of the two.
+  static bool _hwBackDown = false;
+  static bool _hwBackPopPending = false;
+  static DateTime? _hwBackKeyUpAt;
+  static const Duration _popRouteAfterKeyUpGrace = Duration(milliseconds: 800);
+
+  /// HardwareKeyboard goBack KeyDown reached the shell handler.
+  static void noteHardwareBackDown() {
+    _hwBackDown = true;
+    _hwBackPopPending = true;
+    _hwBackKeyUpAt = null;
+  }
+
+  /// HardwareKeyboard goBack KeyUp — the matching `didPopRoute` may follow.
+  static void noteHardwareBackUp() {
+    _hwBackDown = false;
+    _hwBackKeyUpAt = DateTime.now();
+  }
+
+  /// `didPopRoute` path: true when this pop is the second delivery of a
+  /// hardware Back already handled on KeyDown — the caller must ignore it.
+  static bool consumePopRouteTwin() {
+    if (!_hwBackPopPending) return false;
+    if (_hwBackDown) {
+      _hwBackPopPending = false;
+      return true;
+    }
+    final up = _hwBackKeyUpAt;
+    _hwBackPopPending = false;
+    return up != null &&
+        DateTime.now().difference(up) < _popRouteAfterKeyUpGrace;
+  }
 
   /// Test-only - clears back debounce between widget tests.
   static void resetBackDebounceForTest() {
     _lastBackHandledAt = null;
     _backStepPending = false;
+    _hwBackDown = false;
+    _hwBackPopPending = false;
+    _hwBackKeyUpAt = null;
     _overlayReturnTabId = '';
     _overlayReturnSnapshot = null;
     _navLeaveTabId = '';
@@ -651,9 +664,9 @@ abstract final class ShellTvFocusCoordinator {
     // Confirming exit / pop must not be swallowed by debounce.
     // Same-press twins (HardwareKeyboard + didPopRoute) often land a few ms
     // apart — but under load they can exceed [_backTwinWindow]. After a stay
-    // (hide chrome / arm), swallow within [_backDebounceWindow] without
-    // re-running the exit ladder: hide+arm then a late twin would otherwise
-    // treat chrome-already-down + armed as confirm-exit on the same press.
+    // (hide chrome), swallow within [_backDebounceWindow] without re-running
+    // the exit ladder: a late twin would otherwise see chrome-already-down
+    // and leave the player on the same physical press.
     final now = DateTime.now();
     final lastBack = _lastBackHandledAt;
     if (lastBack != null && now.difference(lastBack) < _backTwinWindow) {
@@ -671,7 +684,7 @@ abstract final class ShellTvFocusCoordinator {
     }
     _backStepPending = false;
 
-    // TV players: hide chrome → arm (+ toast) → exit (desktop Escape parity).
+    // TV players: media started → hide chrome, then exit; not started → exit.
     if (tvBackPolicyEnabled && PlayerBackExitGate.tryFocusBackStay()) {
       _backStepPending = true;
       PlayerBackExitGate.exitReady = false;
@@ -693,11 +706,8 @@ abstract final class ShellTvFocusCoordinator {
         ShellNavigationLevels.popRootRoute();
         return true;
       case ShellNavLevel.detail:
+        // One level per press: pop details, restore the last catalog card.
         ShellTvAppExit.clear();
-        if (_tryFocusDetailBack()) {
-          _backStepPending = true;
-          return true;
-        }
         _overlayMaybePop?.call();
         return true;
       case ShellNavLevel.tabStack:
@@ -731,7 +741,7 @@ abstract final class ShellTvFocusCoordinator {
   }
 
   /// Remote Exit (Escape on TV).
-  /// In a player: same leave ladder as Back (hide chrome → arm → leave).
+  /// In a player: same leave ladder as Back (hide chrome → leave).
   /// Elsewhere: double-confirm quit.
   static bool handleShellExitKey() {
     if (!tvBackPolicyEnabled) {

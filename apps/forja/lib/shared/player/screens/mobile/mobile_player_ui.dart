@@ -106,7 +106,6 @@ mixin _MobilePlayerUi on ConsumerState<MobilePlayerScreen> {
 
   void _claimPlayFocus() {
     if (!widget.tvRemoteEnabled) return;
-    _s._tvBackExitArmed = false;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted || !_s._playFocus.canRequestFocus) return;
       if (playerChromeOverlayBlocksFocusClaim()) return;
