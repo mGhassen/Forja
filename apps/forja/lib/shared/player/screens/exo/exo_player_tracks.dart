@@ -4,13 +4,96 @@ mixin _ExoPlayerTracks on ConsumerState<ExoPlayerScreen> {
   _ExoPlayerScreenState get _s => this as _ExoPlayerScreenState;
 
   /// Download (or reuse cache) → local `file://` → soft-reload Media3 sideloads.
-  Future<void> _loadOnlineSubtitle(Map<String, dynamic> s) async {
+  ///
+  /// [manual] is a user pick from the menu: it shows a loading / done chip and
+  /// outranks any auto pick still downloading. An auto pick that finishes
+  /// after a newer pick started is dropped.
+  Future<void> _loadOnlineSubtitle(
+    Map<String, dynamic> s, {
+    bool manual = true,
+  }) async {
     final url = (s['url'] ?? '').toString();
     if (url.isEmpty) return;
+    final label = (s['display'] ?? s['language'] ?? s['lang'] ?? 'Subtitle')
+        .toString();
+    if (!manual &&
+        _s._subtitlePickManual &&
+        (_s._subtitlePickInFlight || _s._selectedExternalSubUrl != null)) {
+      debugPrint('[ExoPlayer] subtitle auto pick skipped: manual pick owns it');
+      return;
+    }
+    final gen = ++_s._subtitlePickGen;
+    _s._subtitlePickManual = manual;
+    _s._subtitlePickInFlight = true;
+    debugPrint(
+      '[ExoPlayer] subtitle pick${manual ? '' : ' (auto)'} → $label  $url',
+    );
+    try {
+      await _runOnlineSubtitlePick(
+        s,
+        url: url,
+        label: label,
+        manual: manual,
+        gen: gen,
+      );
+    } finally {
+      if (gen == _s._subtitlePickGen) _s._subtitlePickInFlight = false;
+    }
+  }
+
+  Future<void> _runOnlineSubtitlePick(
+    Map<String, dynamic> s, {
+    required String url,
+    required String label,
+    required bool manual,
+    required int gen,
+  }) async {
+    if (manual) {
+      _s._statusController.upsert(
+        'subtitle',
+        label,
+        kind: StatusRouletteKind.loading,
+      );
+    }
+    final sw = Stopwatch()..start();
+
+    // Already attached and reported by Media3: a plain track switch, no
+    // media reload.
+    final attached = exoTextTrackForSideload(_s._tracks.text, url);
+    if (attached != null &&
+        _s._sideloadedSubtitles.any((e) => e['sourceUrl'] == url)) {
+      _s._selectedExternalSubUrl = url;
+      _s._preferredSubtitleApplied = true;
+      debugPrint('[ExoPlayer] subtitle: attached, select ${attached.id}');
+      await ExoPlayerBridge.selectTrack(
+        _s._viewId,
+        type: 'text',
+        trackId: attached.id,
+      );
+      if (!mounted) return;
+      if (manual) {
+        _s._statusController.upsert(
+          'subtitle',
+          label,
+          kind: StatusRouletteKind.success,
+          dismissAfter: const Duration(milliseconds: 1500),
+        );
+      }
+      setState(() {});
+      return;
+    }
 
     final prepared = await _prepareSubtitleSideload(s);
+    if (_s._disposed || !mounted) return;
+    if (gen != _s._subtitlePickGen) {
+      debugPrint('[ExoPlayer] subtitle pick superseded: $url');
+      return;
+    }
     if (prepared == null) {
-      if (!mounted) return;
+      debugPrint(
+        '[ExoPlayer] subtitle pick failed after ${sw.elapsedMilliseconds} ms: '
+        '$url',
+      );
       _s._statusController.upsert(
         'subtitle',
         'Subtitle failed',
@@ -19,13 +102,13 @@ mixin _ExoPlayerTracks on ConsumerState<ExoPlayerScreen> {
       );
       return;
     }
+    debugPrint(
+      '[ExoPlayer] subtitle ready in ${sw.elapsedMilliseconds} ms → '
+      '${prepared['url']}',
+    );
 
     // Keep other already-sideloaded tracks so the menu still lists them.
-    final next = <Map<String, String>>[
-      for (final e in _s._sideloadedSubtitles)
-        if (e['sourceUrl'] != url) e,
-      prepared,
-    ];
+    final next = mergeSideloads(_s._sideloadedSubtitles, [prepared]);
     _s._sideloadedSubtitles = next;
     _s._selectedExternalSubUrl = url;
     // Soft-reload remounts MergingMediaPeriod — wait for next READY before
@@ -34,23 +117,30 @@ mixin _ExoPlayerTracks on ConsumerState<ExoPlayerScreen> {
     _s._preferredSubtitleApplied = false;
 
     try {
-      await ExoPlayerBridge.setSubtitles(
+      debugPrint('[ExoPlayer] subtitle: setSubtitles n=${next.length}');
+      final accepted = await ExoPlayerBridge.setSubtitles(
         _s._viewId,
-        next
-            .map(
-              (e) => {
-                'url': e['url']!,
-                'lang': e['lang'] ?? 'und',
-                'label': e['label'] ?? e['lang'] ?? 'und',
-                if ((e['mime'] ?? '').isNotEmpty) 'mime': e['mime']!,
-              },
-            )
-            .toList(),
+        exoSideloadPayloads(next),
       );
-      if (mounted) setState(() {});
+      if (!mounted) return;
+      if (accepted == 0) {
+        throw StateError('player attached 0 of ${next.length} sideloads');
+      }
+      if (manual) {
+        _s._statusController.upsert(
+          'subtitle',
+          label,
+          kind: StatusRouletteKind.success,
+          dismissAfter: const Duration(milliseconds: 1500),
+        );
+      }
+      setState(() {});
     } catch (e) {
       debugPrint('[ExoPlayer] setSubtitles failed: $e');
       if (!mounted) return;
+      // No reload happened (or it carried nothing): the player is still the
+      // READY one from before, so auto-pick and late attach stay alive.
+      _s._exoReady = true;
       setState(() => _s._selectedExternalSubUrl = null);
       _s._statusController.upsert(
         'subtitle',
@@ -61,9 +151,6 @@ mixin _ExoPlayerTracks on ConsumerState<ExoPlayerScreen> {
     }
   }
 
-  /// Maps a provider/online subtitle entry to a Media3 sideload payload.
-  /// Returns null on download failure. Keys: `url` (file://), `lang`, `label`,
-  /// `sourceUrl` (original remote/local key for selection UI).
   Future<Map<String, String>?> _prepareSubtitleSideload(
     Map<String, dynamic> s,
   ) async {
@@ -135,14 +222,28 @@ mixin _ExoPlayerTracks on ConsumerState<ExoPlayerScreen> {
         'Referer': (ref != null && ref.isNotEmpty) ? ref : '$selfOrigin/',
         'Origin': (org != null && org.isNotEmpty) ? org : selfOrigin,
       };
+      final sw = Stopwatch()..start();
       final res = await http
           .get(subUri, headers: headers)
           .timeout(Duration(minutes: isTranslated ? 5 : 1));
-      if (res.statusCode != 200) return null;
-      if (!isPlausibleSubtitleBytes(res.bodyBytes)) {
-        debugPrint('[ExoPlayer] subtitle download rejected (invalid payload)');
+      if (res.statusCode != 200) {
+        debugPrint(
+          '[ExoPlayer] subtitle download HTTP ${res.statusCode} after '
+          '${sw.elapsedMilliseconds} ms: $url',
+        );
         return null;
       }
+      if (!isPlausibleSubtitleBytes(res.bodyBytes)) {
+        debugPrint(
+          '[ExoPlayer] subtitle download rejected (invalid payload, '
+          '${res.bodyBytes.length} B): $url',
+        );
+        return null;
+      }
+      debugPrint(
+        '[ExoPlayer] subtitle downloaded ${res.bodyBytes.length} B in '
+        '${sw.elapsedMilliseconds} ms: $url',
+      );
 
       final dir = await getTemporaryDirectory();
       final safeLang = lang.replaceAll(RegExp(r'[^A-Za-z0-9_-]'), '_');
@@ -160,7 +261,7 @@ mixin _ExoPlayerTracks on ConsumerState<ExoPlayerScreen> {
       _s._externalSubFileCache[url] = uri;
       return pack(uri);
     } catch (e) {
-      debugPrint('[ExoPlayer] subtitle download failed: $e');
+      debugPrint('[ExoPlayer] subtitle download failed: $e  $url');
       return null;
     }
   }
@@ -217,7 +318,12 @@ mixin _ExoPlayerTracks on ConsumerState<ExoPlayerScreen> {
     stream.listen(
       (subs) {
         if (mounted) {
-          setState(() => _s._externalSubtitles = [...jellyfinSubs, ...subs]);
+          setState(
+            () => _s._externalSubtitles = [
+              ...jellyfinSubs,
+              ...tagOnlineSubtitleRows(subs),
+            ],
+          );
           unawaited(_maybeAutoPickExternalSubtitle());
         }
       },
@@ -277,11 +383,7 @@ mixin _ExoPlayerTracks on ConsumerState<ExoPlayerScreen> {
           _s._preferredSubtitleApplied = true;
           return;
         }
-        debugPrint(
-          '[ExoPlayer] auto provider subtitle → '
-          '${pick['display'] ?? pick['language']}',
-        );
-        await _loadOnlineSubtitle(pick);
+        await _loadOnlineSubtitle(pick, manual: false);
         return;
       }
     }
@@ -343,10 +445,7 @@ mixin _ExoPlayerTracks on ConsumerState<ExoPlayerScreen> {
       return;
     }
 
-    debugPrint(
-      '[ExoPlayer] auto external subtitle → ${pick['display'] ?? pick['language']}',
-    );
-    await _loadOnlineSubtitle(pick);
+    await _loadOnlineSubtitle(pick, manual: false);
   }
 
   Future<bool> _hlsPlaylistCoversPreferred(String preferred) async {
@@ -371,9 +470,18 @@ mixin _ExoPlayerTracks on ConsumerState<ExoPlayerScreen> {
     if (mounted) setState(() {});
   }
 
-  /// After [ExoPlayerBridge.setSubtitles], pick the Media3 text track that
-  /// matches the last external selection (by language/label).
-  Future<void> _selectSideloadedMatchingSelection() async {
+  /// After [ExoPlayerBridge.setSubtitles], select the Media3 text track made
+  /// from the picked sideload. Exact match on the sideload id Media3 echoes
+  /// as `Format.id`; waits for the next tracks report when it is not there
+  /// yet. Language / label is only a fallback for a native build that does
+  /// not report format ids.
+  ///
+  /// [tracksFresh] is true from the tracks report that follows a reload; only
+  /// then can a missing sideload be called a failure (native READY arrives
+  /// before the new track list).
+  Future<void> _selectSideloadedMatchingSelection({
+    bool tracksFresh = false,
+  }) async {
     if (_s._disposed || !mounted) return;
     final sourceUrl = _s._selectedExternalSubUrl;
     if (sourceUrl == null) return;
@@ -384,24 +492,62 @@ mixin _ExoPlayerTracks on ConsumerState<ExoPlayerScreen> {
         break;
       }
     }
-    if (sideload == null || _s._tracks.text.isEmpty) return;
-    final lang = sideload['lang'] ?? '';
-    final label = sideload['label'] ?? '';
-    ExoTrackInfo? match;
-    for (final t in _s._tracks.text) {
-      if ((lang.isNotEmpty &&
-              matchesPreferredLanguage(
-                lang,
-                language: t.language,
-                title: t.label,
-              )) ||
-          (label.isNotEmpty && t.label.toLowerCase() == label.toLowerCase())) {
-        match = t;
-        break;
-      }
+    final text = _s._tracks.text;
+    if (sideload == null || text.isEmpty) {
+      debugPrint(
+        '[ExoPlayer] subtitle select: waiting '
+        '(sideload=${sideload != null} textTracks=${text.length})',
+      );
+      return;
     }
-    match ??= _s._tracks.text.last;
+    var match = exoTextTrackForSideload(text, sourceUrl);
+    if (match == null) {
+      final idsReported = text.any((t) => t.formatId.isNotEmpty);
+      if (idsReported) {
+        if (tracksFresh && _s._exoReady) {
+          // READY came back without this sideload: Media3 dropped it. Say so
+          // instead of leaving the row checked with no cues.
+          debugPrint(
+            '[ExoPlayer] subtitle select: sideload missing after reload '
+            '(ids=${text.map((t) => t.formatId).join(',')})',
+          );
+          _s._selectedExternalSubUrl = null;
+          _s._statusController.upsert(
+            'subtitle',
+            'Subtitle failed',
+            kind: StatusRouletteKind.failed,
+            dismissAfter: const Duration(seconds: 2),
+          );
+          if (mounted) setState(() {});
+          return;
+        }
+        // The reload has not surfaced this sideload yet — tracksChanged
+        // re-enters here.
+        debugPrint('[ExoPlayer] subtitle select: track not reported yet');
+        return;
+      }
+      final lang = sideload['lang'] ?? '';
+      final label = sideload['label'] ?? '';
+      for (final t in text) {
+        if ((lang.isNotEmpty &&
+                matchesPreferredLanguage(
+                  lang,
+                  language: t.language,
+                  title: t.label,
+                )) ||
+            (label.isNotEmpty &&
+                t.label.toLowerCase() == label.toLowerCase())) {
+          match = t;
+          break;
+        }
+      }
+      match ??= text.last;
+    }
     if (match.selected && !_s._tracks.textOff) return;
+    debugPrint(
+      '[ExoPlayer] subtitle select → ${match.id} '
+      '(${match.label}, formatId=${match.formatId})',
+    );
     await ExoPlayerBridge.selectTrack(
       _s._viewId,
       type: 'text',
