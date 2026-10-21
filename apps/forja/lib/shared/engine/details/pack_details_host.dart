@@ -42,7 +42,7 @@ import 'package:forja/shared/engine/runtime/kit/hosts/kit_details_play_row.dart'
 import 'package:forja/shared/engine/runtime/kit/hosts/kit_list_status_hero.dart';
 import 'package:forja/shared/engine/details/media_details.dart';
 import 'package:forja/shell/desktop/desktop_selectable_title.dart';
-import 'package:forja_foundation/widgets/feedback/catalog_loading_ticker.dart';
+import 'package:forja_foundation/widgets/feedback/loading_state.dart';
 import 'package:forja_foundation/widgets/details/details_hero.dart';
 import 'package:forja_foundation/blocks/details/details_block.dart';
 import 'package:forja/shell/feedback/forja_toast.dart';
@@ -986,8 +986,12 @@ class _PackDetailsHostState extends ConsumerState<PackDetailsHost> {
             loading: _loading,
             errorMessage: _error,
             onRetry: _load,
-            loadingChild: forjaShellPageLoading(
+            // Centered indicator at shell scale with the item name while
+            // metadata loads. Non-focusable: Play claims D-pad focus once
+            // the hero mounts, same as before.
+            loadingChild: ForjaLoadingState(
               backgroundColor: AppTheme.bgDark,
+              title: widget.item.name,
             ),
             errorChild: _error == null
                 ? null

@@ -328,6 +328,9 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
   final FocusNode _seekFocus = FocusNode(debugLabel: 'exo-player-seek');
   final FocusNode _playerMenuFocus = FocusNode(debugLabel: 'exo-player-menu');
   final FocusNode _retryFocus = FocusNode(debugLabel: 'exo-player-retry');
+  /// Centered Retry on the terminal failure stage (status overlay).
+  final FocusNode _failedStageRetryFocus =
+      FocusNode(debugLabel: 'exo-player-failed-retry');
   final FocusNode _streamActionFocus = FocusNode(
     debugLabel: 'exo-player-stream-action',
   );
@@ -670,12 +673,15 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
     } catch (e) {
       debugPrint('[ExoPlayer] open failed: $e');
       if (_fallbackAborted(openGen)) return;
+      final message = e is UnsupportedStreamAddressException
+          ? e.message
+          : 'Failed to open stream';
       // Drop the fence so failover `_openCurrentSource` can re-enter.
       _opening = false;
       if (_failoverInFlight) {
-        _pendingOpenError = 'Failed to open stream';
+        _pendingOpenError = message;
       } else {
-        await _failCurrentSource('Failed to open stream');
+        await _failCurrentSource(message);
       }
     } finally {
       if (openGen == _fallbackGen) {
@@ -1158,11 +1164,34 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
 
   void _focusDownFromTopBar() {
     if (!_isTv) return;
+    // Terminal failure: the centered Retry is the primary control.
+    if (_hasError && _failedStageRetryFocus.canRequestFocus) {
+      _failedStageRetryFocus.requestFocus();
+      return;
+    }
     if (_seekFocus.canRequestFocus) {
       _seekFocus.requestFocus();
       return;
     }
     _claimPlayFocus();
+  }
+
+  /// D-pad ↑ from the centered failure Retry / Back → top-bar Retry (or Back).
+  void _focusTopBarFromFailedStage() {
+    if (!_isTv) return;
+    if (_retryFocus.canRequestFocus) {
+      _retryFocus.requestFocus();
+      return;
+    }
+    _claimBackFocus();
+  }
+
+  /// Top-bar Retry and the centered failure Retry share this.
+  void _retryCurrentSource() {
+    setState(() {
+      _hasError = false;
+    });
+    unawaited(_openCurrentSource());
   }
 
   void _focusDownFromSeekbar() => _claimPlayFocus();
@@ -2247,6 +2276,7 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
     _seekFocus.dispose();
     _playerMenuFocus.dispose();
     _retryFocus.dispose();
+    _failedStageRetryFocus.dispose();
     _streamActionFocus.dispose();
     _tvKeyFocus.dispose();
     _nextEpChipFocus.dispose();
@@ -2365,12 +2395,7 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
                     episodeLine: _episodeLine,
                     statusActions: _hasError
                         ? PlayerTopStatusActions(
-                            onRetry: () {
-                              setState(() {
-                                _hasError = false;
-                              });
-                              unawaited(_openCurrentSource());
-                            },
+                            onRetry: _retryCurrentSource,
                             onStream: _hasStreamPicker
                                 ? () => unawaited(_showSourcesDialog(context))
                                 : null,
@@ -2432,12 +2457,7 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
                   episodeLine: _episodeLine,
                   statusActions: _hasError
                       ? PlayerTopStatusActions(
-                          onRetry: () {
-                            setState(() {
-                              _hasError = false;
-                            });
-                            unawaited(_openCurrentSource());
-                          },
+                          onRetry: _retryCurrentSource,
                           onStream: _hasStreamPicker
                               ? () => unawaited(_showSourcesDialog(context))
                               : null,
@@ -2906,6 +2926,15 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
                   controller: _statusController,
                   bufferingListenable: _isBufferingNotifier,
                   header: 'Checking sources',
+                  // Centered indicator until the first frame; centered
+                  // Retry / Back on a terminal failure (top-bar Retry stays).
+                  playbackStarted: _playbackStartedNotified,
+                  failed: _hasError,
+                  tvFocusable: _isTv,
+                  onRetry: _retryCurrentSource,
+                  onBack: () => unawaited(_exit()),
+                  failedRetryFocusNode: _failedStageRetryFocus,
+                  onFailedStageUp: _focusTopBarFromFailedStage,
                 ),
               ParentalGuideLayer(
                 imdbId: widget.movie?.imdbId,

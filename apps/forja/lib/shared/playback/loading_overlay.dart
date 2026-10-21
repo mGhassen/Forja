@@ -1214,6 +1214,7 @@ class _LoadingOverlayState extends State<LoadingOverlay> with TickerProviderStat
                       if (!_showingFailure && widget.onCancel != null) ...[
                         SizedBox(height: cancelGap),
                         _cancelActionRow(),
+                        const LoadingOverlayBackHint(),
                       ],
                     ],
                   ),
@@ -1248,6 +1249,43 @@ class _LoadingOverlayState extends State<LoadingOverlay> with TickerProviderStat
               debugLabel: 'loading-overlay',
               child: overlay,
             ),
+    );
+  }
+}
+
+/// Remote hint under Cancel: the stream-resolve overlay is wrapped in
+/// [TvOverlayScope] on leanback, so the Back key runs the cancel action.
+/// Paints nothing on desktop / phone (no Back key to press).
+class LoadingOverlayBackHint extends StatelessWidget {
+  const LoadingOverlayBackHint({super.key});
+
+  static const String copy = 'Press Back to cancel';
+
+  @override
+  Widget build(BuildContext context) {
+    final policy =
+        ShellScope.maybeOf(context)?.inputPolicy ?? ShellInputPolicy.desktop;
+    if (!policy.leanbackOnly) return const SizedBox.shrink();
+    final tv = ShellPaintScope.usesTvDensityOf(context);
+    final gap = tv
+        ? ShellTokens.streamLoadingProviderTipGapTv
+        : ShellTokens.streamLoadingProviderTipGap;
+    final fontSize = tv
+        ? ShellTokens.streamLoadingTipFontSizeTv
+        : ShellTokens.streamLoadingTipFontSize;
+    return Padding(
+      padding: EdgeInsets.only(top: gap),
+      child: Text(
+        copy,
+        textAlign: TextAlign.center,
+        style: TextStyle(
+          color: ForjaShellColors.cinematic.textSecondary,
+          fontSize: fontSize,
+          fontWeight: FontWeight.w500,
+          letterSpacing: 0.2,
+          fontFamily: 'Poppins',
+        ),
+      ),
     );
   }
 }

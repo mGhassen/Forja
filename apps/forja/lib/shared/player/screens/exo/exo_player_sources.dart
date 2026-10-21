@@ -293,7 +293,11 @@ mixin _ExoPlayerSources on ConsumerState<ExoPlayerScreen> {
         kind: StatusRouletteKind.failed,
         dismissAfter: const Duration(seconds: 2),
       );
-      setState(() => _s._hasError = true);
+      setState(() {
+        _s._hasError = true;
+        // Chrome up so the centered Retry is focusable (same as hard failure).
+        _s._showControls = true;
+      });
     }
 
     try {
@@ -425,7 +429,11 @@ mixin _ExoPlayerSources on ConsumerState<ExoPlayerScreen> {
         kind: StatusRouletteKind.failed,
         dismissAfter: const Duration(seconds: 2),
       );
-      setState(() => _s._hasError = true);
+      setState(() {
+        _s._hasError = true;
+        // Chrome up so the centered Retry is focusable (same as hard failure).
+        _s._showControls = true;
+      });
     } finally {
       if (switchGen == _s._fallbackGen) {
         _s._opening = false;
@@ -535,7 +543,11 @@ mixin _ExoPlayerSources on ConsumerState<ExoPlayerScreen> {
         kind: StatusRouletteKind.failed,
         dismissAfter: const Duration(seconds: 2),
       );
-      setState(() => _s._hasError = true);
+      setState(() {
+        _s._hasError = true;
+        // Chrome up so the centered Retry is focusable (same as hard failure).
+        _s._showControls = true;
+      });
       if (message != null && message.isNotEmpty) {
         debugPrint(
           '[ExoPlayer] ${catalogStreamKindLabel(stream)} switch failed: $message',
@@ -617,7 +629,11 @@ mixin _ExoPlayerSources on ConsumerState<ExoPlayerScreen> {
         kind: StatusRouletteKind.failed,
         dismissAfter: const Duration(seconds: 2),
       );
-      setState(() => _s._hasError = true);
+      setState(() {
+        _s._hasError = true;
+        // Chrome up so the centered Retry is focusable (same as hard failure).
+        _s._showControls = true;
+      });
     } finally {
       if (switchGen == _s._fallbackGen) {
         _s._opening = false;
