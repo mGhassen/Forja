@@ -103,4 +103,5 @@ export 'package:forja_foundation/widgets/feedback/frosted_panel.dart';
 export 'package:forja_foundation/widgets/feedback/fractal_glass_gradient.dart';
 export 'package:forja_foundation/widgets/feedback/card_play_overlay.dart';
 export 'package:forja_foundation/widgets/feedback/error_retry_panel.dart';
+export 'package:forja_foundation/widgets/feedback/loading_state.dart';
 export 'package:forja_foundation/widgets/tv/tv_search_browse_overlay.dart';
