@@ -15,6 +15,7 @@ import 'package:forja/shared/playback/play_session.dart';
 export 'package:forja/shared/playback/play_session.dart';
 import 'package:forja/shared/playback/sources_request_context.dart';
 import 'package:forja/shared/playback/open/play_source_effective.dart';
+import 'package:forja/shared/playback/open/playback_start_trace.dart';
 import 'package:forja/shared/player/controls/episodes/catalog_episode.dart';
 import 'package:forja/shared/player/screens/utils.dart';
 import 'package:forja/shared/playback/open/stream_loading.dart';
@@ -95,6 +96,7 @@ Future<void> switchEpisodeViaEngineAutoPlay({
   String? preferredPluginId,
 }) {
   final s = session;
+  PlaybackStartTrace.instance.start(label: 'episode-switch');
   final extract = engineExtractContext(
     open: s?.effectiveOpen,
     movie: movie,
@@ -231,6 +233,7 @@ Future<EngineAutoPlayPick?> runEngineAutoPlay({
 }) async {
   final settings = SettingsService();
   final profile = PlatformPlayback.capabilities;
+  final trace = PlaybackStartTrace.instance;
   final session = playSession ?? enginePlaySession;
   final extract = engineExtractContext(
     open: session?.effectiveOpen,
@@ -244,11 +247,8 @@ Future<EngineAutoPlayPick?> runEngineAutoPlay({
     packResolveType: extract.resolveType,
     tmdbMediaType: session?.meta?.tmdbMediaType,
   );
-  final activeSession = session ??
-      PlaySession(
-        malId: malId,
-        audioCategory: audioCategory,
-      );
+  final activeSession =
+      session ?? PlaySession(malId: malId, audioCategory: audioCategory);
   final cacheKey = CatalogSourcesSessionCache.cacheKey(
     mediaId: movie.id,
     mediaType: movie.mediaType,
@@ -286,6 +286,7 @@ Future<EngineAutoPlayPick?> runEngineAutoPlay({
 
   late final StreamLoadingSession loadingSession;
   final ownsLoadingOverlay = existingLoading == null;
+
   /// Mid-race tap on the overlay server list — set after the race starts.
   void Function(String pluginId)? liveManualCheck;
   void cancel() {
@@ -342,16 +343,20 @@ Future<EngineAutoPlayPick?> runEngineAutoPlay({
   }
 
   try {
+    trace.mark('overlay-shown');
     await EngineService.instance.ensureOfficialInstalled();
     if (aborted()) return null;
+    trace.mark('official-ensured');
 
     final loadedPacks =
         packs ?? await EngineService.instance.listSourcesPanelPacks();
     if (aborted()) return null;
 
-    final streamLanguageKeys =
-        await PluginStreamLanguages.selectedKeys(activeSession.pluginId);
+    final streamLanguageKeys = await PluginStreamLanguages.selectedKeys(
+      activeSession.pluginId,
+    );
     if (aborted()) return null;
+    trace.mark('race-inputs-ready');
 
     final enabledIds = enabledEnginePluginIds(loadedPacks);
     final scope = EngineCategories.matchingPluginIds(
@@ -385,8 +390,7 @@ Future<EngineAutoPlayPick?> runEngineAutoPlay({
     }();
     var pluginIds = [
       for (final id in orderedIds)
-        if (selected.contains(id) &&
-            _pluginVisible(loadedPacks, id, category))
+        if (selected.contains(id) && _pluginVisible(loadedPacks, id, category))
           id,
     ];
 
@@ -567,6 +571,7 @@ Future<EngineAutoPlayPick?> runEngineAutoPlay({
           statusById[pluginId] = StreamProviderProbeStatus.success;
           publishProbes();
           if (!race.isCompleted) {
+            trace.mark('first-probe-ok');
             abortPool();
             race.complete(
               EngineAutoPlayPick(
@@ -606,6 +611,7 @@ Future<EngineAutoPlayPick?> runEngineAutoPlay({
       );
       EngineExtractResult? batch;
       try {
+        trace.markOnce('race-start');
         batch = await StreamOrchestrator.instance.schedule(
           sessionKey: cacheKey,
           pluginId: pluginId,
@@ -625,6 +631,7 @@ Future<EngineAutoPlayPick?> runEngineAutoPlay({
             allowHostFallback: false,
             onRow: (row) {
               if (playAborted() || race.isCompleted || gen != fetchGen) return;
+              trace.markOnce('first-row');
               final prev = probeChains[pluginId] ?? Future<void>.value();
               probeChains[pluginId] = prev.then((_) async {
                 if (playAborted() || race.isCompleted) return;
@@ -642,6 +649,7 @@ Future<EngineAutoPlayPick?> runEngineAutoPlay({
         inFlight.remove(pluginId);
         return;
       }
+      trace.markOnce('first-plugin-done');
       fetchedIds.add(pluginId);
       inFlight.remove(pluginId);
       await probeChains[pluginId];
@@ -712,10 +720,7 @@ Future<EngineAutoPlayPick?> runEngineAutoPlay({
       pinPlugin = trimmed;
       pinActive = true;
       soloId = trimmed;
-      pluginIds = [
-        trimmed,
-        ...pluginIds.where((other) => other != trimmed),
-      ];
+      pluginIds = [trimmed, ...pluginIds.where((other) => other != trimmed)];
 
       // DOWN / already-fetched empty → retry this server.
       if (statusById[trimmed] == StreamProviderProbeStatus.failed ||
@@ -945,6 +950,9 @@ Future<EngineAutoPlayPick?> runEngineAutoPlay({
     if (!ownsLoadingOverlay) {
       // Parent multi-tech race owns overlay lifecycle.
     } else if (!openedPlayer) {
+      // Cancelled or no source: close the trace so a later open (IPTV, Live)
+      // does not print marks against this Play's origin.
+      trace.abandon();
       dismissLoading();
       disposeStreamLoadingNotifiers(loadingSession);
     } else {
@@ -1090,6 +1098,7 @@ Future<void> _playFromProbedSources({
       episodes: playHubEpisodes,
     );
     if (isAborted() || !context.mounted) return;
+    PlaybackStartTrace.instance.mark('player-route-pushed');
     await AppRouter.openPlayer(
       context,
       streamUrl: primary.url,
@@ -1159,10 +1168,11 @@ Future<void> _playResolveRow({
   if (!await ensureLanP2pPlayback(context)) return;
   if (isAborted() || !context.mounted) return;
   loadingSession.setKind(StreamLoadingKind.torrent);
-  loadingSession.torrentStatusNotifier.value = initialStremioTorrentResolveStatus(
-    profile: profile,
-    debridLabel: DebridPackBridge.activePluginLabel?.call(),
-  );
+  loadingSession.torrentStatusNotifier.value =
+      initialStremioTorrentResolveStatus(
+        profile: profile,
+        debridLabel: DebridPackBridge.activePluginLabel?.call(),
+      );
   final resolved = await resolveStremioStream(
     stream: stream,
     profile: profile,

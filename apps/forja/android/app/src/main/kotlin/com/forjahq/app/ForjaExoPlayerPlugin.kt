@@ -1275,6 +1275,7 @@ class ForjaExoPlayerPlugin : MethodChannel.MethodCallHandler, EventChannel.Strea
     fun bindEngine(context: Context, messenger: io.flutter.plugin.common.BinaryMessenger, registry: io.flutter.plugin.platform.PlatformViewRegistry) {
         appContext = context.applicationContext
         (context as? Activity)?.let { activityRef = WeakReference(it) }
+        ForjaExoMediaCache.warm(context.applicationContext)
         methodChannel = MethodChannel(messenger, CHANNEL)
         methodChannel?.setMethodCallHandler(this)
         eventChannel = EventChannel(messenger, EVENT_CHANNEL)

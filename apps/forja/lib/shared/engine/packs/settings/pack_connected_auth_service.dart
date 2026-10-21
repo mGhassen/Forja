@@ -23,8 +23,7 @@ abstract final class PackConnectedAuthStore {
     'phone',
   ];
 
-  static String _labelKey(String pluginId) =>
-      '$_labelPrefix${pluginId.trim()}';
+  static String _labelKey(String pluginId) => '$_labelPrefix${pluginId.trim()}';
 
   static String _secretIdsKey(String pluginId) =>
       '$_secretIdsKeyPrefix${pluginId.trim()}';
@@ -121,7 +120,18 @@ abstract final class PackConnectedAuthStore {
   }
 
   /// Overlay for extract / catalog config (session secrets + optional strings).
+  /// True once [applyLoginResult] stored a session for [pluginId]; cleared by
+  /// [clearSession]. A cheap prefs lookup — never touches the Keystore.
+  static Future<bool> hasSession(String pluginId) async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.containsKey(_secretIdsKey(pluginId));
+  }
+
   static Future<Map<String, dynamic>> configOverlay(String pluginId) async {
+    // Every green Play racer asks for its own overlay. Without a session there
+    // is nothing in the Keystore, and each probe read is a platform round trip
+    // (73 providers × 5 default ids held the first extract for seconds).
+    if (!await hasSession(pluginId)) return const {};
     final out = <String, dynamic>{};
     for (final id in await trackedSecretIds(pluginId)) {
       final v = await PackSettingsStore.getSecret(pluginId, id);
@@ -143,7 +153,8 @@ abstract final class PackConnectedAuthStore {
       if (!p.enabled) continue;
       final spec = PackConnectedAuthSpec.fromPlugin(p);
       final applies =
-          p.id == want || (spec != null && spec.extractPluginIds.contains(want));
+          p.id == want ||
+          (spec != null && spec.extractPluginIds.contains(want));
       if (!applies) continue;
       out.addAll(await configOverlay(spec?.pluginId ?? p.id));
     }
@@ -190,9 +201,9 @@ abstract final class PackConnectedAuthService {
       debugPrint('[PackAuth] auth_status ${spec.pluginId}: $e');
     }
     // Fall back to local session presence.
-    final overlay =
-        await PackConnectedAuthStore.configOverlay(spec.pluginId);
-    final hasSession = (overlay['sessionId'] ?? '').toString().isNotEmpty ||
+    final overlay = await PackConnectedAuthStore.configOverlay(spec.pluginId);
+    final hasSession =
+        (overlay['sessionId'] ?? '').toString().isNotEmpty ||
         (overlay['jwt'] ?? '').toString().isNotEmpty;
     return (
       connected: hasSession,
@@ -216,10 +227,7 @@ abstract final class PackConnectedAuthService {
     final env = await _run(
       spec.pluginId,
       'auth_login',
-      params: {
-        'method': method,
-        'fields': fields,
-      },
+      params: {'method': method, 'fields': fields},
     );
     if (!env.ok || env.data == null) {
       throw Exception(env.error?.message ?? 'Login failed');

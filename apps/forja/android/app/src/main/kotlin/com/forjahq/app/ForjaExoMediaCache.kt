@@ -49,6 +49,20 @@ object ForjaExoMediaCache {
     }
 
     /**
+     * Build the cache off the main thread before the first open.
+     *
+     * [SimpleCache] loads its span index under its own lock; the first
+     * [CacheDataSource] read blocks until that finishes. Constructing it at
+     * plugin attach moves that work (plus the SQLite open) out of the Play →
+     * first-frame window. Idempotent; [wrap] still constructs on demand when
+     * the warm-up has not run.
+     */
+    fun warm(context: Context) {
+        if (cache != null) return
+        Thread({ cache(context) }, "ForjaExo:cache-warm").start()
+    }
+
+    /**
      * Loopback streams (librqbit torrents, the Rust `/hls-proxy`) already read
      * from local storage — caching them would just double the writes.
      */
