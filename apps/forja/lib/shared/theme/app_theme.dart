@@ -503,8 +503,15 @@ class _FocusableControlState extends State<FocusableControl>
     // leading padding so the next cards stay visible. keepVisibleAtEnd used
     // to park the focused card clipped at the right edge. Chip strips / top
     // bars keep the nudge-by-clipped-edge path below.
+    // Column-memory landing (↑/↓ from a neighbor row): keep the landed card
+    // where it is so it stays under the card the user came from; the next
+    // ←/→ re-aligns. Only the keepVisible nudge below runs.
+    final landedByColumn = ShellTvFocusCoordinator.takeVerticalLanding(
+      _effectiveNode,
+    );
     final zone = widget.tvMeta?.zone;
     final columnAligned =
+        !landedByColumn &&
         (zone == null || zone == ShellTvZone.row) &&
         shellTvAlignRowFocusColumn(
           scrollContext,

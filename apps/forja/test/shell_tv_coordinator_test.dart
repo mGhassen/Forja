@@ -15,6 +15,7 @@ import 'package:forja/shell/tv/media_details_tv_scope.dart';
 import 'package:forja/shell/tv/shell_tv_app_exit.dart';
 import 'package:forja/shell/tv/shell_tv_coordinator.dart';
 import 'package:forja/shell/tv/shell_tv_focus.dart';
+import 'package:forja/shell/tv/tv_focus_graph.dart';
 
 import 'package:rust/rust.dart';
 
@@ -139,7 +140,9 @@ void main() {
     settings.dispose();
   });
 
-  testWidgets('row down restores next row focus history', (tester) async {
+  testWidgets('row down lands on the same column, not the remembered index', (
+    tester,
+  ) async {
     final nodes = List.generate(3, (i) => FocusNode(debugLabel: 'a-$i'));
     final nodesB = List.generate(3, (i) => FocusNode(debugLabel: 'b-$i'));
 
@@ -222,7 +225,10 @@ void main() {
       isTrue,
     );
     await tester.pump();
-    expect(nodesB[2].hasFocus, isTrue);
+    // Both rows are 40 px tiles from x = 0: A[1] sits over B[1]. B remembered
+    // index 2 is only the fallback when B has no mounted geometry.
+    expect(nodesB[1].hasFocus, isTrue);
+    expect(nodesB[2].hasFocus, isFalse);
 
     for (final n in [...nodes, ...nodesB]) {
       n.dispose();
@@ -2169,4 +2175,465 @@ void main() {
       outer.dispose();
     },
   );
+
+  // --- Column memory (RFC-122 T05): ↑/↓ land on the item nearest in x ---
+
+  group('vertical column memory', () {
+    const tab = 'home';
+
+    Widget rowOf(List<FocusNode> nodes, double width, {double leading = 0}) {
+      return Row(
+        children: [
+          if (leading > 0) SizedBox(width: leading),
+          for (final n in nodes)
+            Focus(
+              focusNode: n,
+              child: SizedBox(width: width, height: 40),
+            ),
+        ],
+      );
+    }
+
+    void register(
+      String rowId,
+      int sortOrder,
+      List<FocusNode> nodes, {
+      VoidCallback? onFocusDown,
+    }) {
+      for (var i = 0; i < nodes.length; i++) {
+        ShellTvFocusCoordinator.registerItemNode(
+          tabId: tab,
+          rowId: rowId,
+          index: i,
+          node: nodes[i],
+        );
+      }
+      shellTvRegisterRow(
+        tabId: tab,
+        rowId: rowId,
+        sortOrder: sortOrder,
+        itemCount: nodes.length,
+        onFocusDown: onFocusDown,
+      );
+    }
+
+    List<FocusNode> nodesNamed(String prefix, int count) =>
+        List.generate(count, (i) => FocusNode(debugLabel: '$prefix-$i'));
+
+    setUp(() => ShellTvFocusCoordinator.clearTab(tab));
+    tearDown(() => ShellTvFocusCoordinator.clearTab(tab));
+
+    testWidgets('↓ lands on the nearest-x item, ↑ returns to the origin', (
+      tester,
+    ) async {
+      // A: 8 × 100 px (centers 50 … 750). B: 6 × 120 px (centers 60 … 660).
+      final a = nodesNamed('a', 8);
+      final b = nodesNamed('b', 6);
+      register('col-a', 0, a);
+      register('col-b', 1, b);
+
+      await tester.pumpWidget(
+        _wrapTv(Column(children: [rowOf(a, 100), rowOf(b, 120)])),
+      );
+      await tester.pump();
+
+      // B remembers index 0 — column memory must beat it.
+      ShellTvFocusCoordinator.setRowLastFocusedIndex(tab, 'col-b', 0);
+      a[5].requestFocus();
+      await tester.pump();
+
+      expect(
+        ShellTvFocusCoordinator.moveVerticalInTab(
+          tabId: tab,
+          rowId: 'col-a',
+          currentIndex: 5,
+          down: true,
+        ),
+        isTrue,
+      );
+      await tester.pump();
+      // A[5] center 550 → B[4] center 540 (B[5] is 660).
+      expect(b[4].hasFocus, isTrue);
+      expect(
+        ShellTvFocusCoordinator.rowHandle(tab, 'col-b')!.lastFocusedIndex,
+        4,
+      );
+
+      expect(
+        ShellTvFocusCoordinator.moveVerticalInTab(
+          tabId: tab,
+          rowId: 'col-b',
+          currentIndex: 4,
+          down: false,
+        ),
+        isTrue,
+      );
+      await tester.pump();
+      // B[4] center 540 → A[5] center 550 (A[4] is 450).
+      expect(a[5].hasFocus, isTrue);
+
+      for (final n in [...a, ...b]) {
+        n.dispose();
+      }
+    });
+
+    testWidgets('equidistant items → lower index', (tester) async {
+      // A: 8 × 100 (A[1] center 150). B: 6 × 100 offset 50 (centers 100, 200 …).
+      final a = nodesNamed('a', 8);
+      final b = nodesNamed('b', 6);
+      register('col-a', 0, a);
+      register('col-b', 1, b);
+
+      await tester.pumpWidget(
+        _wrapTv(Column(children: [rowOf(a, 100), rowOf(b, 100, leading: 50)])),
+      );
+      await tester.pump();
+      a[1].requestFocus();
+      await tester.pump();
+
+      expect(
+        ShellTvFocusCoordinator.moveVerticalInTab(
+          tabId: tab,
+          rowId: 'col-a',
+          currentIndex: 1,
+          down: true,
+        ),
+        isTrue,
+      );
+      await tester.pump();
+      expect(b[0].hasFocus, isTrue);
+
+      for (final n in [...a, ...b]) {
+        n.dispose();
+      }
+    });
+
+    testWidgets('pack focusDown picks the row, column memory picks the item', (
+      tester,
+    ) async {
+      final a = nodesNamed('a', 8);
+      final skipped = nodesNamed('s', 8);
+      final b = nodesNamed('b', 6);
+      // Mirrors the pack edge resolver's default landing (`index: 0`).
+      register(
+        'col-a',
+        0,
+        a,
+        onFocusDown: () => ShellTvFocusCoordinator.focusRowItemRemembered(
+          tab,
+          'col-b',
+          index: 0,
+        ),
+      );
+      register('col-skipped', 1, skipped);
+      register('col-b', 2, b);
+
+      await tester.pumpWidget(
+        _wrapTv(
+          Column(children: [rowOf(a, 100), rowOf(skipped, 100), rowOf(b, 120)]),
+        ),
+      );
+      await tester.pump();
+      a[5].requestFocus();
+      await tester.pump();
+
+      expect(
+        ShellTvFocusCoordinator.moveVerticalInTab(
+          tabId: tab,
+          rowId: 'col-a',
+          currentIndex: 5,
+          down: true,
+        ),
+        isTrue,
+      );
+      await tester.pump();
+      expect(b[4].hasFocus, isTrue, reason: 'hook row, nearest column');
+      expect(skipped.any((n) => n.hasFocus), isFalse);
+
+      for (final n in [...a, ...skipped, ...b]) {
+        n.dispose();
+      }
+    });
+
+    testWidgets('setVerticalColumnMemory(false) pins the remembered index', (
+      tester,
+    ) async {
+      final a = nodesNamed('a', 8);
+      final b = nodesNamed('b', 6);
+      register('col-a', 0, a);
+      register('col-b', 1, b);
+
+      await tester.pumpWidget(
+        _wrapTv(Column(children: [rowOf(a, 100), rowOf(b, 120)])),
+      );
+      await tester.pump();
+
+      ShellTvFocusCoordinator.setVerticalColumnMemory(tab, false);
+      ShellTvFocusCoordinator.setRowLastFocusedIndex(tab, 'col-b', 1);
+      a[5].requestFocus();
+      await tester.pump();
+
+      expect(
+        ShellTvFocusCoordinator.moveVerticalInTab(
+          tabId: tab,
+          rowId: 'col-a',
+          currentIndex: 5,
+          down: true,
+        ),
+        isTrue,
+      );
+      await tester.pump();
+      expect(b[1].hasFocus, isTrue);
+
+      ShellTvFocusCoordinator.setVerticalColumnMemory(tab, true);
+      for (final n in [...a, ...b]) {
+        n.dispose();
+      }
+    });
+
+    testWidgets('unmounted target row falls back to its remembered index', (
+      tester,
+    ) async {
+      final a = nodesNamed('a', 8);
+      final b = nodesNamed('b', 6);
+      register('col-a', 0, a);
+      register('col-b', 1, b);
+
+      // B is registered (lazy row) but not in the tree yet.
+      await tester.pumpWidget(_wrapTv(Column(children: [rowOf(a, 100)])));
+      await tester.pump();
+      ShellTvFocusCoordinator.setRowLastFocusedIndex(tab, 'col-b', 1);
+      a[5].requestFocus();
+      await tester.pump();
+
+      expect(
+        ShellTvFocusCoordinator.moveVerticalInTab(
+          tabId: tab,
+          rowId: 'col-a',
+          currentIndex: 5,
+          down: true,
+        ),
+        isTrue,
+      );
+      // Row mounts during the post-frame retries.
+      await tester.pumpWidget(
+        _wrapTv(Column(children: [rowOf(a, 100), rowOf(b, 120)])),
+      );
+      await tester.pump();
+      await tester.pump();
+      expect(b[1].hasFocus, isTrue);
+
+      for (final n in [...a, ...b]) {
+        n.dispose();
+      }
+    });
+
+    testWidgets('chip strip ↓ and results ↑ follow the column', (tester) async {
+      // Chips: 5 × 160 (centers 80 … 720). Results: 8 × 100 (centers 50 … 750).
+      final chips = nodesNamed('chip', 5);
+      final results = nodesNamed('res', 8);
+      register('chips', 0, chips);
+      register('results', 1, results);
+
+      await tester.pumpWidget(
+        _wrapTv(Column(children: [rowOf(chips, 160), rowOf(results, 100)])),
+      );
+      await tester.pump();
+
+      ShellTvFocusCoordinator.setRowLastFocusedIndex(tab, 'results', 0);
+      chips[3].requestFocus();
+      await tester.pump();
+      ShellTvFocusCoordinator.onRowItemFocused(
+        tabId: tab,
+        rowId: 'chips',
+        index: 3,
+        node: chips[3],
+        zone: ShellTvZone.chipStrip,
+      );
+
+      expect(
+        ShellTvFocusCoordinator.focusFromChipStripDown(
+          tabId: tab,
+          chipRowId: 'chips',
+          resultsRowId: 'results',
+        ),
+        isTrue,
+      );
+      await tester.pump();
+      // chip[3] center 560 → results[5] center 550.
+      expect(results[5].hasFocus, isTrue);
+
+      expect(
+        ShellTvFocusCoordinator.focusFromResultsRowUp(
+          tabId: tab,
+          chipRowId: 'chips',
+        ),
+        isTrue,
+      );
+      await tester.pump();
+      expect(chips[3].hasFocus, isTrue);
+
+      // OK on the selected chip restores results history instead.
+      ShellTvFocusCoordinator.setRowLastFocusedIndex(tab, 'results', 0);
+      expect(
+        ShellTvFocusCoordinator.focusFromChipStripDown(
+          tabId: tab,
+          chipRowId: 'chips',
+          resultsRowId: 'results',
+          columnMemory: false,
+        ),
+        isTrue,
+      );
+      await tester.pump();
+      expect(results[0].hasFocus, isTrue);
+
+      for (final n in [...chips, ...results]) {
+        n.dispose();
+      }
+    });
+
+    testWidgets('grid target keeps its remembered tile', (tester) async {
+      final a = nodesNamed('a', 8);
+      final g = nodesNamed('g', 6);
+      register('col-a', 0, a);
+      register('grid-b', 1, g);
+      ShellTvFocusCoordinator.markRowGrid(tab, 'grid-b');
+
+      await tester.pumpWidget(
+        _wrapTv(Column(children: [rowOf(a, 100), rowOf(g, 120)])),
+      );
+      await tester.pump();
+      ShellTvFocusCoordinator.setRowLastFocusedIndex(tab, 'grid-b', 1);
+      a[5].requestFocus();
+      await tester.pump();
+
+      expect(
+        ShellTvFocusCoordinator.moveVerticalInTab(
+          tabId: tab,
+          rowId: 'col-a',
+          currentIndex: 5,
+          down: true,
+        ),
+        isTrue,
+      );
+      await tester.pump();
+      expect(g[1].hasFocus, isTrue, reason: 'grids are not column targets');
+
+      for (final n in [...a, ...g]) {
+        n.dispose();
+      }
+    });
+
+    testWidgets('landed card keeps its visual column — no focus-column scroll', (
+      tester,
+    ) async {
+      // Two leanback rails, viewport 800: padding-left 100, 10 × 100 px cards
+      // (content 1100, max scroll 300). FocusableControl aligns a focused
+      // card to the leading column on ←/→ — a column-memory landing must not.
+      const cards = 10;
+      const cardW = 100.0;
+      const lead = 100.0;
+      final a = nodesNamed('a', cards);
+      final b = nodesNamed('b', cards);
+      final scrollA = ScrollController();
+      final scrollB = ScrollController();
+
+      Widget rail(
+        String rowId,
+        int sortOrder,
+        List<FocusNode> nodes,
+        ScrollController scroll,
+      ) {
+        return TvKitRow(
+          tabId: tab,
+          rowId: rowId,
+          sortOrder: sortOrder,
+          itemCount: cards,
+          child: SizedBox(
+            width: 800,
+            height: 120,
+            child: ListView.builder(
+              controller: scroll,
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.only(left: lead),
+              // Mount every card so far indices can be focused directly.
+              // ignore: deprecated_member_use
+              cacheExtent: 4000,
+              itemCount: cards,
+              itemBuilder: (_, i) => FocusableControl(
+                focusNode: nodes[i],
+                scaleOnFocus: 1.0,
+                showFocusBorder: false,
+                tvMeta: ShellTvFocusMeta(
+                  tabId: tab,
+                  zone: ShellTvZone.row,
+                  rowId: rowId,
+                  itemIndex: i,
+                ),
+                onTap: () {},
+                child: const SizedBox(width: cardW, height: 100),
+              ),
+            ),
+          ),
+        );
+      }
+
+      await tester.pumpWidget(
+        _wrapTv(
+          Column(
+            children: [
+              rail('rail-a', 0, a, scrollA),
+              rail('rail-b', 1, b, scrollB),
+            ],
+          ),
+        ),
+      );
+      await tester.pump();
+
+      // ←/→ path: A[7] aligns to the column, clamped at max scroll (300) →
+      // A[7] sits at x 500 … 600 (center 550).
+      a[7].requestFocus();
+      await tester.pumpAndSettle();
+      expect(scrollA.offset, 300);
+      expect(scrollB.offset, 0);
+
+      expect(
+        ShellTvFocusCoordinator.moveVerticalInTab(
+          tabId: tab,
+          rowId: 'rail-a',
+          currentIndex: 7,
+          down: true,
+        ),
+        isTrue,
+      );
+      await tester.pumpAndSettle();
+      // B[4] (unscrolled: x 500 … 600) is the card under A[7] and B stays put.
+      expect(b[4].hasFocus, isTrue);
+      expect(scrollB.offset, 0, reason: 'landing must not scroll B');
+
+      expect(
+        ShellTvFocusCoordinator.moveVerticalInTab(
+          tabId: tab,
+          rowId: 'rail-b',
+          currentIndex: 4,
+          down: false,
+        ),
+        isTrue,
+      );
+      await tester.pumpAndSettle();
+      expect(a[7].hasFocus, isTrue, reason: '↑ returns to the origin card');
+      expect(scrollA.offset, 300);
+
+      // A plain focus gain afterwards aligns again (marker was consumed).
+      b[2].requestFocus();
+      await tester.pumpAndSettle();
+      expect(scrollB.offset, greaterThan(0));
+
+      scrollA.dispose();
+      scrollB.dispose();
+      for (final n in [...a, ...b]) {
+        n.dispose();
+      }
+    });
+  });
 }

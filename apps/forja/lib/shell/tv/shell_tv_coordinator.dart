@@ -69,6 +69,10 @@ class ShellTvRowHandle {
   final ShellTvRowOrientation orientation;
   bool isFirstRow;
   bool isLastRow;
+
+  /// Set by [TvGrid] after registration — grids keep their own column /
+  /// remembered-tile logic and are never column-memory landing targets.
+  bool isGrid = false;
   final VoidCallback? onFocusUp;
   final VoidCallback? onFocusDown;
 }
@@ -217,10 +221,14 @@ abstract final class ShellTvFocusCoordinator {
   }
 
   /// Scroll the hub page, then land on the next/prev registered row.
+  ///
+  /// [columnX] — departing item's x-center (column memory) carried across the
+  /// post-frame retries so the late-mounted row lands on the nearest column.
   static bool _scrollPageAndFocusNeighbor({
     required String tabId,
     required int sortOrder,
     required bool down,
+    double? columnX,
   }) {
     final moved = _nudgeTabPage(tabId, down: down);
     if (!moved) {
@@ -230,9 +238,13 @@ abstract final class ShellTvFocusCoordinator {
     var tries = 0;
     const maxTries = 16;
     void attempt() {
-      final ok = down
-          ? focusFirstContentRowBelow(tabId, sortOrder)
-          : focusFirstContentRowAbove(tabId, sortOrder);
+      final ok = _withColumnMemory(
+        tabId,
+        columnX,
+        () => down
+            ? focusFirstContentRowBelow(tabId, sortOrder)
+            : focusFirstContentRowAbove(tabId, sortOrder),
+      );
       if (ok) return;
       if (tries++ >= maxTries) return;
       // Gate / sliver may need another nudge after the first paint.
@@ -255,6 +267,180 @@ abstract final class ShellTvFocusCoordinator {
     _tabPageScroll.remove(tabId);
     _pageBackOnRowLeftEdge.remove(tabId);
     _tabPreferCustomNavRestore.remove(tabId);
+    _columnMemoryOff.remove(tabId);
+  }
+
+  // --- Column memory: ↑/↓ land on the item nearest the departing x ---
+
+  /// Tabs that pinned vertical landings to each row's remembered index.
+  static final Set<String> _columnMemoryOff = {};
+
+  /// Departing item's global x-center for the synchronous span of a vertical
+  /// move (`moveVerticalInTab`, chip ↓, grid first-row ↑). Pack `focusUp` /
+  /// `focusDown` hooks land through [focusRowItemRemembered], which reads it.
+  static double? _pendingColumnX;
+  static String _pendingColumnTab = '';
+
+  /// When [enabled] is false, ↑/↓ in [tabId] land on the target row's
+  /// remembered index instead of the item nearest the departing card's x.
+  /// Default: enabled (column memory) for every tab.
+  static void setVerticalColumnMemory(String tabId, bool enabled) {
+    if (tabId.isEmpty) return;
+    if (enabled) {
+      _columnMemoryOff.remove(tabId);
+    } else {
+      _columnMemoryOff.add(tabId);
+    }
+  }
+
+  static bool verticalColumnMemoryEnabled(String tabId) =>
+      !_columnMemoryOff.contains(tabId);
+
+  /// Global x-center of a mounted row item, or null when it has no geometry.
+  static double? itemCenterX(String tabId, String rowId, int index) {
+    if (index < 0) return null;
+    final node =
+        _rowHandle(tabId, rowId)?.nodeAt(index) ??
+        itemNode(tabId, rowId, index);
+    return _nodeCenterX(node);
+  }
+
+  static double? _nodeCenterX(FocusNode? node) {
+    final ctx = node?.context;
+    if (ctx == null || !ctx.mounted) return null;
+    final box = ctx.findRenderObject();
+    if (box is! RenderBox || !box.hasSize || !box.attached) return null;
+    return box.localToGlobal(box.size.center(Offset.zero)).dx;
+  }
+
+  /// Departing x for a vertical move out of [handle] at [index]; null when
+  /// the tab pinned remembered landings or the item has no geometry.
+  static double? _departingColumnX(ShellTvRowHandle handle, int index) {
+    if (_columnMemoryOff.contains(handle.tabId)) return null;
+    if (index < 0 || index >= handle.itemCount) return null;
+    final node = handle.nodeAt(index);
+    final cx = _nodeCenterX(node);
+    if (cx == null) return null;
+    return _settledCenterX(node!.context!, cx);
+  }
+
+  /// Mounted item of [handle] whose x-center is nearest [x]; ties → lower
+  /// index. Null when no item has geometry (lazy row not built yet).
+  ///
+  /// Scans the row's registered item nodes (only mounted cards register, so
+  /// a lazy rail with thousands of tiles costs its mounted count, not
+  /// `itemCount` key allocations). Rows whose cards never registered item
+  /// nodes (handle-only `nodeAt`) fall back to the index scan.
+  static int? _nearestColumnIndex(ShellTvRowHandle handle, double x) {
+    int? best;
+    var bestDistance = double.infinity;
+    void consider(int index, FocusNode? node) {
+      if (index < 0 || index >= handle.itemCount) return;
+      final cx = _nodeCenterX(node);
+      if (cx == null) return;
+      final distance = (cx - x).abs();
+      if (distance < bestDistance ||
+          (distance == bestDistance && best != null && index < best!)) {
+        bestDistance = distance;
+        best = index;
+      }
+    }
+
+    final prefix = '${handle.tabId}:${handle.rowId}:';
+    var sawItemNode = false;
+    for (final entry in _itemNodes.entries) {
+      if (!entry.key.startsWith(prefix)) continue;
+      final index = int.tryParse(entry.key.substring(prefix.length));
+      if (index == null) continue;
+      sawItemNode = true;
+      consider(index, entry.value);
+    }
+    if (!sawItemNode) {
+      for (var i = 0; i < handle.itemCount; i++) {
+        consider(i, handle.nodeAt(i));
+      }
+    }
+    return best;
+  }
+
+  /// Column-memory landing index for [handle], or null to use the remembered
+  /// index: no pending column, tab opted out, vertical panel list, grid
+  /// (keeps its remembered tile), or chrome row (sortOrder < 0 — top bar /
+  /// shelf chips keep their own memory).
+  static int? _columnTarget(ShellTvRowHandle handle) {
+    final x = _pendingColumnX;
+    if (x == null || _pendingColumnTab != handle.tabId) return null;
+    if (_columnMemoryOff.contains(handle.tabId)) return null;
+    if (handle.orientation != ShellTvRowOrientation.horizontal) return null;
+    if (handle.isGrid) return null;
+    if (handle.sortOrder < 0) return null;
+    return _nearestColumnIndex(handle, x);
+  }
+
+  /// Node focused by a column-memory landing. [FocusableControl] consumes it
+  /// in its ensure-visible step and skips the leading-column scroll, so the
+  /// landed card stays in the same visual column as the card it came from.
+  /// Survives [_withColumnMemory]'s restore: FocusManager applies focus in a
+  /// microtask, after the move's synchronous span.
+  static FocusNode? _verticalLandingNode;
+
+  static void _noteVerticalLanding(String tabId, FocusNode node) {
+    if (_pendingColumnX != null && _pendingColumnTab == tabId) {
+      _verticalLandingNode = node;
+    }
+  }
+
+  /// True once when [node] was just focused by a column-memory landing.
+  /// Any call clears the marker, so a failed landing cannot leak into the
+  /// next focus gain.
+  static bool takeVerticalLanding(FocusNode node) {
+    final landed = _verticalLandingNode;
+    _verticalLandingNode = null;
+    return landed != null && identical(landed, node);
+  }
+
+  /// In-flight focus-column tween target per horizontal rail position
+  /// ([shellTvAlignRowFocusColumn]), so a ↓ pressed mid-tween measures the
+  /// departing card where it will settle, not where it is this frame.
+  static final Expando<double> _railTweenTarget = Expando<double>(
+    'shellTvRailTweenTarget',
+  );
+
+  static void _noteRailTweenTarget(ScrollPosition position, double? target) {
+    _railTweenTarget[position] = target;
+  }
+
+  /// [centerX] corrected by the remaining distance of a running rail tween.
+  static double _settledCenterX(BuildContext ctx, double centerX) {
+    final scrollable = Scrollable.maybeOf(ctx);
+    if (scrollable == null) return centerX;
+    final position = scrollable.position;
+    if (axisDirectionToAxis(position.axisDirection) != Axis.horizontal) {
+      return centerX;
+    }
+    final target = _railTweenTarget[position];
+    if (target == null || !position.hasPixels) return centerX;
+    if (!position.isScrollingNotifier.value) return centerX;
+    final remaining = target - position.pixels;
+    // LTR rail: content moves left as pixels grow; RTL (axis left) the reverse.
+    return position.axisDirection == AxisDirection.left
+        ? centerX + remaining
+        : centerX - remaining;
+  }
+
+  /// Run [body] with [x] as the pending column for [tabId] (restores the
+  /// previous pending column after, so nested moves do not leak).
+  static T _withColumnMemory<T>(String tabId, double? x, T Function() body) {
+    final prevX = _pendingColumnX;
+    final prevTab = _pendingColumnTab;
+    _pendingColumnX = x;
+    _pendingColumnTab = tabId;
+    try {
+      return body();
+    } finally {
+      _pendingColumnX = prevX;
+      _pendingColumnTab = prevTab;
+    }
   }
 
   /// Drop pack enter/restore land callbacks (hero [defaultFocus] remains).
@@ -1314,6 +1500,14 @@ abstract final class ShellTvFocusCoordinator {
     handle.itemCount = count;
   }
 
+  /// Flag [rowId] as a grid ([ShellTvRowHandle.isGrid]) — call right after
+  /// registering it; a re-registration resets the flag.
+  static void markRowGrid(String tabId, String rowId) {
+    final handle = _rowHandle(tabId, rowId);
+    if (handle == null) return;
+    handle.isGrid = true;
+  }
+
   /// Clears remembered D-pad index for a row (next restore lands on [index]).
   static void setRowLastFocusedIndex(String tabId, String rowId, int index) {
     final handle = _rowHandle(tabId, rowId);
@@ -1389,6 +1583,7 @@ abstract final class ShellTvFocusCoordinator {
       final node = handle.nodeAt(candidate);
       if (node == null || !node.canRequestFocus) continue;
       handle.lastFocusedIndex = candidate;
+      _noteVerticalLanding(tabId, node);
       saveFocus(
         tabId,
         ShellTvFocusMemory(
@@ -1414,6 +1609,7 @@ abstract final class ShellTvFocusCoordinator {
     final node = handle?.nodeAt(index) ?? itemNode(tabId, rowId, index);
     if (node == null || !_canRequest(node)) return false;
     if (handle != null) handle.lastFocusedIndex = index;
+    _noteVerticalLanding(tabId, node);
     saveFocus(
       tabId,
       ShellTvFocusMemory(
@@ -1437,34 +1633,48 @@ abstract final class ShellTvFocusCoordinator {
     return focusRowItem(tabId, next.rowId, target);
   }
 
-  /// Focus results row from chip strip - restores results history, not chip index.
+  /// Focus results row from chip strip.
+  ///
+  /// [columnMemory] (D-pad ↓): land on the result nearest the chip's x; false
+  /// (OK on the selected chip) restores the results row's remembered index.
   static bool focusFromChipStripDown({
     required String tabId,
     required String chipRowId,
     required String resultsRowId,
+    bool columnMemory = true,
   }) {
-    final results = _rowHandle(tabId, resultsRowId);
-    if (results != null && results.itemCount > 0) {
-      if (focusRowItemRemembered(tabId, resultsRowId)) return true;
-    }
     final chip = _rowHandle(tabId, chipRowId);
-    if (chip == null) return false;
-    return moveVerticalInTab(
-      tabId: tabId,
-      rowId: chipRowId,
-      currentIndex: chip.lastFocusedIndex,
-      down: true,
-    );
+    final x = chip == null || !columnMemory
+        ? null
+        : _departingColumnX(chip, chip.lastFocusedIndex);
+    return _withColumnMemory(tabId, x, () {
+      final results = _rowHandle(tabId, resultsRowId);
+      if (results != null && results.itemCount > 0) {
+        if (focusRowItemRemembered(tabId, resultsRowId)) return true;
+      }
+      if (chip == null) return false;
+      return moveVerticalInTab(
+        tabId: tabId,
+        rowId: chipRowId,
+        currentIndex: chip.lastFocusedIndex,
+        down: true,
+      );
+    });
   }
 
-  /// Focus chip strip from results row - restores chip history, not card index.
+  /// Focus chip strip from results row — the chip nearest the focused card's
+  /// x (column memory), else the strip's remembered chip.
   static bool focusFromResultsRowUp({
     required String tabId,
     required String chipRowId,
   }) {
     final chip = _rowHandle(tabId, chipRowId);
     if (chip == null || chip.itemCount <= 0) return false;
-    final idx = chip.lastFocusedIndex.clamp(0, chip.itemCount - 1);
+    final mem = memoryFor(tabId);
+    final x = _columnMemoryOff.contains(tabId) ? null : _nodeCenterX(mem?.node);
+    final idx =
+        _withColumnMemory(tabId, x, () => _columnTarget(chip)) ??
+        chip.lastFocusedIndex.clamp(0, chip.itemCount - 1);
     return focusRowItem(tabId, chipRowId, idx);
   }
 
@@ -1552,7 +1762,12 @@ abstract final class ShellTvFocusCoordinator {
       // First-row up / last-row down: trap — panels hop via ←/→ only.
       if (nextRow < 0) {
         if (handle.onFocusUp != null) {
-          handle.onFocusUp!();
+          // Grid → row above: land on the column under the departing tile.
+          _withColumnMemory(
+            tabId,
+            _departingColumnX(handle, currentIndex),
+            () => handle.onFocusUp!(),
+          );
           return true;
         }
         return true;
@@ -1610,6 +1825,13 @@ abstract final class ShellTvFocusCoordinator {
     );
   }
 
+  /// ↑/↓ out of a horizontal row or chip strip.
+  ///
+  /// Pack `focusUp` / `focusDown` (or the sortOrder walk) decide **which row**;
+  /// column memory decides **which item**: the target row lands on the mounted
+  /// item nearest the departing card's x-center, falling back to the row's
+  /// remembered index when nothing is mounted or the tab opted out via
+  /// [setVerticalColumnMemory].
   static bool moveVerticalInTab({
     required String tabId,
     required String rowId,
@@ -1618,7 +1840,28 @@ abstract final class ShellTvFocusCoordinator {
   }) {
     final handle = _rowHandle(tabId, rowId);
     if (handle == null) return false;
+    // Nested call (chip ↓ fallback) keeps the outer pending column.
+    final x = _pendingColumnTab == tabId && _pendingColumnX != null
+        ? _pendingColumnX
+        : _departingColumnX(handle, currentIndex);
+    return _withColumnMemory(
+      tabId,
+      x,
+      () => _moveVerticalInTab(
+        handle: handle,
+        tabId: tabId,
+        currentIndex: currentIndex,
+        down: down,
+      ),
+    );
+  }
 
+  static bool _moveVerticalInTab({
+    required ShellTvRowHandle handle,
+    required String tabId,
+    required int currentIndex,
+    required bool down,
+  }) {
     if (!down) {
       // Explicit onFocusUp (e.g. Featured → View details) when set.
       if (handle.onFocusUp != null) {
@@ -1655,10 +1898,9 @@ abstract final class ShellTvFocusCoordinator {
             return focusHero(revealFull: true, tabId: tabId);
           }
           if (candidate.itemCount <= 0) continue;
-          final target = candidate.lastFocusedIndex.clamp(
-            0,
-            candidate.itemCount - 1,
-          );
+          final target =
+              _columnTarget(candidate) ??
+              candidate.lastFocusedIndex.clamp(0, candidate.itemCount - 1);
           if (focusRowItem(tabId, candidate.rowId, target)) return true;
         }
         cursor = prevSort;
@@ -1683,10 +1925,12 @@ abstract final class ShellTvFocusCoordinator {
           tabId: tabId,
           sortOrder: handle.sortOrder,
           down: true,
+          columnX: _pendingColumnX,
         );
       }
       if (next.itemCount > 0) {
-        // Remembered index + lazy scroll (Live Sports schedule under shelf).
+        // Nearest column, else remembered index + lazy scroll (Live Sports
+        // schedule under shelf).
         return focusRowItemRemembered(tabId, next.rowId);
       }
       downCursor = next.sortOrder;
@@ -1746,6 +1990,10 @@ abstract final class ShellTvFocusCoordinator {
 
   /// Focus [rowId] at [index] (or [ShellTvRowHandle.lastFocusedIndex]).
   ///
+  /// During a vertical move ([moveVerticalInTab], chip ↓, grid first-row ↑)
+  /// the mounted item nearest the departing x-center wins (column memory);
+  /// [index] / the remembered index are the fallback when nothing is mounted.
+  ///
   /// Lazy catalogs often dispose off-screen tiles — scroll then retry across
   /// frames so ↓ from chrome / chip strips can return to the prior item.
   static bool focusRowItemRemembered(
@@ -1756,10 +2004,11 @@ abstract final class ShellTvFocusCoordinator {
   }) {
     final handle = _rowHandle(tabId, rowId);
     if (handle == null || handle.itemCount <= 0) return false;
-    final target = (index ?? handle.lastFocusedIndex).clamp(
-      0,
-      handle.itemCount - 1,
-    );
+    // Inside a vertical move the nearest mounted column wins over [index] /
+    // the remembered index (pack `focusDown` passes `index: 0` as its
+    // default landing; column memory is the better default).
+    final target = (_columnTarget(handle) ?? index ?? handle.lastFocusedIndex)
+        .clamp(0, handle.itemCount - 1);
     if (focusRowItemExact(tabId, rowId, target)) return true;
 
     _invokeRowScroll(tabId, rowId, target);
@@ -2324,14 +2573,19 @@ bool shellTvAlignRowFocusColumn(BuildContext context, {bool animate = true}) {
     position.minScrollExtent,
     position.maxScrollExtent,
   );
-  if ((target - position.pixels).abs() < 0.5) return true;
+  if ((target - position.pixels).abs() < 0.5) {
+    ShellTvFocusCoordinator._noteRailTweenTarget(position, null);
+    return true;
+  }
   if (animate) {
+    ShellTvFocusCoordinator._noteRailTweenTarget(position, target);
     position.animateTo(
       target,
       duration: ShellTokens.tvKitRowFocusScrollAnimation,
       curve: Curves.easeOutCubic,
     );
   } else {
+    ShellTvFocusCoordinator._noteRailTweenTarget(position, null);
     position.jumpTo(target);
   }
   return true;

@@ -342,10 +342,12 @@ class _TvChipStripState extends State<TvChipStrip> {
         resultsRowId: widget.resultsRowId,
       ),
       onSelectAlreadySelected: () {
+        // OK on the selected chip: results history, not the chip's column.
         ShellTvFocusCoordinator.focusFromChipStripDown(
           tabId: tabId,
           chipRowId: widget.rowId,
           resultsRowId: widget.resultsRowId,
+          columnMemory: false,
         );
       },
     );
@@ -546,6 +548,9 @@ class _TvGridState extends State<TvGrid> {
         owner: this,
       );
     }
+    // Grids keep their remembered tile on ↑/↓ from a neighbor (column
+    // memory applies to horizontal rails and chip strips only).
+    ShellTvFocusCoordinator.markRowGrid(tabId, widget.rowId);
     _registeredTabId = tabId;
     _registeredRowId = widget.rowId;
   }
