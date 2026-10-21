@@ -2,6 +2,8 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:android_intent_plus/android_intent.dart';
 import 'package:android_intent_plus/flag.dart';
+import 'package:forja/shared/playback/playable_stream_url.dart';
+import 'package:forja/shared/utils/redact_url.dart';
 
 /// Android-specific intent launcher using android_intent_plus.
 class AndroidPlayerLauncher {
@@ -14,6 +16,15 @@ class AndroidPlayerLauncher {
     Map<String, dynamic>? extras,
   }) async {
     if (!Platform.isAndroid) return false;
+    // Only http(s) / loopback / downloads-folder files become an ACTION_VIEW
+    // intent. `content:`, `intent:`, `file:` elsewhere never leave the app.
+    if (!isPlayableStreamUrl(url)) {
+      debugPrint(
+        '[AndroidPlayerLauncher] refused unsupported stream address '
+        '(${Uri.tryParse(url.trim())?.scheme ?? 'no scheme'})',
+      );
+      return false;
+    }
 
     try {
       final arguments = <String, dynamic>{};
@@ -30,7 +41,10 @@ class AndroidPlayerLauncher {
       );
 
       await intent.launch();
-      debugPrint('[AndroidPlayerLauncher] Launched ${packageName ?? "system chooser"} with $url');
+      debugPrint(
+        '[AndroidPlayerLauncher] Launched ${packageName ?? "system chooser"} '
+        'with ${redactUrlCredentials(url)}',
+      );
       return true;
     } catch (e) {
       debugPrint('[AndroidPlayerLauncher] Error: $e');

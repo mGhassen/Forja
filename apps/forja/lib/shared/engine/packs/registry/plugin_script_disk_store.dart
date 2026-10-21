@@ -177,12 +177,37 @@ abstract final class PluginScriptDiskStore {
     }
   }
 
+  /// Plugin ids are one path segment: ASCII letters / digits / `_` / `.` / `-`,
+  /// never `..`. Mirrors [PluginContract.isValidPluginId] so a crafted id can
+  /// not escape `plugins/` even if a manifest skipped validation.
+  static final RegExp _safePluginId = RegExp(r'^[A-Za-z0-9][A-Za-z0-9_.-]*$');
+
+  @visibleForTesting
+  static bool isSafePluginId(String pluginId) {
+    final id = pluginId.trim();
+    return id.isNotEmpty && !id.contains('..') && _safePluginId.hasMatch(id);
+  }
+
   static Future<File> _engineScriptFile(
     String sourceUrl,
     String pluginId,
   ) async {
     final pack = await _enginePackDir(sourceUrl);
-    return File(p.join(pack.path, 'plugins', '$pluginId.js'));
+    if (!isSafePluginId(pluginId)) {
+      throw ArgumentError('unsafe plugin id: $pluginId');
+    }
+    final file = File(p.join(pack.path, 'plugins', '${pluginId.trim()}.js'));
+    return _assertWithinPack(pack, file);
+  }
+
+  /// Defense in depth: the joined path must stay under `engine/<hash>/`.
+  static File _assertWithinPack(Directory pack, File file) {
+    final root = p.normalize(pack.absolute.path);
+    final target = p.normalize(file.absolute.path);
+    if (!p.isWithin(root, target)) {
+      throw ArgumentError('path escapes pack dir: ${file.path}');
+    }
+    return file;
   }
 
   static Future<File> _enginePreludeFile(
@@ -207,7 +232,7 @@ abstract final class PluginScriptDiskStore {
   ) async {
     final pack = await _enginePackDir(sourceUrl);
     final safe = _assertSafeRelative(relative);
-    return File(p.join(pack.path, 'files', safe));
+    return _assertWithinPack(pack, File(p.join(pack.path, 'files', safe)));
   }
 
   static String _assertSafeRelative(String relative) {
@@ -371,6 +396,7 @@ abstract final class PluginScriptDiskStore {
     }
   }
 
+  /// Throws [ArgumentError] for an unsafe [pluginId] — nothing is written.
   static Future<void> saveEngineScript({
     required String sourceUrl,
     required String pluginId,

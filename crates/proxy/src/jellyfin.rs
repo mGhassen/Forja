@@ -77,7 +77,9 @@ pub async fn jellyfin_stream_handler(
             .map(|(p, _)| format!("{p}/"))
             .unwrap_or_default();
         let port = *state.listen_port.read().await;
-        let proxy_base = format!("http://127.0.0.1:{port}/jellyfin-stream");
+        // Builder appends `/jellyfin-stream`; children carry the loopback token.
+        let proxy_base = format!("http://127.0.0.1:{port}");
+        let token = state.auth_token().to_string();
 
         let rewritten = body
             .lines()
@@ -92,7 +94,14 @@ pub async fn jellyfin_stream_handler(
                                 let full_uri = resolve_jellyfin_url(uri, &base_path, &server_base);
                                 format!(
                                     "URI=\"{}\"",
-                                    build_jellyfin_proxy_url(&proxy_base, &full_uri, &auth_header)
+                                    crate::with_proxy_token(
+                                        &build_jellyfin_proxy_url(
+                                            &proxy_base,
+                                            &full_uri,
+                                            &auth_header
+                                        ),
+                                        &token,
+                                    )
                                 )
                             })
                             .into_owned();
@@ -100,7 +109,10 @@ pub async fn jellyfin_stream_handler(
                     return line.to_string();
                 }
                 let full_url = resolve_jellyfin_url(trimmed, &base_path, &server_base);
-                build_jellyfin_proxy_url(&proxy_base, &full_url, &auth_header)
+                crate::with_proxy_token(
+                    &build_jellyfin_proxy_url(&proxy_base, &full_url, &auth_header),
+                    &token,
+                )
             })
             .collect::<Vec<_>>()
             .join("\n");
@@ -108,7 +120,6 @@ pub async fn jellyfin_stream_handler(
         return Response::builder()
             .status(StatusCode::OK)
             .header(header::CONTENT_TYPE, "application/vnd.apple.mpegurl")
-            .header(header::ACCESS_CONTROL_ALLOW_ORIGIN, "*")
             .body(Body::from(rewritten))
             .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR);
     }

@@ -44,7 +44,6 @@ pub async fn subtitlecat_translate_handler(
             Ok(Response::builder()
                 .status(StatusCode::OK)
                 .header(header::CONTENT_TYPE, "application/x-subrip; charset=utf-8")
-                .header(header::ACCESS_CONTROL_ALLOW_ORIGIN, "*")
                 .header(header::CONTENT_DISPOSITION, disposition)
                 .body(axum::body::Body::from(srt))
                 .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?)

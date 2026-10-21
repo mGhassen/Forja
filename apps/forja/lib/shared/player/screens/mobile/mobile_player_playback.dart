@@ -119,7 +119,10 @@ mixin _MobilePlayerPlayback
             );
             if (_fallbackAborted(runGen)) return false;
             if (!reachable) {
-              debugPrint('[Player] Source $i failed reachability: $catalogUrl');
+              debugPrint(
+                '[Player] Source $i failed reachability: '
+                '${redactUrlCredentials(catalogUrl)}',
+              );
               _s._statusController.upsert(
                 'source-$i',
                 source.title,
@@ -151,7 +154,10 @@ mixin _MobilePlayerPlayback
           );
           if (_fallbackAborted(runGen)) return false;
           if (!opened) {
-            debugPrint('[Player] Source $i failed to open: $openUrl');
+            debugPrint(
+              '[Player] Source $i failed to open: '
+              '${redactUrlCredentials(openUrl)}',
+            );
             await _s._player.stop();
             _s._statusController.upsert(
               'source-$i',
@@ -177,7 +183,10 @@ mixin _MobilePlayerPlayback
           );
           if (_fallbackAborted(runGen)) return false;
           if (!decoded) {
-            debugPrint('[Player] Source $i opened without video: $openUrl');
+            debugPrint(
+              '[Player] Source $i opened without video: '
+              '${redactUrlCredentials(openUrl)}',
+            );
             await _s._player.stop();
             _s._statusController.upsert(
               'source-$i',
@@ -200,7 +209,10 @@ mixin _MobilePlayerPlayback
               );
           if (_fallbackAborted(runGen)) return false;
           if (!hasDuration) {
-            debugPrint('[Player] Source $i opened without duration: $openUrl');
+            debugPrint(
+              '[Player] Source $i opened without duration: '
+              '${redactUrlCredentials(openUrl)}',
+            );
             await _s._player.stop();
             _s._statusController.upsert(
               'source-$i',
@@ -259,7 +271,10 @@ mixin _MobilePlayerPlayback
             );
             if (_fallbackAborted(runGen)) return false;
             if (!opened) {
-              debugPrint('[OpenPipeline] open fail ${step.label}: $openUrl');
+              debugPrint(
+                '[OpenPipeline] open fail ${step.label}: '
+                '${redactUrlCredentials(openUrl)}',
+              );
               await _s._player.stop();
               pipeline.report(StreamOpenStepResult.openFailed);
               continue;
@@ -278,7 +293,10 @@ mixin _MobilePlayerPlayback
             );
             if (_fallbackAborted(runGen)) return false;
             if (!decoded) {
-              debugPrint('[OpenPipeline] decode fail ${step.label}: $openUrl');
+              debugPrint(
+                '[OpenPipeline] decode fail ${step.label}: '
+                '${redactUrlCredentials(openUrl)}',
+              );
               await _s._player.stop();
               pipeline.report(StreamOpenStepResult.decodeFailed);
               continue;
@@ -1069,7 +1087,10 @@ mixin _MobilePlayerPlayback
         }
         return true;
       }
-      debugPrint('[Player] Post-seek remount failed to resume: $url');
+      debugPrint(
+        '[Player] Post-seek remount failed to resume: '
+        '${redactUrlCredentials(url)}',
+      );
     } catch (e) {
       debugPrint('[Player] Post-seek remount error: $e');
     } finally {

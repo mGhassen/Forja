@@ -119,7 +119,8 @@ abstract final class PackAuthSessionHandoff {
     final expected = _expectedState;
     final pending = _pending;
     if (pending == null || expected == null || pending.isCompleted) {
-      debugPrint('[PackAuthHandoff] no waiter for $uri');
+      // Never print the query — it carries the session token.
+      debugPrint('[PackAuthHandoff] no waiter for ${uri.scheme}://$joined');
       return true;
     }
     if (state != expected) {

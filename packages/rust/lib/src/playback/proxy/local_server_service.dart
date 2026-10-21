@@ -8,10 +8,25 @@ class LocalServerService {
   factory LocalServerService() => _instance;
   LocalServerService._internal();
 
+  /// Query key the proxy checks on every media route.
+  static const proxyTokenQueryKey = 'proxy_token';
+
   int _port = 0;
+  String _token = '';
 
   int get port => _port;
   String get baseUrl => _port > 0 ? 'http://127.0.0.1:$_port' : '';
+
+  /// Per-start token every proxied media URL must carry. Empty until
+  /// [start] succeeds.
+  String get proxyToken => _token;
+
+  /// Tests: pretend the proxy is up without a native library.
+  @visibleForTesting
+  void debugConfigure({required int port, required String token}) {
+    _port = port;
+    _token = token;
+  }
 
   Future<void> start() async {
     if (_port > 0) return;
@@ -20,25 +35,39 @@ class LocalServerService {
     final rustPort = RustLib.instance.proxyStart(0);
     if (rustPort > 0) {
       _port = rustPort;
+      _token = RustLib.instance.proxyToken();
       debugPrint('[LocalServer] Rust proxy on 127.0.0.1:$rustPort');
     }
   }
 
+  /// Appends `proxy_token=` so the loopback proxy accepts the request.
+  /// Only this class builds media-route URLs; `/ext/{id}/…` carries its own
+  /// session and is exempt.
+  String _withToken(String url) {
+    if (_token.isEmpty) return url;
+    final sep = url.contains('?') ? '&' : '?';
+    return '$url$sep$proxyTokenQueryKey=${Uri.encodeQueryComponent(_token)}';
+  }
+
   String getTokyProxyUrl(String url, String id, String token, String src) {
-    return '$baseUrl/toky-proxy?url=${Uri.encodeComponent(url)}'
-        '&id=${Uri.encodeComponent(id)}'
-        '&token=${Uri.encodeComponent(token)}'
-        '&src=${Uri.encodeComponent(src)}';
+    return _withToken(
+      '$baseUrl/toky-proxy?url=${Uri.encodeComponent(url)}'
+      '&id=${Uri.encodeComponent(id)}'
+      '&token=${Uri.encodeComponent(token)}'
+      '&src=${Uri.encodeComponent(src)}',
+    );
   }
 
   String getComicProxyUrl(String url) {
-    return '$baseUrl/comic-proxy?url=${Uri.encodeComponent(url)}';
+    return _withToken('$baseUrl/comic-proxy?url=${Uri.encodeComponent(url)}');
   }
 
   String getJellyfinProxyUrl(String targetUrl, String authHeaderValue) {
-    return '$baseUrl/jellyfin-stream'
-        '?url=${Uri.encodeComponent(targetUrl)}'
-        '&auth=${Uri.encodeComponent(authHeaderValue)}';
+    return _withToken(
+      '$baseUrl/jellyfin-stream'
+      '?url=${Uri.encodeComponent(targetUrl)}'
+      '&auth=${Uri.encodeComponent(authHeaderValue)}',
+    );
   }
 
   String getHlsProxyUrl(
@@ -50,7 +79,7 @@ class LocalServerService {
         '$baseUrl/hls-proxy'
         '?url=${Uri.encodeComponent(targetUrl)}'
         '&headers=${Uri.encodeComponent(json.encode(headers))}';
-    return stripMode == null ? base : '$base&strip=$stripMode';
+    return _withToken(stripMode == null ? base : '$base&strip=$stripMode');
   }
 
   /// Path-style proxy for external players (`/ext/{id}/{entry}`).
@@ -77,6 +106,7 @@ class LocalServerService {
     if (_port > 0 && Engine.isReady) {
       RustLib.instance.proxyStop();
       _port = 0;
+      _token = '';
     }
   }
 }

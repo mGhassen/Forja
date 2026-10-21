@@ -29,6 +29,7 @@ import 'package:forja/shared/engine/runtime/open/offline_library_open.dart';
 import 'package:forja/shared/player/live/hooks/live_kit_hooks_register.dart';
 import 'package:forja/shared/engine/portals/store/portal_vault_inventory.dart';
 import 'package:forja/shared/downloads/download_service.dart';
+import 'package:forja/shared/playback/playable_stream_url.dart';
 import 'package:forja/shared/services/update/app_version.dart';
 import 'package:forja/shared/services/app/splash_sound.dart';
 import 'package:forja/shared/theme/app_theme.dart';
@@ -137,7 +138,16 @@ Future<void> _runDesktopQuit() async {
   }
 }
 
+/// Release builds print nothing through [debugPrint] — stream URLs, portal
+/// addresses, and hand-off links never reach logcat / Console. Debug and
+/// profile keep Flutter's throttled printer.
+void _silenceDebugPrintInRelease() {
+  if (!kReleaseMode) return;
+  debugPrint = (String? message, {int? wrapWidth}) {};
+}
+
 Future<void> bootstrapForja({String title = 'Forja'}) async {
+  _silenceDebugPrintInRelease();
   WidgetsFlutterBinding.ensureInitialized();
   installShellPaintHostAdapters();
   // Before any CachedNetworkImage / TMDB poster fetch (Android ≤7.0 LE trust).
@@ -169,6 +179,8 @@ Future<void> bootstrapForja({String title = 'Forja'}) async {
   await PlatformChannel.initialize();
   if (PlatformInfo.offlineDownloadsEnabled) {
     unawaited(DownloadService.instance.initialize());
+    // Players accept `file://` only under this folder.
+    unawaited(registerDownloadsAsPlayableFileRoot());
   }
   ShellTvFocusCoordinator.tvBackPolicyEnabled =
       PlatformInfo.isAndroidTv || PlatformChannel.forceAndroidTv;

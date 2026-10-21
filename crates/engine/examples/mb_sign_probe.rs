@@ -31,9 +31,7 @@ async fn fetch_text(client: &reqwest::Client, url: &str) -> Result<String, Strin
     if !resp.status().is_success() {
         return Err(format!("HTTP {} for {url}", resp.status()));
     }
-    resp.text()
-        .await
-        .map_err(|e| format!("body {url}: {e}"))
+    resp.text().await.map_err(|e| format!("body {url}: {e}"))
 }
 
 #[tokio::main]
@@ -98,6 +96,7 @@ async fn main() {
         allow_host_fallback: true,
         hops: Vec::<HopScript>::new(),
         hop_depth: 0,
+        allow_local_fetch: false,
     })
     .await;
     eprintln!(
@@ -107,7 +106,11 @@ async fn main() {
         result.error
     );
     for (i, s) in result.streams.iter().take(3).enumerate() {
-        let url = s.get("url").and_then(|v| v.as_str()).unwrap_or("").to_string();
+        let url = s
+            .get("url")
+            .and_then(|v| v.as_str())
+            .unwrap_or("")
+            .to_string();
         let mut headers: HashMap<String, String> = HashMap::new();
         if let Some(h) = s.get("headers").and_then(|v| v.as_object()) {
             for (k, v) in h {

@@ -39,6 +39,7 @@ Future<List<StreamSource>> buildProbedEngineCatalogSources({
       profile,
     );
     if (check is! StremioPlayable) continue;
+    if (!isPlayableStreamUrl(check.streamUrl)) continue;
     if (streamDrmBlockedOffAndroid(row['drm'])) continue;
     probeTotal++;
   }
@@ -49,6 +50,9 @@ Future<List<StreamSource>> buildProbedEngineCatalogSources({
       profile,
     );
     if (check is! StremioPlayable) continue;
+    // Allowlist (http(s) / loopback / downloads file) — a rejected row is
+    // skipped exactly like a failed reachability probe.
+    if (!isPlayableStreamUrl(check.streamUrl)) continue;
     // Widevine only on Android Exo (RFC-101) — skip before HTTP probe.
     if (streamDrmBlockedOffAndroid(row['drm'])) continue;
     probeOrdinal++;

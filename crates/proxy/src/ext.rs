@@ -18,6 +18,9 @@ use crate::{forward_response, parse_custom_headers, ProxyState};
 
 const MAX_SESSIONS: usize = 48;
 const SESSION_TTL_SECS: u64 = 3 * 60 * 60;
+/// Random bytes in a session id (hex → 32 chars). The id is the capability
+/// that authorises `/ext/{id}/…`, so it must be unguessable.
+pub const EXT_SESSION_ID_BYTES: usize = 16;
 
 #[derive(Clone, Debug)]
 pub struct ExtSession {
@@ -48,12 +51,8 @@ pub fn split_base_entry(url: &str) -> (String, String) {
 }
 
 fn new_session_id() -> String {
-    use std::time::{SystemTime, UNIX_EPOCH};
-    let nanos = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .map(|d| d.as_nanos())
-        .unwrap_or(0);
-    format!("{:x}", nanos ^ (nanos >> 17))
+    let bytes: [u8; EXT_SESSION_ID_BYTES] = rand::random();
+    bytes.iter().map(|b| format!("{b:02x}")).collect()
 }
 
 fn evict_stale(sessions: &mut HashMap<String, ExtSession>) {
@@ -170,7 +169,6 @@ pub async fn ext_proxy_handler(
             return Response::builder()
                 .status(out_status)
                 .header(header::CONTENT_TYPE, "text/plain; charset=utf-8")
-                .header(header::ACCESS_CONTROL_ALLOW_ORIGIN, "*")
                 .body(Body::from(body))
                 .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR);
         }
@@ -181,7 +179,6 @@ pub async fn ext_proxy_handler(
         return Response::builder()
             .status(StatusCode::OK)
             .header(header::CONTENT_TYPE, "application/vnd.apple.mpegurl")
-            .header(header::ACCESS_CONTROL_ALLOW_ORIGIN, "*")
             .body(Body::from(rewritten))
             .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR);
     }
@@ -192,7 +189,6 @@ pub async fn ext_proxy_handler(
             return Response::builder()
                 .status(StatusCode::from_u16(status.as_u16()).unwrap_or(StatusCode::BAD_GATEWAY))
                 .header(header::CONTENT_TYPE, "text/plain; charset=utf-8")
-                .header(header::ACCESS_CONTROL_ALLOW_ORIGIN, "*")
                 .body(Body::from(body))
                 .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR);
         }
@@ -200,7 +196,6 @@ pub async fn ext_proxy_handler(
         return Response::builder()
             .status(StatusCode::OK)
             .header(header::CONTENT_TYPE, "application/dash+xml")
-            .header(header::ACCESS_CONTROL_ALLOW_ORIGIN, "*")
             .header(header::ACCEPT_RANGES, "bytes")
             .header(header::CONTENT_LENGTH, rewritten.len())
             .body(Body::from(rewritten))
@@ -267,6 +262,15 @@ pub fn rewrite_mpd_absolute_urls(body: &str, session_base: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn session_ids_are_random_hex() {
+        let a = new_session_id();
+        let b = new_session_id();
+        assert_eq!(a.len(), EXT_SESSION_ID_BYTES * 2);
+        assert_ne!(a, b);
+        assert!(a.chars().all(|c| c.is_ascii_hexdigit()));
+    }
 
     #[test]
     fn splits_mpd_url() {

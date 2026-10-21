@@ -288,10 +288,7 @@ fn hls_join_bases(playlist_url: &str) -> (String, String) {
         .split_once('#')
         .map(|(a, _)| a)
         .unwrap_or(base_url.as_str());
-    let for_path = for_path
-        .split_once('?')
-        .map(|(a, _)| a)
-        .unwrap_or(for_path);
+    let for_path = for_path.split_once('?').map(|(a, _)| a).unwrap_or(for_path);
     let slash = for_path.rfind('/').unwrap_or(0);
     let base_path = for_path[..=slash].to_string();
     let server_base = if let Some(scheme_end) = for_path.find("://") {
@@ -333,14 +330,17 @@ fn collapse_double_authority(url: &str) -> String {
     format!("{scheme}://{second}")
 }
 
+/// `proxy_base` may already carry a query (the loopback `proxy_token`); the
+/// target params are appended with the right separator.
 pub fn build_hls_proxy_url(
     proxy_base: &str,
     target: &str,
     headers_json: &str,
     strip: Option<&str>,
 ) -> String {
+    let sep = if proxy_base.contains('?') { '&' } else { '?' };
     let mut out = format!(
-        "{proxy_base}?url={}&headers={}",
+        "{proxy_base}{sep}url={}&headers={}",
         urlencoding::encode(target),
         urlencoding::encode(headers_json)
     );
@@ -593,7 +593,10 @@ impl SegSlot {
             if let Some(value) = rx.borrow().clone() {
                 return value.ok();
             }
-            if tokio::time::timeout_at(deadline, rx.changed()).await.is_err() {
+            if tokio::time::timeout_at(deadline, rx.changed())
+                .await
+                .is_err()
+            {
                 return None;
             }
         }
@@ -682,9 +685,11 @@ impl HlsAheadCache {
         let url = url.to_string();
         tokio::spawn(async move {
             let mut guard = cache.inner.lock().await;
-            if guard.slots.get(&url).is_some_and(|s| {
-                matches!(s.tx.borrow().clone(), Some(Err(())))
-            }) {
+            if guard
+                .slots
+                .get(&url)
+                .is_some_and(|s| matches!(s.tx.borrow().clone(), Some(Err(()))))
+            {
                 guard.slots.remove(&url);
             }
         });
@@ -694,7 +699,6 @@ impl HlsAheadCache {
 fn stripped_segment_response(seg: &ReadySeg) -> Result<Response, StatusCode> {
     Response::builder()
         .status(seg.status)
-        .header(header::ACCESS_CONTROL_ALLOW_ORIGIN, "*")
         .header(header::ACCEPT_RANGES, "bytes")
         .header(header::CONNECTION, "keep-alive")
         .header(header::CONTENT_TYPE, seg.content_type.as_str())
@@ -715,13 +719,8 @@ async fn fetch_upstream_bytes(
             .await
             .map_err(|_| StatusCode::BAD_GATEWAY)?;
     }
-    let req = build_hls_upstream_request(
-        state,
-        Method::GET,
-        target_url,
-        custom,
-        &HeaderMap::new(),
-    )?;
+    let req =
+        build_hls_upstream_request(state, Method::GET, target_url, custom, &HeaderMap::new())?;
     let resp = req.send().await.map_err(|_| StatusCode::BAD_GATEWAY)?;
     let status = resp.status();
     let content_type = resp
@@ -730,7 +729,11 @@ async fn fetch_upstream_bytes(
         .and_then(|v| v.to_str().ok())
         .unwrap_or("")
         .to_string();
-    let bytes = resp.bytes().await.map_err(|_| StatusCode::BAD_GATEWAY)?.to_vec();
+    let bytes = resp
+        .bytes()
+        .await
+        .map_err(|_| StatusCode::BAD_GATEWAY)?
+        .to_vec();
     Ok((status, content_type, bytes))
 }
 
@@ -787,7 +790,10 @@ async fn fetch_and_store_segment(
         content_type,
         bytes: stripped,
     });
-    state.hls_ahead.store(target_url, &slot, Arc::clone(&seg)).await;
+    state
+        .hls_ahead
+        .store(target_url, &slot, Arc::clone(&seg))
+        .await;
     Ok(seg)
 }
 
@@ -975,7 +981,6 @@ fn playlist_response(body: String, range: Option<&str>) -> Result<Response, Stat
     let mut builder = Response::builder()
         .status(status)
         .header(header::CONTENT_TYPE, "application/vnd.apple.mpegurl")
-        .header(header::ACCESS_CONTROL_ALLOW_ORIGIN, "*")
         .header(header::ACCEPT_RANGES, "bytes")
         .header(header::CONTENT_LENGTH, out.len().to_string());
     if let Some(value) = content_range {
@@ -1128,7 +1133,6 @@ async fn finish_hls_proxy_body(
             return Response::builder()
                 .status(out_status)
                 .header(header::CONTENT_TYPE, "text/plain; charset=utf-8")
-                .header(header::ACCESS_CONTROL_ALLOW_ORIGIN, "*")
                 .body(Body::from(body))
                 .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR);
         }
@@ -1137,8 +1141,7 @@ async fn finish_hls_proxy_body(
         } else {
             strip
         };
-        let port = *state.listen_port.read().await;
-        let proxy_base = format!("http://127.0.0.1:{port}/hls-proxy");
+        let proxy_base = state.local_route_base("/hls-proxy").await;
         let rewritten = rewrite_hls_playlist(
             &body,
             target_url,
@@ -1163,7 +1166,6 @@ async fn finish_hls_proxy_body(
         };
         return Response::builder()
             .status(out_status)
-            .header(header::ACCESS_CONTROL_ALLOW_ORIGIN, "*")
             .header(header::ACCEPT_RANGES, "bytes")
             .header(header::CONNECTION, "keep-alive")
             .header(header::CONTENT_TYPE, content_type)
@@ -1174,7 +1176,6 @@ async fn finish_hls_proxy_body(
     Response::builder()
         .status(status)
         .header(header::CONTENT_TYPE, content_type)
-        .header(header::ACCESS_CONTROL_ALLOW_ORIGIN, "*")
         .body(Body::from(bytes))
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)
 }
@@ -1212,7 +1213,6 @@ pub async fn hls_proxy_handler(
             return Response::builder()
                 .status(StatusCode::FOUND)
                 .header(header::LOCATION, play)
-                .header(header::ACCESS_CONTROL_ALLOW_ORIGIN, "*")
                 .body(Body::empty())
                 .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR);
         }
@@ -1280,7 +1280,6 @@ pub async fn hls_proxy_handler(
             return Response::builder()
                 .status(out_status)
                 .header(header::CONTENT_TYPE, "text/plain; charset=utf-8")
-                .header(header::ACCESS_CONTROL_ALLOW_ORIGIN, "*")
                 .body(Body::from(body))
                 .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR);
         }
@@ -1293,8 +1292,7 @@ pub async fn hls_proxy_handler(
         } else {
             strip
         };
-        let port = *state.listen_port.read().await;
-        let proxy_base = format!("http://127.0.0.1:{port}/hls-proxy");
+        let proxy_base = state.local_route_base("/hls-proxy").await;
         let rewritten = rewrite_hls_playlist(
             &body,
             &target_url,
@@ -1323,7 +1321,6 @@ pub async fn hls_proxy_handler(
         };
         return Response::builder()
             .status(out_status)
-            .header(header::ACCESS_CONTROL_ALLOW_ORIGIN, "*")
             .header(header::ACCEPT_RANGES, "bytes")
             .header(header::CONNECTION, "keep-alive")
             .header(header::CONTENT_TYPE, content_type)
@@ -1378,6 +1375,22 @@ mod tests {
     }
 
     #[test]
+    fn proxy_base_with_token_keeps_single_query() {
+        let out = build_hls_proxy_url(
+            "http://127.0.0.1:9/hls-proxy?proxy_token=abc",
+            "https://cdn.example/seg.ts",
+            "{}",
+            Some("png"),
+        );
+        assert!(
+            out.starts_with("http://127.0.0.1:9/hls-proxy?proxy_token=abc&url="),
+            "{out}"
+        );
+        assert_eq!(out.matches('?').count(), 1);
+        assert!(out.ends_with("&strip=png"));
+    }
+
+    #[test]
     fn rewrites_segment_lines() {
         const MASTER: &str = "#EXTM3U\n#EXT-X-STREAM-INF:BANDWIDTH=1000\n720p/index.m3u8\n";
         let out = rewrite_hls_playlist(
@@ -1403,13 +1416,7 @@ https://vault.example/seg-0.png
             hls_relative_base_url(proxy),
             "https://fetch9.flixcloud.cc/_v7/abc/video.m3u8"
         );
-        let out = rewrite_hls_playlist(
-            BODY,
-            proxy,
-            "http://127.0.0.1:9/hls-proxy",
-            "{}",
-            None,
-        );
+        let out = rewrite_hls_playlist(BODY, proxy, "http://127.0.0.1:9/hls-proxy", "{}", None);
         assert!(
             out.contains("fetch9.flixcloud.cc") && out.contains("key.bin"),
             "{out}"

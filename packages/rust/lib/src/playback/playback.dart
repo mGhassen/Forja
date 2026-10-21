@@ -19,6 +19,7 @@ export 'torrent/torrent_stream_service.dart';
 export 'torrent/debrid_errors.dart';
 export 'torrent/debrid_pack_bridge.dart';
 export 'stremio/stremio_stream_resolver.dart';
+export 'url/playable_stream_url.dart';
 export 'torrent/torrent_playback_resolver.dart';
 export 'lan_playback_bridge.dart';
 export 'torrent/jackett_service.dart' hide ConnectionTestResult;

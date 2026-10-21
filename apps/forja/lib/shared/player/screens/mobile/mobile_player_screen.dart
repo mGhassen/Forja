@@ -35,6 +35,7 @@ import 'package:forja/shared/lan/lan_client_service.dart';
 import 'package:forja/shared/lan/lan_p2p_playback.dart';
 import 'package:forja/shared/platform/platform_info.dart';
 import 'package:forja/shared/player/screens/utils.dart';
+import 'package:forja/shared/utils/redact_url.dart';
 import 'package:forja/shared/player/screens/player_peakstorm_resume_diag.dart';
 import 'package:forja/shared/player/controls/menus/player_menus.dart';
 import 'package:forja/shared/player/screens/playback_recovery.dart';

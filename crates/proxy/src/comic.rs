@@ -74,7 +74,6 @@ pub async fn comic_proxy_handler(
     Response::builder()
         .status(StatusCode::OK)
         .header(header::CONTENT_TYPE, content_type.as_str())
-        .header(header::ACCESS_CONTROL_ALLOW_ORIGIN, "*")
         .header(header::CACHE_CONTROL, "public, max-age=86400")
         .body(axum::body::Body::from(bytes))
         .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)

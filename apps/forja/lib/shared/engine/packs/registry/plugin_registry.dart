@@ -11,6 +11,7 @@ import 'package:forja/shared/engine/models/models.dart';
 import 'package:forja/shared/engine/packs/registry/plugin_contract.dart';
 import 'package:forja/shared/engine/packs/install/plugin_install_validator.dart';
 import 'package:forja/shared/engine/packs/registry/pack_http.dart';
+import 'package:forja/shared/engine/packs/registry/pack_source_url_policy.dart';
 import 'package:forja/shared/engine/packs/registry/plugin_script_disk_store.dart';
 import 'package:forja/shared/engine/packs/install/remote_pack_intent_store.dart';
 import 'package:forja/shared/playback/cache/catalog_sources_session_cache.dart';
@@ -260,6 +261,8 @@ class PluginRegistry {
     return utf8.decode(bytes, allowMalformed: false);
   }
 
+  /// Remote fetches are https-only. Local checkout paths read from disk.
+  /// Throws [PackSourceRefusedException] (user-facing message) otherwise.
   Future<List<int>> _fetchBytes(String url) async {
     final file = _asLocalFile(url);
     if (file != null) {
@@ -268,6 +271,7 @@ class PluginRegistry {
       }
       return file.readAsBytes();
     }
+    PackSourceUrlPolicy.assertAllowed(url, allowLocal: true);
     try {
       final resp = await _httpGet(Uri.parse(url));
       if (resp.statusCode == 404 || resp.statusCode == 410) {
@@ -279,6 +283,7 @@ class PluginRegistry {
       return resp.bodyBytes;
     } catch (e) {
       if (e is ManifestGoneException) rethrow;
+      if (e is PackSourceRefusedException) rethrow;
       throw Exception(PackHttp.humanizeError(e, url));
     }
   }
@@ -877,9 +882,15 @@ class PluginRegistry {
     }
   }
 
+  /// Absolute script URLs must be https. Throws [PackSourceRefusedException]
+  /// for `http://` so callers fail with the user-facing policy message.
   String resolveScriptUrl(String manifestUrl, String filename) {
-    if (filename.startsWith('http://') || filename.startsWith('https://')) {
-      return filename;
+    if (filename.startsWith('https://')) return filename;
+    if (filename.startsWith('http://')) {
+      throw PackSourceRefusedException(
+        filename,
+        PackSourceUrlPolicy.refusedMessage,
+      );
     }
     final manifestFile = _asLocalFile(manifestUrl);
     if (manifestFile != null) {
@@ -1138,6 +1149,8 @@ class PluginRegistry {
     // Keep the URL/path exactly as given — local checkout or remote. Never
     // remap unreachable locals through catalog / peer slots.
     manifestUrl = manifestUrl.trim();
+    // https floor before any network I/O. Local checkouts stay allowed.
+    PackSourceUrlPolicy.assertAllowed(manifestUrl, allowLocal: true);
     final scopeGen = LocalDataScope.generation;
     final scopeId = LocalDataScope.id;
     final body = await _fetchText(manifestUrl);
@@ -1341,6 +1354,10 @@ class PluginRegistry {
             missing.add(path);
             debugPrint('[PluginInstall] gone $path: $e');
             return null;
+          } on PackSourceRefusedException {
+            // Plain-http script URL: fail the install with the policy
+            // message instead of retrying. Installed packs are untouched.
+            rethrow;
           } catch (e) {
             lastError = e;
             if (attempt < _packFetchMaxAttempts) {

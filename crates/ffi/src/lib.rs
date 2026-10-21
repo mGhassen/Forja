@@ -162,8 +162,7 @@ fn playback_order_providers_json(payload_json: String) -> String {
         Err(e) => return serde_json::json!({ "error": e.to_string() }).to_string(),
     };
     if request.reliability.is_empty() {
-        request.reliability =
-            engine::ProviderHealthStore::global().all_provider_totals();
+        request.reliability = engine::ProviderHealthStore::global().all_provider_totals();
     }
     let response = order_providers(request);
     serde_json::to_string(&response)
@@ -335,7 +334,6 @@ fn split_stremio_addon_url_json(url: String) -> String {
     let parts = stremio::split_addon_url(&url);
     serde_json::to_string(&parts).unwrap_or_else(|_| "{}".into())
 }
-
 
 fn filter_torrents_json(
     results_json: String,
@@ -594,6 +592,21 @@ fn proxy_port() -> u32 {
     }
 }
 
+/// Secret the host must append as `proxy_token=` on every loopback media URL
+/// (`/proxy`, `/hls-proxy`, `/proxy/{token}`, `/toky-proxy`, `/comic-proxy`,
+/// `/jellyfin-stream`, `/subtitlecat-translate`). `/ext/{id}/…` carries its own
+/// random id. Empty when the proxy is not running.
+fn proxy_token() -> String {
+    #[cfg(feature = "local-proxy")]
+    {
+        engine_proxy::proxy_token()
+    }
+    #[cfg(not(feature = "local-proxy"))]
+    {
+        String::new()
+    }
+}
+
 fn proxy_register_route(token: String, upstream_url: String) -> bool {
     #[cfg(feature = "local-proxy")]
     {
@@ -806,7 +819,6 @@ fn seek111477_purge_cache_json(cache_dir: String) -> String {
 fn provider_health_json(payload_json: String) -> String {
     engine::handle_health_json(&payload_json)
 }
-
 
 fn iptv_catalog_json(request_json: String) -> String {
     iptv::catalog_db::handle_json(&request_json)

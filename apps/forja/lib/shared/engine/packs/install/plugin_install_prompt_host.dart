@@ -106,10 +106,32 @@ class _PluginInstallPromptHostState extends State<PluginInstallPromptHost> {
     }
   }
 
+  /// Manifest URLs the published catalog marks official. Deep links carry no
+  /// `official` flag, so the prompt looks the address up here. Empty when the
+  /// catalog is unreachable — the row then shows its host as a community source.
+  static Future<Set<String>> _officialManifestUrls() async {
+    try {
+      final packs = await resolveOfficialForjaHqPacks().timeout(
+        const Duration(seconds: 4),
+      );
+      return {
+        for (final p in packs)
+          if (p.manifestUrl.trim().isNotEmpty) p.manifestUrl.trim(),
+      };
+    } catch (e) {
+      debugPrint('[PluginInstallPrompt] official lookup skipped: $e');
+      return const {};
+    }
+  }
+
   Future<PluginBatchInstallPrompt?> _refreshBatch(
     PluginBatchInstallPrompt batch,
   ) async {
     final packs = await PluginRegistry.instance.listPacksRaw();
+    if (!mounted) return null;
+    final officialUrls = batch.candidates.every((c) => c.official)
+        ? const <String>{}
+        : await _officialManifestUrls();
     if (!mounted) return null;
     final byUrl = {for (final p in packs) p.sourceUrl.trim(): p};
     final installedUrls = <String>{};
@@ -130,7 +152,7 @@ class _PluginInstallPromptHostState extends State<PluginInstallPromptHost> {
             platforms: c.platforms,
             catalogKind: c.catalogKind,
             version: c.version,
-            official: c.official,
+            official: c.official || officialUrls.contains(c.manifestUrl.trim()),
             recommended: c.recommended,
             kind: c.kind,
             fromRemoteProfile: c.fromRemoteProfile,
@@ -146,6 +168,8 @@ class _PluginInstallPromptHostState extends State<PluginInstallPromptHost> {
     PluginInstallPrompt prompt,
   ) async {
     final packs = await PluginRegistry.instance.listPacksRaw();
+    if (!mounted) return null;
+    final officialUrls = await _officialManifestUrls();
     if (!mounted) return null;
     EnginePack? match;
     for (final p in packs) {
@@ -164,6 +188,7 @@ class _PluginInstallPromptHostState extends State<PluginInstallPromptHost> {
     return PluginInstallCandidate(
       manifestUrl: prompt.manifestUrl,
       displayName: prompt.displayName,
+      official: officialUrls.contains(prompt.manifestUrl.trim()),
       kind: prompt.kind,
       fromRemoteProfile: prompt.source == PluginInstallSource.remoteProfile,
       alreadyInstalled: already,

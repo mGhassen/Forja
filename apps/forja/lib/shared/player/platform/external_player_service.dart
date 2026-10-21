@@ -5,6 +5,7 @@ import 'package:forja/shared/player/platform/android_player_launcher.dart';
 import 'package:forja/shared/player/platform/macos_external_player_launcher.dart';
 
 import 'package:forja/shared/player/screens/utils.dart';
+import 'package:forja/shared/utils/redact_url.dart';
 import 'package:rust/rust.dart' as site111477_proxy;
 import 'package:forja/shell/feedback/forja_toast.dart';
 
@@ -41,8 +42,10 @@ class ExternalPlayerService {
   }
 
   /// The full list including "Built-in Player" as first option.
-  static List<String> get playerNames =>
-      ['Built-in Player', ...availablePlayers.map((p) => p.displayName)];
+  static List<String> get playerNames => [
+    'Built-in Player',
+    ...availablePlayers.map((p) => p.displayName),
+  ];
 
   /// External players that are actually installed on this device.
   ///
@@ -81,14 +84,8 @@ class ExternalPlayerService {
       androidAltPackages: ['com.mxtech.videoplayer.pro'],
       androidExtras: {'title': true, 'return_result': true},
     ),
-    ExternalPlayer(
-      displayName: 'mpv-android',
-      androidPackage: 'is.xyz.mpv',
-    ),
-    ExternalPlayer(
-      displayName: 'mpv-kt',
-      androidPackage: 'live.mehiz.mpvkt',
-    ),
+    ExternalPlayer(displayName: 'mpv-android', androidPackage: 'is.xyz.mpv'),
+    ExternalPlayer(displayName: 'mpv-kt', androidPackage: 'live.mehiz.mpvkt'),
     ExternalPlayer(
       displayName: 'Just Player',
       androidPackage: 'com.brouken.player',
@@ -97,18 +94,12 @@ class ExternalPlayerService {
       displayName: 'Nova Player',
       androidPackage: 'org.courville.nova',
     ),
-    ExternalPlayer(
-      displayName: 'KMPlayer',
-      androidPackage: 'com.kmplayer',
-    ),
+    ExternalPlayer(displayName: 'KMPlayer', androidPackage: 'com.kmplayer'),
     ExternalPlayer(
       displayName: 'nPlayer',
       androidPackage: 'com.newin.nplayer.pro',
     ),
-    ExternalPlayer(
-      displayName: 'Kodi',
-      androidPackage: 'org.xbmc.kodi',
-    ),
+    ExternalPlayer(displayName: 'Kodi', androidPackage: 'org.xbmc.kodi'),
     ExternalPlayer(
       displayName: 'System Default',
       androidPackage: null, // Shows system chooser
@@ -286,7 +277,8 @@ class ExternalPlayerService {
     String? playerName,
     String? providerId,
   }) async {
-    final selectedName = playerName ?? await SettingsService().getExternalPlayer();
+    final selectedName =
+        playerName ?? await SettingsService().getExternalPlayer();
     if (selectedName == 'Built-in Player') return false;
 
     final players = availablePlayers;
@@ -299,12 +291,21 @@ class ExternalPlayerService {
 
     if (player.displayName == 'IINA') {
       debugPrint(
-        '[ExternalPlayer] IINA handoff input url (${url.length} chars): $url',
+        '[ExternalPlayer] IINA handoff input url (${url.length} chars): '
+        '${redactUrlCredentials(url)}',
       );
       _logHeaderMap('IINA handoff input', headers);
     }
 
     final normalizedUrl = normalizePlaybackStreamUrl(url);
+    if (!isPlayableStreamUrl(normalizedUrl)) {
+      // Typed so the caller can tell "address refused" from "player not
+      // found" and does not claim a fallback that would refuse it too.
+      debugPrint(
+        '[ExternalPlayer] Unsupported stream address — hand-off refused',
+      );
+      throw UnsupportedStreamAddressException(normalizedUrl);
+    }
     final resolvedHeaders = resolvePlaybackHttpHeaders(
       headers,
       streamUrl: normalizedUrl,
@@ -318,7 +319,7 @@ class ExternalPlayerService {
     );
 
     debugPrint(
-      '[ExternalPlayer] target url=${target.url} '
+      '[ExternalPlayer] target url=${redactUrlCredentials(target.url)} '
       'headers=${target.headers?.length ?? 0}',
     );
     if (player.displayName == 'IINA') {
@@ -327,19 +328,9 @@ class ExternalPlayerService {
 
     try {
       if (Platform.isAndroid || Platform.isIOS) {
-        return await _launchAndroid(
-          player,
-          target.url,
-          title,
-          target.headers,
-        );
+        return await _launchAndroid(player, target.url, title, target.headers);
       } else {
-        return await _launchDesktop(
-          player,
-          target.url,
-          title,
-          target.headers,
-        );
+        return await _launchDesktop(player, target.url, title, target.headers);
       }
     } catch (e) {
       debugPrint('[ExternalPlayer] Error launching ${player.displayName}: $e');
@@ -360,7 +351,7 @@ class ExternalPlayerService {
   /// Other desktop: direct URL + player CLI headers. Android: hls-proxy.
   /// 111477 uses seek proxy.
   static Future<({String url, Map<String, String>? headers})>
-      _resolveLaunchTarget({
+  _resolveLaunchTarget({
     required String url,
     required Map<String, String>? headers,
     required bool desktop,
@@ -415,14 +406,14 @@ class ExternalPlayerService {
 
   /// Match built-in Auto soft ceiling (external launch path is sync).
   static List<String> _mpvStreamArgs({required String prefix}) => [
-        '${prefix}network-timeout=30',
-        '${prefix}tls-verify=no',
-        '${prefix}load-unsafe-playlists=yes',
-        '${prefix}hls-bitrate=$kHlsBitrateAutoSoftCeiling',
-        '${prefix}cache=yes',
-        '${prefix}demuxer-readahead-secs=20',
-        '${prefix}ytdl=no',
-      ];
+    '${prefix}network-timeout=30',
+    '${prefix}tls-verify=no',
+    '${prefix}load-unsafe-playlists=yes',
+    '${prefix}hls-bitrate=$kHlsBitrateAutoSoftCeiling',
+    '${prefix}cache=yes',
+    '${prefix}demuxer-readahead-secs=20',
+    '${prefix}ytdl=no',
+  ];
 
   static bool _isLocalProxyUrl(String url) {
     final uri = Uri.tryParse(url);
@@ -443,13 +434,25 @@ class ExternalPlayerService {
       debugPrint('[ExternalPlayer] $label headers: (none)');
       return;
     }
+    // Names and lengths only — Cookie / Authorization values never hit logs.
     debugPrint('[ExternalPlayer] $label headers (${headers.length}):');
     for (final entry in headers.entries) {
       debugPrint(
-        '[ExternalPlayer]   ${entry.key} (${entry.value.length} chars): '
-        '${entry.value}',
+        '[ExternalPlayer]   ${entry.key} (${entry.value.length} chars)',
       );
     }
+  }
+
+  /// Header flags keep the header name only; URL-bearing args are redacted.
+  static String _redactArgForLog(String arg) {
+    final m = RegExp(
+      r'^(-{1,2}[A-Za-z-]*http-header-fields=)([^:,]+)[:=].*$',
+    ).firstMatch(arg);
+    if (m != null) return '${m.group(1)}${m.group(2)}: ***';
+    if (arg.contains('://') || arg.startsWith('iina://')) {
+      return redactUrlCredentials(arg);
+    }
+    return arg;
   }
 
   /// Full argv dump for IINA debugging (no truncation).
@@ -464,17 +467,21 @@ class ExternalPlayerService {
     debugPrint('[ExternalPlayer] IINA executable: $executable');
     debugPrint('[ExternalPlayer] IINA title: $title');
     debugPrint(
-      '[ExternalPlayer] IINA stream url (${streamUrl.length} chars): $streamUrl',
+      '[ExternalPlayer] IINA stream url (${streamUrl.length} chars): '
+      '${redactUrlCredentials(streamUrl)}',
     );
     _logHeaderMap('IINA', headers);
     debugPrint('[ExternalPlayer] IINA argv count: ${args.length}');
     for (var i = 0; i < args.length; i++) {
       final arg = args[i];
       debugPrint(
-        '[ExternalPlayer] IINA argv[$i] (${arg.length} chars): $arg',
+        '[ExternalPlayer] IINA argv[$i] (${arg.length} chars): '
+        '${_redactArgForLog(arg)}',
       );
     }
-    final quoted = args.map(_quoteForShellLog).join(' ');
+    final quoted = args
+        .map((a) => _quoteForShellLog(_redactArgForLog(a)))
+        .join(' ');
     debugPrint(
       '[ExternalPlayer] IINA shell (manual test): $executable $quoted',
     );
@@ -620,11 +627,13 @@ class ExternalPlayerService {
     final executable = await _findDesktopExecutable(player);
     if (executable == null) {
       debugPrint(
-          '[ExternalPlayer] ${player.displayName} not found on this system');
+        '[ExternalPlayer] ${player.displayName} not found on this system',
+      );
       return false;
     }
 
-    final viaOpen = Platform.isMacOS &&
+    final viaOpen =
+        Platform.isMacOS &&
         player.macAppPath != null &&
         (executable == 'open' || executable == '/usr/bin/open');
     final iinaOpenUrl =
@@ -653,7 +662,7 @@ class ExternalPlayerService {
 
     debugPrint(
       '[ExternalPlayer] Launching ${player.displayName}: $executable '
-      '(${args.length} args) → $url',
+      '(${args.length} args) → ${redactUrlCredentials(url)}',
     );
     if (player.displayName == 'IINA') {
       _logIinaLaunch(
@@ -665,7 +674,7 @@ class ExternalPlayerService {
       );
     } else {
       for (var i = 0; i < args.length; i++) {
-        final arg = args[i];
+        final arg = _redactArgForLog(args[i]);
         debugPrint(
           '[ExternalPlayer] argv[$i]=${arg.length > 120 ? '${arg.substring(0, 120)}…' : arg}',
         );
@@ -748,11 +757,13 @@ class ExternalPlayerService {
           player.windowsRegistryValue ?? '',
         ]);
         if (result.exitCode == 0) {
-          final match = RegExp(r'REG_SZ\s+(.+)')
-              .firstMatch(result.stdout.toString());
+          final match = RegExp(
+            r'REG_SZ\s+(.+)',
+          ).firstMatch(result.stdout.toString());
           if (match != null) {
             final dir = match.group(1)!.trim();
-            final fullPath = '$dir\\${player.windowsRegistryBinary ?? player.windowsBinary}';
+            final fullPath =
+                '$dir\\${player.windowsRegistryBinary ?? player.windowsBinary}';
             if (await File(fullPath).exists()) return fullPath;
           }
         }
@@ -799,13 +810,18 @@ class ExternalPlayer {
   final String? macAppPath;
   final String? macCliBinary;
   final String? macBinary;
+
   /// When true, launch with `/usr/bin/open -a <app> --args …` (required for
   /// sandboxed hosts - direct CLI exec inherits the sandbox and breaks IINA IPC).
   final bool macPreferOpenLauncher;
 
   // Desktop args builder
   final List<String> Function(
-      String url, String? title, Map<String, String>? headers)? desktopArgs;
+    String url,
+    String? title,
+    Map<String, String>? headers,
+  )?
+  desktopArgs;
 
   const ExternalPlayer({
     required this.displayName,
