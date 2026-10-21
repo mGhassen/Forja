@@ -39,6 +39,7 @@ export 'package:forja_foundation/widgets/catalog/cinematic_hero.dart';
 export 'package:forja_foundation/widgets/catalog/continue_section.dart';
 export 'package:forja_foundation/widgets/catalog/continue_watching_card.dart';
 export 'package:forja_foundation/widgets/catalog/because_section.dart';
+export 'package:forja_foundation/widgets/catalog/card_quick_menu.dart';
 export 'package:forja_foundation/widgets/catalog/mood_section.dart';
 export 'package:forja_foundation/widgets/details/play_row.dart';
 export 'package:forja_foundation/widgets/details/details_hero.dart';
