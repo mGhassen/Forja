@@ -245,13 +245,13 @@ class ShellPaintScope extends InheritedWidget {
     FocusOnKeyEventCallback? onKeyEvent,
     bool mouseDownActivates = true,
   }) {
+    // No motion and no raw scale → catalog card lift (host default). Explicit
+    // presets pass through untouched so chips really lift by chipLift.
     final resolvedScale =
         scaleOnFocus ??
         (motion != null
             ? ForjaMotionTheme.of(context).resolve(motion).focusScale
-            : ForjaMotionTheme.of(
-                context,
-              ).resolve(ForjaMotionPreset.chipLift).focusScale);
+            : ShellTokens.focusActiveScale);
     final rowScope = ShellPaintTvRowScope.maybeOf(context);
     final resolvedTab =
         (tvTabId ?? rowScope?.tabId ?? ShellPaintTvTabScope.tabIdOf(context))

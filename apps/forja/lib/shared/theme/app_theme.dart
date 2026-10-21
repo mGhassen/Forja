@@ -11,6 +11,7 @@ import 'package:forja_foundation/components/switch.dart';
 import 'package:forja/shell/core/forja_shell_scope.dart';
 import 'package:forja/shell/core/forja_shell_input_policy.dart';
 import 'package:forja_foundation/tokens/forja_theme_extension.dart';
+import 'package:forja_foundation/tokens/focus_chrome_tokens.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 import 'package:forja_foundation/widgets/chrome/forja_scrollbar.dart';
@@ -725,10 +726,15 @@ class _FocusableControlState extends State<FocusableControl>
           context: context,
         );
 
-    // Settings rail: green left bar + ink fill (no ring box).
+    // Settings rail: leading accent bar + ink fill (no ring box on desktop).
     // Flat menus (scale 1.0 + showFocusBorder): gray fill + thin border.
     // Flat rows (scale 1.0, showFocusFill opt-in): inkHover — search helpers.
-    // Catalog cards: white focus ring + lift scale.
+    // Catalog cards: focus ring + lift scale.
+    // Leanback (D-pad) paints one signature on all of them — the accent ring
+    // from [FocusChromeTokens] (+ glow on cards); desktop hover is unchanged.
+    final leanback = policy.instantFocusChrome;
+    final leanbackFocused =
+        leanback && policy.focusChromeVisible(context, focused: _isFocused);
     final railFocus = widget.showFocusRail;
     final flatMenuFocus =
         !railFocus && widget.showFocusBorder && widget.scaleOnFocus <= 1.0;
@@ -760,50 +766,76 @@ class _FocusableControlState extends State<FocusableControl>
       builder: (context, child) {
         Widget content = child!;
         if (railFocus) {
-          // Clip so the left accent + ink fill follow [borderRadius].
-          // (Directional Border + borderRadius is illegal in BoxDecoration.)
+          // Clip so the leading accent + fill follow [borderRadius].
+          // Leanback focus adds the shared accent ring (rounded, follows the
+          // control radius) under a square-edged leading bar painted on top;
+          // the bar alone stays for the selected tile (forceRailActive) and
+          // for desktop hover / keyboard focus.
           final radius = BorderRadius.circular(widget.borderRadius);
-          final rtl = Directionality.of(context) == TextDirection.rtl;
-          final accent = BorderSide(
-            color: chromeActive
-                ? ForjaShellColors.brandGreen
-                : Colors.transparent,
-            width: 2.5,
-          );
+          final duration = leanback
+              ? FocusChromeTokens.leanbackTween
+              : FocusChromeTokens.hoverTween;
           content = ClipRRect(
             borderRadius: radius,
-            child: AnimatedContainer(
-              duration: policy.instantFocusChrome
-                  ? Duration.zero
-                  : const Duration(milliseconds: 140),
-              decoration: BoxDecoration(
-                color: chromeActive
-                    ? ForjaShellColors.inkHover
-                    : Colors.transparent,
-                border: Border(
-                  left: rtl ? BorderSide.none : accent,
-                  right: rtl ? accent : BorderSide.none,
+            child: Stack(
+              fit: StackFit.passthrough,
+              children: [
+                AnimatedContainer(
+                  duration: duration,
+                  decoration: BoxDecoration(
+                    color: chromeActive
+                        ? ForjaShellColors.inkHover
+                        : Colors.transparent,
+                    borderRadius: radius,
+                    border: leanbackFocused
+                        ? Border.all(
+                            color: FocusChromeTokens.ringColor,
+                            width: FocusChromeTokens.ringWidth,
+                          )
+                        : null,
+                  ),
+                  child: content,
                 ),
-              ),
-              child: content,
+                PositionedDirectional(
+                  start: 0,
+                  top: 0,
+                  bottom: 0,
+                  width: FocusChromeTokens.railAccentWidth,
+                  child: IgnorePointer(
+                    child: AnimatedContainer(
+                      duration: duration,
+                      color: chromeActive
+                          ? FocusChromeTokens.ringColor
+                          : Colors.transparent,
+                    ),
+                  ),
+                ),
+              ],
             ),
           );
         } else if (showFocusRing) {
+          final radius = BorderRadius.circular(widget.borderRadius);
           if (flatMenuFocus) {
+            // Rows (scale 1.0): ring without glow. Leanback paints the shared
+            // accent ring; desktop keeps the gray hairline.
             content = DecoratedBox(
-              decoration: BoxDecoration(
-                color: widget.showFocusFill
-                    ? Colors.white.withValues(alpha: 0.08)
-                    : Colors.transparent,
-                borderRadius: BorderRadius.circular(widget.borderRadius),
-                border: Border.all(
-                  color: Colors.white.withValues(alpha: 0.28),
-                  width: 1,
-                ),
-              ),
+              decoration: leanbackFocused
+                  ? FocusChromeTokens.ring(
+                      borderRadius: radius,
+                      fill: widget.showFocusFill
+                          ? FocusChromeTokens.tintFill()
+                          : null,
+                      withGlow: false,
+                    )
+                  : FocusChromeTokens.flatRing(
+                      borderRadius: radius,
+                      withFill: widget.showFocusFill,
+                    ),
               child: content,
             );
           } else {
+            // Cards: ring over the poster + lift. Leanback adds the glow;
+            // desktop keyboard focus keeps the white hairline.
             content = Stack(
               clipBehavior: Clip.none,
               fit: StackFit.passthrough,
@@ -812,12 +844,9 @@ class _FocusableControlState extends State<FocusableControl>
                 Positioned.fill(
                   child: IgnorePointer(
                     child: DecoratedBox(
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(
-                          widget.borderRadius,
-                        ),
-                        border: Border.all(color: Colors.white, width: 1.5),
-                      ),
+                      decoration: leanbackFocused
+                          ? FocusChromeTokens.ring(borderRadius: radius)
+                          : FocusChromeTokens.hoverRing(borderRadius: radius),
                     ),
                   ),
                 ),
