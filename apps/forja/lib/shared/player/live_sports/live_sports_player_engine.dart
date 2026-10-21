@@ -23,6 +23,7 @@ mixin _LiveSportsPlayerEngine on _LiveSportsPlayerEngineCore {
     bool userInitiated = false,
   });
   void _scheduleIptvLiveGraceRecovery({required String reason});
+  Future<void> _tryIptvLiveGoLive({required String reason});
   void _onIptvLivePlayingChanged(bool playing);
   void _armTransientHwDecodeIgnore();
   Future<void> _reopenDesktopLiveSoftwareDecode();
@@ -1107,6 +1108,15 @@ mixin _LiveSportsPlayerEngine on _LiveSportsPlayerEngineCore {
             forceHard: _s._retryAttempt >= 1,
           ),
         );
+        return;
+      }
+      // Corrupt AAC/H264 after HLS DISCONTINUITY / truncated TS. Playhead
+      // still ticks → grace would "recover" and leave a green frame. Reopen
+      // now (throttled); do not wait out lavf grace.
+      if (_livePlaybackProfile &&
+          _s._mediaKitBackend &&
+          (isAudioDecoderError(msg) || isVideoDecoderError(msg))) {
+        unawaited(_tryIptvLiveGoLive(reason: 'decode fail: $msg'));
         return;
       }
       if (_livePlaybackProfile && _s._mediaKitBackend) {

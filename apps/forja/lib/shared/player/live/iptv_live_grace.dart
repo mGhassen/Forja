@@ -39,12 +39,27 @@ enum IptvLiveGraceAction {
   goLive,
 }
 
-/// Grace reasons raised by a hardware-decoder failure (VideoToolbox /
-/// D3D11 / MediaCodec), not a socket or EOF.
+/// Grace reasons where a forward playhead proves nothing — reopen.
+///
+/// Hardware decoder death (VideoToolbox / D3D11 / MediaCodec) **or** a
+/// poisoned demuxer (`Error decoding audio` / video while AAC/H264
+/// bitstream is garbage). The audio clock and PTS still advance on green /
+/// macroblocked frames.
 bool iptvLiveGraceReasonIsHwDecodeFail(String reason) {
   final lower = reason.toLowerCase();
   return lower.contains('hw decode fail') ||
-      lower.contains('hardware decode fail');
+      lower.contains('hardware decode fail') ||
+      iptvLiveGraceReasonIsCorruptBitstream(reason);
+}
+
+/// AAC/H264 decode death from corrupt live segments (DISCONTINUITY /
+/// truncated TS). Distinct from VT hw fail — caller may goLive immediately
+/// instead of waiting out the lavf grace window.
+bool iptvLiveGraceReasonIsCorruptBitstream(String reason) {
+  final lower = reason.toLowerCase();
+  return lower.contains('error decoding audio') ||
+      lower.contains('error decoding video') ||
+      lower.contains('decode fail:');
 }
 
 /// `keep-open=always` pauses at EOF, so position often does not move even
@@ -52,7 +67,8 @@ bool iptvLiveGraceReasonIsHwDecodeFail(String reason) {
 /// after an explicit resume.
 ///
 /// [hwDecodeFail]: the audio clock keeps moving while the decoder drops
-/// every frame, so a forward position proves nothing. Always stop+open.
+/// every frame (or feeds garbage), so a forward position proves nothing.
+/// Always stop+open.
 IptvLiveGraceAction iptvLiveGraceAction({
   required bool playing,
   required Duration position,

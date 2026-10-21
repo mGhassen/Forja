@@ -86,11 +86,45 @@ void main() {
       );
     });
 
+    test('corrupt bitstream decode fail reopens even when the clock moved', () {
+      expect(
+        iptvLiveGraceAction(
+          playing: true,
+          position: const Duration(seconds: 56),
+          startPosition: const Duration(seconds: 49),
+          playheadRecentlyMoved: true,
+          hwDecodeFail: iptvLiveGraceReasonIsHwDecodeFail(
+            'error: Error decoding audio.',
+          ),
+        ),
+        IptvLiveGraceAction.goLive,
+      );
+    });
+
     test('hardware decode reasons are recognised', () {
       expect(iptvLiveGraceReasonIsHwDecodeFail('hw decode fail (live VT)'), isTrue);
       expect(iptvLiveGraceReasonIsHwDecodeFail('hardware decode failed'), isTrue);
       expect(iptvLiveGraceReasonIsHwDecodeFail('socket reset'), isFalse);
       expect(iptvLiveGraceReasonIsHwDecodeFail('completed'), isFalse);
+    });
+
+    test('corrupt AAC/H264 decode reasons force goLive', () {
+      expect(
+        iptvLiveGraceReasonIsCorruptBitstream('error: Error decoding audio.'),
+        isTrue,
+      );
+      expect(
+        iptvLiveGraceReasonIsCorruptBitstream('decode fail: Error decoding audio.'),
+        isTrue,
+      );
+      expect(
+        iptvLiveGraceReasonIsHwDecodeFail('error: Error decoding audio.'),
+        isTrue,
+      );
+      expect(
+        iptvLiveGraceReasonIsCorruptBitstream('connection reset'),
+        isFalse,
+      );
     });
 
     test('backward jump skips the archive instead of another reopen', () {

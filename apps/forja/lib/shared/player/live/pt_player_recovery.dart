@@ -87,6 +87,10 @@ mixin _PtPlayerRecovery on _PtPlayerEngineCore {
     if (last != null &&
         DateTime.now().difference(last) <
             _PtPlayerScreenState._liveGoLiveThrottle) {
+      if (iptvLiveGraceReasonIsCorruptBitstream(reason)) {
+        debugPrint('[IPTV] goLive throttled — decode storm');
+        return;
+      }
       debugPrint('[IPTV] goLive throttled — ended');
       if (mounted) {
         setState(() => _s._statusBanner = 'Stream ended');

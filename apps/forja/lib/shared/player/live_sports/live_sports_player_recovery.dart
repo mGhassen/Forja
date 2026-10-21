@@ -118,6 +118,12 @@ mixin _LiveSportsPlayerRecovery on _LiveSportsPlayerEngineCore {
     if (last != null &&
         DateTime.now().difference(last) <
             _LiveSportsPlayerScreenState._liveGoLiveThrottle) {
+      // Decode storm fires dozens of errors while reconnect is already in
+      // flight — ignore quietly. Other throttle hits mean the source died.
+      if (iptvLiveGraceReasonIsCorruptBitstream(reason)) {
+        debugPrint('[Live Sports] goLive throttled — decode storm');
+        return;
+      }
       debugPrint('[Live Sports] goLive throttled — ended');
       if (mounted) {
         setState(() => _s._statusBanner = 'Stream ended');

@@ -20,6 +20,7 @@ mixin _PtPlayerEngine on _PtPlayerEngineCore {
     bool userInitiated = false,
   });
   void _scheduleIptvLiveGraceRecovery({required String reason});
+  Future<void> _tryIptvLiveGoLive({required String reason});
   void _onIptvLivePlayingChanged(bool playing);
   void _armTransientHwDecodeIgnore();
   Future<void> _disposePlayer();
@@ -1063,6 +1064,13 @@ mixin _PtPlayerEngine on _PtPlayerEngineCore {
             forceHard: _s._retryAttempt >= 1,
           ),
         );
+        return;
+      }
+      // Corrupt AAC/H264 — clock still ticks on a green frame; reopen now.
+      if (_livePlaybackProfile &&
+          _s._mediaKitBackend &&
+          (isAudioDecoderError(msg) || isVideoDecoderError(msg))) {
+        unawaited(_tryIptvLiveGoLive(reason: 'decode fail: $msg'));
         return;
       }
       if (_livePlaybackProfile && _s._mediaKitBackend) {
