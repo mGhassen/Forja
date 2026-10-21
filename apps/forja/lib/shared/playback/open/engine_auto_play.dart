@@ -14,6 +14,8 @@ import 'package:forja/shared/playback/play_session.dart';
 
 export 'package:forja/shared/playback/play_session.dart';
 import 'package:forja/shared/playback/sources_request_context.dart';
+import 'package:forja/shared/playback/open/engine_race_fallbacks.dart';
+export 'package:forja/shared/playback/open/engine_race_fallbacks.dart';
 import 'package:forja/shared/playback/open/play_source_effective.dart';
 import 'package:forja/shared/playback/open/playback_start_trace.dart';
 import 'package:forja/shared/player/controls/episodes/catalog_episode.dart';
@@ -169,16 +171,28 @@ class EngineAutoPlayPick {
     required this.pluginId,
     required this.stream,
     required this.sources,
+    this.fallbacks,
   });
 
   final String pluginId;
   final Map<String, dynamic> stream;
+
+  /// Verified rows of the winning plugin, winner first.
   final List<StreamSource> sources;
+
+  /// Backup rows still arriving from sibling probes after the win (RFC-122
+  /// T13). Null for resolve-row picks (torrent / debrid), which never probe.
+  final EngineRaceFallbacks? fallbacks;
 }
 
 /// Green Play Forja Auto — same as movies/TV green Forja Play:
-/// session-cache seed, every selected provider at once, first UP wins
-/// (cancel rest). Not extract-all-then-probe-all; not webstreaming sequential.
+/// session-cache seed, every selected provider at once, first UP wins.
+/// Not extract-all-then-probe-all; not webstreaming sequential.
+///
+/// The first verified source opens the player at once. Sibling probes keep
+/// running for [EngineRaceFallbackPolicy.window] (or until
+/// [EngineRaceFallbackPolicy.extraWins] more rows verify); their rows reach
+/// the player through its reload hook when the first row dies.
 ///
 /// Used by movies/TV details, Anime, and Asian Drama — one path, not copies.
 ///
@@ -284,6 +298,44 @@ Future<EngineAutoPlayPick?> runEngineAutoPlay({
     EngineService.instance.cancelPending();
   }
 
+  // Winner chosen → `race` completes and the player opens. In-flight workers
+  // keep probing until `raceClosed` (fallback window); no new plugin starts
+  // after the win — see EngineRaceFallbacks / engineRacePoolAdmits.
+  EngineRaceFallbacks? fallbacks;
+  var raceClosed = false;
+  // A new Play / episode switch inside the window starts its own trace
+  // session; this race's late marks must not print against it.
+  final traceSession = trace.sessionId;
+  void raceMark(String name, {String detail = ''}) {
+    if (trace.sessionId != traceSession) return;
+    trace.mark(name, detail: detail);
+  }
+
+  void closeRace() {
+    if (raceClosed) return;
+    raceClosed = true;
+    // Park extracted-but-unprobed rows on every close path (timer, extra
+    // wins, pool drained) before the window reports closed to drain().
+    fallbacks?.addUnprobedRows(
+      omitPlatformBlockedDrmStreams([
+        for (final s in streams)
+          if (!probedUrls.contains(s['url']?.toString() ?? '')) s,
+      ]),
+    );
+    // Narrow abort: drop this race's late results (fetchGen) and cancel the
+    // Rust extract jobs only. Not cancelPending()/abortAll — the player is
+    // already running its own engine work (episodes, history) and a global
+    // abort would hand it empty results.
+    fetchGen++;
+    inFlight.clear();
+    poolTasks.clear();
+    Engine.cancelEngineJsExtracts();
+    raceMark(
+      'race-closed',
+      detail: 'fallbacks=${fallbacks?.verifiedCount ?? 0}',
+    );
+  }
+
   late final StreamLoadingSession loadingSession;
   final ownsLoadingOverlay = existingLoading == null;
 
@@ -293,6 +345,8 @@ Future<EngineAutoPlayPick?> runEngineAutoPlay({
     cancelled = true;
     playGen++;
     abortPool();
+    fallbacks?.close();
+    raceClosed = true;
     final pending = hitCompleter;
     if (pending != null && !pending.isCompleted) pending.complete(null);
     if (ownsLoadingOverlay) dismissStreamLoading(loadingSession);
@@ -483,6 +537,9 @@ Future<EngineAutoPlayPick?> runEngineAutoPlay({
     }
 
     void publishProbes() {
+      // Overlay notifiers are disposed once the player opens; the fallback
+      // window keeps probing after that.
+      if (race.isCompleted) return;
       probeNotifier.value = [
         for (var i = 0; i < pluginIds.length; i++)
           StreamProviderProbe(
@@ -531,7 +588,7 @@ Future<EngineAutoPlayPick?> runEngineAutoPlay({
       String pluginId,
       List<Map<String, dynamic>> pluginStreams,
     ) async {
-      if (playAborted() || race.isCompleted) return;
+      if (playAborted() || raceClosed) return;
       if (!pluginIds.contains(pluginId)) return;
       if (statusById[pluginId] == StreamProviderProbeStatus.success) return;
 
@@ -553,33 +610,57 @@ Future<EngineAutoPlayPick?> runEngineAutoPlay({
       probingCount++;
       statusById[pluginId] = StreamProviderProbeStatus.trying;
       publishProbes();
-      messageNotifier.value = 'Checking servers…';
+      if (!race.isCompleted) messageNotifier.value = 'Checking servers…';
 
+      // A URL that probed OK but failed in a player (decode, SSL, 404) must
+      // not re-verify as a win on reload — the chain would end on it again.
+      final failedUrls = PlaybackSelection.failedUrls.toSet();
       try {
         for (final row in rows) {
-          if (playAborted() || race.isCompleted) break;
+          if (playAborted() || raceClosed) break;
           final rowUrl = row['url']?.toString() ?? '';
           if (rowUrl.isNotEmpty && !probedUrls.add(rowUrl)) continue;
-          final probed = await buildProbedEngineCatalogSources(
-            profile: profile,
-            settings: settings,
-            rows: [row],
-            isAborted: playAborted,
-            preferFirst: row,
+          if (streamRowUrlFailed(row, failedUrls)) continue;
+          final probed = dropFailedStreamSources(
+            await buildProbedEngineCatalogSources(
+              profile: profile,
+              settings: settings,
+              rows: [row],
+              isAborted: playAborted,
+              preferFirst: row,
+            ),
+            failedUrls,
           );
           if (probed.isEmpty) continue;
           statusById[pluginId] = StreamProviderProbeStatus.success;
           publishProbes();
           if (!race.isCompleted) {
             trace.mark('first-probe-ok');
-            abortPool();
+            // Do not abort the pool: siblings keep probing for the fallback
+            // window so a dead winner has rows to hop to. closeRace() runs
+            // from the window (timer / extra wins / pool drained).
+            final window = EngineRaceFallbacks(
+              winner: probed,
+              onClose: closeRace,
+            );
+            fallbacks = window;
             race.complete(
               EngineAutoPlayPick(
                 pluginId: pluginId,
                 stream: row,
                 sources: probed,
+                fallbacks: window,
               ),
             );
+          } else if (!raceClosed) {
+            final window = fallbacks;
+            if (window != null) {
+              window.addVerified(probed);
+              raceMark(
+                'fallback-probe-ok',
+                detail: 'n=${window.verifiedCount}',
+              );
+            }
           }
           return;
         }
@@ -630,11 +711,11 @@ Future<EngineAutoPlayPick?> runEngineAutoPlay({
             streamLanguageKeys: streamLanguageKeys,
             allowHostFallback: false,
             onRow: (row) {
-              if (playAborted() || race.isCompleted || gen != fetchGen) return;
+              if (playAborted() || raceClosed || gen != fetchGen) return;
               trace.markOnce('first-row');
               final prev = probeChains[pluginId] ?? Future<void>.value();
               probeChains[pluginId] = prev.then((_) async {
-                if (playAborted() || race.isCompleted) return;
+                if (playAborted() || raceClosed) return;
                 streams.add(row);
                 publishCache();
                 await onPluginDone(pluginId, [row]);
@@ -665,15 +746,22 @@ Future<EngineAutoPlayPick?> runEngineAutoPlay({
       publishCache();
       final playable = omitPlatformBlockedDrmStreams(raw);
       // Do not cancel sibling extracts here. Rows are not a win until probe
-      // succeeds — abortPool() after onPluginDone's probe win kills siblings.
-      // Cancelling earlier left only the first finisher; a dead URL → no stream.
+      // succeeds, and siblings keep going through the fallback window after
+      // the first win. Cancelling earlier left only the first finisher; a dead
+      // URL → no stream (RFC-122 T13).
       await onPluginDone(pluginId, playable);
     }
 
     String? soloId;
 
     void fillPool(int gen) {
-      if (playAborted() || gen != fetchGen || race.isCompleted) return;
+      if (playAborted() || gen != fetchGen) return;
+      if (!engineRacePoolAdmits(
+        winnerChosen: race.isCompleted,
+        closed: raceClosed,
+      )) {
+        return;
+      }
       final slots = poolLimit - inFlight.length;
       if (slots <= 0) return;
       final raceIds = soloId != null && pluginIds.contains(soloId)
@@ -696,7 +784,12 @@ Future<EngineAutoPlayPick?> runEngineAutoPlay({
           } finally {
             poolTasks.remove(task);
             inFlight.remove(id);
-            if (!playAborted() && gen == fetchGen && !race.isCompleted) {
+            if (!playAborted() &&
+                gen == fetchGen &&
+                engineRacePoolAdmits(
+                  winnerChosen: race.isCompleted,
+                  closed: raceClosed,
+                )) {
               fillPool(gen);
               syncOverlayFromPool();
             }
@@ -812,6 +905,22 @@ Future<EngineAutoPlayPick?> runEngineAutoPlay({
     final hit = playAborted() ? null : await race.future;
     if (playAborted()) return null;
 
+    final window = fallbacks;
+    if (hit != null && window != null) {
+      // Close the window as soon as every in-flight racer has finished, else
+      // the window timer / extra wins close it. closeRace() (the window's
+      // close hook) parks unprobed rows on every path.
+      unawaited(() async {
+        while (!window.isClosed && !playAborted()) {
+          if (!workActive() && probingCount == 0) break;
+          await Future<void>.delayed(const Duration(milliseconds: 40));
+        }
+        window.close();
+      }());
+    } else {
+      closeRace();
+    }
+
     if (hit != null) {
       if (!context.mounted) return null;
       onPick?.call(hit);
@@ -823,6 +932,7 @@ Future<EngineAutoPlayPick?> runEngineAutoPlay({
         context: context,
         movie: movie,
         sources: hit.sources,
+        fallbacks: hit.fallbacks,
         primaryRow: hit.stream,
         season: season,
         episode: episode,
@@ -1032,8 +1142,20 @@ Future<List<StreamSource>?> reloadEngineStreams({
       existingLoading: headless,
     );
     final sources = pick?.sources;
-    if (sources == null || sources.isEmpty) return null;
-    return sources;
+    if (pick == null || sources == null || sources.isEmpty) return null;
+    // Hand the player this race's backups too, not just the new winner.
+    return await reloadSourcesWithFallbacks(
+      sources: sources,
+      fallbacks: pick.fallbacks,
+      failedUrls: PlaybackSelection.failedUrls,
+      convertUnprobed: (rows) => buildProbedEngineCatalogSources(
+        profile: PlatformPlayback.capabilities,
+        settings: SettingsService(),
+        rows: rows,
+        isAborted: () => !context.mounted,
+        probe: false,
+      ),
+    );
   } finally {
     disposeStreamLoadingNotifiers(headless);
   }
@@ -1043,6 +1165,7 @@ Future<void> _playFromProbedSources({
   required BuildContext context,
   required Movie movie,
   required List<StreamSource> sources,
+  EngineRaceFallbacks? fallbacks,
   required Map<String, dynamic>? primaryRow,
   required int? season,
   required int? episode,
@@ -1112,15 +1235,30 @@ Future<void> _playFromProbedSources({
       sources: sources,
       pinSource: false,
       streamsPrevalidated: true,
-      onReloadStreams: () => reloadEngineStreams(
-        context: context,
-        movie: playMovie,
-        session: enginePlaySession,
-        season: season,
-        episode: episode,
-        hubEpisodeNumber: epNum,
-        stremioId: stremioId,
-        preferredPluginId: EngineIds.pluginIdFromChip(activeChip),
+      // Dead winner: hand the player the race backups first (verified during
+      // the fallback window, then parked unprobed rows), then run the full
+      // race again once those are gone.
+      onReloadStreams: () => drainFallbacksThenReload(
+        fallbacks: fallbacks,
+        failedUrls: PlaybackSelection.failedUrls,
+        convertUnprobed: (rows) => buildProbedEngineCatalogSources(
+          profile: PlatformPlayback.capabilities,
+          settings: SettingsService(),
+          rows: rows,
+          isAborted: isAborted,
+          probe: false,
+        ),
+        // No preferredPluginId: the plugin that just died must not race
+        // solo first.
+        reload: () => reloadEngineStreams(
+          context: context,
+          movie: playMovie,
+          session: enginePlaySession,
+          season: season,
+          episode: episode,
+          hubEpisodeNumber: epNum,
+          stremioId: stremioId,
+        ),
       ),
       externalSubtitles: catalogStreamExternalSubtitles(stream),
       stremioId: stremioId,
