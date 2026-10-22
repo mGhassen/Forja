@@ -181,17 +181,21 @@ class SubtitleApi {
     try {
       // Translation entries route through the local proxy server so the
       // player can fetch a translated SRT on demand.
-      final localPort = LocalServerService().port;
+      final proxy = LocalServerService();
+      final localPort = proxy.port;
       final translateBase =
           localPort > 0 ? 'http://localhost:$localPort' : null;
 
-      return await SubtitleCatService.instance.fetchAll(
+      final entries = await SubtitleCatService.instance.fetchAll(
         title: title,
         year: year,
         season: season,
         episode: episode,
         translateBaseUrl: translateBase,
       );
+      // The engine builds `/subtitlecat-translate?…` from the base only; the
+      // loopback proxy still needs its per-start token on that route.
+      return withProxyTokenOnTranslateUrls(entries, proxy.proxyToken);
     } catch (e) {
       debugPrint('SubtitleCat error: $e');
       return [];
@@ -199,3 +203,27 @@ class SubtitleApi {
   }
 }
 
+/// Appends `proxy_token=` to `/subtitlecat-translate` entry URLs. Pure.
+List<Map<String, dynamic>> withProxyTokenOnTranslateUrls(
+  List<Map<String, dynamic>> entries,
+  String token,
+) {
+  if (token.isEmpty) return entries;
+  return [
+    for (final e in entries)
+      () {
+        final url = e['url']?.toString() ?? '';
+        if (!url.contains('/subtitlecat-translate') ||
+            url.contains('${LocalServerService.proxyTokenQueryKey}=')) {
+          return e;
+        }
+        final sep = url.contains('?') ? '&' : '?';
+        return {
+          ...e,
+          'url':
+              '$url$sep${LocalServerService.proxyTokenQueryKey}='
+              '${Uri.encodeQueryComponent(token)}',
+        };
+      }(),
+  ];
+}

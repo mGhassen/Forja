@@ -5,6 +5,7 @@ mod chrome_fetch;
 mod crypto_host;
 mod extract;
 mod extract_events;
+mod fetch_guard;
 mod provider_health;
 mod scrypt_kdf;
 

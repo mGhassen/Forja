@@ -4,6 +4,7 @@ import 'package:forja/shared/playback/play_context.dart';
 import 'package:forja/shared/player/sources/resolve/stream_play_hooks.dart';
 import 'package:forja/shared/playback/open/engine_auto_play.dart';
 import 'package:forja/shared/playback/open/pack_green_play.dart';
+import 'package:forja/shared/playback/open/playback_start_trace.dart';
 import 'package:forja/shell/tv/shell_tv_coordinator.dart';
 import 'package:forja/shared/player/sources/kit/kit_sources.dart';
 
@@ -16,8 +17,7 @@ PlaySession _sessionFromContext(PlayContext ctx) {
     malId: ctx.malId,
     episodeVideoIdByNumber: ctx.episodeVideoIdByNumber,
     audioCategory: ctx.audioCategory,
-    useHomeEpisodeWatched:
-        meta != null && hubMetaUsesHomeWatchHistory(meta),
+    useHomeEpisodeWatched: meta != null && hubMetaUsesHomeWatchHistory(meta),
   );
 }
 
@@ -27,6 +27,7 @@ Future<void> runPlayFromContext({
   required BuildContext context,
   required PlayContext ctx,
 }) {
+  PlaybackStartTrace.instance.start();
   final open = ctx.effectiveOpen;
   if (open?.effectiveExtract.resolveType == 'iptv') {
     final play = KitStreamPlayHooks.playPortalFromContext;

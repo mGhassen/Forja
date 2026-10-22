@@ -17,7 +17,6 @@ import 'package:forja/shared/player/controls/chrome/player_back_exit_gate.dart';
 import 'package:forja/shared/player/controls/chrome/player_chrome_overlay.dart';
 import 'package:forja/shared/player/controls/chrome/player_next_episode_chip.dart';
 import 'package:forja/shared/player/controls/chrome/player_chrome_overlays.dart';
-import 'package:forja/shared/player/controls/chrome/player_escape_exit_hint.dart';
 import 'package:forja/shared/player/controls/chrome/player_vod_tv_transport.dart';
 import 'package:forja/shared/player/controls/episodes/player_episode_menu.dart';
 import 'package:forja/shared/player/controls/episodes/player_episode_panel.dart';
@@ -38,8 +37,11 @@ import 'package:forja/shared/player/controls/seek/seek_bar_zones.dart';
 import 'package:forja/shared/player/controls/tv/player_tv_key_scope.dart';
 import 'package:forja/shared/playback/open/engine_auto_play.dart';
 import 'package:forja/shared/player/resolvers/episode_switch_resolver.dart';
+import 'package:forja/shared/playback/open/playback_start_trace.dart';
 import 'package:forja/shared/player/exo/exo_atv_surface_fallback.dart';
+import 'package:forja/shared/player/exo/exo_open_subtitle_budget.dart';
 import 'package:forja/shared/player/exo/exo_player_bridge.dart';
+import 'package:forja/shared/player/exo/exo_subtitle_session.dart';
 import 'package:forja/shared/player/controls/menus/hls_instream_subtitles.dart';
 import 'package:forja/shared/player/exo/exo_player_menus.dart';
 import 'package:forja/shared/player/exo/exo_player_view.dart';
@@ -127,7 +129,13 @@ class ExoPlayerScreen extends ConsumerStatefulWidget {
   final Map<String, dynamic>? providers;
   final String? stremioId;
   final String? stremioAddonBaseUrl;
-  final Future<void> Function(Duration position, Duration duration, {String? sourceId, String? streamUrl})? onSaveProgress;
+  final Future<void> Function(
+    Duration position,
+    Duration duration, {
+    String? sourceId,
+    String? streamUrl,
+  })?
+  onSaveProgress;
   final VoidCallback? onPlaybackStarted;
   final VoidCallback? onAllSourcesExhausted;
   final bool pinSource;
@@ -149,21 +157,25 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
   static int _nextViewId = 1;
 
   late final int _viewId = _nextViewId++;
-  late final PlayerStatusController _statusController = PlayerStatusController();
-  late final ValueNotifier<bool> _isBufferingNotifier =
-      ValueNotifier<bool>(false);
-  late final ValueNotifier<bool> _isPlayingNotifier = ValueNotifier<bool>(false);
+  late final PlayerStatusController _statusController =
+      PlayerStatusController();
+  late final ValueNotifier<bool> _isBufferingNotifier = ValueNotifier<bool>(
+    false,
+  );
+  late final ValueNotifier<bool> _isPlayingNotifier = ValueNotifier<bool>(
+    false,
+  );
   late final ValueNotifier<Duration> _positionNotifier =
       ValueNotifier<Duration>(Duration.zero);
   late final ValueNotifier<Duration> _durationNotifier =
       ValueNotifier<Duration>(Duration.zero);
   late final ValueNotifier<Map<String, List<StreamSource>>>
-      _providerSourcesCache =
-      ValueNotifier<Map<String, List<StreamSource>>>(const {});
+  _providerSourcesCache = ValueNotifier<Map<String, List<StreamSource>>>(
+    const {},
+  );
   late final ValueNotifier<Set<String>> _providerLoadFailures =
       ValueNotifier<Set<String>>(const {});
-  late final ValueNotifier<int> _streamMenuRefreshTick =
-      ValueNotifier<int>(0);
+  late final ValueNotifier<int> _streamMenuRefreshTick = ValueNotifier<int>(0);
 
   StreamSubscription<Map<dynamic, dynamic>>? _eventSub;
   Timer? _hideTimer;
@@ -179,14 +191,17 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
   );
 
   bool _disposed = false;
+
   /// Prefer boot-time [PlatformInfo] so TV key scope / ExcludeFocus work on the
   /// first frame; [_boot] still refreshes via the Exo bridge.
   bool _isTv = PlatformInfo.isAndroidTv;
   bool _exitInProgress = false;
   bool _showControls = true;
   bool _isPlaying = false;
+
   /// Paused because app left foreground — resume only if set (issue 134).
   bool _pausedByLifecycle = false;
+
   /// ATV: hide dead MediaCodec texture after veille while still paused (issue 182).
   bool _coverDeadSurface = false;
   bool _hasError = false;
@@ -194,8 +209,10 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
   bool _opening = false;
   bool _failoverInFlight = false;
   bool _allSourcesExhaustedNotified = false;
+
   /// Native error while `_opening` / mid-failover open — drained by failover.
   String? _pendingOpenError;
+
   /// Mid-watch Auto hop resume seek consumed by [_openCurrentSource].
   Duration? _pendingOpenSeek;
   bool _networkRemountInFlight = false;
@@ -204,6 +221,7 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
   double _volume = 100;
   double _rate = 1.0;
   String _resizeMode = 'fit';
+
   /// Bumps [ExoPlayerView] key so TextureView remounts after MediaKit→Exo
   /// (issue 129 zoomed crop when MediaCodec was still detaching).
   int _platformMountGen = 0;
@@ -211,6 +229,7 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
   bool _fitRemountDone = false;
   ExoTracksSnapshot _tracks = ExoTracksSnapshot.empty;
   bool _preferredSubtitleApplied = false;
+
   /// True after Media3 STATE_READY. Selecting text tracks (or soft-reloading
   /// sideloads) before ready races MergingMediaPeriod / ProgressiveMediaPeriod
   /// and can throw IllegalStateException → player pops (issue 132).
@@ -219,9 +238,24 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
   List<Map<String, dynamic>> _externalSubtitles = [];
   Set<String> _providerExternalSubUrls = {};
   final Map<String, String> _externalSubFileCache = {};
+
   /// Sideloaded Media3 payloads (`url` file://, `lang`, `label`, `sourceUrl`).
   List<Map<String, String>> _sideloadedSubtitles = [];
+
+  /// Late provider sideloads queued for one open generation; flushed on the
+  /// first READY of that open — never a soft reload before READY (issue 132).
+  List<Map<String, String>>? _lateSubsQueue;
+  int _lateSubsGen = -1;
   String? _selectedExternalSubUrl;
+
+  /// Bumped per online subtitle pick; a download that finishes after a newer
+  /// pick started is dropped.
+  int _subtitlePickGen = 0;
+
+  /// Whether the live pick generation is the user's own; an auto pick never
+  /// starts while a manual pick is in flight or applied.
+  bool _subtitlePickManual = false;
+  bool _subtitlePickInFlight = false;
   bool _isFetchingSubs = false;
   double _subtitleSize = 24;
   double _subtitleDelay = 0;
@@ -230,6 +264,7 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
   double _subtitleBottomPadding = 0;
   bool _subtitleBold = false;
   String _subtitleFont = 'Default';
+
   /// Media3 cues painted in Flutter — native SubtitleView is GONE (issue 230).
   final ValueNotifier<List<String>> _cueTexts = ValueNotifier<List<String>>(
     const [],
@@ -239,10 +274,13 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
   Duration _duration = Duration.zero;
   Duration _buffered = Duration.zero;
   bool _nearEndOfEpisode = false;
+
   /// Auto next countdown ring is running on the Next Episode chip.
   bool _autoNextCountdown = false;
+
   /// X on the chip — no auto next until the chip hides again.
   bool _autoNextDismissed = false;
+
   /// TV focus landed on the chip on its own (not by the user).
   bool _nextEpChipAutoFocus = false;
   final FocusNode _nextEpChipFocus = FocusNode(debugLabel: 'exo-next-ep-chip');
@@ -269,33 +307,44 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
   final FocusNode _playFocus = FocusNode(debugLabel: 'exo-player-play');
   final FocusNode _rewindFocus = FocusNode(debugLabel: 'exo-player-rewind');
   final FocusNode _forwardFocus = FocusNode(debugLabel: 'exo-player-forward');
-  final FocusNode _transportPrevEpFocus =
-      FocusNode(debugLabel: 'exo-player-transport-prev-ep');
-  final FocusNode _transportNextEpFocus =
-      FocusNode(debugLabel: 'exo-player-transport-next-ep');
-  final FocusNode _transportSourcesFocus =
-      FocusNode(debugLabel: 'exo-player-transport-sources');
-  final FocusNode _transportStreamFocus =
-      FocusNode(debugLabel: 'exo-player-transport-stream');
-  final FocusNode _transportEpisodesFocus =
-      FocusNode(debugLabel: 'exo-player-transport-episodes');
-  final FocusNode _transportAudioFocus =
-      FocusNode(debugLabel: 'exo-player-transport-audio');
-  final FocusNode _transportSubsFocus =
-      FocusNode(debugLabel: 'exo-player-transport-subs');
-  final FocusNode _transportQualityFocus =
-      FocusNode(debugLabel: 'exo-player-transport-quality');
-  final FocusNode _transportSettingsFocus =
-      FocusNode(debugLabel: 'exo-player-transport-settings');
+  final FocusNode _transportPrevEpFocus = FocusNode(
+    debugLabel: 'exo-player-transport-prev-ep',
+  );
+  final FocusNode _transportNextEpFocus = FocusNode(
+    debugLabel: 'exo-player-transport-next-ep',
+  );
+  final FocusNode _transportSourcesFocus = FocusNode(
+    debugLabel: 'exo-player-transport-sources',
+  );
+  final FocusNode _transportStreamFocus = FocusNode(
+    debugLabel: 'exo-player-transport-stream',
+  );
+  final FocusNode _transportEpisodesFocus = FocusNode(
+    debugLabel: 'exo-player-transport-episodes',
+  );
+  final FocusNode _transportAudioFocus = FocusNode(
+    debugLabel: 'exo-player-transport-audio',
+  );
+  final FocusNode _transportSubsFocus = FocusNode(
+    debugLabel: 'exo-player-transport-subs',
+  );
+  final FocusNode _transportQualityFocus = FocusNode(
+    debugLabel: 'exo-player-transport-quality',
+  );
+  final FocusNode _transportSettingsFocus = FocusNode(
+    debugLabel: 'exo-player-transport-settings',
+  );
   final FocusNode _backFocus = FocusNode(debugLabel: 'exo-player-back');
   final FocusNode _seekFocus = FocusNode(debugLabel: 'exo-player-seek');
   final FocusNode _playerMenuFocus = FocusNode(debugLabel: 'exo-player-menu');
   final FocusNode _retryFocus = FocusNode(debugLabel: 'exo-player-retry');
-  final FocusNode _streamActionFocus =
-      FocusNode(debugLabel: 'exo-player-stream-action');
+  /// Centered Retry on the terminal failure stage (status overlay).
+  final FocusNode _failedStageRetryFocus =
+      FocusNode(debugLabel: 'exo-player-failed-retry');
+  final FocusNode _streamActionFocus = FocusNode(
+    debugLabel: 'exo-player-stream-action',
+  );
   final FocusNode _tvKeyFocus = FocusNode(debugLabel: 'exo-player-tv-keys');
-  /// TV Back / Exit: hide chrome → arm (+ hint) → leave (desktop Escape parity).
-  bool _tvBackExitArmed = false;
   bool _hasPrevEpisodeAdjacent = false;
   bool _hasNextEpisodeAdjacent = false;
   bool _providerPinned = false;
@@ -310,17 +359,14 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
     WakelockPlus.enable();
     PlayerBackExitGate.setTryFocusBack(() {
       if (!mounted || _disposed) return false;
-      return PlayerBackExitGate.consumeChromeOrArmExit(
+      // Still resolving / first buffer, or on the failed-stream screen: one
+      // Back leaves (in-flight opens are cancelled via dispose).
+      return PlayerBackExitGate.consumeChromeOrExit(
         chromeVisible: _showControls,
-        armed: _tvBackExitArmed,
+        mediaStarted: _playbackStartedNotified && !_hasError,
         hideChrome: () {
           _hideTimer?.cancel();
           setState(() => _showControls = false);
-        },
-        setArmed: (v) {
-          if (!mounted || _disposed) return;
-          if (_tvBackExitArmed == v) return;
-          setState(() => _tvBackExitArmed = v);
         },
       );
     });
@@ -393,13 +439,16 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
     // Cap on Android — full stop+dispose can exceed the ATV ANR window (128).
     // When MediaKit was disposing, remount TextureView after first paint —
     // the 1.2s cap still leaves zoomed frames (user switch-away/back fixes it).
-    _fitRemountAfterMediaKit =
-        await MpvExclusiveSession.instance.prepareForVideoPlayer(
-      timeout: Platform.isAndroid
-          ? const Duration(milliseconds: 1200)
-          : const Duration(seconds: 5),
-    );
+    final trace = PlaybackStartTrace.instance;
+    trace.mark('player-boot-start');
+    _fitRemountAfterMediaKit = await MpvExclusiveSession.instance
+        .prepareForVideoPlayer(
+          timeout: Platform.isAndroid
+              ? const Duration(milliseconds: 1200)
+              : const Duration(seconds: 5),
+        );
     if (!mounted || _disposed) return;
+    trace.mark('prepare-done');
     final wasTv = _isTv;
     _isTv = await ExoPlayerBridge.isTelevision();
     if (mounted && _isTv != wasTv) setState(() {});
@@ -409,12 +458,14 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
     _sources = await _buildRankedSources();
     _seedSourceSession(_sources);
     if (mounted) setState(() {});
+    trace.mark('sources-ranked', detail: 'n=${_sources.length}');
     _eventSub = ExoPlayerBridge.eventsFor(_viewId).listen(_onNativeEvent);
     // Let Positioned.fill / AndroidView settle before open — opening over a
     // zero-sized TextureView leaves a zoomed crop on ATV (issue 129 A02).
     await Future<void>.delayed(Duration.zero);
     await WidgetsBinding.instance.endOfFrame;
     if (!mounted || _disposed) return;
+    trace.mark('platform-view-settled');
     await _openCurrentSource();
     unawaited(_fetchSubtitles());
 
@@ -434,15 +485,7 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
     final caps = exoVodCapsForMaxPlaybackHeight(
       await SettingsService().getMaxPlaybackHeight(),
     );
-    final subs = _sideloadedSubtitles
-        .map(
-          (s) => {
-            'url': s['url']!,
-            'lang': s['lang'] ?? 'und',
-            'label': s['label'] ?? s['lang'] ?? 'und',
-          },
-        )
-        .toList();
+    final subs = exoSideloadPayloads(_sideloadedSubtitles);
     try {
       await ExoPlayerBridge.stop(_viewId);
       await ExoPlayerBridge.open(
@@ -504,8 +547,8 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
     debugPrint(
       reopen
           ? (afterMediaKit
-              ? '[ExoPlayer] remount+reopen TextureView after MediaKit surface race'
-              : '[ExoPlayer] remount+reopen TextureView after ATV cold-open first frame')
+                ? '[ExoPlayer] remount+reopen TextureView after MediaKit surface race'
+                : '[ExoPlayer] remount+reopen TextureView after ATV cold-open first frame')
           : '[ExoPlayer] remount TextureView after Android cold-open first frame',
     );
     // MediaCodec is still reconnecting when first frame fires after a raced
@@ -539,6 +582,9 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
     _preferredSubtitleApplied = false;
     _exoReady = false;
     _selectedExternalSubUrl = null;
+    // A late batch belongs to one open — never attach it to the next one.
+    _lateSubsQueue = null;
+    _lateSubsGen = -1;
     _cueTexts.value = const [];
     _surfaceFallback.resetForNewOpen();
     setState(() {
@@ -556,31 +602,32 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
     final rawSubs = (widget.externalSubtitles ?? [])
         .where((s) => (s['url'] ?? '').toString().isNotEmpty)
         .toList();
-    final prepared = await _prepareOpenSubtitles(rawSubs);
+    final trace = PlaybackStartTrace.instance;
+    trace.mark('exo-subs-prepare-start', detail: 'n=${rawSubs.length}');
+    // Sideloads download in parallel and the picture waits at most
+    // [exoOpenSubtitleBudget]; stragglers mount via the soft subtitle reload.
+    final settledSubs = await settleWithinBudget<Map<String, String>>([
+      for (final s in rawSubs) _prepareSubtitleSideload(s),
+    ], exoOpenSubtitleBudget);
     if (_fallbackAborted(openGen)) return;
+    final prepared = settledSubs.ready;
+    trace.mark(
+      'exo-subs-prepared',
+      detail:
+          'ready=${prepared.length} late=${rawSubs.length - prepared.length}',
+    );
     _sideloadedSubtitles = prepared;
     if (mounted) {
-      // Keep Wyzie / online rows across failover reopen — only refresh provider.
-      final providerUrls = {
-        for (final s in rawSubs) (s['url'] ?? '').toString(),
-      }..remove('');
-      final preservedOnline = [
-        for (final s in _externalSubtitles)
-          if (!providerUrls.contains((s['url'] ?? '').toString())) s,
-      ];
+      // This open's provider rows, then online results found earlier in the
+      // session. Rows from an earlier provider list never carry over.
       setState(
-        () => _externalSubtitles = [...rawSubs, ...preservedOnline],
+        () => _externalSubtitles = externalSubtitleRowsForOpen(
+          providerRows: rawSubs,
+          previousRows: _externalSubtitles,
+        ),
       );
     }
-    final subs = prepared
-        .map(
-          (s) => {
-            'url': s['url']!,
-            'lang': s['lang'] ?? 'und',
-            'label': s['label'] ?? s['lang'] ?? 'und',
-          },
-        )
-        .toList();
+    final subs = exoSideloadPayloads(prepared);
     try {
       final pendingSeek = _pendingOpenSeek;
       _pendingOpenSeek = null;
@@ -597,6 +644,7 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
       final maxH = await SettingsService().getMaxPlaybackHeight();
       if (_fallbackAborted(openGen)) return;
       final caps = exoVodCapsForMaxPlaybackHeight(maxH);
+      trace.mark('exo-open-called');
       await ExoPlayerBridge.open(
         viewId: _viewId,
         url: normalizePlaybackStreamUrl(source.url),
@@ -608,6 +656,7 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
         drm: source.drm,
       );
       if (_fallbackAborted(openGen)) return;
+      trace.mark('exo-open-returned');
       await ExoPlayerBridge.setVolume(_viewId, _volume / 100.0);
       if (_rate != 1.0) {
         await ExoPlayerBridge.setRate(_viewId, _rate);
@@ -616,15 +665,19 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
       // can leave SurfaceView painted zoomed until resize mode is set again.
       await ExoPlayerBridge.setResizeMode(_viewId, _resizeMode);
       await _applySubtitleStyle();
+      unawaited(_collectLateSubtitles(settledSubs, openGen));
     } catch (e) {
       debugPrint('[ExoPlayer] open failed: $e');
       if (_fallbackAborted(openGen)) return;
+      final message = e is UnsupportedStreamAddressException
+          ? e.message
+          : 'Failed to open stream';
       // Drop the fence so failover `_openCurrentSource` can re-enter.
       _opening = false;
       if (_failoverInFlight) {
-        _pendingOpenError = 'Failed to open stream';
+        _pendingOpenError = message;
       } else {
-        await _failCurrentSource('Failed to open stream');
+        await _failCurrentSource(message);
       }
     } finally {
       if (openGen == _fallbackGen) {
@@ -661,9 +714,7 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
       'Reconnecting…',
       kind: StatusRouletteKind.loading,
     );
-    debugPrint(
-      '[ExoPlayer] Network remount @${resumeAt.inSeconds}s ($err)',
-    );
+    debugPrint('[ExoPlayer] Network remount @${resumeAt.inSeconds}s ($err)');
     try {
       final ok = await attemptNetworkPlaybackRemount(
         isCancelled: () => _disposed || !mounted || _hasError,
@@ -691,6 +742,7 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
     final type = event['type']?.toString() ?? '';
     switch (type) {
       case 'ready':
+        PlaybackStartTrace.instance.markOnce('exo-ready');
         _isBufferingNotifier.value = false;
         _statusController.complete();
         _exoReady = true;
@@ -699,10 +751,18 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
           setState(() => _playbackStartedNotified = true);
           widget.onPlaybackStarted?.call();
         }
+        // Late provider sideloads attach here, never before READY (issue
+        // 132). The flush clears _exoReady before its first await, so the
+        // auto-pick below waits for the READY that follows the soft reload.
+        unawaited(_flushLateSubtitles(_fallbackGen));
         // Apply preferred text track only after READY — earlier selectTrack
         // races MergingMediaPeriod when sideloads are present (issue 132).
         unawaited(_maybeApplyPreferredSubtitle());
         if (_selectedExternalSubUrl != null) {
+          debugPrint(
+            '[ExoPlayer] subtitle: READY, re-select pick '
+            '$_selectedExternalSubUrl',
+          );
           unawaited(_selectSideloadedMatchingSelection());
         }
         break;
@@ -736,7 +796,8 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
         final bufMs = (event['buffered'] as num?)?.toInt() ?? 0;
         final pos = Duration(milliseconds: posMs);
         final dur = durMs > 0 ? Duration(milliseconds: durMs) : _duration;
-        final nearEnd = widget.hasNextEpisode &&
+        final nearEnd =
+            widget.hasNextEpisode &&
             widget.onNextEpisode != null &&
             isNearEndOfEpisode(pos, dur);
         // The controls overlay is always built (hidden via AnimatedOpacity, not
@@ -787,10 +848,11 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
           unawaited(_maybeApplyPreferredSubtitle());
         }
         if (_exoReady && _selectedExternalSubUrl != null) {
-          unawaited(_selectSideloadedMatchingSelection());
+          unawaited(_selectSideloadedMatchingSelection(tracksFresh: true));
         }
         break;
       case 'renderedFirstFrame':
+        PlaybackStartTrace.instance.finish('exo-first-frame');
         _maybeRemountFitOnce();
         break;
       case 'cues':
@@ -802,7 +864,8 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
         }
         _cueTexts.value = [
           for (final e in raw)
-            if (e != null && e.toString().trim().isNotEmpty) e.toString().trim(),
+            if (e != null && e.toString().trim().isNotEmpty)
+              e.toString().trim(),
         ];
         break;
     }
@@ -858,8 +921,7 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
     if (_duration.inMilliseconds <= 0) return;
     if (widget.onSaveProgress != null) {
       final url = _currentUrl;
-      final playUrl =
-          (url != null && url.isNotEmpty) ? url : widget.mediaPath;
+      final playUrl = (url != null && url.isNotEmpty) ? url : widget.mediaPath;
       await widget.onSaveProgress!(
         _position,
         _duration,
@@ -955,8 +1017,8 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
     final clamped = target < Duration.zero
         ? Duration.zero
         : (_duration.inMilliseconds > 0 && target > _duration)
-            ? _duration
-            : target;
+        ? _duration
+        : target;
     await _seekTo(clamped);
   }
 
@@ -968,9 +1030,11 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
   }
 
   void _armPostSeekStall(Duration target) {
-    final url = _currentUrl ??
+    final url =
+        _currentUrl ??
         (_sources.isNotEmpty ? _sources[_sourceIndex].url : null);
-    _postSeekStall.enabled = url != null &&
+    _postSeekStall.enabled =
+        url != null &&
         !isLocalTorrentStreamUrl(url) &&
         !isLocalLoopbackPlayUrl(url);
     if (shouldSkipPostSeekStallArm(
@@ -1003,15 +1067,7 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
       final maxH = await SettingsService().getMaxPlaybackHeight();
       if (_fallbackAborted(remountGen)) return false;
       final caps = exoVodCapsForMaxPlaybackHeight(maxH);
-      final subs = _sideloadedSubtitles
-          .map(
-            (s) => {
-              'url': s['url']!,
-              'lang': s['lang'] ?? 'und',
-              'label': s['label'] ?? s['lang'] ?? 'und',
-            },
-          )
-          .toList();
+      final subs = exoSideloadPayloads(_sideloadedSubtitles);
       final playUrl = normalizePlaybackStreamUrl(source.url);
       final headers = resolvePlaybackHttpHeaders(
         source.headers,
@@ -1081,7 +1137,6 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
 
   void _claimPlayFocus() {
     if (!_isTv) return;
-    _tvBackExitArmed = false;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted || !_playFocus.canRequestFocus) return;
       // Menu/panel owns the remote - don't yank focus back to Play.
@@ -1101,12 +1156,34 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
 
   void _focusDownFromTopBar() {
     if (!_isTv) return;
-    _tvBackExitArmed = false;
+    // Terminal failure: the centered Retry is the primary control.
+    if (_hasError && _failedStageRetryFocus.canRequestFocus) {
+      _failedStageRetryFocus.requestFocus();
+      return;
+    }
     if (_seekFocus.canRequestFocus) {
       _seekFocus.requestFocus();
       return;
     }
     _claimPlayFocus();
+  }
+
+  /// D-pad ↑ from the centered failure Retry / Back → top-bar Retry (or Back).
+  void _focusTopBarFromFailedStage() {
+    if (!_isTv) return;
+    if (_retryFocus.canRequestFocus) {
+      _retryFocus.requestFocus();
+      return;
+    }
+    _claimBackFocus();
+  }
+
+  /// Top-bar Retry and the centered failure Retry share this.
+  void _retryCurrentSource() {
+    setState(() {
+      _hasError = false;
+    });
+    unawaited(_openCurrentSource());
   }
 
   void _focusDownFromSeekbar() => _claimPlayFocus();
@@ -1177,6 +1254,72 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
   bool _fallbackAborted(int gen) =>
       _disposed || !mounted || gen != _fallbackGen;
 
+  /// Sideloads that missed [exoOpenSubtitleBudget]: give stragglers one more
+  /// bounded round, then queue them for a single soft reload on READY.
+  /// Tracks still downloading after that stay in the subtitle menu and load
+  /// on pick.
+  Future<void> _collectLateSubtitles(
+    SettledWithinBudget<Map<String, String>> settled,
+    int openGen,
+  ) async {
+    if (settled.pending.isEmpty) return;
+    final second = await settleWithinBudget<Map<String, String>>(
+      settled.pending,
+      exoLateSubtitleBudget,
+    );
+    if (second.ready.isEmpty || _fallbackAborted(openGen)) return;
+    _lateSubsQueue = second.ready;
+    _lateSubsGen = openGen;
+    if (_exoReady) await _flushLateSubtitles(openGen);
+  }
+
+  /// Attach the queued late batch — one soft reload, only after READY for
+  /// [openGen]. A queue from an older open is dropped. Skipped when the user
+  /// already chose (manual embedded pick, manual online pick, or the subtitle
+  /// menu is open): their choice stands and the late tracks remain pickable.
+  Future<void> _flushLateSubtitles(int openGen) async {
+    final queued = _lateSubsQueue;
+    if (queued == null) return;
+    _lateSubsQueue = null;
+    if (_lateSubsGen != openGen || _fallbackAborted(openGen) || !_exoReady) {
+      return;
+    }
+    if (_subtitlePinned ||
+        _selectedExternalSubUrl != null ||
+        PlayerSubtitleDialog.isShowing) {
+      return;
+    }
+    final next = mergeSideloads(_sideloadedSubtitles, queued);
+    if (next.length == _sideloadedSubtitles.length) return;
+    PlaybackStartTrace.instance.mark(
+      'exo-late-subs-attached',
+      detail: 'n=${next.length - _sideloadedSubtitles.length}',
+    );
+    _sideloadedSubtitles = next;
+    // Soft reload remounts MergingMediaPeriod — wait for the next READY
+    // before auto-select (issue 132). No manual pick exists at this point, so
+    // the language preference may run again over the fuller track list.
+    _exoReady = false;
+    _preferredSubtitleApplied = false;
+    try {
+      debugPrint('[ExoPlayer] subtitle: late attach n=${next.length}');
+      await ExoPlayerBridge.setSubtitles(_viewId, exoSideloadPayloads(next));
+      if (mounted) setState(() {});
+    } catch (e) {
+      debugPrint('[ExoPlayer] late subtitle attach failed: $e');
+    }
+  }
+
+  /// A manual Sources / catalog pick reopens the stream under this screen:
+  /// forget this open's auto-select lock and late batch, wait for READY again.
+  /// The user's online pick survives — the caller re-attaches its sideload.
+  void _resetSubtitleStateForStreamSwitch() {
+    _preferredSubtitleApplied = false;
+    _exoReady = false;
+    _lateSubsQueue = null;
+    _lateSubsGen = -1;
+  }
+
   void _focusSeekFromTransport() {
     if (_seekFocus.canRequestFocus) {
       _seekFocus.requestFocus();
@@ -1208,8 +1351,9 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
     _hideTimer?.cancel();
     if (!_isPlaying) return;
     if (playerChromeOverlayBlocksSeek()) return;
-    final hideAfter =
-        _isTv ? const Duration(seconds: 10) : const Duration(seconds: 4);
+    final hideAfter = _isTv
+        ? const Duration(seconds: 10)
+        : const Duration(seconds: 4);
     _hideTimer = Timer(hideAfter, () {
       if (!mounted || _disposed || !_isPlaying) return;
       if (playerChromeOverlayBlocksSeek()) {
@@ -1357,9 +1501,7 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
           magnetLink: widget.magnetLink,
           stremioId: widget.stremioId,
           stremioAddonBaseUrl: widget.stremioAddonBaseUrl,
-          torrentEp: metaOpenTorrentEp(
-            widget.enginePlaySession?.effectiveOpen,
-          ),
+          torrentEp: metaOpenTorrentEp(widget.enginePlaySession?.effectiveOpen),
         );
         if (resolved != null) break;
       }
@@ -1421,11 +1563,8 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
       context: context,
       tracks: tracks,
       anchorContext: anchorContext,
-      onSelect: (id) => ExoPlayerBridge.selectTrack(
-        _viewId,
-        type: 'audio',
-        trackId: id,
-      ),
+      onSelect: (id) =>
+          ExoPlayerBridge.selectTrack(_viewId, type: 'audio', trackId: id),
     );
     // TV: opener restored by playerMenuRestoreReturnFocus.
   }
@@ -1443,12 +1582,28 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
       ),
     );
     if (!mounted || !anchorContext.mounted) return;
+    final rows = [..._externalSubtitles, ...hlsRows];
+    // A sideloaded row is its own Media3 text track. List it once (as the
+    // row), and show the row selected when Media3 renders that track.
+    final twinUrls = sideloadSourceUrls(_sideloadedSubtitles).intersection({
+      for (final r in rows) (r['url'] ?? '').toString(),
+    });
+    final menuTracks = ExoTracksSnapshot(
+      audio: tracks.audio,
+      text: exoEmbeddedTextTracks(tracks.text, twinUrls),
+      video: tracks.video,
+      videoAuto: tracks.videoAuto,
+      textOff: tracks.textOff,
+      rate: tracks.rate,
+      playback: tracks.playback,
+    );
     await ExoPlayerMenus.showSubtitles(
       context: context,
-      tracks: tracks,
+      tracks: menuTracks,
       anchorContext: anchorContext,
-      externalSubtitles: [..._externalSubtitles, ...hlsRows],
-      selectedExternalSubUrl: _selectedExternalSubUrl,
+      externalSubtitles: rows,
+      selectedExternalSubUrl:
+          _selectedExternalSubUrl ?? selectedSideloadSourceUrl(tracks, twinUrls),
       isFetchingSubs: _isFetchingSubs,
       onOff: _turnOffSubtitles,
       onSubtitleSettings: _showSubtitleSettings,
@@ -1622,6 +1777,13 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
     if (_subtitlePinned) return;
     // Wait for STATE_READY before selectTrack / setSubtitles (issue 132).
     if (!_exoReady) return;
+    // A picked online / file subtitle owns the text track. The language
+    // preference never re-routes it to another track in the same language.
+    if (_selectedExternalSubUrl != null) {
+      _preferredSubtitleApplied = true;
+      await _selectSideloadedMatchingSelection();
+      return;
+    }
     if (_providerExternalSubUrls.isEmpty &&
         (widget.externalSubtitles ?? const []).isNotEmpty) {
       _providerExternalSubUrls = providerExternalSubtitleUrls(
@@ -1671,9 +1833,8 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
       return;
     }
 
-    final onPreferred = preferredMatch != null &&
-        preferredMatch.selected &&
-        !_tracks.textOff;
+    final onPreferred =
+        preferredMatch != null && preferredMatch.selected && !_tracks.textOff;
     if (onPreferred) {
       _preferredSubtitleApplied = true;
       return;
@@ -1689,11 +1850,7 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
 
     // Lock before await so concurrent tracksChanged cannot re-enter selectTrack.
     _preferredSubtitleApplied = true;
-    await ExoPlayerBridge.selectTrack(
-      _viewId,
-      type: 'text',
-      trackId: match.id,
-    );
+    await ExoPlayerBridge.selectTrack(_viewId, type: 'text', trackId: match.id);
     debugPrint(
       '[ExoPlayer] auto subtitle → ${match.label.isNotEmpty ? match.label : match.language}',
     );
@@ -1706,22 +1863,19 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
       context: context,
       tracks: tracks,
       anchorContext: anchorContext,
-      onSelect: (id) => ExoPlayerBridge.selectTrack(
-        _viewId,
-        type: 'video',
-        trackId: id,
-      ),
+      onSelect: (id) =>
+          ExoPlayerBridge.selectTrack(_viewId, type: 'video', trackId: id),
     );
     // TV: opener restored by playerMenuRestoreReturnFocus.
   }
 
   void _showSettingsMenu(BuildContext anchorContext) {
-    final hasProviders = widget.providers != null &&
+    final hasProviders =
+        widget.providers != null &&
         widget.providers!.isNotEmpty &&
         widget.movie != null &&
         !_usesCatalogSourcesPanel;
-    final hasSources =
-        _currentSources != null && _currentSources!.isNotEmpty;
+    final hasSources = _currentSources != null && _currentSources!.isNotEmpty;
     ExoPlayerMenus.showSettings(
       context: context,
       anchorContext: anchorContext,
@@ -1807,8 +1961,7 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
 
   void _popPlayerRoute({NavigatorState? nav}) {
     final navigator =
-        nav ??
-        (mounted ? Navigator.of(context, rootNavigator: true) : null);
+        nav ?? (mounted ? Navigator.of(context, rootNavigator: true) : null);
     // Strip loading under the player first — pop-then-dismiss paints resolve UI.
     dismissActiveLoadingOverlayRoute(navigator);
     if (navigator != null && navigator.mounted && navigator.canPop()) {
@@ -1827,7 +1980,8 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
       usingBuiltIn: true,
       builtInEngine: widget.builtInEngine,
       surface: BuiltInPlayerMenuSurface.catalogVod,
-      streamUrl: _currentUrl ??
+      streamUrl:
+          _currentUrl ??
           (_sources.isNotEmpty ? _sources[_sourceIndex].url : widget.mediaPath),
       torrentLocalhost: isLocalTorrentStreamUrl(
         _currentUrl ??
@@ -1835,8 +1989,9 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
                 ? _sources[_sourceIndex].url
                 : widget.mediaPath),
       ),
-      needsWidevine: (_currentSources ?? widget.sources ?? const [])
-          .any((s) => s.hasDrm),
+      needsWidevine: (_currentSources ?? widget.sources ?? const []).any(
+        (s) => s.hasDrm,
+      ),
       separateAudioUrl:
           widget.audioUrl != null && widget.audioUrl!.trim().isNotEmpty,
       onSelect: ({builtInEngine, externalPlayer}) async {
@@ -1844,15 +1999,17 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
         // mid-switch ANRs ATV (issue 128). stop() keeps the player instance.
         if (externalPlayer == null && builtInEngine != null) {
           try {
-            await ExoPlayerBridge.stop(_viewId)
-                .timeout(const Duration(milliseconds: 400));
+            await ExoPlayerBridge.stop(
+              _viewId,
+            ).timeout(const Duration(milliseconds: 400));
           } catch (_) {}
         }
         await handler(
           _position,
           builtInEngine: builtInEngine,
           externalPlayer: externalPlayer,
-          streamUrl: _currentUrl ??
+          streamUrl:
+              _currentUrl ??
               (_sources.isNotEmpty ? _sources[_sourceIndex].url : null),
           headers: _sources.isNotEmpty
               ? _sources[_sourceIndex].headers
@@ -1907,8 +2064,8 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
       final next = await _computeNextTmdbEpisode();
       if (!mounted) return;
       setState(() {
-        _hasPrevEpisodeAdjacent = widget.selectedEpisode! > 1 ||
-            (widget.selectedSeason ?? 1) > 1;
+        _hasPrevEpisodeAdjacent =
+            widget.selectedEpisode! > 1 || (widget.selectedSeason ?? 1) > 1;
         _hasNextEpisodeAdjacent = next != null;
       });
       return;
@@ -2038,8 +2195,7 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
       return;
     }
 
-    if (widget.episodes != null &&
-        widget.onHubEpisodeSelected != null) {
+    if (widget.episodes != null && widget.onHubEpisodeSelected != null) {
       final current = widget.hubEpisodeNumber ?? widget.selectedEpisode;
       if (current == null) return;
       final idx = hubEpisodeIndex(widget.episodes!, current);
@@ -2129,6 +2285,7 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
     _seekFocus.dispose();
     _playerMenuFocus.dispose();
     _retryFocus.dispose();
+    _failedStageRetryFocus.dispose();
     _streamActionFocus.dispose();
     _tvKeyFocus.dispose();
     _nextEpChipFocus.dispose();
@@ -2178,12 +2335,14 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
 
   Future<void> _teardownExoPlayer() async {
     try {
-      await ExoPlayerBridge.stop(_viewId)
-          .timeout(const Duration(milliseconds: 400));
+      await ExoPlayerBridge.stop(
+        _viewId,
+      ).timeout(const Duration(milliseconds: 400));
     } catch (_) {}
     try {
-      await ExoPlayerBridge.dispose(_viewId)
-          .timeout(const Duration(milliseconds: 800));
+      await ExoPlayerBridge.dispose(
+        _viewId,
+      ).timeout(const Duration(milliseconds: 800));
     } catch (_) {}
   }
 
@@ -2197,10 +2356,10 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
     final compact = MediaQuery.sizeOf(context).width < 700;
     final tvFocus = _isTv;
     final hasTorrentSources = _usesCatalogSourcesPanel;
-    final catalogSourceLines =
-        hasTorrentSources ? _catalogSourcesButtonLabels() : null;
-    final streamPickerLines =
-        _hasStreamPicker ? _streamPickerLabels() : null;
+    final catalogSourceLines = hasTorrentSources
+        ? _catalogSourcesButtonLabels()
+        : null;
+    final streamPickerLines = _hasStreamPicker ? _streamPickerLabels() : null;
     final playingOffline = isOfflineDownloadPlayUrl(
       _currentUrl ?? widget.mediaPath,
     );
@@ -2245,12 +2404,7 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
                     episodeLine: _episodeLine,
                     statusActions: _hasError
                         ? PlayerTopStatusActions(
-                            onRetry: () {
-                              setState(() {
-                                _hasError = false;
-                              });
-                              unawaited(_openCurrentSource());
-                            },
+                            onRetry: _retryCurrentSource,
                             onStream: _hasStreamPicker
                                 ? () => unawaited(_showSourcesDialog(context))
                                 : null,
@@ -2258,7 +2412,8 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
                             retryFocusNode: _retryFocus,
                             streamFocusNode: _streamActionFocus,
                             onRetryLeftEdge: () => _backFocus.requestFocus(),
-                            onRetryRightEdge: _hasStreamPicker ||
+                            onRetryRightEdge:
+                                _hasStreamPicker ||
                                     widget.onSwitchPlayer != null
                                 ? () {
                                     if (_hasStreamPicker) {
@@ -2295,7 +2450,7 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
                       playerOnDownEdge: _focusDownFromTopBar,
                       onPlayer: widget.onSwitchPlayer != null
                           ? (anchorContext) =>
-                              unawaited(_showPlayerMenu(anchorContext))
+                                unawaited(_showPlayerMenu(anchorContext))
                           : null,
                     ),
                   ),
@@ -2311,12 +2466,7 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
                   episodeLine: _episodeLine,
                   statusActions: _hasError
                       ? PlayerTopStatusActions(
-                          onRetry: () {
-                            setState(() {
-                              _hasError = false;
-                            });
-                            unawaited(_openCurrentSource());
-                          },
+                          onRetry: _retryCurrentSource,
                           onStream: _hasStreamPicker
                               ? () => unawaited(_showSourcesDialog(context))
                               : null,
@@ -2329,7 +2479,7 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
                     showPlayer: widget.onSwitchPlayer != null,
                     onPlayer: widget.onSwitchPlayer != null
                         ? (anchorContext) =>
-                            unawaited(_showPlayerMenu(anchorContext))
+                              unawaited(_showPlayerMenu(anchorContext))
                         : null,
                   ),
                 ),
@@ -2491,9 +2641,8 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
                       onRewind10: () => unawaited(
                         _seekRelative(const Duration(seconds: -10)),
                       ),
-                      onForward10: () => unawaited(
-                        _seekRelative(const Duration(seconds: 10)),
-                      ),
+                      onForward10: () =>
+                          unawaited(_seekRelative(const Duration(seconds: 10))),
                       onPreviousEpisode: () {
                         if (_loadingNextEp) return;
                         unawaited(_previousEpisode());
@@ -2515,8 +2664,7 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
                       onOpenAudio: (ctx) => unawaited(_showAudioMenu(ctx)),
                       onOpenSubtitles: (ctx) =>
                           unawaited(_showSubtitlesMenu(ctx)),
-                      onOpenQuality: (ctx) =>
-                          unawaited(_showQualityMenu(ctx)),
+                      onOpenQuality: (ctx) => unawaited(_showQualityMenu(ctx)),
                       onOpenSettings: _showSettingsMenu,
                     )
                   else
@@ -2739,9 +2887,7 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
               ),
               if (_coverDeadSurface)
                 const Positioned.fill(
-                  child: IgnorePointer(
-                    child: ColoredBox(color: Colors.black),
-                  ),
+                  child: IgnorePointer(child: ColoredBox(color: Colors.black)),
                 ),
               Positioned.fill(
                 child: GestureDetector(
@@ -2760,7 +2906,6 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
                   ),
                 ),
               ),
-              if (_tvBackExitArmed) const PlayerEscapeExitHint.tv(),
               // Outside the chrome: shows alone while chrome is hidden.
               if (_showNextEpChip)
                 Positioned(
@@ -2790,6 +2935,15 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
                   controller: _statusController,
                   bufferingListenable: _isBufferingNotifier,
                   header: 'Checking sources',
+                  // Centered indicator until the first frame; centered
+                  // Retry / Back on a terminal failure (top-bar Retry stays).
+                  playbackStarted: _playbackStartedNotified,
+                  failed: _hasError,
+                  tvFocusable: _isTv,
+                  onRetry: _retryCurrentSource,
+                  onBack: () => unawaited(_exit()),
+                  failedRetryFocusNode: _failedStageRetryFocus,
+                  onFailedStageUp: _focusTopBarFromFailedStage,
                 ),
               ParentalGuideLayer(
                 imdbId: widget.movie?.imdbId,
@@ -2818,8 +2972,7 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
         _revealChrome();
         _claimPlayFocus();
       },
-      onSeekBack: () =>
-          unawaited(_seekRelative(const Duration(seconds: -10))),
+      onSeekBack: () => unawaited(_seekRelative(const Duration(seconds: -10))),
       onSeekForward: () =>
           unawaited(_seekRelative(const Duration(seconds: 10))),
       onToggleControls: _toggleControls,

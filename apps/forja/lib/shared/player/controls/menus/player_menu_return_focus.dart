@@ -116,6 +116,28 @@ void _scheduleAfterPlayerOverlayDismissed() {
   });
 }
 
+/// Land D-pad focus on [node] and hold it for one frame against the chrome's
+/// deferred Play re-claim (`_claimPlayFocus` / key-scope `_ensureFocus` both
+/// stand down while [playerChromeHasPendingReturnFocus]). Used when a stage
+/// that is not a menu appears with its own primary control — the terminal
+/// stream-failure Retry. A pending menu return wins over this call.
+void playerChromeLandFocus(FocusNode node) {
+  if (!node.canRequestFocus) return;
+  if (_playerMenuReturnFocus != null && _playerMenuReturnFocus != node) return;
+  _playerMenuReturnFocus = node;
+  WidgetsBinding.instance.addPostFrameCallback((_) {
+    if (_playerMenuReturnFocus != node) return;
+    if (node.canRequestFocus && node.context != null) {
+      node.requestFocus();
+    }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_playerMenuReturnFocus == node) {
+        _playerMenuReturnFocus = null;
+      }
+    });
+  });
+}
+
 /// Drop pending return focus without restoring (player exit).
 void playerMenuClearReturnFocus() {
   _playerMenuReturnFocus = null;

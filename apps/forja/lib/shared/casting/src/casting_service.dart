@@ -4,6 +4,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
+import 'package:forja/shared/utils/redact_url.dart';
+
 import 'cast_subtitle.dart';
 
 enum CastTarget { airplay, chromecast }
@@ -110,7 +112,9 @@ class CastingService {
         handoff: handoff,
       );
     }
-    debugPrint('[Casting] ${target.name} cast requested: $url');
+    debugPrint(
+      '[Casting] ${target.name} cast requested: ${redactUrlCredentials(url)}',
+    );
     return false;
   }
 

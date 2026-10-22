@@ -2,13 +2,20 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:forja/shell/core/forja_shell_input_policy.dart';
+import 'package:forja/shell/core/forja_shell_scope.dart';
 import 'package:forja/shell/desktop/desktop_window_chrome.dart';
 import 'package:forja/shared/casting/casting.dart';
+import 'package:forja/shell/focus/shell_focusable_tap.dart';
 import 'package:forja/shared/playback/stream_provider_probe.dart';
+import 'package:forja/shared/player/controls/menus/player_menu_return_focus.dart';
 import 'package:forja/shared/theme/app_theme.dart';
+import 'package:forja_foundation/components/button.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
+import 'package:forja_foundation/tokens/loading_state_tokens.dart';
 import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
+import 'package:forja_foundation/widgets/feedback/loading_state.dart';
 
 enum StatusRouletteKind { loading, success, failed, info }
 
@@ -18,9 +25,9 @@ const kStreamOpenStatusId = 'stream-open';
 enum StreamOpenStatusStage { checking, preparing }
 
 String streamOpenStatusLabel(StreamOpenStatusStage stage) => switch (stage) {
-      StreamOpenStatusStage.checking => 'Checking stream…',
-      StreamOpenStatusStage.preparing => 'Preparing stream…',
-    };
+  StreamOpenStatusStage.checking => 'Checking stream…',
+  StreamOpenStatusStage.preparing => 'Preparing stream…',
+};
 
 void upsertStreamOpenStatus(
   PlayerStatusController controller,
@@ -232,17 +239,60 @@ class PlayerAirPlayCastingNotice extends StatelessWidget {
   }
 }
 
+/// Terminal failure copy when the failed roulette row carries none.
+const String kPlayerStreamFailedLabel = 'Failed to stream';
+
+/// Active roulette row — the first loading entry, else the last one.
+StatusRouletteEntry? activeStatusRouletteEntry(
+  List<StatusRouletteEntry> entries,
+) {
+  for (final entry in entries) {
+    if (entry.kind == StatusRouletteKind.loading) return entry;
+  }
+  return entries.isNotEmpty ? entries.last : null;
+}
+
 class PlayerStatusOverlay extends StatelessWidget {
   const PlayerStatusOverlay({
     super.key,
     required this.controller,
     this.bufferingListenable,
     this.header = 'Checking sources',
+    this.playbackStarted = true,
+    this.failed = false,
+    this.onRetry,
+    this.onBack,
+    this.tvFocusable = false,
+    this.failedRetryFocusNode,
+    this.onFailedStageUp,
   });
 
   final PlayerStatusController controller;
   final ValueListenable<bool>? bufferingListenable;
   final String header;
+
+  /// False until the first frame: a centered indicator with the active
+  /// source label joins the right-side roulette, so a black screen is never
+  /// the only feedback while a stream opens. Hidden once true.
+  final bool playbackStarted;
+
+  /// Terminal failure (sources exhausted): centered message + Retry / Back.
+  /// Needs [onRetry]; the right-side failed row stays as the detail.
+  final bool failed;
+  final VoidCallback? onRetry;
+  final VoidCallback? onBack;
+
+  /// D-pad focusable Retry / Back (leanback). Pointer buttons otherwise.
+  final bool tvFocusable;
+
+  /// Host-owned node for the centered Retry so chrome edges (↓ from the top
+  /// bar) can land on it. Owned by the stage when null.
+  final FocusNode? failedRetryFocusNode;
+
+  /// D-pad ↑ from the centered Retry / Back — host routes it into its chrome.
+  final VoidCallback? onFailedStageUp;
+
+  bool get _centerFailure => failed && onRetry != null;
 
   List<StatusRouletteEntry> _rouletteEntries(bool buffering) {
     final fromController = statusRouletteEntries(controller.entries);
@@ -259,10 +309,12 @@ class PlayerStatusOverlay extends StatelessWidget {
     return const [];
   }
 
-  List<StatusRouletteEntry> _notificationEntries({required bool airPlayActive}) {
-    final fromController = statusNotificationEntries(controller.entries)
-        .where((e) => e.id != kAirPlayCastingStatusId && e.id != 'cast')
-        .toList();
+  List<StatusRouletteEntry> _notificationEntries({
+    required bool airPlayActive,
+  }) {
+    final fromController = statusNotificationEntries(
+      controller.entries,
+    ).where((e) => e.id != kAirPlayCastingStatusId && e.id != 'cast').toList();
     if (airPlayActive) {
       // Last wins in [StatusNotificationView] — keep cast notice on top.
       return [...fromController, kAirPlayCastingStatusEntry];
@@ -274,11 +326,13 @@ class PlayerStatusOverlay extends StatelessWidget {
   Widget build(BuildContext context) {
     Widget buildOverlay(bool buffering, bool airPlayActive) {
       // Local mpv keeps buffering while AirPlay owns playback — hide that.
-      final rouletteEntries =
-          _rouletteEntries(buffering && !airPlayActive);
-      final notificationEntries =
-          _notificationEntries(airPlayActive: airPlayActive);
-      if (rouletteEntries.isEmpty && notificationEntries.isEmpty) {
+      final rouletteEntries = _rouletteEntries(buffering && !airPlayActive);
+      final notificationEntries = _notificationEntries(
+        airPlayActive: airPlayActive,
+      );
+      if (rouletteEntries.isEmpty &&
+          notificationEntries.isEmpty &&
+          !_centerFailure) {
         return const SizedBox.shrink();
       }
 
@@ -288,10 +342,51 @@ class PlayerStatusOverlay extends StatelessWidget {
       final edgeInset = tv
           ? ShellTokens.playerStatusEdgeInsetTv
           : ShellTokens.playerStatusEdgeInset;
+      final active = activeStatusRouletteEntry(rouletteEntries);
+      final centerLoading =
+          !playbackStarted &&
+          !_centerFailure &&
+          active != null &&
+          active.kind == StatusRouletteKind.loading;
+      final failedRow = _centerFailure
+          ? rouletteEntries.lastWhere(
+              (e) => e.kind == StatusRouletteKind.failed,
+              orElse: () => const StatusRouletteEntry(
+                id: 'playback-failed',
+                label: kPlayerStreamFailedLabel,
+                kind: StatusRouletteKind.failed,
+              ),
+            )
+          : null;
 
       return Stack(
         clipBehavior: Clip.none,
         children: [
+          if (centerLoading)
+            Positioned.fill(
+              child: IgnorePointer(
+                child: ForjaLoadingState(
+                  title: overlayHeader,
+                  detail: active.label,
+                ),
+              ),
+            ),
+          if (failedRow != null)
+            Positioned.fill(
+              child: PlayerStreamFailedStage(
+                // Manual source / stream switch aborts upsert the failed row
+                // with the source title — that is the detail, never the title.
+                message: kPlayerStreamFailedLabel,
+                detail: failedRow.label == kPlayerStreamFailedLabel
+                    ? null
+                    : failedRow.label,
+                onRetry: onRetry!,
+                onBack: onBack,
+                tvFocusable: tvFocusable,
+                retryFocusNode: failedRetryFocusNode,
+                onUpEdge: onFailedStageUp,
+              ),
+            ),
           if (rouletteEntries.isNotEmpty)
             Positioned(
               top: 0,
@@ -342,6 +437,208 @@ class PlayerStatusOverlay extends StatelessWidget {
   }
 }
 
+/// Centered terminal failure: message + Retry / Back.
+///
+/// Leanback: both controls are D-pad focusable, Retry takes focus when the
+/// stage appears, ←/→ move between them. The stage sits under a
+/// `player-chrome` focus label so [PlayerTvKeyScope] leaves D-pad keys to
+/// focus traversal instead of re-claiming Play.
+class PlayerStreamFailedStage extends StatefulWidget {
+  const PlayerStreamFailedStage({
+    super.key,
+    required this.message,
+    this.detail,
+    required this.onRetry,
+    this.onBack,
+    this.tvFocusable = false,
+    this.retryFocusNode,
+    this.onUpEdge,
+  });
+
+  final String message;
+
+  /// Source / stream that was being opened when it failed.
+  final String? detail;
+  final VoidCallback onRetry;
+  final VoidCallback? onBack;
+  final bool tvFocusable;
+  final FocusNode? retryFocusNode;
+
+  /// D-pad ↑ from Retry / Back (TV) — host routes into the top bar.
+  final VoidCallback? onUpEdge;
+
+  static const String retryLabel = 'Retry';
+  static const String backLabel = 'Back';
+
+  @override
+  State<PlayerStreamFailedStage> createState() =>
+      _PlayerStreamFailedStageState();
+}
+
+class _PlayerStreamFailedStageState extends State<PlayerStreamFailedStage> {
+  FocusNode? _ownedRetryFocus;
+  final FocusNode _backFocus = FocusNode(debugLabel: 'player-failed-back');
+
+  FocusNode get _retryFocus =>
+      widget.retryFocusNode ??
+      (_ownedRetryFocus ??= FocusNode(debugLabel: 'player-failed-retry'));
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.tvFocusable) _claimRetryFocus();
+  }
+
+  /// The chrome reveal that accompanies a failure makes the TV key scope
+  /// re-claim Play a frame later; [playerChromeLandFocus] holds that off so
+  /// Retry keeps the remote.
+  void _claimRetryFocus() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      playerChromeLandFocus(_retryFocus);
+    });
+  }
+
+  @override
+  void dispose() {
+    _ownedRetryFocus?.dispose();
+    _backFocus.dispose();
+    super.dispose();
+  }
+
+  Widget _face(BuildContext context, String label, {required bool primary}) {
+    final tv = ShellPaintScope.usesTvDensityOf(context);
+    final padH = tv
+        ? LoadingStateTokens.actionPadHTv
+        : LoadingStateTokens.actionPadH;
+    final padV = tv
+        ? LoadingStateTokens.actionPadVTv
+        : LoadingStateTokens.actionPadV;
+    final fs = tv
+        ? LoadingStateTokens.actionFontSizeTv
+        : LoadingStateTokens.actionFontSize;
+    final radius = tv
+        ? LoadingStateTokens.actionRadiusTv
+        : LoadingStateTokens.actionRadius;
+    return Container(
+      padding: EdgeInsets.symmetric(horizontal: padH, vertical: padV),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(radius),
+        border: Border.all(
+          color: primary
+              ? ForjaShellColors.cinematic.textPrimary
+              : ForjaShellColors.ghostBorder,
+        ),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          color: ForjaShellColors.cinematic.textPrimary,
+          fontSize: fs,
+          fontWeight: FontWeight.w600,
+          letterSpacing: LoadingStateTokens.actionLetterSpacing,
+          fontFamily: 'Poppins',
+        ),
+      ),
+    );
+  }
+
+  Widget _action(
+    BuildContext context,
+    String label,
+    VoidCallback onTap, {
+    required bool primary,
+    required FocusNode focusNode,
+    VoidCallback? onLeftEdge,
+    VoidCallback? onRightEdge,
+  }) {
+    final tv = ShellPaintScope.usesTvDensityOf(context);
+    final radius = tv
+        ? LoadingStateTokens.actionRadiusTv
+        : LoadingStateTokens.actionRadius;
+    if (!widget.tvFocusable) {
+      return Button(
+        variant: ButtonVariant.outline,
+        label: label,
+        onPressed: onTap,
+        fontSize: tv
+            ? LoadingStateTokens.actionFontSizeTv
+            : LoadingStateTokens.actionFontSize,
+        padding: EdgeInsets.symmetric(
+          horizontal: tv
+              ? LoadingStateTokens.actionPadHTv
+              : LoadingStateTokens.actionPadH,
+        ),
+      );
+    }
+    return shellFocusableTap(
+      context: context,
+      focusNode: focusNode,
+      onTap: onTap,
+      borderRadius: radius,
+      scaleOnFocus: 1.0,
+      showFocusBorder: true,
+      onLeftEdge: onLeftEdge,
+      onRightEdge: onRightEdge,
+      onUpEdge: widget.onUpEdge,
+      child: _face(context, label, primary: primary),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final gap = ShellPaintScope.usesTvDensityOf(context)
+        ? LoadingStateTokens.actionGapTv
+        : LoadingStateTokens.actionGap;
+    final onBack = widget.onBack;
+    final policy =
+        ShellScope.maybeOf(context)?.inputPolicy ?? ShellInputPolicy.desktop;
+    final actions = Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        _action(
+          context,
+          PlayerStreamFailedStage.retryLabel,
+          widget.onRetry,
+          primary: true,
+          focusNode: _retryFocus,
+          onRightEdge: onBack != null && _backFocus.canRequestFocus
+              ? _backFocus.requestFocus
+              : null,
+        ),
+        if (onBack != null) ...[
+          SizedBox(width: gap),
+          _action(
+            context,
+            PlayerStreamFailedStage.backLabel,
+            onBack,
+            primary: false,
+            focusNode: _backFocus,
+            onLeftEdge: _retryFocus.requestFocus,
+          ),
+        ],
+      ],
+    );
+    final stage = ForjaLoadingState(
+      icon: Icons.error_outline_rounded,
+      iconColor: ForjaShellColors.cinematic.textSecondary,
+      title: widget.message,
+      detail: widget.detail,
+      hint: widget.tvFocusable && policy.leanbackOnly && onBack != null
+          ? 'Press Back to leave'
+          : null,
+      actions: actions,
+    );
+    if (!widget.tvFocusable) return stage;
+    return Focus(
+      debugLabel: 'player-chrome',
+      canRequestFocus: false,
+      skipTraversal: true,
+      child: stage,
+    );
+  }
+}
+
 class StatusNotificationView extends StatelessWidget {
   const StatusNotificationView({super.key, required this.entries});
 
@@ -375,12 +672,7 @@ class StatusRouletteView extends StatelessWidget {
   final List<StatusRouletteEntry> entries;
   final String header;
 
-  StatusRouletteEntry? get _activeEntry {
-    for (final entry in entries) {
-      if (entry.kind == StatusRouletteKind.loading) return entry;
-    }
-    return entries.isNotEmpty ? entries.last : null;
-  }
+  StatusRouletteEntry? get _activeEntry => activeStatusRouletteEntry(entries);
 
   StatusRouletteEntry? get _previousEntry {
     final active = _activeEntry;
@@ -472,10 +764,7 @@ class StatusRouletteView extends StatelessWidget {
                     layoutBuilder: (current, previousChildren) => Stack(
                       alignment: Alignment.centerRight,
                       clipBehavior: Clip.hardEdge,
-                      children: [
-                        ...previousChildren,
-                        ?current,
-                      ],
+                      children: [...previousChildren, ?current],
                     ),
                     transitionBuilder: (child, animation) {
                       final slide =
@@ -546,6 +835,7 @@ class _StatusRouletteRow extends StatelessWidget {
   final bool dimmed;
   final bool compact;
   final bool centered;
+
   /// Inline spinner beside the label. Off for CHECKING SOURCES — the bar below
   /// already shows work in progress.
   final bool showSpinner;
@@ -558,11 +848,11 @@ class _StatusRouletteRow extends StatelessWidget {
     final alpha = dimmed ? 0.45 : (isFailed ? 0.65 : 1.0);
     final labelSize = compact
         ? (tv
-            ? ShellTokens.playerStatusLabelFontSizeCompactTv
-            : ShellTokens.playerStatusLabelFontSizeCompact)
+              ? ShellTokens.playerStatusLabelFontSizeCompactTv
+              : ShellTokens.playerStatusLabelFontSizeCompact)
         : (tv
-            ? ShellTokens.playerStatusLabelFontSizeTv
-            : ShellTokens.playerStatusLabelFontSize);
+              ? ShellTokens.playerStatusLabelFontSizeTv
+              : ShellTokens.playerStatusLabelFontSize);
     final spinnerSize = tv
         ? ShellTokens.playerStatusSpinnerSizeTv
         : ShellTokens.playerStatusSpinnerSize;
@@ -577,8 +867,9 @@ class _StatusRouletteRow extends StatelessWidget {
 
     return Row(
       mainAxisSize: MainAxisSize.min,
-      mainAxisAlignment:
-          centered ? MainAxisAlignment.center : MainAxisAlignment.end,
+      mainAxisAlignment: centered
+          ? MainAxisAlignment.center
+          : MainAxisAlignment.end,
       children: [
         if (!compact && !isLoading) ...[
           SizedBox(

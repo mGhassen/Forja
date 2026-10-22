@@ -5,7 +5,9 @@ import 'package:app_links/app_links.dart';
 import 'package:flutter/foundation.dart';
 import 'package:forja/features/settings/addons/pack/pack_auth_session_handoff.dart';
 import 'package:forja/features/settings/shell/catalog.dart';
+import 'package:forja/shared/engine/packs/install/pack_install_failures.dart';
 import 'package:forja/shared/engine/packs/install/plugin_install_prompt.dart';
+import 'package:forja/shared/engine/packs/registry/pack_source_url_policy.dart';
 import 'package:forja/shell/desktop/desktop_window_focus.dart';
 import 'package:forja/shell/bus/shell_bus.dart';
 
@@ -45,7 +47,27 @@ abstract final class ForjaPluginDeepLink {
 
     unawaited(DesktopWindowFocus.bringToFront());
 
-    final batch = parseBatchCandidates(uri);
+    final refusedRows = <PackInstallFailure>[];
+    final batch = parseBatchCandidates(
+      uri,
+      onRefused: (url, name, reason) => refusedRows.add(
+        PackInstallFailure(
+          label: (name ?? '').trim().isNotEmpty ? name!.trim() : url,
+          manifestUrl: url,
+          message: reason,
+        ),
+      ),
+    );
+    if (refusedRows.isNotEmpty) {
+      PackInstallFailures.report(refusedRows);
+      if (batch == null || batch.isEmpty) {
+        ShellBus.openSettings(
+          categoryId: SettingsCategoryId.forjaPacks,
+          enterDetail: true,
+        );
+        return;
+      }
+    }
     if (batch != null && batch.isNotEmpty) {
       if (batch.length == 1) {
         final only = batch.first;
@@ -69,12 +91,29 @@ abstract final class ForjaPluginDeepLink {
       return;
     }
 
-    final manifest = _manifestFromUri(uri);
-    if (manifest == null || manifest.isEmpty) {
-      debugPrint('[PluginDeepLink] missing manifest param: $uri');
+    final raw = _rawManifestFromUri(uri);
+    if (raw == null || raw.isEmpty) {
+      debugPrint('[PluginDeepLink] missing manifest param');
       return;
     }
-    debugPrint('[PluginDeepLink] queue install $manifest');
+    final refused = refuseReason(raw);
+    if (refused != null) {
+      // Plain-http / local manifest: surface the reason in Settings → Forja
+      // Packs instead of silently dropping the link. Nothing is fetched.
+      debugPrint('[PluginDeepLink] refused manifest (${_schemeOf(raw)})');
+      PackInstallFailures.reportOne(
+        label: uri.queryParameters['name']?.trim() ?? '',
+        manifestUrl: raw,
+        error: PackSourceRefusedException(raw, refused),
+      );
+      ShellBus.openSettings(
+        categoryId: SettingsCategoryId.forjaPacks,
+        enterDetail: true,
+      );
+      return;
+    }
+    final manifest = raw;
+    debugPrint('[PluginDeepLink] queue install ${_schemeOf(manifest)}');
     ShellBus.enqueuePluginInstall(
       PluginInstallPrompt(
         manifestUrl: manifest,
@@ -96,7 +135,7 @@ abstract final class ForjaPluginDeepLink {
     return false;
   }
 
-  static String? _manifestFromUri(Uri uri) {
+  static String? _rawManifestFromUri(Uri uri) {
     final direct = uri.queryParameters['manifest']?.trim();
     if (direct != null && direct.isNotEmpty) return direct;
     final legacy = uri.queryParameters['url']?.trim();
@@ -104,11 +143,24 @@ abstract final class ForjaPluginDeepLink {
     return null;
   }
 
-  /// Test hook + shared parser for install deep links.
+  /// Manifest addresses from a deep link must be https. Local checkout paths
+  /// are accepted in debug builds only. `null` means allowed.
+  static String? refuseReason(String manifestUrl) =>
+      PackSourceUrlPolicy.refuseReason(manifestUrl, allowLocal: kDebugMode);
+
+  static String _schemeOf(String url) {
+    final scheme = Uri.tryParse(url.trim())?.scheme ?? '';
+    return scheme.isEmpty ? 'path' : scheme;
+  }
+
+  /// Test hook + shared parser for install deep links. Returns `null` for
+  /// batch links and for manifest addresses refused by [refuseReason].
   static String? parseManifestUrl(Uri uri) {
     if (!_isInstallLink(uri)) return null;
     if (_isBatchParam(uri)) return null;
-    return _manifestFromUri(uri);
+    final raw = _rawManifestFromUri(uri);
+    if (raw == null || refuseReason(raw) != null) return null;
+    return raw;
   }
 
   static bool _isBatchParam(Uri uri) {
@@ -117,7 +169,13 @@ abstract final class ForjaPluginDeepLink {
   }
 
   /// Parse `?batch=1&packs=[{m,n?},…]` — returns null when not a batch link.
-  static List<PluginInstallCandidate>? parseBatchCandidates(Uri uri) {
+  ///
+  /// Rows whose manifest address fails [refuseReason] are dropped and reported
+  /// through [onRefused] (url, display name, user-facing reason).
+  static List<PluginInstallCandidate>? parseBatchCandidates(
+    Uri uri, {
+    void Function(String url, String? name, String reason)? onRefused,
+  }) {
     if (!_isInstallLink(uri) || !_isBatchParam(uri)) return null;
     final raw = uri.queryParameters['packs']?.trim();
     if (raw == null || raw.isEmpty) return null;
@@ -136,6 +194,14 @@ abstract final class ForjaPluginDeepLink {
         if (manifest.isEmpty || !seen.add(manifest)) continue;
         final name =
             (map['n'] as String?)?.trim() ?? (map['name'] as String?)?.trim();
+        final refused = refuseReason(manifest);
+        if (refused != null) {
+          debugPrint(
+            '[PluginDeepLink] batch row refused (${_schemeOf(manifest)})',
+          );
+          onRefused?.call(manifest, name, refused);
+          continue;
+        }
         out.add(
           PluginInstallCandidate(
             manifestUrl: manifest,

@@ -1,9 +1,8 @@
-import 'dart:math' as math;
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:forja/shared/engine/runtime/nav/chrome_menu_item.dart';
 import 'package:forja/shared/engine/runtime/nav/vertical_filters.dart';
+import 'package:forja/shell/chrome/kit_top_bar_fade.dart';
 import 'package:forja/shell/chrome/vertical_filters_rail.dart';
 import 'package:forja/shell/core/forja_shell_layout.dart';
 import 'package:forja/shell/core/forja_shell_scope.dart';
@@ -12,11 +11,16 @@ import 'package:forja/shell/tv/shell_tv_coordinator.dart';
 import 'package:forja/shell/tv/shell_tv_focus.dart';
 import 'package:forja/shell/tv/tv_focus_graph.dart';
 import 'package:forja_foundation/blocks/shell/catalog_density.dart';
+import 'package:forja_foundation/tokens/focus_chrome_tokens.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
+import 'package:forja_foundation/tokens/top_bar_scrim_tokens.dart';
+import 'package:forja_foundation/widgets/chrome/focus_chrome.dart';
+import 'package:forja_foundation/widgets/chrome/top_bar_scrim.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-export 'package:forja_foundation/widgets/chrome/hub_top_bar.dart' show HubTopBar;
+export 'package:forja_foundation/widgets/chrome/hub_top_bar.dart'
+    show HubTopBar;
 
 /// Sentinel for the "All" entry in the categories popup menu.
 const catalogAllCategoriesSentinel = '__all__';
@@ -136,7 +140,10 @@ class _KitChromeTopBarState extends State<KitChromeTopBar> {
           children: [
             Positioned(
               left: offset.dx,
-              top: offset.dy + box.size.height + ShellTokens.homeCategoriesMenuOffsetY,
+              top:
+                  offset.dy +
+                  box.size.height +
+                  ShellTokens.homeCategoriesMenuOffsetY,
               child: Material(
                 color: ForjaShellColors.cinematic.menuSurface,
                 elevation: 8,
@@ -187,7 +194,11 @@ class _KitChromeTopBarState extends State<KitChromeTopBar> {
                                     dialogContext,
                                   ).pop(catalogAllCategoriesSentinel),
                                 ),
-                                for (var i = 0; i < widget.categories.length; i++)
+                                for (
+                                  var i = 0;
+                                  i < widget.categories.length;
+                                  i++
+                                )
                                   _FlatMenuRow(
                                     label: widget.categories[i].label,
                                     selected:
@@ -288,13 +299,11 @@ class _KitChromeTopBarState extends State<KitChromeTopBar> {
     final tvFocus = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
 
     return ValueListenableBuilder<String?>(
-      valueListenable: VerticalFiltersRegistry.selectedIdFor(
-        widget.tabId,
-      ),
+      valueListenable: VerticalFiltersRegistry.selectedIdFor(widget.tabId),
       builder: (context, selectedFilterId, _) {
         final spec = VerticalFiltersRegistry.specFor(widget.tabId);
-        final hasFilterLogo = spec?.showSelectedInTopBar == true &&
-            selectedFilterId != null;
+        final hasFilterLogo =
+            spec?.showSelectedInTopBar == true && selectedFilterId != null;
         final usesTv = ShellScope.metricsOf(context).usesTvDensity;
         final logoWidth = usesTv
             ? ShellTokens.shellProviderTopBarIconWidthTv
@@ -312,16 +321,38 @@ class _KitChromeTopBarState extends State<KitChromeTopBar> {
               builder: (context, heroHeight, menu) {
                 final topInset = MediaQuery.paddingOf(context).top;
                 final barHeight = topInset + barContentHeight;
-                final hideStart = math.max(0.0, heroHeight - barHeight);
-                final hideProgress = heroHeight <= 0
-                    ? 0.0
-                    : ((scrollOffset - hideStart) /
-                              KitChromeTopBar.hideSlideDistance)
-                          .clamp(0.0, 1.0);
+                final hideProgress = kitTopBarHideProgress(
+                  scrollOffset: scrollOffset,
+                  heroHeight: heroHeight,
+                  barHeight: barHeight,
+                  slideDistance: KitChromeTopBar.hideSlideDistance,
+                );
+                final scrimOpacity = kitTopBarScrimOpacity(
+                  scrollOffset: scrollOffset,
+                  hideProgress: hideProgress,
+                );
 
                 return Transform.translate(
                   offset: Offset(0, -barHeight * hideProgress),
-                  child: child,
+                  // Scrim behind the labels while content can scroll under
+                  // the bar. Overflows below the bar (Clip.none) and ignores
+                  // pointers — the Stack still hit-tests only the bar's box.
+                  child: Stack(
+                    clipBehavior: Clip.none,
+                    fit: StackFit.passthrough,
+                    children: [
+                      Positioned(
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        child: TopBarScrim(
+                          height: barHeight * TopBarScrimTokens.heightFactor,
+                          opacity: scrimOpacity,
+                        ),
+                      ),
+                      child!,
+                    ],
+                  ),
                 );
               },
             );
@@ -362,7 +393,7 @@ class _KitChromeTopBarState extends State<KitChromeTopBar> {
                         final tabGap = usesTv
                             ? ShellTokens.kitTopBarTabGapTv
                             : MediaQuery.sizeOf(context).width <
-                                    ShellTokens.kitTopBarTabGapCompactMaxWidth
+                                  ShellTokens.kitTopBarTabGapCompactMaxWidth
                             ? ShellTokens.kitTopBarTabGapCompact
                             : ShellTokens.kitTopBarTabGapWide;
                         final menuRowHeight = usesTv
@@ -377,8 +408,7 @@ class _KitChromeTopBarState extends State<KitChromeTopBar> {
                         final menus = widget.menus;
                         final showCategories = widget.categories.isNotEmpty;
                         final searchIndex = hasFilterLogo ? 1 : 0;
-                        final menusStart =
-                            searchIndex + (hasSearch ? 1 : 0);
+                        final menusStart = searchIndex + (hasSearch ? 1 : 0);
                         final categoriesIndex = menusStart + menus.length;
                         final menuItemCount = showCategories
                             ? categoriesIndex + 1
@@ -409,12 +439,15 @@ class _KitChromeTopBarState extends State<KitChromeTopBar> {
                                       width: logoWidth,
                                       height: logoHeight,
                                       tvFocus: tvFocus,
-                                      focusNode:
-                                          tvFocus ? _providerLogoFocus : null,
+                                      focusNode: tvFocus
+                                          ? _providerLogoFocus
+                                          : null,
                                       listIndex: tvFocus ? 0 : null,
                                       onDownEdge: tvFocus
-                                          ? () => ShellTvFocusCoordinator
-                                              .focusHero(tabId: widget.tabId)
+                                          ? () =>
+                                                ShellTvFocusCoordinator.focusHero(
+                                                  tabId: widget.tabId,
+                                                )
                                           : null,
                                     ),
                                   ),
@@ -432,8 +465,9 @@ class _KitChromeTopBarState extends State<KitChromeTopBar> {
                                   listIndex: searchIndex,
                                   focusNode: tvFocus ? _searchFocus : null,
                                   onDownEdge: tvFocus
-                                      ? () =>
-                                            ShellTvFocusCoordinator.focusHero(tabId: widget.tabId)
+                                      ? () => ShellTvFocusCoordinator.focusHero(
+                                          tabId: widget.tabId,
+                                        )
                                       : null,
                                   onUpEdge: tvFocus
                                       ? () {
@@ -459,8 +493,9 @@ class _KitChromeTopBarState extends State<KitChromeTopBar> {
                                       ? _menuFocus
                                       : null,
                                   onDownEdge: tvFocus
-                                      ? () =>
-                                            ShellTvFocusCoordinator.focusHero(tabId: widget.tabId)
+                                      ? () => ShellTvFocusCoordinator.focusHero(
+                                          tabId: widget.tabId,
+                                        )
                                       : null,
                                   onUpEdge: tvFocus
                                       ? () {
@@ -484,11 +519,13 @@ class _KitChromeTopBarState extends State<KitChromeTopBar> {
                                   tvFocus: tvFocus,
                                   tabId: widget.tabId,
                                   listIndex: categoriesIndex,
-                                  focusNode:
-                                      tvFocus ? _categoriesTabFocus : null,
+                                  focusNode: tvFocus
+                                      ? _categoriesTabFocus
+                                      : null,
                                   onDownEdge: tvFocus
-                                      ? () =>
-                                            ShellTvFocusCoordinator.focusHero(tabId: widget.tabId)
+                                      ? () => ShellTvFocusCoordinator.focusHero(
+                                          tabId: widget.tabId,
+                                        )
                                       : null,
                                   onUpEdge: tvFocus
                                       ? () {
@@ -640,6 +677,13 @@ class _CategoryTabState extends State<_CategoryTab> {
         final chevronSize = usesTv
             ? ShellTokens.kitTopBarChevronSizeTv
             : ShellTokens.kitTopBarChevronSize;
+        // Leanback D-pad focus: shared accent pill around the tab text (paint
+        // only — the underline + text tint below still animate). Desktop
+        // hover / keyboard focus keep the underline look.
+        final policy = ShellScope.inputPolicyOf(context);
+        final leanbackFocused =
+            policy.leanbackOnly &&
+            policy.focusStyled(context, focused: _focused);
 
         return Column(
           mainAxisSize: MainAxisSize.min,
@@ -649,45 +693,51 @@ class _CategoryTabState extends State<_CategoryTab> {
               height: tabHeight,
               child: Align(
                 alignment: AlignmentDirectional.centerStart,
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    if (widget.icon != null) ...[
-                      Icon(
-                        widget.icon,
-                        size: chevronSize,
-                        color: textColor,
-                      ),
-                      SizedBox(
-                        width: shellScaled(
-                          context,
-                          ShellTokens.kitTopBarIconGap,
+                child: FocusChromeRing(
+                  active: leanbackFocused,
+                  borderRadius: BorderRadius.circular(
+                    FocusChromeTokens.textPillRadius,
+                  ),
+                  inset: const EdgeInsets.symmetric(
+                    horizontal: FocusChromeTokens.textPillInsetH,
+                    vertical: FocusChromeTokens.textPillInsetV,
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (widget.icon != null) ...[
+                        Icon(widget.icon, size: chevronSize, color: textColor),
+                        SizedBox(
+                          width: shellScaled(
+                            context,
+                            ShellTokens.kitTopBarIconGap,
+                          ),
+                        ),
+                      ],
+                      Text(
+                        widget.label,
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: tabFont,
+                          fontWeight: fontWeight,
+                          color: textColor,
+                          letterSpacing: 0.1,
                         ),
                       ),
-                    ],
-                    Text(
-                      widget.label,
-                      style: GoogleFonts.plusJakartaSans(
-                        fontSize: tabFont,
-                        fontWeight: fontWeight,
-                        color: textColor,
-                        letterSpacing: 0.1,
-                      ),
-                    ),
-                    if (widget.showChevron) ...[
-                      SizedBox(
-                        width: shellScaled(
-                          context,
-                          ShellTokens.kitTopBarChevronGap,
+                      if (widget.showChevron) ...[
+                        SizedBox(
+                          width: shellScaled(
+                            context,
+                            ShellTokens.kitTopBarChevronGap,
+                          ),
                         ),
-                      ),
-                      Icon(
-                        Icons.expand_more_rounded,
-                        size: chevronSize,
-                        color: textColor,
-                      ),
+                        Icon(
+                          Icons.expand_more_rounded,
+                          size: chevronSize,
+                          color: textColor,
+                        ),
+                      ],
                     ],
-                  ],
+                  ),
                 ),
               ),
             ),
@@ -722,11 +772,15 @@ class _CategoryTabState extends State<_CategoryTab> {
   @override
   Widget build(BuildContext context) {
     if (widget.tvFocus) {
+      // Text tabs lift like chips on leanback; desktop hybrid stays flat.
+      final leanback = ShellScope.inputPolicyOf(context).leanbackOnly;
       return shellFocusableTap(
         context: context,
         onTap: widget.onTap,
         borderRadius: ShellTokens.kitTopBarFocusRadius,
-        scaleOnFocus: 1.0,
+        scaleOnFocus: leanback
+            ? FocusChromeTokens.chipScale
+            : FocusChromeTokens.rowScale,
         listIndex: widget.listIndex,
         tvTabId: widget.tabId,
         tvRowId: 'top-bar',

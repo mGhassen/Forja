@@ -16,4 +16,8 @@ urlencoding = "2"
 regex = { workspace = true }
 url = { workspace = true }
 flate2 = "1"
+rand = "0.8"
 utils = { path = "../utils" }
+
+[dev-dependencies]
+tower = { workspace = true }

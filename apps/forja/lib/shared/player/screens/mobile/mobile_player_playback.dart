@@ -119,7 +119,10 @@ mixin _MobilePlayerPlayback
             );
             if (_fallbackAborted(runGen)) return false;
             if (!reachable) {
-              debugPrint('[Player] Source $i failed reachability: $catalogUrl');
+              debugPrint(
+                '[Player] Source $i failed reachability: '
+                '${redactUrlCredentials(catalogUrl)}',
+              );
               _s._statusController.upsert(
                 'source-$i',
                 source.title,
@@ -151,7 +154,10 @@ mixin _MobilePlayerPlayback
           );
           if (_fallbackAborted(runGen)) return false;
           if (!opened) {
-            debugPrint('[Player] Source $i failed to open: $openUrl');
+            debugPrint(
+              '[Player] Source $i failed to open: '
+              '${redactUrlCredentials(openUrl)}',
+            );
             await _s._player.stop();
             _s._statusController.upsert(
               'source-$i',
@@ -177,7 +183,10 @@ mixin _MobilePlayerPlayback
           );
           if (_fallbackAborted(runGen)) return false;
           if (!decoded) {
-            debugPrint('[Player] Source $i opened without video: $openUrl');
+            debugPrint(
+              '[Player] Source $i opened without video: '
+              '${redactUrlCredentials(openUrl)}',
+            );
             await _s._player.stop();
             _s._statusController.upsert(
               'source-$i',
@@ -200,7 +209,10 @@ mixin _MobilePlayerPlayback
               );
           if (_fallbackAborted(runGen)) return false;
           if (!hasDuration) {
-            debugPrint('[Player] Source $i opened without duration: $openUrl');
+            debugPrint(
+              '[Player] Source $i opened without duration: '
+              '${redactUrlCredentials(openUrl)}',
+            );
             await _s._player.stop();
             _s._statusController.upsert(
               'source-$i',
@@ -259,7 +271,10 @@ mixin _MobilePlayerPlayback
             );
             if (_fallbackAborted(runGen)) return false;
             if (!opened) {
-              debugPrint('[OpenPipeline] open fail ${step.label}: $openUrl');
+              debugPrint(
+                '[OpenPipeline] open fail ${step.label}: '
+                '${redactUrlCredentials(openUrl)}',
+              );
               await _s._player.stop();
               pipeline.report(StreamOpenStepResult.openFailed);
               continue;
@@ -278,7 +293,10 @@ mixin _MobilePlayerPlayback
             );
             if (_fallbackAborted(runGen)) return false;
             if (!decoded) {
-              debugPrint('[OpenPipeline] decode fail ${step.label}: $openUrl');
+              debugPrint(
+                '[OpenPipeline] decode fail ${step.label}: '
+                '${redactUrlCredentials(openUrl)}',
+              );
               await _s._player.stop();
               pipeline.report(StreamOpenStepResult.decodeFailed);
               continue;
@@ -779,49 +797,64 @@ mixin _MobilePlayerPlayback
     }
 
     try {
-      if (widget.onReloadStreams != null) {
-        final fresh = await widget.onReloadStreams!();
-        if (_fallbackAborted(chainGen)) return false;
-        if (fresh == null || fresh.isEmpty) {
-          _s._statusController.complete();
-          return false;
-        }
-        final playable = dedupeStreamSources(
-          fresh,
-        ).where((s) => !isUnplayableCachedStreamUrl(s.url)).toList();
-        if (playable.isEmpty) {
-          _s._statusController.complete();
-          return false;
-        }
-        String pid = '';
-        for (final e in _s._liveProviderSourcesCache.value.entries) {
-          if (e.value.any((s) => s.url == playable.first.url)) {
-            pid = e.key;
+      final reload = widget.onReloadStreams;
+      if (reload != null) {
+        // Pass 1 usually returns the race backups; a later pass runs the full
+        // race again. Stop when a batch brings nothing this chain has not
+        // tried.
+        final tried = <String>{
+          for (final s in _s._currentSources ?? const <StreamSource>[]) s.url,
+        };
+        for (
+          var pass = 0;
+          pass < EngineRaceFallbackPolicy.reloadPasses;
+          pass++
+        ) {
+          final fresh = await reload();
+          if (_fallbackAborted(chainGen)) return false;
+          if (fresh == null || fresh.isEmpty) break;
+          final playable = dedupeStreamSources(
+            fresh,
+          ).where((s) => !isUnplayableCachedStreamUrl(s.url)).toList();
+          if (playable.isEmpty) break;
+          // Pass 1 keeps the pre-T13 behaviour; later passes must bring a
+          // URL this chain has not opened yet.
+          if (pass > 0 &&
+              !reloadBatchHasUntriedUrl(batch: playable, triedUrls: tried)) {
             break;
           }
+          tried.addAll(playable.map((s) => s.url));
+          String pid = '';
+          for (final e in _s._liveProviderSourcesCache.value.entries) {
+            if (e.value.any((s) => s.url == playable.first.url)) {
+              pid = e.key;
+              break;
+            }
+          }
+          if (pid.isEmpty) {
+            pid = _s._currentProvider ?? widget.activeProvider ?? '';
+          }
+          if (pid.isNotEmpty) {
+            _s._cacheProviderSources(pid, playable);
+            _s._markProviderLoadSucceeded(pid);
+          }
+          setState(() {
+            if (pid.isNotEmpty) _s._currentProvider = pid;
+            _s._currentSources = playable;
+            _s._currentUrl = playable.first.url;
+            _s._currentPlayingCatalogUrl = playable.first.url;
+            _s._currentFallbackSourceIndex = 0;
+            _s._failedSourceIndices.clear();
+            _s._checkingSourceIndices.clear();
+            _s._hasError = false;
+          });
+          final played = await _trySourcesFromIndex(
+            0,
+            chainGen: chainGen,
+            seekAfterOpen: seekAfterOpen,
+          );
+          if (played || _fallbackAborted(chainGen)) return played;
         }
-        if (pid.isEmpty) {
-          pid = _s._currentProvider ?? widget.activeProvider ?? '';
-        }
-        if (pid.isNotEmpty) {
-          _s._cacheProviderSources(pid, playable);
-          _s._markProviderLoadSucceeded(pid);
-        }
-        setState(() {
-          if (pid.isNotEmpty) _s._currentProvider = pid;
-          _s._currentSources = playable;
-          _s._currentUrl = playable.first.url;
-          _s._currentPlayingCatalogUrl = playable.first.url;
-          _s._currentFallbackSourceIndex = 0;
-          _s._failedSourceIndices.clear();
-          _s._checkingSourceIndices.clear();
-          _s._hasError = false;
-        });
-        return _trySourcesFromIndex(
-          0,
-          chainGen: chainGen,
-          seekAfterOpen: seekAfterOpen,
-        );
       }
 
       _s._statusController.complete();
@@ -844,12 +877,13 @@ mixin _MobilePlayerPlayback
     // Prevalidated streams skip re-probing, not re-resolving: a host reload
     // hook fetches fresh links, so a dead stream after reconnect can hop.
     final hostOwnsReload = widget.onReloadStreams != null;
-    final canAutoHop =
-        !pinned &&
-        (!widget.streamsPrevalidated || hostOwnsReload) &&
-        widget.movie != null &&
-        ((widget.providers != null && widget.providers!.isNotEmpty) ||
-            hostOwnsReload);
+    final canAutoHop = canAutoHopAfterSourcesExhausted(
+      pinned: pinned,
+      streamsPrevalidated: widget.streamsPrevalidated,
+      hasMovie: widget.movie != null,
+      hasProviders: widget.providers != null && widget.providers!.isNotEmpty,
+      hostOwnsReload: hostOwnsReload,
+    );
 
     if (!canAutoHop) {
       debugPrint(
@@ -1069,7 +1103,10 @@ mixin _MobilePlayerPlayback
         }
         return true;
       }
-      debugPrint('[Player] Post-seek remount failed to resume: $url');
+      debugPrint(
+        '[Player] Post-seek remount failed to resume: '
+        '${redactUrlCredentials(url)}',
+      );
     } catch (e) {
       debugPrint('[Player] Post-seek remount error: $e');
     } finally {

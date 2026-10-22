@@ -22,9 +22,19 @@ abstract final class ShellTvBackHandler {
   }
 
   static bool _onKey(KeyEvent event) {
-    if (event is! KeyDownEvent) return false;
     final key = event.logicalKey;
+    if (event is KeyUpEvent) {
+      // Android also reports this press as didPopRoute after KeyUp —
+      // the coordinator pairs that pop with this press and ignores it.
+      if (key == LogicalKeyboardKey.goBack) {
+        ShellTvFocusCoordinator.noteHardwareBackUp();
+        return true;
+      }
+      return false;
+    }
+    if (event is! KeyDownEvent) return false;
     if (key == LogicalKeyboardKey.goBack) {
+      ShellTvFocusCoordinator.noteHardwareBackDown();
       ShellTvFocusCoordinator.handleShellBackKey();
       return true;
     }

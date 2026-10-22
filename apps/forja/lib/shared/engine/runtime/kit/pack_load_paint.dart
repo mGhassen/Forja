@@ -287,6 +287,12 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
   int? _holdAtRefreshEpoch;
   int _bindGen = 0;
   StreamSubscription<MetaEnvelope>? _progressiveSub;
+  /// Bumped on every progressive start / cancel; a stale fan-out compares
+  /// against it to stop scraping and to stop writing the busy chip.
+  int _progressiveRunGen = 0;
+  /// Captured while the context is active so a cancel from `dispose` can still
+  /// clear this instance's busy chip.
+  ProviderContainer? _scheduleBusyContainer;
   /// Coalesce progressive setState to the next frame (avoids mouse_tracker
   /// re-entrancy when scrape ticks land under the cursor).
   MetaEnvelope? _progressivePending;
@@ -422,8 +428,7 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
     if (_shellTabVisible && !visible) {
       _shellTabVisible = false;
       _bindGen++;
-      _progressiveSub?.cancel();
-      _progressiveSub = null;
+      _cancelProgressive();
       _progressivePending = null;
       _progressivePaintScheduled = false;
       _progressivePaintGen++;
@@ -440,8 +445,7 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
     var shelfSectionFlipped = false;
     if (_catalogSection.isNotEmpty && section != _catalogSection) {
       shelfSectionFlipped = true;
-      _progressiveSub?.cancel();
-      _progressiveSub = null;
+      _cancelProgressive();
       _progressivePending = null;
       _progressivePaintScheduled = false;
       _progressivePaintGen++;
@@ -471,8 +475,7 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
     // Portal click — wipe grid immediately; do not fetch until refresh bumps.
     if (holdEpoch > _appliedHoldEpoch) {
       _appliedHoldEpoch = holdEpoch;
-      _progressiveSub?.cancel();
-      _progressiveSub = null;
+      _cancelProgressive();
       _progressivePending = null;
       _progressivePaintScheduled = false;
       _progressivePaintGen++;
@@ -504,8 +507,7 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
     // Soft list pin refresh keeps last paint until the new envelope lands.
     // Any refresh bump also releases a portal hold (including clear+bump same frame).
     if (refreshBumped) {
-      _progressiveSub?.cancel();
-      _progressiveSub = null;
+      _cancelProgressive();
       _progressivePending = null;
       _progressivePaintScheduled = false;
       _progressivePaintGen++;
@@ -590,8 +592,7 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
             LayoutScope.maybeOf(context),
           );
       if (gridFlip) {
-        _progressiveSub?.cancel();
-        _progressiveSub = null;
+        _cancelProgressive();
         _inFlight = null;
         _bindGen++;
         _skipWarmRestore = true;
@@ -727,7 +728,7 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
 
   @override
   void dispose() {
-    _progressiveSub?.cancel();
+    _cancelProgressive();
     super.dispose();
   }
 
@@ -736,14 +737,12 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
     if (chrome != null && !chrome.shellTabVisible) {
       // Off-screen keep-alive — never start a new catalog/rail fetch.
       _bindGen++;
-      _progressiveSub?.cancel();
-      _progressiveSub = null;
+      _cancelProgressive();
       _inFlight = null;
       return;
     }
     final gen = ++_bindGen;
-    _progressiveSub?.cancel();
-    _progressiveSub = null;
+    _cancelProgressive();
     final future = _run();
     if (future == null) {
       // Favorites / Watched: prefs load then `_runWithParams` paints.
@@ -792,12 +791,44 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
         widget.params['progressiveCatalogs'] == true;
   }
 
-  void _setScheduleBusy({required bool busy, String? label}) {
+  ProviderContainer? _scheduleBusyContainerOrNull() {
     try {
-      final container = ProviderScope.containerOf(context, listen: false);
+      return _scheduleBusyContainer ??=
+          ProviderScope.containerOf(context, listen: false);
+    } catch (_) {
+      return _scheduleBusyContainer;
+    }
+  }
+
+  void _setScheduleBusy({required bool busy, String? label}) {
+    final container = _scheduleBusyContainerOrNull();
+    if (container == null) return;
+    try {
       container.read(liveScheduleFeedBusyProvider(widget.pluginId).notifier).state =
           (busy: busy, label: label);
     } catch (_) {}
+  }
+
+  /// Stop the in-flight progressive fan-out. The generator keeps running until
+  /// its next await (see `isCancelled`), so the run token is bumped here; the
+  /// busy chip is cleared on a microtask (never inside a locked build/finalize
+  /// phase) and only if no newer run has claimed it since.
+  void _cancelProgressive() {
+    final runGen = ++_progressiveRunGen;
+    final sub = _progressiveSub;
+    _progressiveSub = null;
+    if (sub == null) return;
+    sub.cancel();
+    final container = _scheduleBusyContainerOrNull();
+    if (container == null) return;
+    final pluginId = widget.pluginId;
+    scheduleMicrotask(() {
+      if (runGen != _progressiveRunGen) return;
+      try {
+        container.read(liveScheduleFeedBusyProvider(pluginId).notifier).state =
+            (busy: false, label: null);
+      } catch (_) {}
+    });
   }
 
   /// Progressive catalog fan-out — paints after each scrape (issue 278).
@@ -829,12 +860,15 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
     final completer = Completer<MetaEnvelope>();
     MetaEnvelope? last;
     var paintedOnce = false;
+    final runGen = ++_progressiveRunGen;
+    _scheduleBusyContainerOrNull();
     _progressiveSub = loadLiveScheduleProgressive(
       hubPluginId: widget.pluginId,
       packSourceUrl: widget.packSourceUrl,
       feedParams: runParams,
       forceRefresh: force,
       setBusy: _setScheduleBusy,
+      isCancelled: () => !mounted || runGen != _progressiveRunGen,
     ).listen(
       (env) {
         if (!mounted || gen != _bindGen) return;

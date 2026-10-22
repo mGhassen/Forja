@@ -11,6 +11,7 @@ import 'package:forja_foundation/components/switch.dart';
 import 'package:forja/shell/core/forja_shell_scope.dart';
 import 'package:forja/shell/core/forja_shell_input_policy.dart';
 import 'package:forja_foundation/tokens/forja_theme_extension.dart';
+import 'package:forja_foundation/tokens/focus_chrome_tokens.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 import 'package:forja_foundation/widgets/chrome/forja_scrollbar.dart';
@@ -484,12 +485,13 @@ class _FocusableControlState extends State<FocusableControl>
     if (widget.ensureVisibleMode == ShellPaintEnsureVisible.off) return;
 
     // Prefer an ancestor extent (Popular rank digit left of poster chrome) so
-    // keepVisible does not scroll the digit off the leading edge.
+    // the focus column / keepVisible aligns the digit, not the poster alone.
     final scrollContext =
         ShellPaintEnsureVisibleExtent.maybeContext(context) ?? context;
 
-    // TV: jump instantly (no 200ms tween). Animated scroll leaves the focused
-    // control clipped / hidden until the tween ends, and stacks into stutter.
+    // Vertical lists jump instantly (no tween): an animated vertical scroll
+    // leaves the focused control clipped until the tween ends and stacks into
+    // stutter. Horizontal rails tween on a discrete press (below).
     if (widget.ensureVisibleMode == ShellPaintEnsureVisible.item) {
       // Settings / vertical menus: first control snaps to content top so
       // section labels above it stay visible (keepVisible alone pins flush).
@@ -497,21 +499,43 @@ class _FocusableControlState extends State<FocusableControl>
       return;
     }
 
-    // Run start+end keepVisible so ↑ and ↓ only nudge by the clipped edge.
-    // Horizontal row ListViews still need this; vertical hub lift is below.
-    const zero = Duration.zero;
-    Scrollable.ensureVisible(
-      scrollContext,
-      alignment: 0.0,
-      duration: zero,
-      alignmentPolicy: ScrollPositionAlignmentPolicy.keepVisibleAtStart,
+    // Catalog rails (zone row, or unregistered cards in a horizontal list):
+    // Leanback focus column — the card's leading edge scrolls to the rail's
+    // leading padding so the next cards stay visible. keepVisibleAtEnd used
+    // to park the focused card clipped at the right edge. Chip strips / top
+    // bars keep the nudge-by-clipped-edge path below.
+    // Column-memory landing (↑/↓ from a neighbor row): keep the landed card
+    // where it is so it stays under the card the user came from; the next
+    // ←/→ re-aligns. Only the keepVisible nudge below runs.
+    final landedByColumn = ShellTvFocusCoordinator.takeVerticalLanding(
+      _effectiveNode,
     );
-    Scrollable.ensureVisible(
-      scrollContext,
-      alignment: 1.0,
-      duration: zero,
-      alignmentPolicy: ScrollPositionAlignmentPolicy.keepVisibleAtEnd,
-    );
+    final zone = widget.tvMeta?.zone;
+    final columnAligned =
+        !landedByColumn &&
+        (zone == null || zone == ShellTvZone.row) &&
+        shellTvAlignRowFocusColumn(
+          scrollContext,
+          animate: !ShellTvHoldAccel.isHolding,
+        );
+
+    if (!columnAligned) {
+      // Run start+end keepVisible so ↑ and ↓ only nudge by the clipped edge.
+      // Vertical hub lift is below.
+      const zero = Duration.zero;
+      Scrollable.ensureVisible(
+        scrollContext,
+        alignment: 0.0,
+        duration: zero,
+        alignmentPolicy: ScrollPositionAlignmentPolicy.keepVisibleAtStart,
+      );
+      Scrollable.ensureVisible(
+        scrollContext,
+        alignment: 1.0,
+        duration: zero,
+        alignmentPolicy: ScrollPositionAlignmentPolicy.keepVisibleAtEnd,
+      );
+    }
 
     // Catalog rows: nearest Scrollable is the horizontal ListView, so the
     // keepVisible pair above often never moves the page. Lift in the vertical
@@ -702,10 +726,15 @@ class _FocusableControlState extends State<FocusableControl>
           context: context,
         );
 
-    // Settings rail: green left bar + ink fill (no ring box).
+    // Settings rail: leading accent bar + ink fill (no ring box on desktop).
     // Flat menus (scale 1.0 + showFocusBorder): gray fill + thin border.
     // Flat rows (scale 1.0, showFocusFill opt-in): inkHover — search helpers.
-    // Catalog cards: white focus ring + lift scale.
+    // Catalog cards: focus ring + lift scale.
+    // Leanback (D-pad) paints one signature on all of them — the accent ring
+    // from [FocusChromeTokens] (+ glow on cards); desktop hover is unchanged.
+    final leanback = policy.instantFocusChrome;
+    final leanbackFocused =
+        leanback && policy.focusChromeVisible(context, focused: _isFocused);
     final railFocus = widget.showFocusRail;
     final flatMenuFocus =
         !railFocus && widget.showFocusBorder && widget.scaleOnFocus <= 1.0;
@@ -737,50 +766,76 @@ class _FocusableControlState extends State<FocusableControl>
       builder: (context, child) {
         Widget content = child!;
         if (railFocus) {
-          // Clip so the left accent + ink fill follow [borderRadius].
-          // (Directional Border + borderRadius is illegal in BoxDecoration.)
+          // Clip so the leading accent + fill follow [borderRadius].
+          // Leanback focus adds the shared accent ring (rounded, follows the
+          // control radius) under a square-edged leading bar painted on top;
+          // the bar alone stays for the selected tile (forceRailActive) and
+          // for desktop hover / keyboard focus.
           final radius = BorderRadius.circular(widget.borderRadius);
-          final rtl = Directionality.of(context) == TextDirection.rtl;
-          final accent = BorderSide(
-            color: chromeActive
-                ? ForjaShellColors.brandGreen
-                : Colors.transparent,
-            width: 2.5,
-          );
+          final duration = leanback
+              ? FocusChromeTokens.leanbackTween
+              : FocusChromeTokens.hoverTween;
           content = ClipRRect(
             borderRadius: radius,
-            child: AnimatedContainer(
-              duration: policy.instantFocusChrome
-                  ? Duration.zero
-                  : const Duration(milliseconds: 140),
-              decoration: BoxDecoration(
-                color: chromeActive
-                    ? ForjaShellColors.inkHover
-                    : Colors.transparent,
-                border: Border(
-                  left: rtl ? BorderSide.none : accent,
-                  right: rtl ? accent : BorderSide.none,
+            child: Stack(
+              fit: StackFit.passthrough,
+              children: [
+                AnimatedContainer(
+                  duration: duration,
+                  decoration: BoxDecoration(
+                    color: chromeActive
+                        ? ForjaShellColors.inkHover
+                        : Colors.transparent,
+                    borderRadius: radius,
+                    border: leanbackFocused
+                        ? Border.all(
+                            color: FocusChromeTokens.ringColor,
+                            width: FocusChromeTokens.ringWidth,
+                          )
+                        : null,
+                  ),
+                  child: content,
                 ),
-              ),
-              child: content,
+                PositionedDirectional(
+                  start: 0,
+                  top: 0,
+                  bottom: 0,
+                  width: FocusChromeTokens.railAccentWidth,
+                  child: IgnorePointer(
+                    child: AnimatedContainer(
+                      duration: duration,
+                      color: chromeActive
+                          ? FocusChromeTokens.ringColor
+                          : Colors.transparent,
+                    ),
+                  ),
+                ),
+              ],
             ),
           );
         } else if (showFocusRing) {
+          final radius = BorderRadius.circular(widget.borderRadius);
           if (flatMenuFocus) {
+            // Rows (scale 1.0): ring without glow. Leanback paints the shared
+            // accent ring; desktop keeps the gray hairline.
             content = DecoratedBox(
-              decoration: BoxDecoration(
-                color: widget.showFocusFill
-                    ? Colors.white.withValues(alpha: 0.08)
-                    : Colors.transparent,
-                borderRadius: BorderRadius.circular(widget.borderRadius),
-                border: Border.all(
-                  color: Colors.white.withValues(alpha: 0.28),
-                  width: 1,
-                ),
-              ),
+              decoration: leanbackFocused
+                  ? FocusChromeTokens.ring(
+                      borderRadius: radius,
+                      fill: widget.showFocusFill
+                          ? FocusChromeTokens.tintFill()
+                          : null,
+                      withGlow: false,
+                    )
+                  : FocusChromeTokens.flatRing(
+                      borderRadius: radius,
+                      withFill: widget.showFocusFill,
+                    ),
               child: content,
             );
           } else {
+            // Cards: ring over the poster + lift. Leanback adds the glow;
+            // desktop keyboard focus keeps the white hairline.
             content = Stack(
               clipBehavior: Clip.none,
               fit: StackFit.passthrough,
@@ -789,12 +844,9 @@ class _FocusableControlState extends State<FocusableControl>
                 Positioned.fill(
                   child: IgnorePointer(
                     child: DecoratedBox(
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(
-                          widget.borderRadius,
-                        ),
-                        border: Border.all(color: Colors.white, width: 1.5),
-                      ),
+                      decoration: leanbackFocused
+                          ? FocusChromeTokens.ring(borderRadius: radius)
+                          : FocusChromeTokens.hoverRing(borderRadius: radius),
                     ),
                   ),
                 ),

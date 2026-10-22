@@ -263,6 +263,14 @@ class ExoPlayerHost(
         override fun onCues(cueGroup: CueGroup) {
             // Flutter paints cues above the PlatformView — native SubtitleView
             // inside VirtualDisplay often never refreshes on OEM ATV (issue 230).
+            // Some PlayerView builds bring it back after setPlayer; a visible
+            // native view would paint every cue a second time under Flutter's.
+            playerView?.subtitleView?.let { native ->
+                if (native.visibility != View.GONE) {
+                    Log.w(TAG, "native SubtitleView was visible — hiding (cues are Flutter-painted)")
+                    native.visibility = View.GONE
+                }
+            }
             val texts = ArrayList<String>(cueGroup.cues.size)
             for (cue in cueGroup.cues) {
                 val raw = cue.text?.toString()?.trim().orEmpty()
@@ -425,6 +433,9 @@ class ExoPlayerHost(
             lastOptions.drm == options.drm &&
             lastHeaders == headers &&
             lastCached == cached
+        // Release the old pipeline before remembering this open — stopInternal
+        // clears lastUrl / lastOptions, and setSubtitles needs them later.
+        if (!canReuse) stopInternal(releasePlayer = true)
         lastUrl = url
         lastOptions = options
         lastHeaders = headers
@@ -446,8 +457,6 @@ class ExoPlayerHost(
             syncKeepScreenOn()
             return
         }
-
-        stopInternal(releasePlayer = true)
 
         val httpFactory = buildHttpFactory(headers)
         // DefaultDataSource handles file:// / content:// / asset; HTTP goes through [httpFactory].
@@ -557,15 +566,22 @@ class ExoPlayerHost(
      * preserving position and play/pause. Used when online subs arrive or
      * the user picks a language after open.
      */
-    fun setSubtitles(subtitles: List<Map<String, String>>) {
-        val p = player ?: return
-        val url = lastUrl ?: return
+    fun setSubtitles(subtitles: List<Map<String, String>>): Int {
+        val p = player
+        val url = lastUrl
+        if (p == null || url == null) {
+            Log.w(TAG, "setSubtitles skipped: player=${p != null} url=${url != null}")
+            return 0
+        }
         val pos = p.currentPosition
         val playWhenReady = p.playWhenReady
         val item = mediaItemBuilder(url, subtitles, lastOptions).build()
+        val accepted = item.localConfiguration?.subtitleConfigurations?.size ?: 0
+        Log.i(TAG, "setSubtitles n=${subtitles.size} accepted=$accepted pos=$pos")
         p.setMediaItem(item, pos)
         p.prepare()
         p.playWhenReady = playWhenReady
+        return accepted
     }
 
     fun setSubtitleStyle(
@@ -745,13 +761,16 @@ class ExoPlayerHost(
             ?: return null
         val lang = sub["lang"]?.takeIf { it.isNotBlank() } ?: "und"
         val label = sub["label"]?.takeIf { it.isNotBlank() } ?: lang
-        return MediaItem.SubtitleConfiguration.Builder(Uri.parse(subUrl))
+        val builder = MediaItem.SubtitleConfiguration.Builder(Uri.parse(subUrl))
             .setMimeType(mime)
             .setLanguage(lang)
             .setLabel(label)
             // Let Dart apply preferred language - do not force-select every track.
             .setSelectionFlags(0)
-            .build()
+        // Media3 reports this back as Format.id — Dart selects the exact
+        // sideload it picked, not the first track in the same language.
+        sub["id"]?.takeIf { it.isNotBlank() }?.let { builder.setId(it) }
+        return builder.build()
     }
 
     private fun mimeForSubtitleUrl(subUrl: String): String? {
@@ -1089,6 +1108,7 @@ class ExoPlayerHost(
                         "height" to positiveOrZero(format.height),
                         "bitrate" to bitrate,
                         "mimeType" to (format.sampleMimeType ?: ""),
+                        "formatId" to (format.id ?: ""),
                     ),
                 )
             }
@@ -1275,6 +1295,7 @@ class ForjaExoPlayerPlugin : MethodChannel.MethodCallHandler, EventChannel.Strea
     fun bindEngine(context: Context, messenger: io.flutter.plugin.common.BinaryMessenger, registry: io.flutter.plugin.platform.PlatformViewRegistry) {
         appContext = context.applicationContext
         (context as? Activity)?.let { activityRef = WeakReference(it) }
+        ForjaExoMediaCache.warm(context.applicationContext)
         methodChannel = MethodChannel(messenger, CHANNEL)
         methodChannel?.setMethodCallHandler(this)
         eventChannel = EventChannel(messenger, EVENT_CHANNEL)
@@ -1392,8 +1413,7 @@ class ForjaExoPlayerPlugin : MethodChannel.MethodCallHandler, EventChannel.Strea
                     ?: return result.error("ARG", "viewId required", null)
                 @Suppress("UNCHECKED_CAST")
                 val subtitles = call.argument<List<Map<String, String>>>("subtitles") ?: emptyList()
-                hostFor(viewId).setSubtitles(subtitles)
-                result.success(null)
+                result.success(hostFor(viewId).setSubtitles(subtitles))
             }
             "setSubtitleStyle" -> {
                 val viewId = call.argument<Int>("viewId")

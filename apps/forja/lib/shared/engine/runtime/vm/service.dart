@@ -15,6 +15,7 @@ import 'package:forja/shared/engine/packs/registry/plugin_registry.dart';
 import 'package:forja/shared/engine/runtime/vm/runtime.dart';
 import 'package:forja/shared/engine/packs/settings/pack_addon_settings_spec.dart';
 import 'package:forja/shared/engine/packs/settings/pack_connected_auth_service.dart';
+import 'package:forja/shared/playback/open/playback_start_trace.dart';
 import 'package:forja/shared/playback/probe/playback_stream_guards.dart';
 import 'package:rust/rust.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -219,9 +220,7 @@ class EngineService {
   Future<List<EnginePack>> listPacks() => PluginRegistry.instance.listPacks();
 
   /// Check installed packs against remote manifests (no install).
-  Future<EnginePackRemoteCheck> checkPackUpdates(
-    List<EnginePack> packs,
-  ) async {
+  Future<EnginePackRemoteCheck> checkPackUpdates(List<EnginePack> packs) async {
     final updates = <String, EnginePackUpdateInfo>{};
     final deprecated = <String>{};
     await Future.wait([
@@ -229,8 +228,9 @@ class EngineService {
         () async {
           if (pack.plugins.isEmpty) return;
           if (PluginRegistry.isLegacyAssetPack(pack.sourceUrl)) return;
-          final peek =
-              await PluginRegistry.instance.peekRemoteManifest(pack.sourceUrl);
+          final peek = await PluginRegistry.instance.peekRemoteManifest(
+            pack.sourceUrl,
+          );
           if (peek.gone) {
             deprecated.add(pack.sourceUrl);
             return;
@@ -246,10 +246,7 @@ class EngineService {
           );
         }(),
     ]);
-    return EnginePackRemoteCheck(
-      updates: updates,
-      deprecatedUrls: deprecated,
-    );
+    return EnginePackRemoteCheck(updates: updates, deprecatedUrls: deprecated);
   }
 
   /// Settings list — prefs first (instant), ensure/hydrate in background.
@@ -266,12 +263,11 @@ class EngineService {
     Iterable<Map<String, dynamic>> rows, {
     bool removeMissingUserPacks = true,
     bool purgeRemovedImmediately = true,
-  }) =>
-      PluginRegistry.instance.applyLeanManifestUrls(
-        rows,
-        removeMissingUserPacks: removeMissingUserPacks,
-        purgeRemovedImmediately: purgeRemovedImmediately,
-      );
+  }) => PluginRegistry.instance.applyLeanManifestUrls(
+    rows,
+    removeMissingUserPacks: removeMissingUserPacks,
+    purgeRemovedImmediately: purgeRemovedImmediately,
+  );
 
   Future<List<EnginePack>> listSourcesPanelPacks() async {
     // Never block Play/Sources on network install / lean hydrate.
@@ -413,7 +409,10 @@ class EngineService {
     for (final pack in await listPacks()) {
       if (!pack.enabled) continue;
       for (final p in pack.plugins) {
-        if (!p.isHttp || p.isLiveSportPlugin || !p.enabled || !p.isLiveFeedPlugin) {
+        if (!p.isHttp ||
+            p.isLiveSportPlugin ||
+            !p.enabled ||
+            !p.isLiveFeedPlugin) {
           continue;
         }
         out.add(p);
@@ -468,8 +467,9 @@ class EngineService {
     }
     final plugin = hit.plugin;
     final config = Map<String, dynamic>.from(plugin.config);
-    final packSettings = await PackAddonSettingsSpec.fromPlugin(plugin)
-        ?.loadConfigOverlay();
+    final packSettings = await PackAddonSettingsSpec.fromPlugin(
+      plugin,
+    )?.loadConfigOverlay();
     if (packSettings != null && packSettings.isNotEmpty) {
       config.addAll(packSettings);
     }
@@ -495,9 +495,7 @@ class EngineService {
     var code = await _loadScript(plugin, sourceUrl: hit.pack.sourceUrl);
     if (gen != _catalogGeneration) return null;
     if (code == null || code.isEmpty) {
-      debugPrint(
-        '[catalog] ${plugin.id} missing script — ensurePluginReady',
-      );
+      debugPrint('[catalog] ${plugin.id} missing script — ensurePluginReady');
       final ok = await PluginInstallCoordinator.instance.ensurePluginReady(
         plugin.id,
       );
@@ -549,8 +547,12 @@ class EngineService {
       'settingsAction',
       // Stremio catalog hub: layout / rail / filters / search call
       // ctx.host.engine.request — EngineJS has no bridge; force flutter_js.
-      if (plugin.needsStremioCatalogHost)
-        ...{'layout', 'rail', 'filters', 'search'},
+      if (plugin.needsStremioCatalogHost) ...{
+        'layout',
+        'rail',
+        'filters',
+        'search',
+      },
     };
     final needsHostFeedBridge =
         plugin.needsHostBridge && hostBridgeActions.contains(action);
@@ -577,11 +579,9 @@ class EngineService {
       final bridge = plugin.needsListsHost
           ? 'bookmarks+simkl'
           : plugin.needsPortalPackHost
-              ? 'http+vault+playback'
-              : 'plugin';
-      debugPrint(
-        '[catalog] ${plugin.id} $action needs $bridge — flutter_js',
-      );
+          ? 'http+vault+playback'
+          : 'plugin';
+      debugPrint('[catalog] ${plugin.id} $action needs $bridge — flutter_js');
     }
 
     return _withFlutterJsFork(() async {
@@ -678,11 +678,11 @@ class EngineService {
       return [];
     }
     final plugin = hit.plugin;
-    final overlay =
-        const <String, dynamic>{};
+    final overlay = const <String, dynamic>{};
     var config = mergeEngineConfig(plugin.config, overlay);
     if (pluginId == 'torrentio') {
-      final stremioBase = await SettingsService().resolveTorrentioStremioAddonBase();
+      final stremioBase = await SettingsService()
+          .resolveTorrentioStremioAddonBase();
       if (stremioBase != null && stremioBase.isNotEmpty) {
         config = {...config, 'base': stremioBase};
       }
@@ -706,9 +706,8 @@ class EngineService {
 
     final rt = runtime ?? EngineRuntime.fork();
     final owned = runtime == null;
-    final timeout = pluginId == 'uindex' &&
-            flareUrl != null &&
-            flareUrl.isNotEmpty
+    final timeout =
+        pluginId == 'uindex' && flareUrl != null && flareUrl.isNotEmpty
         ? const Duration(seconds: 90)
         : const Duration(seconds: 20);
     try {
@@ -727,11 +726,7 @@ class EngineService {
       );
       debugPrint('[engine] torrent search $pluginId: ${rows.length} rows');
       return [
-        for (final row in rows)
-          {
-            ...row,
-            '_providerId': plugin.id,
-          },
+        for (final row in rows) {...row, '_providerId': plugin.id},
       ];
     } catch (e) {
       debugPrint('[engine] torrent search $pluginId failed: $e');
@@ -762,8 +757,7 @@ class EngineService {
       throw Exception('debrid plugin inactive: $pluginId');
     }
     final plugin = hit.plugin;
-    final overlay =
-        const <String, dynamic>{};
+    final overlay = const <String, dynamic>{};
     var config = mergeEngineConfig(plugin.config, overlay);
     final packSettings = await PackAddonSettingsSpec.loadExtractConfigOverlay(
       extractPluginId: plugin.id,
@@ -821,56 +815,51 @@ class EngineService {
     required String sourceUrl,
     required String pluginId,
     required bool enabled,
-  }) =>
-      PluginRegistry.instance.setPluginEnabled(
-        sourceUrl: sourceUrl,
-        pluginId: pluginId,
-        enabled: enabled,
-      );
+  }) => PluginRegistry.instance.setPluginEnabled(
+    sourceUrl: sourceUrl,
+    pluginId: pluginId,
+    enabled: enabled,
+  );
 
   Future<void> setPackEnabled({
     required String sourceUrl,
     required bool enabled,
-  }) =>
-      PluginRegistry.instance.setPackEnabled(
-        sourceUrl: sourceUrl,
-        enabled: enabled,
-      );
+  }) => PluginRegistry.instance.setPackEnabled(
+    sourceUrl: sourceUrl,
+    enabled: enabled,
+  );
 
   Future<void> setLiveCapabilityEnabled({
     required String sourceUrl,
     required String pluginId,
     required String capability,
     required bool enabled,
-  }) =>
-      PluginRegistry.instance.setLiveCapabilityEnabled(
-        sourceUrl: sourceUrl,
-        pluginId: pluginId,
-        capability: capability,
-        enabled: enabled,
-      );
+  }) => PluginRegistry.instance.setLiveCapabilityEnabled(
+    sourceUrl: sourceUrl,
+    pluginId: pluginId,
+    capability: capability,
+    enabled: enabled,
+  );
 
   Future<bool> liveCapabilityEnabled({
     required String sourceUrl,
     required EnginePlugin plugin,
     required String capability,
-  }) =>
-      PluginRegistry.instance.liveCapabilityEnabled(
-        sourceUrl: sourceUrl,
-        plugin: plugin,
-        capability: capability,
-      );
+  }) => PluginRegistry.instance.liveCapabilityEnabled(
+    sourceUrl: sourceUrl,
+    plugin: plugin,
+    capability: capability,
+  );
 
   Future<void> setPluginsEnabled({
     required String sourceUrl,
     required Set<String> pluginIds,
     required bool enabled,
-  }) =>
-      PluginRegistry.instance.setPluginsEnabled(
-        sourceUrl: sourceUrl,
-        pluginIds: pluginIds,
-        enabled: enabled,
-      );
+  }) => PluginRegistry.instance.setPluginsEnabled(
+    sourceUrl: sourceUrl,
+    pluginIds: pluginIds,
+    enabled: enabled,
+  );
 
   static String _selectedPrefsKey(String panelCategory) =>
       '$_selectedKeyPrefix$panelCategory';
@@ -906,10 +895,7 @@ class EngineService {
     required String panelCategory,
   }) async {
     final prefs = await _prefs;
-    await prefs.setStringList(
-      _selectedPrefsKey(panelCategory),
-      ids.toList(),
-    );
+    await prefs.setStringList(_selectedPrefsKey(panelCategory), ids.toList());
   }
 
   static String _viewFilterPrefsKey(String panelCategory) =>
@@ -923,10 +909,7 @@ class EngineService {
     final prefs = await _prefs;
     final raw = prefs.getStringList(_viewFilterPrefsKey(panelCategory));
     if (raw == null || raw.isEmpty) return {};
-    return filterEngineSelectedPluginIds(
-      savedIds: raw,
-      enabledIds: enabledIds,
-    );
+    return filterEngineSelectedPluginIds(savedIds: raw, enabledIds: enabledIds);
   }
 
   Future<void> saveSourcesViewFilterPluginIds(
@@ -934,10 +917,7 @@ class EngineService {
     required String panelCategory,
   }) async {
     final prefs = await _prefs;
-    await prefs.setStringList(
-      _viewFilterPrefsKey(panelCategory),
-      ids.toList(),
-    );
+    await prefs.setStringList(_viewFilterPrefsKey(panelCategory), ids.toList());
   }
 
   Future<void> _syncHops(List<EnginePack> packs) async {
@@ -977,6 +957,7 @@ class EngineService {
     int? season,
     String? title,
     String? year,
+
     /// Hub play SUB/DUB — stamped into extract as `category` (`sub`|`dub`).
     String? audioCategory,
     bool allowHostFallback = false,
@@ -1021,8 +1002,7 @@ class EngineService {
       return null;
     }
 
-    final overlay =
-        const <String, dynamic>{};
+    final overlay = const <String, dynamic>{};
     var config = injectExtractCtxIntoConfig(
       active,
       extractCtx,
@@ -1081,12 +1061,16 @@ class EngineService {
       isCancelled: () => gen != _extractGeneration,
     );
     if (gen != _extractGeneration) {
-      debugPrint('[engine] ${active.id} cancelled after ${sw.elapsedMilliseconds}ms');
+      debugPrint(
+        '[engine] ${active.id} cancelled after ${sw.elapsedMilliseconds}ms',
+      );
       return null;
     }
     var rawList = raw;
     if (gen != _extractGeneration) {
-      debugPrint('[engine] ${active.id} cancelled after ${sw.elapsedMilliseconds}ms');
+      debugPrint(
+        '[engine] ${active.id} cancelled after ${sw.elapsedMilliseconds}ms',
+      );
       return null;
     }
     final streams = <Map<String, dynamic>>[];
@@ -1129,7 +1113,8 @@ class EngineService {
     final candidates = <String>{
       trimmed,
       if (normalized.isNotEmpty) normalized,
-      if (normalized.isNotEmpty && !trimmed.startsWith('live-')) 'live-$normalized',
+      if (normalized.isNotEmpty && !trimmed.startsWith('live-'))
+        'live-$normalized',
     };
     for (final id in candidates) {
       final hit = PluginRegistry.packPluginFromPacks(packs, id);
@@ -1183,8 +1168,7 @@ class EngineService {
           )
         : hit.pack.isPluginActive(plugin);
     if (!active) return [];
-    final overlay =
-        const <String, dynamic>{};
+    final overlay = const <String, dynamic>{};
     final config = {
       ...mergeEngineConfig(plugin.config, overlay),
       'pluginId': plugin.id,
@@ -1218,10 +1202,10 @@ class EngineService {
         viaRust.isEmpty
             ? '[engine] ${plugin.id} enginejs live resolve empty — flutter_js fallback'
             : wantsUnlock
-                ? '[engine] ${plugin.id} enginejs live resolve no playable urls '
-                    '(${viaRust.length}) — flutter_js fallback'
-                : '[engine] ${plugin.id} enginejs live resolve no discover rows '
-                    '(${viaRust.length}) — flutter_js fallback',
+            ? '[engine] ${plugin.id} enginejs live resolve no playable urls '
+                  '(${viaRust.length}) — flutter_js fallback'
+            : '[engine] ${plugin.id} enginejs live resolve no discover rows '
+                  '(${viaRust.length}) — flutter_js fallback',
       );
     }
     if (gen != _extractGeneration) return [];
@@ -1260,9 +1244,10 @@ class EngineService {
 
   /// True when params ask for unlock-on-play (embed URL present).
   static bool _liveResolveWantsUnlock(Map<String, dynamic> params) {
-    final embed = (params['embedUrl'] ?? params['url'] ?? params['iframe'] ?? '')
-        .toString()
-        .trim();
+    final embed =
+        (params['embedUrl'] ?? params['url'] ?? params['iframe'] ?? '')
+            .toString()
+            .trim();
     return embed.isNotEmpty;
   }
 
@@ -1321,13 +1306,15 @@ class EngineService {
 
     final hit = PluginRegistry.packPluginFromPacks(packs, catalogPlugin.id);
     if (hit != null && catalogPlugin.isLiveSportPlugin) {
-      final catalogActive = catalogPlugin.supportsLiveFeed &&
+      final catalogActive =
+          catalogPlugin.supportsLiveFeed &&
           await PluginRegistry.instance.isLiveCapabilityActive(
             pack: hit.pack,
             plugin: catalogPlugin,
             capability: LiveSportCapabilities.catalog,
           );
-      final broadcastActive = catalogPlugin.supportsLiveBroadcast &&
+      final broadcastActive =
+          catalogPlugin.supportsLiveBroadcast &&
           await PluginRegistry.instance.isLiveCapabilityActive(
             pack: hit.pack,
             plugin: catalogPlugin,
@@ -1338,8 +1325,7 @@ class EngineService {
       return [];
     }
 
-    final overlay =
-        const <String, dynamic>{};
+    final overlay = const <String, dynamic>{};
     var config = mergeEngineConfig(catalogPlugin.config, overlay);
 
     if (extraConfig.isNotEmpty) {
@@ -1463,6 +1449,8 @@ class EngineService {
         'ctx': ctx,
         'timeout_ms': timeout.inMilliseconds,
         'allow_host_fallback': false,
+        // Provider fetches to loopback / LAN stay refused (no manifest opt-in).
+        'allow_local_fetch': false,
         'hops': <Map<String, Object?>>[],
         'hop_depth': 0,
       });
@@ -1648,9 +1636,7 @@ class EngineService {
     );
     if (viaRust != null) return viaRust;
     if (genAtStart != _extractGeneration) {
-      debugPrint(
-        '[engine] $pluginId cancelled — skip flutter_js fallback',
-      );
+      debugPrint('[engine] $pluginId cancelled — skip flutter_js fallback');
       return EngineExtractResult(
         pluginId: pluginId,
         pluginName: pluginId,
@@ -1708,8 +1694,10 @@ class EngineService {
   }) async {
     final gen = _extractGeneration;
     if (!Engine.isReady) return null;
+    final trace = PlaybackStartTrace.instance;
     final packs = await listPacks();
     if (gen != _extractGeneration) return null;
+    trace.markOnce('first-plugin-packs-ready');
     final hit = PluginRegistry.packPluginFromPacks(packs, pluginId);
     if (hit == null ||
         !hit.pack.isPluginActive(hit.plugin) ||
@@ -1719,8 +1707,7 @@ class EngineService {
     final plugin = hit.plugin;
 
     final mediaType = _normalizeEngineMediaType(type);
-    final overlay =
-        const <String, dynamic>{};
+    final overlay = const <String, dynamic>{};
     var config = injectExtractCtxIntoConfig(
       plugin,
       extractCtx,
@@ -1733,12 +1720,14 @@ class EngineService {
     if (packSettings.isNotEmpty) {
       config = mergeEngineConfig(config, packSettings);
     }
+    trace.markOnce('first-plugin-config-overlay');
     final audio = normalizeEngineAudioCategory(audioCategory);
     if (audio != null) {
       config = {...config, 'category': audio};
     }
     final code = await _loadScript(plugin);
     if (gen != _extractGeneration || code == null) return null;
+    trace.markOnce('first-plugin-script-loaded');
 
     final spreadCtx = Map<String, dynamic>.from(extractCtx);
     if (movie?.imdbId != null && movie!.imdbId!.trim().isNotEmpty) {
@@ -1771,18 +1760,15 @@ class EngineService {
     final hopPayload = <Map<String, Object?>>[];
     for (final p in hopPlugins) {
       final hit = PluginRegistry.packPluginFromPacks(packs, p.id);
-      final hopCode = await _loadScript(
-        p,
-        sourceUrl: hit?.pack.sourceUrl,
-      );
+      final hopCode = await _loadScript(p, sourceUrl: hit?.pack.sourceUrl);
       if (hopCode == null || hopCode.isEmpty) continue;
-      hopPayload.add({
-        'id': p.id,
-        'hosts': p.hopHosts,
-        'code': hopCode,
-      });
+      hopPayload.add({'id': p.id, 'hosts': p.hopHosts, 'code': hopCode});
     }
     if (gen != _extractGeneration) return null;
+    trace.markOnce(
+      'first-plugin-submit',
+      detail: 'hops=${hopPayload.length} code=${code.length}',
+    );
 
     debugPrint(
       '[engine] ${plugin.id} start (enginejs) tmdb=$tmdbId type=$mediaType '
@@ -1797,37 +1783,42 @@ class EngineService {
     final emitRow = onRow;
     late final String rawJson;
     try {
-      rawJson = await EngineJobs.runWatching(EngineAsyncJob.engineJsExtract, {
-        'plugin_id': plugin.id,
-        'code': code,
-        'ctx': ctx,
-        'timeout_ms': timeout.inMilliseconds,
-        'allow_host_fallback': allowHostFallback,
-        'hops': hopPayload,
-        'hop_depth': 0,
-      }, onRow: emitRow == null
-          ? null
-          : (raw) {
-              final url = (raw['url'] ?? '').toString().trim();
-              if (url.isEmpty || !seenEmit.add(url)) return;
-              if (isTorrentStreamUrl(url)) return;
-              final mapped = mapEngineStream(
-                raw: raw,
-                plugin: plugin,
-                mediaTitle: title,
-                year: year,
-                type: mediaType,
-                season: season,
-                episode: episode,
-              );
-              if (mapped == null) return;
-              final filtered = filterStreamsByAudioCategory(
-                [mapped],
-                audioCategory,
-              );
-              if (filtered.isEmpty) return;
-              emitRow(filtered.first);
-            });
+      rawJson = await EngineJobs.runWatching(
+        EngineAsyncJob.engineJsExtract,
+        {
+          'plugin_id': plugin.id,
+          'code': code,
+          'ctx': ctx,
+          'timeout_ms': timeout.inMilliseconds,
+          'allow_host_fallback': allowHostFallback,
+          // Provider fetches to loopback / LAN stay refused (no manifest opt-in).
+          'allow_local_fetch': false,
+          'hops': hopPayload,
+          'hop_depth': 0,
+        },
+        onRow: emitRow == null
+            ? null
+            : (raw) {
+                final url = (raw['url'] ?? '').toString().trim();
+                if (url.isEmpty || !seenEmit.add(url)) return;
+                if (isTorrentStreamUrl(url)) return;
+                final mapped = mapEngineStream(
+                  raw: raw,
+                  plugin: plugin,
+                  mediaTitle: title,
+                  year: year,
+                  type: mediaType,
+                  season: season,
+                  episode: episode,
+                );
+                if (mapped == null) return;
+                final filtered = filterStreamsByAudioCategory([
+                  mapped,
+                ], audioCategory);
+                if (filtered.isEmpty) return;
+                emitRow(filtered.first);
+              },
+      );
     } catch (e) {
       debugPrint('[engine] ${plugin.id} enginejs submit failed: $e');
       return null;
@@ -1890,7 +1881,9 @@ class EngineService {
         needsHost.isNotEmpty &&
         allowHostFallback &&
         gen == _extractGeneration) {
-      debugPrint('[engine] ${plugin.id} enginejs needs_host=$needsHost (skipped)');
+      debugPrint(
+        '[engine] ${plugin.id} enginejs needs_host=$needsHost (skipped)',
+      );
     }
     if (gen != _extractGeneration) return null;
 

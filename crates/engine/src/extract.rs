@@ -2,13 +2,12 @@
 
 use std::collections::HashMap;
 use std::io::Read;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use base64::Engine as _;
 use flate2::read::{DeflateDecoder, GzDecoder, ZlibDecoder};
 use rquickjs::{
-    async_with, function::Async, AsyncContext, AsyncRuntime, CatchResultExt, Ctx, Function,
-    Promise,
+    async_with, function::Async, AsyncContext, AsyncRuntime, CatchResultExt, Ctx, Function, Promise,
 };
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -17,6 +16,27 @@ use serde_json::Value;
 const PIPE_OBF_KEY: [u8; 16] = [
     0x71, 0x95, 0x10, 0x34, 0xf8, 0xfb, 0xcf, 0x53, 0xd8, 0x9d, 0xb5, 0x2c, 0xeb, 0x3d, 0xc2, 0x2c,
 ];
+
+/// QuickJS heap ceiling per extract. Scraper bodies are capped at
+/// [`crate::fetch_guard::MAX_RESPONSE_BYTES`] (16 MiB); 64 MiB leaves room for
+/// the JSON envelope, a parsed copy, and cheerio over one page.
+const JS_MEMORY_LIMIT_BYTES: usize = 64 * 1024 * 1024;
+/// Native stack QuickJS may use before `RangeError: Maximum call stack size exceeded`.
+/// Equals the QuickJS default; pinned so a tokio worker (2 MiB) never overflows.
+const JS_MAX_STACK_BYTES: usize = 1024 * 1024;
+
+/// Interrupt callback: QuickJS polls it inside long-running bytecode, so a
+/// `while(true){}` plugin unwinds when the job is cancelled or its budget is spent.
+fn js_interrupt_handler(
+    token: utils::engine_cancel::CancellationToken,
+    deadline: Instant,
+) -> Box<dyn FnMut() -> bool + Send + 'static> {
+    Box::new(move || {
+        token.is_cancelled()
+            || utils::engine_cancel::is_shutdown_requested()
+            || Instant::now() >= deadline
+    })
+}
 
 fn cancelled() -> bool {
     utils::engine_cancel::cancellation_token().is_cancelled()
@@ -114,6 +134,10 @@ pub struct ExtractRequest {
     /// Nesting depth for `ctx.hop` (max 3, same as Dart EngineRuntime).
     #[serde(default)]
     pub hop_depth: u32,
+    /// Pack manifest opt-in: let `fetch` reach loopback / LAN / private ranges.
+    /// Default false — see [`crate::fetch_guard`].
+    #[serde(default)]
+    pub allow_local_fetch: bool,
 }
 
 fn default_timeout_ms() -> u64 {
@@ -395,8 +419,7 @@ const HOST_JS: &str = r#"
 "#;
 
 const CRYPTO_JS: &str = include_str!("crypto_js_polyfill.js");
-const CHEERIO_BUNDLE: &str =
-    include_str!("../../../apps/forja/assets/nuvio/cheerio.bundle.js");
+const CHEERIO_BUNDLE: &str = include_str!("../../../apps/forja/assets/nuvio/cheerio.bundle.js");
 
 fn cheerio_load_js() -> String {
     let out: String = format!(
@@ -452,6 +475,7 @@ async fn run_hop(
     hops: std::sync::Arc<Vec<HopScript>>,
     parent_meta: std::sync::Arc<Value>,
     hop_depth: u32,
+    allow_local_fetch: bool,
 ) -> String {
     if cancelled() || hop_depth >= 3 || url.trim().is_empty() {
         return "[]".into();
@@ -471,17 +495,10 @@ async fn run_hop(
         allow_host_fallback: true,
         hops: (*hops).clone(),
         hop_depth: hop_depth + 1,
+        allow_local_fetch,
     }))
     .await;
     serde_json::to_string(&result.streams).unwrap_or_else(|_| "[]".into())
-}
-
-fn fetch_cancelled_json(url: &str) -> String {
-    serde_json::json!({
-        "ok": false, "status": 0, "statusText": "cancelled",
-        "url": url, "body": "", "headers": {}
-    })
-    .to_string()
 }
 
 async fn native_tmdb_match(payload: String) -> rquickjs::Result<String> {
@@ -499,8 +516,9 @@ async fn native_chrome_fetch(
     method: String,
     headers_json: String,
     body: String,
+    allow_local_fetch: bool,
 ) -> rquickjs::Result<String> {
-    Ok(crate::chrome_fetch::chrome_fetch(url, method, headers_json, body).await)
+    Ok(crate::chrome_fetch::chrome_fetch(url, method, headers_json, body, allow_local_fetch).await)
 }
 
 async fn native_fetch(
@@ -508,78 +526,13 @@ async fn native_fetch(
     method: String,
     headers_json: String,
     body: String,
+    allow_local_fetch: bool,
 ) -> rquickjs::Result<String> {
     if cancelled() {
-        return Ok(fetch_cancelled_json(&url));
+        return Ok(crate::fetch_guard::fetch_cancelled_json(&url));
     }
-    let headers: HashMap<String, String> =
-        serde_json::from_str(&headers_json).unwrap_or_default();
-    let client = match reqwest::Client::builder()
-        .redirect(reqwest::redirect::Policy::limited(8))
-        .timeout(Duration::from_secs(25))
-        .build()
-    {
-        Ok(c) => c,
-        Err(e) => {
-            return Ok(serde_json::json!({
-                "ok": false, "status": 0, "statusText": e.to_string(),
-                "url": url, "body": "", "headers": {}
-            })
-            .to_string());
-        }
-    };
-    let method_up = method.to_uppercase();
-    let mut req = match method_up.as_str() {
-        "POST" => client.post(&url),
-        "PUT" => client.put(&url),
-        "PATCH" => client.patch(&url),
-        "DELETE" => client.delete(&url),
-        "HEAD" => client.head(&url),
-        _ => client.get(&url),
-    };
-    for (k, v) in &headers {
-        req = req.header(k, v);
-    }
-    if !body.is_empty() && method_up != "GET" && method_up != "HEAD" {
-        req = req.body(body);
-    }
-    let token = utils::engine_cancel::cancellation_token();
-    let resp = match tokio::select! {
-        r = req.send() => r.map_err(|e| e.to_string()),
-        _ = token.cancelled() => Err(String::new()),
-    } {
-        Ok(r) => r,
-        Err(msg) if msg.is_empty() => return Ok(fetch_cancelled_json(&url)),
-        Err(msg) => {
-            return Ok(serde_json::json!({
-                "ok": false, "status": 0, "statusText": msg,
-                "url": url, "body": "", "headers": {}
-            })
-            .to_string());
-        }
-    };
-    let status = resp.status().as_u16();
-    let final_url = resp.url().to_string();
-    let mut hdrs = serde_json::Map::new();
-    for (k, v) in resp.headers().iter() {
-        if let Ok(s) = v.to_str() {
-            hdrs.insert(k.to_string(), Value::String(s.to_string()));
-        }
-    }
-    // HEAD must not buffer a redirected video body (HubCloud 10Gbps → googleusercontent).
-    let bytes: Vec<u8> = if method_up == "HEAD" {
-        Vec::new()
-    } else {
-        // Both arms same Result type — `return` inside select! confuses rust-analyzer (E0308).
-        match tokio::select! {
-            t = resp.bytes() => Ok(t.unwrap_or_default().to_vec()),
-            _ = token.cancelled() => Err(()),
-        } {
-            Ok(b) => b,
-            Err(()) => return Ok(fetch_cancelled_json(&url)),
-        }
-    };
-    Ok(pack_http_envelope(status, final_url, hdrs, bytes))
+    let headers: HashMap<String, String> = serde_json::from_str(&headers_json).unwrap_or_default();
+    Ok(crate::fetch_guard::guarded_fetch(url, method, headers, body, allow_local_fetch).await)
 }
 
 pub(crate) fn pack_http_envelope(
@@ -628,9 +581,10 @@ pub async fn extract(req: ExtractRequest) -> ExtractResult {
 /// Same as [extract], but `ctx.emit` rows land on [crate::extract_events] for `job_id`.
 pub async fn extract_in_job(req: ExtractRequest, job_id: u64) -> ExtractResult {
     let timeout = Duration::from_millis(req.timeout_ms.max(1_000));
+    let deadline = Instant::now() + timeout;
     let token = utils::engine_cancel::cancellation_token();
     tokio::select! {
-        r = tokio::time::timeout(timeout, extract_inner(req, job_id)) => match r {
+        r = tokio::time::timeout(timeout, extract_inner(req, job_id, deadline)) => match r {
             Ok(r) => r,
             Err(_) => ExtractResult {
                 streams: vec![],
@@ -672,15 +626,12 @@ fn with_tmdb_api_key(mut meta: Value) -> Value {
         Some(_) => false,
     };
     if missing {
-        cfg.insert(
-            "apiKey".into(),
-            Value::String(tmdb::API_KEY.to_string()),
-        );
+        cfg.insert("apiKey".into(), Value::String(tmdb::API_KEY.to_string()));
     }
     meta
 }
 
-async fn extract_inner(req: ExtractRequest, job_id: u64) -> ExtractResult {
+async fn extract_inner(req: ExtractRequest, job_id: u64, deadline: Instant) -> ExtractResult {
     if cancelled() {
         return ExtractResult {
             streams: vec![],
@@ -703,6 +654,13 @@ async fn extract_inner(req: ExtractRequest, job_id: u64) -> ExtractResult {
             };
         }
     };
+    rt.set_memory_limit(JS_MEMORY_LIMIT_BYTES).await;
+    rt.set_max_stack_size(JS_MAX_STACK_BYTES).await;
+    rt.set_interrupt_handler(Some(js_interrupt_handler(
+        utils::engine_cancel::cancellation_token(),
+        deadline,
+    )))
+    .await;
     let ctx = match AsyncContext::full(&rt).await {
         Ok(c) => c,
         Err(e) => {
@@ -723,9 +681,22 @@ async fn extract_inner(req: ExtractRequest, job_id: u64) -> ExtractResult {
     let hops = std::sync::Arc::new(req.hops.clone());
     let hop_depth = req.hop_depth;
     let allow_host = req.allow_host_fallback;
+    let allow_local_fetch = req.allow_local_fetch;
 
     let result = async_with!(ctx => |ctx| {
-        run_in_ctx(ctx, plugin_id, code, meta, plugin_label, hops, hop_depth, allow_host, job_id).await
+        run_in_ctx(
+            ctx,
+            plugin_id,
+            code,
+            meta,
+            plugin_label,
+            hops,
+            hop_depth,
+            allow_host,
+            allow_local_fetch,
+            job_id,
+        )
+        .await
     })
     .await;
 
@@ -756,6 +727,9 @@ async fn extract_inner(req: ExtractRequest, job_id: u64) -> ExtractResult {
     }
 }
 
+// One wiring function for the whole JS host surface; splitting it would only
+// scatter the globals it installs.
+#[allow(clippy::too_many_arguments)]
 async fn run_in_ctx<'js>(
     ctx: Ctx<'js>,
     plugin_id: String,
@@ -765,20 +739,35 @@ async fn run_in_ctx<'js>(
     hops: std::sync::Arc<Vec<HopScript>>,
     hop_depth: u32,
     allow_host: bool,
+    allow_local_fetch: bool,
     job_id: u64,
 ) -> Result<(Vec<Value>, Option<String>, Vec<String>), String> {
-    let fetch_fn = Function::new(ctx.clone(), Async(native_fetch))
-        .map_err(|e| e.to_string())?
-        .with_name("__native_fetch")
-        .map_err(|e| e.to_string())?;
+    let fetch_fn = Function::new(
+        ctx.clone(),
+        Async(
+            move |url: String, method: String, headers_json: String, body: String| async move {
+                native_fetch(url, method, headers_json, body, allow_local_fetch).await
+            },
+        ),
+    )
+    .map_err(|e| e.to_string())?
+    .with_name("__native_fetch")
+    .map_err(|e| e.to_string())?;
     ctx.globals()
         .set("__native_fetch", fetch_fn)
         .map_err(|e| e.to_string())?;
 
-    let chrome_fetch_fn = Function::new(ctx.clone(), Async(native_chrome_fetch))
-        .map_err(|e| e.to_string())?
-        .with_name("__native_chrome_fetch")
-        .map_err(|e| e.to_string())?;
+    let chrome_fetch_fn = Function::new(
+        ctx.clone(),
+        Async(
+            move |url: String, method: String, headers_json: String, body: String| async move {
+                native_chrome_fetch(url, method, headers_json, body, allow_local_fetch).await
+            },
+        ),
+    )
+    .map_err(|e| e.to_string())?
+    .with_name("__native_chrome_fetch")
+    .map_err(|e| e.to_string())?;
     ctx.globals()
         .set("__native_chrome_fetch", chrome_fetch_fn)
         .map_err(|e| e.to_string())?;
@@ -934,7 +923,9 @@ async fn run_in_ctx<'js>(
             move |url: String| {
                 let hops_for_fn = hops_for_fn.clone();
                 let meta_for_hop = meta_for_hop.clone();
-                async move { run_hop(url, hops_for_fn, meta_for_hop, hop_depth).await }
+                async move {
+                    run_hop(url, hops_for_fn, meta_for_hop, hop_depth, allow_local_fetch).await
+                }
             }
         }),
     )
@@ -1144,6 +1135,7 @@ function extract(ctx) {
             allow_host_fallback: false,
             hops: vec![],
             hop_depth: 0,
+            allow_local_fetch: false,
         };
         let (a, b) = tokio::join!(extract(mk("a")), extract(mk("b")));
         assert_eq!(a.streams.len(), 1);
@@ -1171,6 +1163,7 @@ function extract(ctx) {
                 allow_host_fallback: false,
                 hops: vec![],
                 hop_depth: 0,
+                allow_local_fetch: false,
             },
             job_id,
         )
@@ -1201,6 +1194,7 @@ function extract(ctx) {
             allow_host_fallback: false,
             hops: vec![],
             hop_depth: 0,
+            allow_local_fetch: false,
         })
         .await;
         assert!(r.error.is_none(), "{:?}", r.error);
@@ -1237,6 +1231,7 @@ function extract(ctx) {
                 code: hop_code.into(),
             }],
             hop_depth: 0,
+            allow_local_fetch: false,
         })
         .await;
         assert!(r.error.is_none(), "{:?}", r.error);
@@ -1265,6 +1260,7 @@ function extract(ctx) {
             allow_host_fallback: false,
             hops: vec![],
             hop_depth: 0,
+            allow_local_fetch: false,
         })
         .await;
         assert!(r.error.is_none(), "{:?}", r.error);
@@ -1274,7 +1270,6 @@ function extract(ctx) {
             Some("https://ex.com/watch/1")
         );
     }
-
 
     #[tokio::test]
     async fn host_fallback_flag() {
@@ -1291,6 +1286,7 @@ function extract(ctx) {
             allow_host_fallback: true,
             hops: vec![],
             hop_depth: 0,
+            allow_local_fetch: false,
         })
         .await;
         assert!(r.error.is_none(), "{:?}", r.error);
@@ -1331,6 +1327,7 @@ function extract(ctx) {
             allow_host_fallback: false,
             hops: vec![],
             hop_depth: 0,
+            allow_local_fetch: false,
         })
         .await;
         assert!(r.error.is_none(), "{:?}", r.error);
@@ -1346,6 +1343,102 @@ function extract(ctx) {
             row.get("hasTmdbMatch").and_then(|v| v.as_bool()),
             Some(true)
         );
+    }
+
+    #[tokio::test]
+    async fn busy_loop_plugin_returns_at_deadline() {
+        // `while(true){}` never yields, so tokio's timeout alone cannot fire.
+        // The interrupt handler must unwind the VM once the budget is spent.
+        let code = r#"
+function extract(ctx) {
+  while (true) {}
+}
+"#;
+        let started = Instant::now();
+        let r = extract(ExtractRequest {
+            plugin_id: "spin".into(),
+            code: code.into(),
+            ctx: serde_json::json!({ "tmdbId": "1", "type": "movie" }),
+            timeout_ms: 1_000,
+            allow_host_fallback: false,
+            hops: vec![],
+            hop_depth: 0,
+            allow_local_fetch: false,
+        })
+        .await;
+        let elapsed = started.elapsed();
+        assert!(r.streams.is_empty());
+        assert!(r.error.is_some(), "busy loop must surface an error");
+        assert!(
+            elapsed < Duration::from_secs(5),
+            "busy loop ran {elapsed:?}; interrupt handler did not fire"
+        );
+    }
+
+    #[tokio::test]
+    async fn allocation_bomb_fails_cleanly() {
+        let code = r#"
+function extract(ctx) {
+  var keep = [];
+  while (true) { keep.push(new Array(1 << 20).fill('x')); }
+}
+"#;
+        let started = Instant::now();
+        let r = extract(ExtractRequest {
+            plugin_id: "bomb".into(),
+            code: code.into(),
+            ctx: serde_json::json!({ "tmdbId": "1", "type": "movie" }),
+            timeout_ms: 10_000,
+            allow_host_fallback: false,
+            hops: vec![],
+            hop_depth: 0,
+            allow_local_fetch: false,
+        })
+        .await;
+        assert!(r.streams.is_empty());
+        assert!(r.error.is_some(), "allocation bomb must surface an error");
+        assert!(
+            started.elapsed() < Duration::from_secs(8),
+            "memory limit did not stop the allocation loop"
+        );
+    }
+
+    #[tokio::test]
+    async fn fetch_to_loopback_is_blocked_by_default() {
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let port = listener.local_addr().unwrap().port();
+        let code = format!(
+            r#"
+function extract(ctx) {{
+  return fetch('http://127.0.0.1:{port}/secret').then(function(r){{
+    return [{{ url: 'x', status: r.status, statusText: r.statusText }}];
+  }});
+}}
+"#
+        );
+        let r = extract(ExtractRequest {
+            plugin_id: "ssrf".into(),
+            code,
+            ctx: serde_json::json!({ "tmdbId": "1", "type": "movie" }),
+            timeout_ms: 5_000,
+            allow_host_fallback: false,
+            hops: vec![],
+            hop_depth: 0,
+            allow_local_fetch: false,
+        })
+        .await;
+        assert!(r.error.is_none(), "{:?}", r.error);
+        assert_eq!(r.streams.len(), 1);
+        assert_eq!(r.streams[0]["status"], 0);
+        assert!(
+            r.streams[0]["statusText"]
+                .as_str()
+                .unwrap_or("")
+                .starts_with("blocked:"),
+            "{:?}",
+            r.streams[0]
+        );
+        drop(listener);
     }
 
     #[test]
@@ -1382,7 +1475,11 @@ function extract(ctx) {
         assert_eq!(v["body"], "");
         assert_eq!(
             v["bodyB64"].as_str(),
-            Some(base64::engine::general_purpose::STANDARD.encode([0xff, 0x00, 0x7b]).as_str())
+            Some(
+                base64::engine::general_purpose::STANDARD
+                    .encode([0xff, 0x00, 0x7b])
+                    .as_str()
+            )
         );
     }
 
@@ -1391,13 +1488,19 @@ function extract(ctx) {
         // FCTV33 / TCPWE: Content-Type application/json, body is protobuf.
         let mut hdrs = serde_json::Map::new();
         hdrs.insert("content-type".into(), serde_json::json!("application/json"));
-        let bytes = vec![0x1a, 0x07, 0x53, 0x75, 0x63, 0x63, 0x65, 0x73, 0x73, 0xff, 0x00];
+        let bytes = vec![
+            0x1a, 0x07, 0x53, 0x75, 0x63, 0x63, 0x65, 0x73, 0x73, 0xff, 0x00,
+        ];
         let raw = pack_http_envelope(200, "https://x".into(), hdrs, bytes.clone());
         let v: Value = serde_json::from_str(&raw).unwrap();
         assert_eq!(v["body"], "");
         assert_eq!(
             v["bodyB64"].as_str(),
-            Some(base64::engine::general_purpose::STANDARD.encode(bytes).as_str())
+            Some(
+                base64::engine::general_purpose::STANDARD
+                    .encode(bytes)
+                    .as_str()
+            )
         );
     }
 

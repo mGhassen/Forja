@@ -89,8 +89,14 @@ Future<MetaEnvelope> _hubReduceFeed({
 
 /// Host fans live catalogs one-by-one; hub `feed` only reduces/merges/shapes.
 ///
-/// Yields a [MetaEnvelope] after each catalog so [PackLoadedPaint] can paint
-/// before the last scrape finishes (issue 278).
+/// Yields a [MetaEnvelope] as soon as a catalog contributes the first item so
+/// [PackLoadedPaint] can paint before the last scrape finishes (issue 278);
+/// empty intermediate reduces are held, and the final reduce is always yielded
+/// (see [fanOutLiveScheduleCatalogs]).
+///
+/// [isCancelled] is polled after every await: once the consumer cancelled, the
+/// loader stops scraping and stops writing [setBusy], so a stale run never
+/// touches the chip a newer bind owns.
 ///
 /// Raw rows share pack `live_sports.feed` (catalog-filter keys only). Schedule /
 /// sport / horizon changes re-reduce from cache — same as pre-progressive release.
@@ -100,7 +106,13 @@ Stream<MetaEnvelope> loadLiveScheduleProgressive({
   required Map<String, dynamic> feedParams,
   required void Function({required bool busy, String? label}) setBusy,
   bool forceRefresh = false,
+  bool Function()? isCancelled,
 }) async* {
+  final cancelled = isCancelled ?? () => false;
+  void busy({required bool busy, String? label}) {
+    if (!cancelled()) setBusy(busy: busy, label: label);
+  }
+
   // catalogFilter = plugin catalog chip. section = Sports/TV shelf (not a
   // plugin id) — never fall back to section or TV scrapes zero catalogs.
   final catalogFilter = (feedParams['catalogFilter'] ?? '').toString().trim();
@@ -123,13 +135,13 @@ Stream<MetaEnvelope> loadLiveScheduleProgressive({
   }
 
   if (isLiveStremioCatalogFilter(filter)) {
-    setBusy(busy: true, label: 'Loading…');
+    busy(busy: true, label: 'Loading…');
     try {
       final cacheKey = _liveFeedCacheKey(filter);
       if (!forceRefresh) {
         final warm = _cachedFeedRows(cacheKey);
         if (warm != null) {
-          setBusy(busy: false, label: null);
+          busy(busy: false, label: null);
           yield await _hubReduceFeed(
             hubPluginId: hubPluginId,
             packSourceUrl: packSourceUrl,
@@ -151,7 +163,7 @@ Stream<MetaEnvelope> loadLiveScheduleProgressive({
         params: feedParams,
       );
     } finally {
-      setBusy(busy: false, label: null);
+      busy(busy: false, label: null);
     }
     return;
   }
@@ -174,7 +186,7 @@ Stream<MetaEnvelope> loadLiveScheduleProgressive({
         if (scopedWarm.isEmpty) {
           EngineCache.instance.invalidate(_kLiveFeedCacheNs, aggregateKey);
         } else {
-          setBusy(busy: false, label: null);
+          busy(busy: false, label: null);
           yield await _hubReduceFeed(
             hubPluginId: hubPluginId,
             packSourceUrl: packSourceUrl,
@@ -184,7 +196,7 @@ Stream<MetaEnvelope> loadLiveScheduleProgressive({
           return;
         }
       } else {
-        setBusy(busy: false, label: null);
+        busy(busy: false, label: null);
         yield await _hubReduceFeed(
           hubPluginId: hubPluginId,
           packSourceUrl: packSourceUrl,
@@ -208,7 +220,7 @@ Stream<MetaEnvelope> loadLiveScheduleProgressive({
         ];
         if (scoped.isNotEmpty) {
           _storeFeedRows(aggregateKey, scoped);
-          setBusy(busy: false, label: null);
+          busy(busy: false, label: null);
           yield await _hubReduceFeed(
             hubPluginId: hubPluginId,
             packSourceUrl: packSourceUrl,
@@ -224,6 +236,7 @@ Stream<MetaEnvelope> loadLiveScheduleProgressive({
   List<EnginePlugin> wanted;
   try {
     final all = await EngineService.instance.listEnabledLiveFeedPlugins();
+    if (cancelled()) return;
     if (filter.isEmpty || filter == 'all') {
       wanted = all;
     } else {
@@ -251,7 +264,7 @@ Stream<MetaEnvelope> loadLiveScheduleProgressive({
   );
 
   if (wanted.isEmpty) {
-    setBusy(busy: false, label: null);
+    busy(busy: false, label: null);
     yield await _hubReduceFeed(
       hubPluginId: hubPluginId,
       packSourceUrl: packSourceUrl,
@@ -261,13 +274,69 @@ Stream<MetaEnvelope> loadLiveScheduleProgressive({
     return;
   }
 
+  if (cancelled()) return;
+  yield* fanOutLiveScheduleCatalogs(
+    catalogs: wanted,
+    aggregateKey: aggregateKey,
+    forceRefresh: forceRefresh,
+    setBusy: setBusy,
+    isCancelled: cancelled,
+    runCatalog: (plugin) =>
+        EngineService.instance.runLiveFeed(catalogPlugin: plugin),
+    reduce: (rows) => _hubReduceFeed(
+      hubPluginId: hubPluginId,
+      packSourceUrl: packSourceUrl,
+      rows: rows,
+      params: feedParams,
+    ),
+  );
+}
+
+bool _envelopeHasItems(MetaEnvelope env) {
+  if (!env.ok) return false;
+  final items = env.data?['items'];
+  return items is List && items.isNotEmpty;
+}
+
+/// Scrape [catalogs] one by one, reducing the growing row list after each.
+///
+/// Intermediate envelopes are only yielded once they carry at least one item,
+/// so the painter keeps its loading state (not the empty state) while catalogs
+/// are still pending and nothing has arrived yet. The last reduce is always
+/// yielded after the final catalog — that is the only place an empty schedule
+/// is reported.
+///
+/// An `async*` body only notices a cancelled subscription at its next `yield`,
+/// and held empties yield late — so [isCancelled] is polled after every await.
+/// Once true: no further scrape, no [setBusy] write (the chip belongs to the
+/// newer run), no aggregate cache store of the partial row list, no yield.
+///
+/// [runCatalog] and [reduce] are injectable so the fan-out contract can be
+/// tested without the engine VM.
+Stream<MetaEnvelope> fanOutLiveScheduleCatalogs({
+  required List<EnginePlugin> catalogs,
+  required String aggregateKey,
+  required bool forceRefresh,
+  required void Function({required bool busy, String? label}) setBusy,
+  required Future<List<Map<String, dynamic>>> Function(EnginePlugin plugin)
+      runCatalog,
+  required Future<MetaEnvelope> Function(List<Map<String, dynamic>> rows)
+      reduce,
+  bool Function()? isCancelled,
+}) async* {
+  final cancelled = isCancelled ?? () => false;
+  void busy({required bool busy, String? label}) {
+    if (!cancelled()) setBusy(busy: busy, label: label);
+  }
+
   final raw = <Map<String, dynamic>>[];
   final seen = <String>{};
-  final total = wanted.length;
+  final total = catalogs.length;
   MetaEnvelope? last;
 
-  for (var i = 0; i < wanted.length; i++) {
-    final plugin = wanted[i];
+  for (var i = 0; i < catalogs.length; i++) {
+    if (cancelled()) return;
+    final plugin = catalogs[i];
     final name = plugin.name.trim().isEmpty ? plugin.id : plugin.name.trim();
     final pluginKey = _liveFeedCacheKey(plugin.id);
 
@@ -277,7 +346,7 @@ Stream<MetaEnvelope> loadLiveScheduleProgressive({
     }
 
     if (batch != null) {
-      setBusy(busy: false, label: null);
+      busy(busy: false, label: null);
       for (final row in batch) {
         final map = Map<String, dynamic>.from(row);
         map['pluginId'] ??= plugin.id;
@@ -288,11 +357,10 @@ Stream<MetaEnvelope> loadLiveScheduleProgressive({
         raw.add(map);
       }
     } else {
-      setBusy(busy: true, label: 'Loading $name… ${i + 1}/$total');
+      busy(busy: true, label: 'Loading $name… ${i + 1}/$total');
       try {
-        final scraped = await EngineService.instance.runLiveFeed(
-          catalogPlugin: plugin,
-        );
+        final scraped = await runCatalog(plugin);
+        if (cancelled()) return;
         final collected = <Map<String, dynamic>>[];
         for (final row in scraped) {
           final map = Map<String, dynamic>.from(row);
@@ -312,19 +380,19 @@ Stream<MetaEnvelope> loadLiveScheduleProgressive({
       }
     }
 
-    last = await _hubReduceFeed(
-      hubPluginId: hubPluginId,
-      packSourceUrl: packSourceUrl,
-      rows: raw,
-      params: feedParams,
-    );
-    yield last;
+    last = await reduce(raw);
+    if (cancelled()) return;
+    // An empty reduce while catalogs remain is not a result yet — holding it
+    // keeps the loading state honest until the last catalog answers.
+    final isLast = i == catalogs.length - 1;
+    if (!isLast && _envelopeHasItems(last)) yield last;
   }
 
+  if (cancelled()) return;
   if (raw.isNotEmpty) {
     _storeFeedRows(aggregateKey, raw);
   }
 
-  setBusy(busy: false, label: null);
+  busy(busy: false, label: null);
   if (last != null) yield last;
 }

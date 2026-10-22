@@ -20,6 +20,12 @@ export 'package:forja_foundation/widgets/catalog/poster_card.dart'
 /// Poster card with [ShellPaintScope.focusableTap] + optional long-press hold.
 ///
 /// Host supplies [listPin] (e.g. list-status button). No Riverpod / MetaItem.
+///
+/// With [onLongPress] set, OK on TV activates on **key-up** (a short press
+/// still runs [onTap]); holding OK for [longPressDuration] or pressing the
+/// remote MENU key ([LogicalKeyboardKey.contextMenu]) runs [onLongPress]
+/// instead. Mouse long-press / right-click do the same. Consumers pick the
+/// hold length (quick menu passes its own token); the default is unchanged.
 class InteractivePosterCard extends StatefulWidget {
   const InteractivePosterCard({
     super.key,
@@ -196,9 +202,21 @@ class _InteractivePosterCardState extends State<InteractivePosterCard> {
     widget.onTap();
   }
 
+  /// MENU-key path: no OK key-up follows, so do not arm the tap swallow.
+  void _fireLongPress() {
+    _cancelHold();
+    _longPressFired = false;
+    widget.onLongPress!();
+  }
+
   KeyEventResult _onTvKey(FocusNode node, KeyEvent event) {
     if (widget.onLongPress == null) return KeyEventResult.ignored;
     final key = event.logicalKey;
+    // Remote MENU (and keyboard context-menu) open the hold menu directly.
+    if (key == LogicalKeyboardKey.contextMenu) {
+      if (event is KeyDownEvent) _fireLongPress();
+      return KeyEventResult.handled;
+    }
     final activate =
         key == LogicalKeyboardKey.select ||
         key == LogicalKeyboardKey.enter ||
@@ -303,10 +321,7 @@ class _InteractivePosterCardState extends State<InteractivePosterCard> {
           return DecoratedBox(
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(radius),
-              border: Border.all(
-                color: ForjaShellColors.brandGreen,
-                width: 2,
-              ),
+              border: Border.all(color: ForjaShellColors.brandGreen, width: 2),
             ),
             child: painted,
           );

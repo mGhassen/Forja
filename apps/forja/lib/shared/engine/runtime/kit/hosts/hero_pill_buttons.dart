@@ -164,7 +164,8 @@ class HeroPillActionRow extends StatelessWidget {
   }
 }
 
-/// Secondary hero actions in one sliced glass pill — hover / focus expands the slot with its label.
+/// Secondary hero actions in one sliced glass pill. On pointer shells hover / focus expands the
+/// slot with its label; on leanback every slot keeps its label so the row never shifts.
 class HeroPillIconGroup extends StatelessWidget {
   const HeroPillIconGroup({
     super.key,
@@ -196,7 +197,12 @@ class HeroPillIconGroup extends StatelessWidget {
   Widget build(BuildContext context) {
     if (slots.isEmpty) return const SizedBox.shrink();
 
-    final useTvCompact = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
+    final policy = ShellScope.inputPolicyOf(context);
+    final useTvCompact = policy.useFocusableMoodChips;
+    // Remote-only shells: labels stay painted so the hero button row keeps one
+    // width as focus moves (collapse-on-blur shifted View details sideways).
+    // Pointer shells keep icon-only slots that expand on hover / focus.
+    final alwaysShowLabel = policy.leanbackOnly;
 
     return HeroPillGlassShell(
       children: [
@@ -211,6 +217,7 @@ class HeroPillIconGroup extends StatelessWidget {
             isFirst: i == 0,
             isLast: i == slots.length - 1,
             useTvCompact: useTvCompact,
+            alwaysShowLabel: alwaysShowLabel,
             tvTabId: tvTabId,
             onUpEdge: onUpEdge,
             onDownEdge: onDownEdge,
@@ -381,6 +388,7 @@ class _HeroPillGroupedSlot extends StatelessWidget {
     required this.isFirst,
     required this.isLast,
     required this.useTvCompact,
+    this.alwaysShowLabel = false,
     this.icon,
     this.iconWidget,
     this.onTap,
@@ -404,6 +412,7 @@ class _HeroPillGroupedSlot extends StatelessWidget {
   final bool isFirst;
   final bool isLast;
   final bool useTvCompact;
+  final bool alwaysShowLabel;
   final FocusOrder? focusOrder;
   final String? tvTabId;
   final VoidCallback? onUpEdge;
@@ -464,7 +473,7 @@ class _HeroPillGroupedSlot extends StatelessWidget {
             iconWidget: iconWidget,
             active: active,
             pressed: pressed,
-            compact: !active,
+            compact: !active && !alwaysShowLabel,
             isFirst: isFirst,
             isLast: isLast,
           );

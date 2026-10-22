@@ -36,6 +36,7 @@ import 'package:forja/shared/lan/lan_client_service.dart';
 import 'package:forja/shared/lan/lan_p2p_playback.dart';
 import 'package:forja/shared/platform/platform_info.dart';
 import 'package:forja/shared/player/screens/utils.dart';
+import 'package:forja/shared/utils/redact_url.dart';
 import 'package:forja/shared/player/screens/player_peakstorm_resume_diag.dart';
 import 'package:forja/shared/player/controls/menus/player_menus.dart';
 import 'package:forja/shared/player/screens/playback_recovery.dart';
@@ -48,7 +49,6 @@ import 'package:forja/shared/casting/casting.dart';
 import 'package:forja/shared/player/controls/chrome/player_chrome_overlay.dart';
 import 'package:forja/shared/player/controls/chrome/player_next_episode_chip.dart';
 import 'package:forja/shared/player/controls/chrome/player_chrome_overlays.dart';
-import 'package:forja/shared/player/controls/chrome/player_escape_exit_hint.dart';
 import 'package:forja/shared/player/controls/chrome/player_vod_tv_transport.dart';
 import 'package:forja/shared/player/parental_guide/parental_guide_overlay.dart';
 import 'package:forja/shared/player/controls/tv/player_tv_key_scope.dart';
@@ -259,9 +259,6 @@ class _MobilePlayerScreenState extends ConsumerState<MobilePlayerScreen>
     debugLabel: 'player-transport-settings',
   );
   final FocusNode _backFocus = FocusNode(debugLabel: 'player-back');
-
-  /// TV Back / Exit: hide chrome → arm (+ hint) → leave (desktop Escape parity).
-  bool _tvBackExitArmed = false;
 
   final FocusNode _playerMenuFocus = FocusNode(debugLabel: 'player-menu');
   final FocusNode _retryFocus = FocusNode(debugLabel: 'player-retry');

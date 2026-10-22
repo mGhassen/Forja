@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  API 31+ backup / device-transfer rules. Pairs with allowBackup="false" and
+  fullBackupContent="false" (API <= 30) on <application>.
+
+  Excluded everywhere: SharedPreferences (session, settings, pack index) and
+  the installed pack store (files/plugin_scripts_v1). Nothing here is worth
+  restoring to another device without the user signing in again.
+-->
+<data-extraction-rules>
+    <cloud-backup disableIfNoEncryptionCapabilities="true">
+        <exclude domain="sharedpref" path="." />
+        <exclude domain="file" path="plugin_scripts_v1" />
+        <exclude domain="database" path="." />
+    </cloud-backup>
+    <device-transfer>
+        <exclude domain="sharedpref" path="." />
+        <exclude domain="file" path="plugin_scripts_v1" />
+        <exclude domain="database" path="." />
+    </device-transfer>
+</data-extraction-rules>

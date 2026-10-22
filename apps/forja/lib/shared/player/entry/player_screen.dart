@@ -27,6 +27,7 @@ import 'package:forja/shell/feedback/forja_toast.dart';
 import 'package:forja/shared/playback/loading_overlay.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/tokens/forja_theme.dart';
+
 class PlayerScreen extends StatefulWidget {
   final String streamUrl;
   final String? audioUrl;
@@ -65,11 +66,17 @@ class PlayerScreen extends StatefulWidget {
   /// watch history should be persisted (lifecycle pause, periodic tick,
   /// player exit). Used by anime / arabic flows that own their own
   /// per-source history store and don't go through `WatchHistoryService`.
-  final Future<void> Function(Duration position, Duration duration, {String? sourceId, String? streamUrl})?
+  final Future<void> Function(
+    Duration position,
+    Duration duration, {
+    String? sourceId,
+    String? streamUrl,
+  })?
   onSaveProgress;
   final Future<void> Function(String sourceUrl, String sourceTitle)?
   onSourcePinned;
   final bool pinSource;
+
   /// Sources were probed before open (RFC-038 simple resolve) - skip re-probe
   /// and do not Auto re-race when the list is exhausted.
   final bool streamsPrevalidated;
@@ -129,6 +136,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
   String? _externalStreamUrl;
   Map<String, String>? _externalHeaders;
   BuiltInPlayerEngine _builtInEngine = BuiltInPlayerEngine.platformDefault();
+
   /// True while MediaKit is unmounted and Exo (or the reverse) is not ready —
   /// avoids mounting Exo over a live `mediacodec_embed` surface (issue 129).
   bool _switchingBuiltInEngine = false;
@@ -242,13 +250,26 @@ class _PlayerScreenState extends State<PlayerScreen> {
   Future<bool> _launchExternal() async {
     if (_externalPlayerName.isEmpty) return false;
 
-    final success = await ExternalPlayerService.launch(
-      url: _externalStreamUrl ?? _sessionStreamUrl,
-      title: widget.title,
-      headers: _externalHeaders ?? _sessionHeaders,
-      context: context,
-      playerName: _externalPlayerName,
-    );
+    final bool success;
+    try {
+      success = await ExternalPlayerService.launch(
+        url: _externalStreamUrl ?? _sessionStreamUrl,
+        title: widget.title,
+        headers: _externalHeaders ?? _sessionHeaders,
+        context: context,
+        playerName: _externalPlayerName,
+      );
+    } on UnsupportedStreamAddressException catch (e) {
+      // The address itself is refused; the built-in player would refuse it
+      // too, so say only that and do not claim a fallback.
+      if (!mounted) return false;
+      ForjaToast.error(e.message);
+      setState(() {
+        _useExternalPlayer = false;
+        _externalLaunched = false;
+      });
+      return false;
+    }
 
     if (!mounted) return false;
 
@@ -372,9 +393,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
       builtInEngine,
       surface: BuiltInPlayerMenuSurface.catalogVod,
       streamUrl: streamUrl ?? _sessionStreamUrl,
-      torrentLocalhost: isLocalTorrentStreamUrl(
-        streamUrl ?? _sessionStreamUrl,
-      ),
+      torrentLocalhost: isLocalTorrentStreamUrl(streamUrl ?? _sessionStreamUrl),
       needsWidevine: _sessionNeedsWidevine(),
       separateAudioUrl:
           widget.audioUrl != null && widget.audioUrl!.trim().isNotEmpty,
@@ -411,8 +430,8 @@ class _PlayerScreenState extends State<PlayerScreen> {
       final prepareTimeout = Platform.isAndroid
           ? const Duration(milliseconds: 1200)
           : (builtInEngine == BuiltInPlayerEngine.mediaKit
-              ? const Duration(seconds: 5)
-              : const Duration(milliseconds: 1200));
+                ? const Duration(seconds: 5)
+                : const Duration(milliseconds: 1200));
       try {
         await MpvExclusiveSession.instance
             .prepareForVideoPlayer(timeout: prepareTimeout)
@@ -593,7 +612,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
         hubEpisodeNumber: widget.hubEpisodeNumber,
         onHubEpisodeSelected: widget.onHubEpisodeSelected,
         episodeOverview: widget.episodeOverview,
-          enginePlaySession: widget.enginePlaySession,
+        enginePlaySession: widget.enginePlaySession,
         onSaveProgress: widget.onSaveProgress,
         onSourcePinned: widget.onSourcePinned,
         pinSource: widget.pinSource,
@@ -675,7 +694,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
         hubEpisodeNumber: widget.hubEpisodeNumber,
         onHubEpisodeSelected: widget.onHubEpisodeSelected,
         episodeOverview: widget.episodeOverview,
-          enginePlaySession: widget.enginePlaySession,
+        enginePlaySession: widget.enginePlaySession,
         onSaveProgress: widget.onSaveProgress,
         onSourcePinned: widget.onSourcePinned,
         pinSource: widget.pinSource,
@@ -743,7 +762,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
         hubEpisodeNumber: widget.hubEpisodeNumber,
         onHubEpisodeSelected: widget.onHubEpisodeSelected,
         episodeOverview: widget.episodeOverview,
-          enginePlaySession: widget.enginePlaySession,
+        enginePlaySession: widget.enginePlaySession,
         onSaveProgress: widget.onSaveProgress,
         onSourcePinned: widget.onSourcePinned,
         pinSource: widget.pinSource,

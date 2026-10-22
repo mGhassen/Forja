@@ -7,12 +7,16 @@ mixin _ExoPlayerFailover on ConsumerState<ExoPlayerScreen> {
   bool get _exoPinned =>
       _s._providerPinned || _s._sourcePinned || widget.pinSource;
 
-  bool get _exoCanProviderHop =>
-      !_exoPinned &&
-      !widget.streamsPrevalidated &&
-      widget.movie != null &&
-      ((widget.providers != null && widget.providers!.isNotEmpty) ||
-          widget.onReloadStreams != null);
+  /// Consulted after every given source failed. A prevalidated green Play
+  /// list still hops when the host left a reload hook (race backups, then a
+  /// full re-resolve) — same gate as the mobile / desktop screens.
+  bool get _exoCanProviderHop => canAutoHopAfterSourcesExhausted(
+    pinned: _exoPinned,
+    streamsPrevalidated: widget.streamsPrevalidated,
+    hasMovie: widget.movie != null,
+    hasProviders: widget.providers != null && widget.providers!.isNotEmpty,
+    hostOwnsReload: widget.onReloadStreams != null,
+  );
 
   Future<void> _failCurrentSource(String message) async {
     if (_s._disposed || !mounted) return;
@@ -224,35 +228,44 @@ mixin _ExoPlayerFailover on ConsumerState<ExoPlayerScreen> {
     _s._providerPinned = false;
     _s._sourcePinned = false;
     try {
-      final fresh = await reload();
-      if (_exoFallbackAborted(chainGen)) return false;
-      if (fresh == null || fresh.isEmpty) {
-        _s._statusController.complete();
-        return false;
-      }
-      final playable = dedupeStreamSources(fresh)
-          .where((s) => !isUnplayableCachedStreamUrl(s.url))
-          .toList();
-      if (playable.isEmpty) {
-        _s._statusController.complete();
-        return false;
-      }
-      String pid = '';
-      for (final e in _s._providerSourcesCache.value.entries) {
-        if (e.value.any((s) => s.url == playable.first.url)) {
-          pid = e.key;
+      // Pass 1 usually returns the race backups; a later pass runs the full
+      // race again. Stop when a batch brings nothing this chain has not tried.
+      final tried = <String>{for (final s in _s._sources) s.url};
+      for (var pass = 0; pass < EngineRaceFallbackPolicy.reloadPasses; pass++) {
+        final fresh = await reload();
+        if (_exoFallbackAborted(chainGen)) return false;
+        if (fresh == null || fresh.isEmpty) break;
+        final playable = dedupeStreamSources(fresh)
+            .where((s) => !isUnplayableCachedStreamUrl(s.url))
+            .toList();
+        if (playable.isEmpty) break;
+        // Pass 1 keeps the pre-T13 behaviour; later passes must bring a URL
+        // this chain has not opened yet.
+        if (pass > 0 &&
+            !reloadBatchHasUntriedUrl(batch: playable, triedUrls: tried)) {
           break;
         }
+        tried.addAll(playable.map((s) => s.url));
+        String pid = '';
+        for (final e in _s._providerSourcesCache.value.entries) {
+          if (e.value.any((s) => s.url == playable.first.url)) {
+            pid = e.key;
+            break;
+          }
+        }
+        if (pid.isEmpty) {
+          pid = _s._currentProvider ?? widget.activeProvider ?? '';
+        }
+        _exoApplySources(playable, providerId: pid.isEmpty ? null : pid);
+        final played = await _exoTrySourcesFromIndex(
+          0,
+          chainGen: chainGen,
+          seekAfterOpen: seekAfterOpen,
+        );
+        if (played || _exoFallbackAborted(chainGen)) return played;
       }
-      if (pid.isEmpty) {
-        pid = _s._currentProvider ?? widget.activeProvider ?? '';
-      }
-      _exoApplySources(playable, providerId: pid.isEmpty ? null : pid);
-      return _exoTrySourcesFromIndex(
-        0,
-        chainGen: chainGen,
-        seekAfterOpen: seekAfterOpen,
-      );
+      _s._statusController.complete();
+      return false;
     } finally {
       _s._providerPinned = restoreProviderPin;
       _s._sourcePinned = restoreSourcePin;

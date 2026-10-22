@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:forja/shared/platform/platform_info.dart';
+import 'package:forja/shared/playback/playable_stream_url.dart';
 
 /// One selectable Media3 track exposed to Dart menus.
 class ExoTrackInfo {
@@ -14,6 +15,7 @@ class ExoTrackInfo {
     this.height = 0,
     this.bitrate = 0,
     this.mimeType = '',
+    this.formatId = '',
   });
 
   final String id;
@@ -25,6 +27,11 @@ class ExoTrackInfo {
 
   /// Media3 `Format.sampleMimeType` (e.g. `application/cea-608`, `text/vtt`).
   final String mimeType;
+
+  /// Media3 `Format.id`. For a sideloaded subtitle this is the `id` Dart sent
+  /// with the sideload (its source URL), which lets a pick target that exact
+  /// track instead of the first one in the same language.
+  final String formatId;
 
   /// CEA-608/708 without a language tag — often empty on VOD HLS (issue 230).
   bool get isAnonymousClosedCaption {
@@ -46,6 +53,7 @@ class ExoTrackInfo {
       height: (map['height'] as num?)?.toInt() ?? 0,
       bitrate: (map['bitrate'] as num?)?.toInt() ?? 0,
       mimeType: map['mimeType']?.toString() ?? '',
+      formatId: map['formatId']?.toString() ?? '',
     );
   }
 }
@@ -231,6 +239,9 @@ class ExoPlayerBridge {
     /// Widevine / ClearKey license (Android Exo — RFC-101).
     Map<String, dynamic>? drm,
   }) async {
+    // Throws [UnsupportedStreamAddressException] before anything reaches
+    // Media3 — callers show its message as the open failure.
+    assertPlayableStreamUrl(url);
     await _channel.invokeMethod<void>('open', {
       'viewId': viewId,
       'url': url,
@@ -297,15 +308,19 @@ class ExoPlayerBridge {
         'trackId': trackId,
       });
 
-  /// Soft-reload external SRT/VTT sideloads on the current media (keeps position).
-  static Future<void> setSubtitles(
+  /// Soft-reload external SRT/VTT sideloads on the current media (keeps
+  /// position). Returns how many sideloads Media3 accepted; 0 means nothing
+  /// was attached (no open media, or no supported subtitle format).
+  static Future<int> setSubtitles(
     int viewId,
     List<Map<String, String>> subtitles,
-  ) =>
-      _channel.invokeMethod<void>('setSubtitles', {
-        'viewId': viewId,
-        'subtitles': subtitles,
-      });
+  ) async {
+    final n = await _channel.invokeMethod<int>('setSubtitles', {
+      'viewId': viewId,
+      'subtitles': subtitles,
+    });
+    return n ?? 0;
+  }
 
   /// Apply Media3 [SubtitleView] appearance (size, color, background, position).
   static Future<void> setSubtitleStyle(
