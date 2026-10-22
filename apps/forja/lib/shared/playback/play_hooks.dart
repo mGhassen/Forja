@@ -140,7 +140,7 @@ Future<void> _recordWatchHistory({
     meta: meta,
     episodeNumber: ep,
     season: season,
-    episodeVideoId: session.episodeVideoIdFor(ep),
+    episodeVideoId: session.episodeVideoIdFor(ep, season: season),
     extras: {
       if (session.audioCategory != null) 'category': session.audioCategory,
     },

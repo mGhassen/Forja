@@ -673,9 +673,11 @@ bool isPlausibleSubtitleBytes(List<int> bytes) {
 }
 
 /// Hosts that inject an upsell cue into the subtitle file itself.
-const _subtitlePromoMarkers = ['store.wyzie.io'];
+/// Upsell / ad lines some subtitle hosts inject as the first cue.
+const _subtitlePromoMarkers = ['store.wyzie.io', 'hoofoot.ru'];
 
-/// Drops injected upsell cues (Wyzie's free-plan line at 0:00) from an
+/// Drops injected upsell / ad cues (Wyzie's free-plan line, the hoofoot
+/// sports-stream plug) from an
 /// SRT/VTT/ASS body. Returns [bytes] unchanged when no promo is present.
 List<int> stripSubtitlePromoCues(List<int> bytes) {
   final text = utf8.decode(bytes, allowMalformed: true);

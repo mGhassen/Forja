@@ -19,6 +19,10 @@ class PlayerKitEpisode {
   final String? airDateLabel;
   final bool notShippedYet;
 
+  /// Season the row belongs to when the list spans several seasons;
+  /// null for flat lists (one running episode count).
+  final int? season;
+
   const PlayerKitEpisode({
     required this.number,
     required this.title,
@@ -29,6 +33,7 @@ class PlayerKitEpisode {
     this.durationMs = 0,
     this.airDateLabel,
     this.notShippedYet = false,
+    this.season,
   });
 
   String get displayNumber =>

@@ -20,8 +20,9 @@ Future<bool> advanceHubContinueAfterFinish({
   if (pluginId == null || meta == null) return false;
 
   final list = _resolveHubEpisodes(meta: meta, episodes: episodes);
-  final nextEp = _nextEpisodeNumber(list, finishedEpisode);
-  if (nextEp == null) {
+  final next = _nextEpisodeAfter(list, finishedEpisode, season: season);
+  final nextEp = next?.number;
+  if (next == null || nextEp == null) {
     debugPrint(
       '[CW] no next after ep $finishedEpisode '
       '(list=${list?.length ?? 0}) — show leaves Continue Watching',
@@ -33,8 +34,11 @@ Future<bool> advanceHubContinueAfterFinish({
     pluginId: pluginId,
     meta: meta,
     episodeNumber: nextEp,
-    season: season,
-    episodeVideoId: session.episodeVideoIdFor(nextEp),
+    season: next.season ?? season,
+    episodeVideoId: session.episodeVideoIdFor(
+      nextEp,
+      season: next.season ?? season,
+    ),
     extras: {
       if (session.audioCategory != null) 'category': session.audioCategory,
     },
@@ -93,27 +97,34 @@ List<PlayerKitEpisode>? _resolveHubEpisodes({
   return null;
 }
 
-/// Next aired number after [finished], or null when the show is done.
-int? _nextEpisodeNumber(List<PlayerKitEpisode>? list, int finished) {
+/// Next aired row after [finished] (in [season] when the list is tagged),
+/// or null when the show is done. Rolls into the next season's first row.
+({int number, int? season})? _nextEpisodeAfter(
+  List<PlayerKitEpisode>? list,
+  int finished, {
+  int? season,
+}) {
   if (list == null || list.isEmpty) {
     // No list at save time — still keep CW as ep+1 (Play re-resolves).
-    return finished + 1;
+    return (number: finished + 1, season: null);
   }
-  final idx = hubEpisodeIndex(list, finished);
+  final idx = hubEpisodeIndex(list, finished, season: season);
   if (idx != null) {
     final next = nextAiredHubEpisode(list, idx);
     if (next == null) return null;
     final n = next.number.round();
-    return n > 0 ? n : null;
+    return n > 0 ? (number: n, season: next.season) : null;
   }
-  // Number miss (remap / int vs double): first aired with number > finished.
+  // Number miss (remap / int vs double): first aired with number > finished,
+  // staying inside the finished season when rows are tagged.
   PlayerKitEpisode? best;
   for (final e in list) {
     if (e.notShippedYet) continue;
+    if (season != null && e.season != null && e.season != season) continue;
     if (e.number <= finished) continue;
     if (best == null || e.number < best.number) best = e;
   }
   if (best == null) return null;
   final n = best.number.round();
-  return n > 0 ? n : null;
+  return n > 0 ? (number: n, season: best.season) : null;
 }

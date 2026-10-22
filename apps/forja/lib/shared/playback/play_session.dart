@@ -31,7 +31,21 @@ class PlaySession {
 
   bool get hasMetaContext => effectiveOpen != null || metaItem != null;
 
-  String? episodeVideoIdFor(int episode) {
+  /// Video id of [episode]. Lists that span seasons repeat episode numbers,
+  /// so with [season] the row of that season wins; the number-keyed map is
+  /// the fallback for flat lists.
+  String? episodeVideoIdFor(int episode, {int? season}) {
+    if (season != null) {
+      final videos = metaItem?.videos;
+      if (videos != null) {
+        for (final v in videos) {
+          if (v.season == season && (v.episode ?? 1) == episode) {
+            final id = v.id.trim();
+            if (id.isNotEmpty) return id;
+          }
+        }
+      }
+    }
     final v = episodeVideoIdByNumber[episode]?.trim();
     return v != null && v.isNotEmpty ? v : null;
   }

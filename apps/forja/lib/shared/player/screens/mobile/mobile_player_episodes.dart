@@ -413,7 +413,11 @@ mixin _MobilePlayerEpisodes on ConsumerState<MobilePlayerScreen> {
     if (widget.episodes != null &&
         widget.onHubEpisodeSelected != null &&
         current != null) {
-      final idx = hubEpisodeIndex(widget.episodes!, current);
+      final idx = hubEpisodeIndex(
+        widget.episodes!,
+        current,
+        season: widget.selectedSeason,
+      );
       if (idx == null || idx <= 0) return;
       final prev = widget.episodes![idx - 1];
       _beginEpisodeLoading(
@@ -590,11 +594,14 @@ mixin _MobilePlayerEpisodes on ConsumerState<MobilePlayerScreen> {
     final hub = widget.episodes;
     final hubCurrent = widget.hubEpisodeNumber ?? widget.selectedEpisode;
     if (hub != null && hub.isNotEmpty && hubCurrent != null) {
-      final idx = hubEpisodeIndex(hub, hubCurrent);
+      final idx = hubEpisodeIndex(hub, hubCurrent, season: widget.selectedSeason);
       if (idx == null) return null;
       final next = nextAiredHubEpisode(hub, idx);
       if (next == null) return null;
-      return (season: 1, episode: next.number.round());
+      return (
+        season: next.season ?? widget.selectedSeason ?? 1,
+        episode: next.number.round(),
+      );
     }
 
     final session = widget.enginePlaySession;
@@ -647,10 +654,13 @@ mixin _MobilePlayerEpisodes on ConsumerState<MobilePlayerScreen> {
     final hub = widget.episodes;
     final hubCurrent = widget.hubEpisodeNumber ?? widget.selectedEpisode;
     if (hub != null && hub.isNotEmpty && hubCurrent != null) {
-      final idx = hubEpisodeIndex(hub, hubCurrent);
+      final idx = hubEpisodeIndex(hub, hubCurrent, season: widget.selectedSeason);
       if (idx == null || idx <= 0) return null;
       final prev = hub[idx - 1];
-      return (season: 1, episode: prev.number.round());
+      return (
+        season: prev.season ?? widget.selectedSeason ?? 1,
+        episode: prev.number.round(),
+      );
     }
 
     final session = widget.enginePlaySession;
@@ -697,7 +707,11 @@ mixin _MobilePlayerEpisodes on ConsumerState<MobilePlayerScreen> {
   Future<void> _refreshAdjacentEpisodeFlags() async {
     final current = widget.hubEpisodeNumber ?? widget.selectedEpisode;
     if (widget.episodes != null && widget.episodes!.isNotEmpty) {
-      final flags = adjacentHubEpisodeFlags(widget.episodes, current);
+      final flags = adjacentHubEpisodeFlags(
+        widget.episodes,
+        current,
+        season: widget.selectedSeason,
+      );
       if (!mounted) return;
       setState(() {
         _s._hasPrevEpisodeAdjacent = flags.hasPrev;
@@ -888,11 +902,12 @@ mixin _MobilePlayerEpisodes on ConsumerState<MobilePlayerScreen> {
         context: context,
         episodes: widget.episodes!,
         currentEpisode: widget.hubEpisodeNumber ?? widget.selectedEpisode ?? 1,
+        currentSeason: widget.selectedSeason,
         onEpisodeSelected: (ep) async {
           final enginePid = _s._currentProvider ?? widget.activeProvider;
           if (isEnginePlayerSession(enginePid)) {
             await _switchToEpisode(
-              widget.selectedSeason ?? 1,
+              ep.season ?? widget.selectedSeason ?? 1,
               ep.number.round(),
             );
             return;
