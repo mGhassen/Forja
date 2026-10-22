@@ -15,7 +15,7 @@ import 'package:forja_foundation/widgets/feedback/card_play_overlay.dart';
 import 'package:forja_foundation/widgets/guide/guide_epg_programme.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-/// Pre-wipe IPTV live channel tile (logo + title + NOW/NEXT EPG strip).
+/// Pre-wipe IPTV live channel tile (logo + title + live/next EPG strip).
 ///
 /// Props-only paint — host supplies [health] / [healthListenable], probe via
 /// [onInteractiveActive], favorite via [favoriteBuilder], programmes for
@@ -719,34 +719,28 @@ class _EpgNowFooterState extends State<_EpgNowFooter> {
                     break;
                   }
                 }
+                final indicatorSize = widget.badgeFontSize;
                 return Padding(
                   padding: const EdgeInsets.fromLTRB(8, 0, 8, 4),
                   child: Row(
                     children: [
                       CrossfadeSwap(
-                        child: Container(
-                          key: ValueKey(now.isNow ? 'now' : 'next'),
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 4,
-                            vertical: 1,
-                          ),
-                          decoration: BoxDecoration(
-                            color: now.isNow
-                                ? const Color(0xFFEF4444)
-                                : ForjaShellColors.chipSelectedBorder
-                                      .withValues(alpha: 0.6),
-                            borderRadius: BorderRadius.circular(3),
-                          ),
-                          child: Text(
-                            now.isNow ? 'NOW' : 'NEXT',
-                            style: GoogleFonts.plusJakartaSans(
-                              color: Colors.white,
-                              fontSize: widget.badgeFontSize,
-                              fontWeight: FontWeight.w700,
-                              letterSpacing: 0.5,
-                            ),
-                          ),
-                        ),
+                        child: now.isNow
+                            ? Container(
+                                key: const ValueKey('now'),
+                                width: indicatorSize,
+                                height: indicatorSize,
+                                decoration: const BoxDecoration(
+                                  color: Color(0xFFEF4444),
+                                  shape: BoxShape.circle,
+                                ),
+                              )
+                            : Icon(
+                                Icons.arrow_forward_rounded,
+                                key: const ValueKey('next'),
+                                size: indicatorSize + 2,
+                                color: ForjaShellColors.iconMuted,
+                              ),
                       ),
                       const SizedBox(width: 4),
                       Expanded(
