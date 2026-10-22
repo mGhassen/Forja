@@ -1,4 +1,4 @@
-# 452 — Android player: online subtitle pick does nothing; subtitle menu repeats attached subtitles
+# 458 — Android player: online subtitle pick does nothing; subtitle menu repeats attached subtitles
 
 **Status:** fixed  
 **Priority:** P1  
@@ -19,14 +19,14 @@
 
 | # | ID | Description | Status |
 |--:|----|-------------|--------|
-| 1 | I452-T01 | Native: remember the open's URL and options after the old pipeline is released, not before, so a subtitle reload after a fresh open has a media URL to rebuild | ✅ |
-| 2 | I452-T02 | Native: a subtitle reload reports how many sideloads it attached; Dart treats zero as a failure | ✅ |
-| 3 | I452-T03 | Native sideloads carry an id (the source URL); the tracks report carries the format id; Dart selects the exact track, with the merge-child prefix stripped | ✅ |
-| 4 | I452-T04 | A manual pick owns the text track: auto-pick and late provider attach defer to it; a download that finishes after a newer pick is dropped; a pick already attached switches track without a reload | ✅ |
-| 5 | I452-T05 | Subtitle menu lists a sideload once (row, not row + in-stream twin) and marks the picked row selected; rows from an earlier provider list never carry over on reopen; late batch reset per open | ✅ |
-| 6 | I452-T06 | Source switch keeps the picked sideload and resets per-open subtitle state | ✅ |
-| 7 | I452-T07 | Pure session rules module + tests; loading / done / failed chip and logs on every pick step | ✅ |
-| 8 | I452-T08 | Native: keep the Media3 subtitle view hidden on every cue (a TV photo on the official build shows the same cue painted twice, one copy ignoring the player chrome); log once when it was found visible | ✅ |
+| 1 | I458-T01 | Native: remember the open's URL and options after the old pipeline is released, not before, so a subtitle reload after a fresh open has a media URL to rebuild | ✅ |
+| 2 | I458-T02 | Native: a subtitle reload reports how many sideloads it attached; Dart treats zero as a failure | ✅ |
+| 3 | I458-T03 | Native sideloads carry an id (the source URL); the tracks report carries the format id; Dart selects the exact track, with the merge-child prefix stripped | ✅ |
+| 4 | I458-T04 | A manual pick owns the text track: auto-pick and late provider attach defer to it; a download that finishes after a newer pick is dropped; a pick already attached switches track without a reload | ✅ |
+| 5 | I458-T05 | Subtitle menu lists a sideload once (row, not row + in-stream twin) and marks the picked row selected; rows from an earlier provider list never carry over on reopen; late batch reset per open | ✅ |
+| 6 | I458-T06 | Source switch keeps the picked sideload and resets per-open subtitle state | ✅ |
+| 7 | I458-T07 | Pure session rules module + tests; loading / done / failed chip and logs on every pick step | ✅ |
+| 8 | I458-T08 | Native: keep the Media3 subtitle view hidden on every cue (a TV photo on the official build shows the same cue painted twice, one copy ignoring the player chrome); log once when it was found visible | ✅ |
 
 ---
 
@@ -34,11 +34,11 @@
 
 | # | ID | Description | Status |
 |--:|----|-------------|--------|
-| 1 | I452-A01 | TV emulator: pick an online French subtitle on episode 1 → cues render, menu row checked | ✅ |
-| 2 | I452-A02 | TV emulator: episode 2 and 3 after the pick → menu counts unchanged, one cue line on screen | ✅ |
-| 3 | I452-A03 | TV emulator: pick through the local translate relay (proxy token) works | ✅ |
-| 4 | I452-A04 | Unit: three opens with different provider rows do not grow the list; flush vs pick in both interleavings; merged-prefix id match | ✅ |
-| 5 | I452-A05 | Physical Android TV: 2× / 3× cue stacking across episodes reported by the user no longer reproduces | ⬜ |
+| 1 | I458-A01 | TV emulator: pick an online French subtitle on episode 1 → cues render, menu row checked | ✅ |
+| 2 | I458-A02 | TV emulator: episode 2 and 3 after the pick → menu counts unchanged, one cue line on screen | ✅ |
+| 3 | I458-A03 | TV emulator: pick through the local translate relay (proxy token) works | ✅ |
+| 4 | I458-A04 | Unit: three opens with different provider rows do not grow the list; flush vs pick in both interleavings; merged-prefix id match | ✅ |
+| 5 | I458-A05 | Physical Android TV: 2× / 3× cue stacking across episodes reported by the user no longer reproduces | ⬜ |
 
 ---
 

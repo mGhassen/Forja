@@ -3,7 +3,7 @@
 **Status:** draft  
 **Depends on:** RFC-028 (TV shell Back policy, `R28-A29`), RFC-048 (TV focus graph)  
 **Area:** `apps/forja/lib/shell/tv/`, `apps/forja/lib/shared/theme/app_theme.dart` (`FocusableControl`), `apps/forja/lib/shared/player/controls/chrome/`, `packages/forja_foundation/lib/tokens/`  
-**Issues:** [101](../issues/101-[open]-player-back-lands-on-loading.md) · [119](../issues/119-[open]-android-tv-double-back-exit.md) · [135](../issues/135-[open]-android-tv-spatial-dpad-all-screens.md) · [139](../issues/139-[open]-android-tv-shell-focus-chrome-stutter.md) · [156](../issues/156-[open]-android-tv-hold-scroll-accel.md) · [171](../issues/171-[open]-android-tv-details-focus-after-player.md) · [180](../issues/180-[open]-android-tv-details-back-loses-catalog-focus.md) · [451](../issues/451-[open]-security-hardening-pack-trust-sandbox-proxy-stream-logs.md)
+**Issues:** [101](../issues/101-[open]-player-back-lands-on-loading.md) · [119](../issues/119-[open]-android-tv-double-back-exit.md) · [135](../issues/135-[open]-android-tv-spatial-dpad-all-screens.md) · [139](../issues/139-[open]-android-tv-shell-focus-chrome-stutter.md) · [156](../issues/156-[open]-android-tv-hold-scroll-accel.md) · [171](../issues/171-[open]-android-tv-details-focus-after-player.md) · [180](../issues/180-[open]-android-tv-details-back-loses-catalog-focus.md) · [457](../issues/457-[open]-security-hardening-pack-trust-sandbox-proxy-stream-logs.md)
 
 ## Status at a glance
 
@@ -109,5 +109,5 @@ Marks come from `[play-trace]` lines (debug/profile builds only).
 - [Issue 156](../issues/156-[open]-android-tv-hold-scroll-accel.md) — ATV hold ↑/↓ scroll acceleration
 - [Issue 171](../issues/171-[open]-android-tv-details-focus-after-player.md) — ATV details empty focus after player
 - [Issue 180](../issues/180-[open]-android-tv-details-back-loses-catalog-focus.md) — ATV details Back lands on Home top menu
-- [Issue 451](../issues/451-[open]-security-hardening-pack-trust-sandbox-proxy-stream-logs.md) — Security hardening from the T12 review: pack install trust, sandbox limits, proxy token, stream URL allowlist, log redaction
+- [Issue 457](../issues/457-[open]-security-hardening-pack-trust-sandbox-proxy-stream-logs.md) — Security hardening from the T12 review: pack install trust, sandbox limits, proxy token, stream URL allowlist, log redaction
 - [Navigation guide](../features/getting-started/navigation.md) — documented TV Back policy
