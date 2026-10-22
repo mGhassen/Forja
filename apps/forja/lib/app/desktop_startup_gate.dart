@@ -68,9 +68,10 @@ enum _StartupStage { account, profiles, packs, profileSplash, splash }
 ///
 /// Restored sessions skip Who's watching and land on the logo [SplashScreen]
 /// with last-active profile settings from local cache — unless packs onboarding
-/// is still pending (`!onboarded`). Fresh sign-in → Who's watching → packs
-/// (when needed) → avatar [ProfileSwitchSplash] → app (no second logo intro).
-/// Guest → packs (when needed, device-local flag) → logo splash → app.
+/// is still pending (`!onboarded`). Fresh sign-in → Who's watching → soft-pull
+/// cloud `onboarded` → packs (when needed) → avatar [ProfileSwitchSplash] →
+/// app (no second logo intro). Guest → packs (when needed, device-local flag)
+/// → logo splash → app.
 /// Sign-out returns to account without re-running the update check.
 class DesktopStartupGate extends ConsumerStatefulWidget {
   const DesktopStartupGate({super.key, required this.splash});
@@ -85,6 +86,7 @@ class _DesktopStartupGateState extends ConsumerState<DesktopStartupGate> {
   late _StartupStage _stage;
   StreamSubscription<AuthState>? _authSub;
   SyncProfile? _splashProfile;
+
   /// Restored-session or guest packs path: packs done → shell (no profile splash).
   bool _packsSkipProfileSplash = false;
 
@@ -201,9 +203,7 @@ class _DesktopStartupGateState extends ConsumerState<DesktopStartupGate> {
       if (_needsAccountGate &&
           ForjaSupabase.isConfigured &&
           _stage == _StartupStage.splash) {
-        debugPrint(
-          '[DesktopStartupGate] background: no session → account',
-        );
+        debugPrint('[DesktopStartupGate] background: no session → account');
         setState(() => _stage = _StartupStage.account);
       }
       return;
@@ -247,7 +247,9 @@ class _DesktopStartupGateState extends ConsumerState<DesktopStartupGate> {
         final auto = await PacksOnboardingStore.autoCompleteIfHasPacks();
         if (!mounted) return;
         if (!auto) {
-          debugPrint('[DesktopStartupGate] restored session → packs onboarding');
+          debugPrint(
+            '[DesktopStartupGate] restored session → packs onboarding',
+          );
           _packsSkipProfileSplash = true;
           setState(() => _stage = _StartupStage.packs);
         }
@@ -310,6 +312,13 @@ class _DesktopStartupGateState extends ConsumerState<DesktopStartupGate> {
   Future<void> _afterProfileReady(SyncProfile profile) async {
     if (!mounted) return;
     _splashProfile = profile;
+
+    // Cloud `forja.onboarded` lives in profile_settings; local prefs are empty
+    // on a fresh device. Soft-pull the flag only (no pack hydrate) before the
+    // wizard gate so desktop/TV skip packs when another device already finished
+    // (issue 459).
+    await PacksOnboardingStore.hydrateOnboardedFromCloud(profileId: profile.id);
+    if (!mounted) return;
 
     if (await PacksOnboardingStore.shouldShow(profileId: profile.id)) {
       final auto = await PacksOnboardingStore.autoCompleteIfHasPacks(
@@ -406,19 +415,20 @@ class _DesktopStartupGateState extends ConsumerState<DesktopStartupGate> {
       _StartupStage.packs => PacksOnboardingScreen(
         onFinished: () => unawaited(_onPacksFinished()),
       ),
-      _StartupStage.profileSplash => _splashProfile == null
-          ? const SizedBox.shrink()
-          : ProfileSwitchSplash(
-              profile: _splashProfile!,
-              prepareCurrent: false,
-              onCompleted: (ok) {
-                if (ok) {
-                  _enterShellAfterProfileSplash();
-                } else if (mounted) {
-                  setState(() => _stage = _StartupStage.profiles);
-                }
-              },
-            ),
+      _StartupStage.profileSplash =>
+        _splashProfile == null
+            ? const SizedBox.shrink()
+            : ProfileSwitchSplash(
+                profile: _splashProfile!,
+                prepareCurrent: false,
+                onCompleted: (ok) {
+                  if (ok) {
+                    _enterShellAfterProfileSplash();
+                  } else if (mounted) {
+                    setState(() => _stage = _StartupStage.profiles);
+                  }
+                },
+              ),
       _StartupStage.splash => widget.splash,
     };
     if (_stage == _StartupStage.splash) return child;

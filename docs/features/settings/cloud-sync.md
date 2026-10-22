@@ -81,9 +81,10 @@ Not synced — device-specific or sensitive:
 
 - Cold start on desktop and Android TV: **Sign in** (code or QR → portal
   `/connect`) or **Continue as guest**. After approve, pick a profile on
-  **Who’s watching?** When the profile is not yet onboarded, a packs step
-  offers the official ForjaHQ bundle, Community Packs, or Skip (see
-  [Forja Packs](forja-packs.md)). Guest gets the same packs step once per
+  **Who’s watching?** When the profile is not yet onboarded in the cloud, a
+  packs step offers the official ForjaHQ bundle, Community Packs, or Skip (see
+  [Forja Packs](forja-packs.md)). A profile already onboarded on another device
+  skips that step after Who’s watching. Guest gets the same packs step once per
   device (local flag). Device-link sessions show as **Forja Android TV** under
   Account → Connections. From **Settings → Profile & account** (guest): desktop
   uses **code / QR** device link; mobile can use email/password, **passkey**

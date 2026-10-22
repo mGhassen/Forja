@@ -689,6 +689,7 @@ class SyncService {
 
   Future<bool> selectProfile(
     String profileId, {
+
     /// When true, skip [listProfiles] (Who's watching / splash already have
     /// the [SyncProfile] from the loaded list). Avoids a network round-trip
     /// before the avatar splash can paint.
@@ -722,10 +723,7 @@ class SyncService {
       accountId: accountId,
       profileId: profileId,
     );
-    await Engine.rebindLocalStores(
-      accountId: accountId,
-      profileId: profileId,
-    );
+    await Engine.rebindLocalStores(accountId: accountId, profileId: profileId);
     SettingsService.forgetIdentitySessionCache();
     await PortalStore.migrateLegacyInventoryIfNeeded();
     await ProviderScoreMemory.syncIdentityScope();
@@ -745,7 +743,9 @@ class SyncService {
     final userId = session?.user.id;
     if (userId == null) return null;
     final prefs = await SharedPreferences.getInstance();
-    final profileId = prefs.getString('$_activeProfileKeyPrefix$userId')?.trim();
+    final profileId = prefs
+        .getString('$_activeProfileKeyPrefix$userId')
+        ?.trim();
     if (profileId == null || profileId.isEmpty) return null;
     return Engine.storagePathForIdentity(
       accountId: userId.replaceAll(RegExp(r'[^\w\-.]'), '_'),
@@ -766,7 +766,9 @@ class SyncService {
       return;
     }
     final prefs = await SharedPreferences.getInstance();
-    final profileId = prefs.getString('$_activeProfileKeyPrefix$userId')?.trim();
+    final profileId = prefs
+        .getString('$_activeProfileKeyPrefix$userId')
+        ?.trim();
     if (profileId == null || profileId.isEmpty) {
       return;
     }
@@ -968,11 +970,20 @@ class SyncService {
   /// failed pull as "missing" and seed+push platform defaults over cloud
   /// (issue 126).
   Future<Map<String, dynamic>?> pullProfileSettings() async {
-    final client = ForjaSupabase.clientOrNull;
-    final userId = client?.auth.currentUser?.id;
-    if (client == null || userId == null) return null;
     final profile = await activeProfile();
     if (profile == null) return null;
+    return pullProfileSettingsFor(profile.id);
+  }
+
+  /// Lean `profile_settings.payload` for [profileId] (no disk-scope bind).
+  ///
+  /// Used before Who's-watching → packs gate so cloud `forja.onboarded` can
+  /// hydrate local prefs without [selectProfile] / [importForja] (issue 459).
+  Future<Map<String, dynamic>?> pullProfileSettingsFor(String profileId) async {
+    final client = ForjaSupabase.clientOrNull;
+    final userId = client?.auth.currentUser?.id;
+    final id = profileId.trim();
+    if (client == null || userId == null || id.isEmpty) return null;
 
     try {
       final row = await retryAfterJwtIatSkew(
@@ -980,7 +991,7 @@ class SyncService {
             .from('profile_settings')
             .select('payload, updated_at')
             .eq('account_id', userId)
-            .eq('profile_id', profile.id)
+            .eq('profile_id', id)
             .maybeSingle(),
       );
       if (row == null) return null;
@@ -990,7 +1001,7 @@ class SyncService {
       }
       return <String, dynamic>{};
     } catch (e) {
-      debugPrint('[Sync] pullProfileSettings error: $e');
+      debugPrint('[Sync] pullProfileSettingsFor error: $e');
       rethrow;
     }
   }

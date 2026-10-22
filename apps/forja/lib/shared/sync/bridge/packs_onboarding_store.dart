@@ -65,9 +65,41 @@ class PacksOnboardingStore {
   }
 
   /// Apply cloud `onboarded` into local prefs during Forja import.
-  static Future<void> applyFromCloud(bool? onboarded) async {
+  /// Pass [profileId] when disk scope is not bound yet (Who's watching).
+  static Future<void> applyFromCloud(
+    bool? onboarded, {
+    String? profileId,
+  }) async {
     if (onboarded == true) {
-      await setOnboardedLocal(true);
+      await setOnboardedLocal(true, profileId: profileId);
+    }
+  }
+
+  /// `connectedServices.forja.onboarded == true` from a lean profile payload.
+  @visibleForTesting
+  static bool forjaOnboardedFromPayload(Map<String, dynamic>? payload) {
+    final connected = payload?['connectedServices'];
+    if (connected is! Map) return false;
+    final forja = connected['forja'];
+    if (forja is! Map) return false;
+    return forja['onboarded'] == true;
+  }
+
+  /// Soft-pull cloud `connectedServices.forja.onboarded` into local prefs for
+  /// [profileId] before the packs wizard gate (no pack install / disk bind).
+  /// Network errors leave local prefs unchanged.
+  static Future<void> hydrateOnboardedFromCloud({
+    required String profileId,
+  }) async {
+    if (!SyncService.instance.isSignedIn) return;
+    final id = profileId.trim();
+    if (id.isEmpty) return;
+    if (await isOnboardedLocal(profileId: id)) return;
+    try {
+      final payload = await SyncService.instance.pullProfileSettingsFor(id);
+      await applyFromCloud(forjaOnboardedFromPayload(payload), profileId: id);
+    } catch (e) {
+      debugPrint('[PacksOnboarding] hydrateOnboardedFromCloud: $e');
     }
   }
 

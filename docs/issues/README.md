@@ -494,6 +494,7 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [243-[fixed]-…](fixed/243-[fixed]-android-tv-live-sports-first-focus-catalog.md) | Android TV Live Sports first focus on Catalog | P1 | Medium | fixed | Complete · 4/4 · A 0/1 | — |
 | [244-[fixed]-…](fixed/244-[fixed]-pending-pack-local-path-no-trash.md) | Pending pack Mac path fails on TV; no trash | P1 | High | fixed | Complete · 4/4 · A 0/2 | — |
 | [223-[fixed]-…](fixed/223-[fixed]-live-streamic-raw-embed-format-fail.md) | Live Providers raw embed → format fail loop | P1 | High | fixed | Complete · 6/6 · A 3/3 | — |
+| [459-[fixed]-…](fixed/459-[fixed]-packs-onboarding-ignores-cloud-onboarded.md) | Packs onboarding ignores cloud onboarded on new device | P1 | High | fixed | Complete · 3/3 · A 0/2 | [RFC-080](../rfc/fixed/080-[fixed]-post-login-packs-onboarding.md) |
 
 **Migration parity (draft):** [018](018-[draft]-migration-playback-parity-unverified.md) → [019](019-[draft]-webstreamr-enginejobs-e2e-test-gap.md)–[022](022-[draft]-playback-widget-integration-tests.md).
 
