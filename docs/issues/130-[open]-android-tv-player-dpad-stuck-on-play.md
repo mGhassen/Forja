@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| **Progress** | **10 / 10** fix · **0 / 3** acceptance |
+| **Progress** | **11 / 11** fix · **0 / 4** acceptance |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -29,6 +29,7 @@
 | 8 | I130-T08 | Widget test: → from the stream picker reaches the next transport control inside the full-screen chrome scope | ✅ |
 | 9 | I130-T09 | Exo/MediaKit/trailer top **Player**: `playerOnDownEdge` + ← to Back (IPTV already had ↓); ↑ from transport falls back to Back when seek is unfocusable | ✅ |
 | 10 | I130-T10 | Widget test: ↓ from `PlayerTopBarActions` Player reaches seek/transport across the title gap | ✅ |
+| 11 | I130-T11 | Stop transport ↑ teleport to Back: keep a focusable middle progress/seek row while chrome is up (ATV Exo live included); Exo/MediaKit/IPTV/live-sports ↑ → seek/progress only | ✅ |
 
 ---
 
@@ -39,6 +40,7 @@
 | 1 | I130-A01 | Android TV Exo / IPTV / film player: after chrome shows on Play, ←/→/↑/↓ move focus across transport + top bar (not stuck; chrome does not hide mid-D-pad) | ⬜ |
 | 2 | I130-A02 | Android TV movie player: → from Play walks every bottom control up to Settings — the source button no longer bounces focus back to Play; ↑ from any right-cluster control returns to the seekbar | ⬜ |
 | 3 | I130-A03 | Android TV Exo / film player: ↓ from top **Player** (and Back) reaches seek / Play; ← from Player returns to Back | ⬜ |
+| 4 | I130-A04 | Android TV Exo / IPTV / live: ↑ from Play lands on seek/progress (not Back); second ↑ reaches Back; same while stream is still opening | ⬜ |
 
 ---
 
@@ -62,9 +64,13 @@ On **Android TV**, player chrome often looked stuck: focus sat on **Play** (`exo
 
 ### Follow-up — top Player ↓ dead (T09 · T10)
 
-↓ from top-right **Player** (and ← back to **Back**) still died on Exo/MediaKit/trailer: `PlayerTopBarActions` only exposed `playerOnLeftEdge`, and Exo/MediaKit left it `null` when there was no stream error. Spatial `focusInDirection` cannot cross the title gap (same as [110](110-[open]-android-tv-iptv-player-top-bar-dpad.md)); IPTV already wired `onDownEdge` on every top-bar action. **Player** now has `playerOnDownEdge` → seek/Play; ← always returns to Back (or retry/stream when error actions show). ↑ from transport also falls back to Back if the seek bar cannot take focus.
+↓ from top-right **Player** (and ← back to **Back**) still died on Exo/MediaKit/trailer: `PlayerTopBarActions` only exposed `playerOnLeftEdge`, and Exo/MediaKit left it `null` when there was no stream error. Spatial `focusInDirection` cannot cross the title gap (same as [110](110-[open]-android-tv-iptv-player-top-bar-dpad.md)); IPTV already wired `onDownEdge` on every top-bar action. **Player** now has `playerOnDownEdge` → seek/Play; ← always returns to Back (or retry/stream when error actions show). T09 also added ↑ → Back when seek was unfocusable — that **skipped** the seek slot.
 
-**Not verified on device.** The exact spatial-traversal failure (focus landing back on Play rather than simply not moving) was not reproduced under a debugger — `I130-A02` / `I130-A03` remain the on-device gate.
+### Follow-up — ↑ jumped seek to Back (T11)
+
+Transport ↑ fell through to Back whenever `_seekFocus` was off-tree (ATV Exo live hid progress chrome; loading/failed races). **Fix:** `showProgressChrome` always true; LIVE/EPG/waiting rows attach `_seekFocus`; Exo/MediaKit/IPTV/live-sports transport ↑ requests seek only (no Back teleport).
+
+**Not verified on device.** `I130-A02` / `I130-A03` / `I130-A04` remain the on-device gate.
 
 ## Related
 

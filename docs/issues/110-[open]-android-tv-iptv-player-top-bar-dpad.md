@@ -9,9 +9,9 @@
 
 | | |
 |--|--|
-| **Progress** | **4 / 4** fix · **0 / 3** acceptance |
+| **Progress** | **5 / 5** fix · **0 / 4** acceptance |
 
-**Legend:** ✅ done · 🔄 in progress · ⬜ not started
+**Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
 ---
 
@@ -23,6 +23,7 @@
 | 2 | I110-T02 | IPTV multi-source chip shows green focus when D-pad focused | ✅ |
 | 3 | I110-T03 | Explicit Back ↔ source ↔ Player ↔ stats FocusNodes + ←/→ edges (focusInDirection fails across title gap) | ✅ |
 | 4 | I110-T04 | ATV Exo/IPTV: top-bar Player uses `PlayerFlatIconButton(tvFocusable)` (not iptvTap); ↑ from right chrome → Player; hide deferral + 10s TV idle | ✅ |
+| 5 | I110-T05 | Always mount middle progress/LIVE row on ATV Exo live; transport ↑ → progress (not Back); right chrome ↑ → progress then Player ([130](130-[open]-android-tv-player-dpad-stuck-on-play.md) T11) | ✅ |
 
 ---
 
@@ -32,7 +33,8 @@
 |--:|----|-------------|--------|
 | 1 | I110-A01 | Android TV IPTV player: → from Back focuses top-right **Player**; icon turns brand green with outline | ⬜ |
 | 2 | I110-A02 | Select on **Player** opens the Player menu; ← returns focus to Back (or source chip when multi-source) | ⬜ |
-| 3 | I110-A03 | Android TV IPTV Exo (no progress chrome): ↑ from Search / Guide / Source focuses **Player**; ↑ from Play / Replay focuses **Back** | ⬜ |
+| 3 | I110-A03 | Android TV IPTV Exo (no progress chrome): ↑ from Search / Guide / Source focuses **Player**; ↑ from Play / Replay focuses **Back** | ⏭️ superseded by I110-A04 / I110-T05 (progress chrome always on) |
+| 4 | I110-A04 | Android TV IPTV Exo live: ↑ from Play → progress/LIVE (not Back); ↑ again → Back; ↑ from Search / Guide / Source → progress then **Player** | ⬜ |
 
 ---
 
@@ -46,7 +48,9 @@ On **Android TV**, IPTV player bottom transport buttons and **Back** used brand-
 
 **Root fix:** `_IptvPlayerTopBarIcon` reuses `playerChrome*` colors/shapes; source chip gets the same green focus treatment. **I110-T03** adds dedicated FocusNodes and explicit ←/→ edge callbacks for Back / source chip / Player / stats.
 
-**Follow-up (I110-T04):** ATV Exo hides the bottom progress bar, so ↑ from every transport control went to **Back** and **Player** stayed hard to reach. Top-bar TV actions now use the same `PlayerFlatIconButton(tvFocusable: true)` path as the movie player; ↑ from Search / Guide / Source claims **Player**; chrome idle is 10s on TV and defers hide while a chrome control still has focus.
+**Follow-up (I110-T04):** ATV Exo used to hide the bottom progress bar, so ↑ from every transport control went to **Back** and **Player** stayed hard to reach. Top-bar TV actions now use the same `PlayerFlatIconButton(tvFocusable: true)` path as the movie player; chrome idle is 10s on TV and defers hide while a chrome control still has focus.
+
+**Follow-up (I110-T05):** Progress chrome stays on for ATV Exo live (focusable LIVE/EPG row). Transport ↑ → progress; right chrome ↑ → progress then **Player** — no skip to Back over the middle row ([130](130-[open]-android-tv-player-dpad-stuck-on-play.md)).
 
 ## Related
 

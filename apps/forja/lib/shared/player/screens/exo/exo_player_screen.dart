@@ -338,9 +338,11 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
   final FocusNode _seekFocus = FocusNode(debugLabel: 'exo-player-seek');
   final FocusNode _playerMenuFocus = FocusNode(debugLabel: 'exo-player-menu');
   final FocusNode _retryFocus = FocusNode(debugLabel: 'exo-player-retry');
+
   /// Centered Retry on the terminal failure stage (status overlay).
-  final FocusNode _failedStageRetryFocus =
-      FocusNode(debugLabel: 'exo-player-failed-retry');
+  final FocusNode _failedStageRetryFocus = FocusNode(
+    debugLabel: 'exo-player-failed-retry',
+  );
   final FocusNode _streamActionFocus = FocusNode(
     debugLabel: 'exo-player-stream-action',
   );
@@ -1320,12 +1322,12 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
     _lateSubsGen = -1;
   }
 
+  /// Transport ↑ → seek/progress row. Stay on transport if seek cannot take
+  /// focus — never teleport past the seek slot to Back (issue 130).
   void _focusSeekFromTransport() {
     if (_seekFocus.canRequestFocus) {
       _seekFocus.requestFocus();
-      return;
     }
-    _claimBackFocus();
   }
 
   void _revealChrome() {
@@ -1585,9 +1587,9 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
     final rows = [..._externalSubtitles, ...hlsRows];
     // A sideloaded row is its own Media3 text track. List it once (as the
     // row), and show the row selected when Media3 renders that track.
-    final twinUrls = sideloadSourceUrls(_sideloadedSubtitles).intersection({
-      for (final r in rows) (r['url'] ?? '').toString(),
-    });
+    final twinUrls = sideloadSourceUrls(
+      _sideloadedSubtitles,
+    ).intersection({for (final r in rows) (r['url'] ?? '').toString()});
     final menuTracks = ExoTracksSnapshot(
       audio: tracks.audio,
       text: exoEmbeddedTextTracks(tracks.text, twinUrls),
@@ -1603,7 +1605,8 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
       anchorContext: anchorContext,
       externalSubtitles: rows,
       selectedExternalSubUrl:
-          _selectedExternalSubUrl ?? selectedSideloadSourceUrl(tracks, twinUrls),
+          _selectedExternalSubUrl ??
+          selectedSideloadSourceUrl(tracks, twinUrls),
       isFetchingSubs: _isFetchingSubs,
       onOff: _turnOffSubtitles,
       onSubtitleSettings: _showSubtitleSettings,

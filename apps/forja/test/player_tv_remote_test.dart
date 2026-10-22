@@ -10,6 +10,7 @@ import 'package:forja/shared/player/controls/chrome/player_next_episode_chip.dar
 import 'package:forja/shared/player/controls/menus/player_popup_panel.dart';
 import 'package:forja/shared/player/controls/tv/player_tv_key_scope.dart';
 import 'package:forja/shared/player/controls/tv/player_tv_remote.dart';
+import 'package:forja/shared/player/live/player_chrome_profile.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 
 PlayerTvRemoteKeyHandler _handler({
@@ -100,7 +101,10 @@ void main() {
       final handler = _handler();
 
       expect(
-        handler.handle(_key(LogicalKeyboardKey.audioVolumeUp), showControls: true),
+        handler.handle(
+          _key(LogicalKeyboardKey.audioVolumeUp),
+          showControls: true,
+        ),
         isFalse,
       );
       expect(
@@ -134,7 +138,10 @@ void main() {
         isTrue,
       );
       expect(
-        handler.handle(_key(LogicalKeyboardKey.arrowRight), showControls: false),
+        handler.handle(
+          _key(LogicalKeyboardKey.arrowRight),
+          showControls: false,
+        ),
         isTrue,
       );
       expect(back, 0);
@@ -174,7 +181,10 @@ void main() {
       );
 
       expect(
-        handler.handle(_key(LogicalKeyboardKey.mediaRewind), showControls: true),
+        handler.handle(
+          _key(LogicalKeyboardKey.mediaRewind),
+          showControls: true,
+        ),
         isTrue,
       );
       expect(
@@ -190,9 +200,7 @@ void main() {
 
     test('arrow up focuses back when chrome is hidden', () {
       var focusBack = 0;
-      final handler = _handler(
-        onFocusBack: () => focusBack++,
-      );
+      final handler = _handler(onFocusBack: () => focusBack++);
 
       expect(
         handler.handle(_key(LogicalKeyboardKey.arrowUp), showControls: false),
@@ -203,9 +211,7 @@ void main() {
 
     test('arrow down focuses play when chrome is hidden', () {
       var focusPlay = 0;
-      final handler = _handler(
-        onFocusPlay: () => focusPlay++,
-      );
+      final handler = _handler(onFocusPlay: () => focusPlay++);
 
       expect(
         handler.handle(_key(LogicalKeyboardKey.arrowDown), showControls: false),
@@ -235,7 +241,9 @@ void main() {
     });
   });
 
-  testWidgets('tvFocusable chrome buttons expose FocusableControl', (tester) async {
+  testWidgets('tvFocusable chrome buttons expose FocusableControl', (
+    tester,
+  ) async {
     await tester.pumpWidget(
       MaterialApp(
         home: Scaffold(
@@ -540,8 +548,11 @@ void main() {
       await tester.pump();
 
       expect(claimPlay, greaterThan(0));
-      expect(focusPlay, 0,
-          reason: 'reclaim must not restart idle-hide via onFocusPlay');
+      expect(
+        focusPlay,
+        0,
+        reason: 'reclaim must not restart idle-hide via onFocusPlay',
+      );
       expect(playFocus.hasFocus, isTrue);
 
       keyFocus.dispose();
@@ -600,8 +611,11 @@ void main() {
       await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
       await tester.pump();
 
-      expect(activity, greaterThan(0),
-          reason: 'hide timer must reset while D-pad navigates chrome');
+      expect(
+        activity,
+        greaterThan(0),
+        reason: 'hide timer must reset while D-pad navigates chrome',
+      );
 
       keyFocus.dispose();
       play.dispose();
@@ -682,48 +696,47 @@ void main() {
     },
   );
 
-  testWidgets(
-    'stream picker → reaches the next transport control',
-    (tester) async {
-      final stream = FocusNode(debugLabel: 'player-transport-stream');
-      final audio = FocusNode(debugLabel: 'player-transport-audio');
+  testWidgets('stream picker → reaches the next transport control', (
+    tester,
+  ) async {
+    final stream = FocusNode(debugLabel: 'player-transport-stream');
+    final audio = FocusNode(debugLabel: 'player-transport-audio');
 
-      await tester.pumpWidget(
-        MaterialApp(
-          home: MediaQuery(
-            data: const MediaQueryData(size: Size(1920, 1080)),
-            child: ShellScope(
-              profile: ShellProfile.tv,
-              config: shellPlatformConfigFor(ShellProfile.tv),
-              child: ShellInputPolicy.maybeWrapFocusTraversal(
-                enabled: true,
-                child: Scaffold(
-                  body: SizedBox.expand(
-                    child: FocusScope(
-                      debugLabel: 'exo-player-chrome',
-                      child: FocusTraversalGroup(
-                        policy: ReadingOrderTraversalPolicy(),
-                        child: Row(
-                          children: [
-                            PlayerStreamPickerButton(
-                              tvFocusable: true,
-                              focusNode: stream,
-                              onRightEdge: audio.requestFocus,
-                              label: 'VidSrc',
-                              onPressedWithContext: (_) {},
+    await tester.pumpWidget(
+      MaterialApp(
+        home: MediaQuery(
+          data: const MediaQueryData(size: Size(1920, 1080)),
+          child: ShellScope(
+            profile: ShellProfile.tv,
+            config: shellPlatformConfigFor(ShellProfile.tv),
+            child: ShellInputPolicy.maybeWrapFocusTraversal(
+              enabled: true,
+              child: Scaffold(
+                body: SizedBox.expand(
+                  child: FocusScope(
+                    debugLabel: 'exo-player-chrome',
+                    child: FocusTraversalGroup(
+                      policy: ReadingOrderTraversalPolicy(),
+                      child: Row(
+                        children: [
+                          PlayerStreamPickerButton(
+                            tvFocusable: true,
+                            focusNode: stream,
+                            onRightEdge: audio.requestFocus,
+                            label: 'VidSrc',
+                            onPressedWithContext: (_) {},
+                          ),
+                          FocusableControl(
+                            focusNode: audio,
+                            scaleOnFocus: 1.0,
+                            onTap: () {},
+                            child: const SizedBox(
+                              width: 48,
+                              height: 48,
+                              child: Icon(Icons.audiotrack_rounded),
                             ),
-                            FocusableControl(
-                              focusNode: audio,
-                              scaleOnFocus: 1.0,
-                              onTap: () {},
-                              child: const SizedBox(
-                                width: 48,
-                                height: 48,
-                                child: Icon(Icons.audiotrack_rounded),
-                              ),
-                            ),
-                          ],
-                        ),
+                          ),
+                        ],
                       ),
                     ),
                   ),
@@ -732,21 +745,21 @@ void main() {
             ),
           ),
         ),
-      );
-      stream.requestFocus();
-      await tester.pump();
-      expect(stream.hasFocus, isTrue);
+      ),
+    );
+    stream.requestFocus();
+    await tester.pump();
+    expect(stream.hasFocus, isTrue);
 
-      await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
-      await tester.pump();
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+    await tester.pump();
 
-      expect(audio.hasFocus, isTrue, reason: '→ from Source must not dead-end');
-      expect(stream.hasFocus, isFalse);
+    expect(audio.hasFocus, isTrue, reason: '→ from Source must not dead-end');
+    expect(stream.hasFocus, isFalse);
 
-      stream.dispose();
-      audio.dispose();
-    },
-  );
+    stream.dispose();
+    audio.dispose();
+  });
 
   testWidgets(
     'PlayerTopBarActions ↓ from Player reaches seek/transport (title gap)',
@@ -807,14 +820,147 @@ void main() {
       await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
       await tester.pump();
 
-      expect(seek.hasFocus, isTrue,
-          reason: '↓ from top Player must reach bottom chrome');
+      expect(
+        seek.hasFocus,
+        isTrue,
+        reason: '↓ from top Player must reach bottom chrome',
+      );
       expect(player.hasFocus, isFalse);
 
       player.dispose();
       seek.dispose();
     },
   );
+
+  test('live chrome always shows progress row (ATV Exo included)', () {
+    // Transport ↑ needs a middle focus target — never hide progress on live Exo.
+    expect(
+      LivePlayerChromeProfile.live.showProgressChrome(
+        exoBackend: true,
+        isVodHeuristic: false,
+      ),
+      isTrue,
+    );
+    expect(
+      LivePlayerChromeProfile.vod.showProgressChrome(
+        exoBackend: true,
+        isVodHeuristic: false,
+      ),
+      isTrue,
+    );
+  });
+
+  testWidgets('transport ↑ focuses seek and does not teleport to Back', (
+    tester,
+  ) async {
+    // Mirrors Exo/MediaKit/IPTV: Play onUpEdge → seek; never claim Back when
+    // seek is briefly unfocusable (issue 130).
+    final play = FocusNode(debugLabel: 'exo-player-play');
+    final seek = FocusNode(debugLabel: 'exo-player-seek');
+    final back = FocusNode(debugLabel: 'exo-player-back');
+
+    void focusSeekFromTransport() {
+      if (seek.canRequestFocus) {
+        seek.requestFocus();
+      }
+      // No Back fallback — stay on Play if seek cannot take focus.
+    }
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: MediaQuery(
+          data: const MediaQueryData(size: Size(1920, 1080)),
+          child: ShellScope(
+            profile: ShellProfile.tv,
+            config: shellPlatformConfigFor(ShellProfile.tv),
+            child: Scaffold(
+              body: FocusScope(
+                debugLabel: 'exo-player-chrome',
+                child: SizedBox.expand(
+                  child: Stack(
+                    children: [
+                      Positioned(
+                        top: 8,
+                        left: 16,
+                        child: FocusableControl(
+                          focusNode: back,
+                          scaleOnFocus: 1.0,
+                          onTap: () {},
+                          child: const SizedBox(
+                            width: 48,
+                            height: 48,
+                            child: Icon(Icons.arrow_back),
+                          ),
+                        ),
+                      ),
+                      Positioned(
+                        bottom: 80,
+                        left: 16,
+                        right: 16,
+                        child: FocusableControl(
+                          focusNode: seek,
+                          scaleOnFocus: 1.0,
+                          onTap: () {},
+                          child: const SizedBox(height: 24),
+                        ),
+                      ),
+                      Positioned(
+                        bottom: 16,
+                        left: 16,
+                        child: FocusableControl(
+                          focusNode: play,
+                          autoFocus: true,
+                          scaleOnFocus: 1.0,
+                          onUpEdge: focusSeekFromTransport,
+                          onTap: () {},
+                          child: const SizedBox(
+                            width: 48,
+                            height: 48,
+                            child: Icon(Icons.play_arrow),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+    expect(play.hasFocus, isTrue);
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowUp);
+    await tester.pump();
+
+    expect(seek.hasFocus, isTrue, reason: '↑ from Play must land on seek');
+    expect(back.hasFocus, isFalse);
+    expect(play.hasFocus, isFalse);
+
+    // Seek temporarily out of the graph (chrome race / loading) — ↑ must
+    // stay on Play, not jump over the seek slot to Back.
+    seek.skipTraversal = true;
+    seek.canRequestFocus = false;
+    play.requestFocus();
+    await tester.pump();
+    expect(play.hasFocus, isTrue);
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowUp);
+    await tester.pump();
+
+    expect(play.hasFocus, isTrue, reason: '↑ must no-op when seek unfocusable');
+    expect(
+      back.hasFocus,
+      isFalse,
+      reason: 'must not teleport past seek to Back',
+    );
+
+    play.dispose();
+    seek.dispose();
+    back.dispose();
+  });
 
   testWidgets(
     'PlayerTvKeyScope does not steal focus when popup is open and chrome hides',

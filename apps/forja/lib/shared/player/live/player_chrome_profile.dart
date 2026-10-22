@@ -1,5 +1,3 @@
-import 'package:forja/shared/platform/platform_info.dart';
-
 /// IPTV player chrome: Live TV vs Movies/Series (catalog VOD).
 ///
 /// Tracks (Audio / Subs / Episodes) follow **catalog** intent only
@@ -24,12 +22,13 @@ enum LivePlayerChromeProfile {
   /// Persist Player menu engine to this surface's KV (vod vs iptv).
   bool get persistEnginePref => true;
 
-  /// Progress bar: hide only Android TV Exo **live**. VOD Exo keeps scrubber.
+  /// Middle progress row while chrome is up (VOD scrubber, waiting track, or
+  /// live EPG/LIVE status). Always on — ATV Exo live keeps a focusable slot so
+  /// transport ↑ lands on progress, never jumps over it to Back (issue 130).
+  ///
+  /// [exoBackend] / [isVodHeuristic] kept for call-site stability.
   bool showProgressChrome({
     required bool exoBackend,
     required bool isVodHeuristic,
-  }) {
-    if (vodSeekChrome || isVodHeuristic) return true;
-    return !(exoBackend && PlatformInfo.isAndroidTv);
-  }
+  }) => true;
 }

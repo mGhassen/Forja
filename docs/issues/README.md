@@ -131,7 +131,7 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [107-[fixed]-…](fixed/107-[fixed]-android-7-tmdb-lets-encrypt-trust.md) | Android ≤7.0 TMDB posters (Let's Encrypt trust) | P1 | High | fixed | Complete · 4/4 · A 0/2 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [108-[open]-…](108-[open]-android-tv-iptv-exo-choppy-fps.md) | Android TV IPTV Exo choppy FPS (weak / Android 7) | P1 | High | open | 30/30 · A 0/5 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [109-[open]-…](109-[open]-android-tv-boot-jwt-expired-discard-race.md) | ATV/desktop boot JWT expired (gotrue discard) | P1 | High | open | 5/5 · A 0/2 | [1.0.1](../backlog/1.0.1-[open].md) |
-| [110-[open]-…](110-[open]-android-tv-iptv-player-top-bar-dpad.md) | ATV IPTV player top-right Player D-pad chrome | P1 | Medium | open | 4/4 · A 0/3 | [1.0.1](../backlog/1.0.1-[open].md) |
+| [110-[open]-…](110-[open]-android-tv-iptv-player-top-bar-dpad.md) | ATV IPTV player top-right Player D-pad chrome | P1 | Medium | open | 5/5 · A 0/4 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [111-[open]-…](111-[open]-macos-keychain-consent-local-file.md) | macOS Keychain consent + local-file fallback | P1 | Medium | open | 5/5 · A 0/3 | — |
 | [112-[fixed]-…](fixed/112-[fixed]-iptv-share-self-contained-tokens.md) | IPTV share: self-contained `F1.` tokens | P1 | High | fixed | Complete · 5/5 · A 2/2 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [113-[open]-…](113-[open]-android-tv-trailer-player-white-screen.md) | Android TV trailer player white screen | P1 | High | open | 2/2 · A 0/2 | [1.0.1](../backlog/1.0.1-[open].md) |
@@ -151,7 +151,7 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [127-[fixed]-…](fixed/127-[fixed]-android-tv-settings-detail-dpad.md) | ATV Settings page D-pad escapes category / Addons ↑ / spatial | P1 | High | fixed | Complete · 8/8 · A 7/7 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [128-[open]-…](128-[open]-android-tv-iptv-mediakit-exit-anr.md) | ATV IPTV MediaKit exit ANR after Player menu switch | P1 | High | open | 13/13 · A 0/4 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [129-[open]-…](129-[open]-android-tv-exo-vod-cropped-after-mediakit.md) | ATV Exo VOD cropped after MediaKit → Exo | P1 | High | open | 13/13 · A 0/2 | [1.0.1](../backlog/1.0.1-[open].md) |
-| [130-[open]-…](130-[open]-android-tv-player-dpad-stuck-on-play.md) | ATV player D-pad stuck on Play (full-screen FocusScope) | P1 | High | open | 10/10 · A 0/3 | [1.0.1](../backlog/1.0.1-[open].md) |
+| [130-[open]-…](130-[open]-android-tv-player-dpad-stuck-on-play.md) | ATV player D-pad stuck on Play (full-screen FocusScope) | P1 | High | open | 11/11 · A 0/4 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [131-[open]-…](131-[open]-android-tv-live-matches-exo-dpad-dead.md) | ATV Live Matches Exo player D-pad dead after handoff | P1 | High | open | 3/3 · A 0/2 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [132-[open]-…](132-[open]-android-tv-exo-auto-subtitle-merging-crash.md) | ATV Exo auto subtitle select crashes / pops player | P1 | High | open | 3/3 · A 0/1 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [133-[open]-…](133-[open]-android-tv-exo-physical-audio-only.md) | ATV physical Exo audio-only (SurfaceView fail) | P1 | High | open | 10/10 · A 0/3 | [1.0.1](../backlog/1.0.1-[open].md) |

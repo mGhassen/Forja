@@ -61,8 +61,8 @@ mixin _LiveSportsPlayerUi on ConsumerState<LiveSportsPlayerScreen> {
 
   Widget _buildChannelGuidePanel() {
     final guide = widget.channelGuide!;
-    final epgEnabled = ref.watch(settingsPlaybackProvider).valueOrNull
-            ?.iptvEpgEnabled ??
+    final epgEnabled =
+        ref.watch(settingsPlaybackProvider).valueOrNull?.iptvEpgEnabled ??
         SettingsService.iptvEpgEnabledNotifier.value;
     final tv = liveUseTvFocus(context);
     final leanback = liveLeanbackOnly(context);
@@ -85,7 +85,8 @@ mixin _LiveSportsPlayerUi on ConsumerState<LiveSportsPlayerScreen> {
       panelInsets: (ctx) {
         if (tv) return EdgeInsets.zero;
         return EdgeInsets.only(
-          top: DesktopWindowChrome.topInset(ctx) +
+          top:
+              DesktopWindowChrome.topInset(ctx) +
               ChannelGuidePanel.panelVerticalGap,
           bottom: desktop
               ? ChannelGuidePanel.panelEdgeGap
@@ -116,8 +117,8 @@ mixin _LiveSportsPlayerUi on ConsumerState<LiveSportsPlayerScreen> {
   }
 
   Future<List<EpgEntry>>? _floatingEpgFuture() {
-    final epgEnabled = ref.watch(settingsPlaybackProvider).valueOrNull
-            ?.iptvEpgEnabled ??
+    final epgEnabled =
+        ref.watch(settingsPlaybackProvider).valueOrNull?.iptvEpgEnabled ??
         SettingsService.iptvEpgEnabledNotifier.value;
     if (!epgEnabled || _s._epgCache == null) return null;
     final stream =
@@ -217,9 +218,7 @@ mixin _LiveSportsPlayerUi on ConsumerState<LiveSportsPlayerScreen> {
     if (shouldUseNative != _s._isNativeSubtitle) {
       setState(() => _s._isNativeSubtitle = shouldUseNative);
     }
-    unawaited(
-      applyPlayerSubtitleRenderMode(player, native: shouldUseNative),
-    );
+    unawaited(applyPlayerSubtitleRenderMode(player, native: shouldUseNative));
   }
 
   Future<void> _showAudioMenu(BuildContext anchorContext) async {
@@ -269,8 +268,9 @@ mixin _LiveSportsPlayerUi on ConsumerState<LiveSportsPlayerScreen> {
       if (id == null) return;
       final tracks = await ExoPlayerBridge.getTracks(id);
       if (!mounted || !anchorContext.mounted) return;
-      final playUrl =
-          _s._sources.isNotEmpty ? _s._sources[_s._sourceIdx].url : '';
+      final playUrl = _s._sources.isNotEmpty
+          ? _s._sources[_s._sourceIdx].url
+          : '';
       final hlsRows = hlsInStreamSubtitleRows(
         await loadHlsInStreamSubtitles(playUrl),
       );
@@ -616,109 +616,110 @@ mixin _LiveSportsPlayerUi on ConsumerState<LiveSportsPlayerScreen> {
         final labelSize = tv
             ? ShellTokens.formInputLabelFontSizeTv
             : ShellTokens.formInputLabelFontSize;
-        final titleSize = tv
-            ? ShellTokens.tvTitleFontSize
-            : 16.0;
+        final titleSize = tv ? ShellTokens.tvTitleFontSize : 16.0;
         final fieldStyle = TextStyle(color: Colors.white, fontSize: fieldSize);
-        final labelStyle = TextStyle(color: Colors.white54, fontSize: labelSize);
+        final labelStyle = TextStyle(
+          color: Colors.white54,
+          fontSize: labelSize,
+        );
         return ShellScope.rehost(
-        context,
-        AlertDialog(
-          backgroundColor: const Color(0xFF141414),
-          title: Text(
-            'Search subtitles',
-            style: TextStyle(color: Colors.white, fontSize: titleSize),
-          ),
-          content: SizedBox(
-            width: 360,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextField(
-                  controller: titleCtrl,
-                  autofocus: true,
-                  style: fieldStyle,
-                  decoration: InputDecoration(
-                    labelText: 'Film or series name',
-                    labelStyle: labelStyle,
-                    floatingLabelStyle: labelStyle,
-                    enabledBorder: const UnderlineInputBorder(
-                      borderSide: BorderSide(color: Colors.white24),
+          context,
+          AlertDialog(
+            backgroundColor: const Color(0xFF141414),
+            title: Text(
+              'Search subtitles',
+              style: TextStyle(color: Colors.white, fontSize: titleSize),
+            ),
+            content: SizedBox(
+              width: 360,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextField(
+                    controller: titleCtrl,
+                    autofocus: true,
+                    style: fieldStyle,
+                    decoration: InputDecoration(
+                      labelText: 'Film or series name',
+                      labelStyle: labelStyle,
+                      floatingLabelStyle: labelStyle,
+                      enabledBorder: const UnderlineInputBorder(
+                        borderSide: BorderSide(color: Colors.white24),
+                      ),
+                    ),
+                    textInputAction: TextInputAction.next,
+                  ),
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: yearCtrl,
+                    style: fieldStyle,
+                    keyboardType: TextInputType.number,
+                    decoration: InputDecoration(
+                      labelText: 'Year (optional)',
+                      labelStyle: labelStyle,
+                      floatingLabelStyle: labelStyle,
+                      enabledBorder: const UnderlineInputBorder(
+                        borderSide: BorderSide(color: Colors.white24),
+                      ),
                     ),
                   ),
-                  textInputAction: TextInputAction.next,
-                ),
-                const SizedBox(height: 8),
-                TextField(
-                  controller: yearCtrl,
-                  style: fieldStyle,
-                  keyboardType: TextInputType.number,
-                  decoration: InputDecoration(
-                    labelText: 'Year (optional)',
-                    labelStyle: labelStyle,
-                    floatingLabelStyle: labelStyle,
-                    enabledBorder: const UnderlineInputBorder(
-                      borderSide: BorderSide(color: Colors.white24),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextField(
-                        controller: seasonCtrl,
-                        style: fieldStyle,
-                        keyboardType: TextInputType.number,
-                        decoration: InputDecoration(
-                          labelText: 'Season',
-                          labelStyle: labelStyle,
-                          floatingLabelStyle: labelStyle,
-                          enabledBorder: const UnderlineInputBorder(
-                            borderSide: BorderSide(color: Colors.white24),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: seasonCtrl,
+                          style: fieldStyle,
+                          keyboardType: TextInputType.number,
+                          decoration: InputDecoration(
+                            labelText: 'Season',
+                            labelStyle: labelStyle,
+                            floatingLabelStyle: labelStyle,
+                            enabledBorder: const UnderlineInputBorder(
+                              borderSide: BorderSide(color: Colors.white24),
+                            ),
                           ),
                         ),
                       ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: TextField(
-                        controller: episodeCtrl,
-                        style: fieldStyle,
-                        keyboardType: TextInputType.number,
-                        decoration: InputDecoration(
-                          labelText: 'Episode',
-                          labelStyle: labelStyle,
-                          floatingLabelStyle: labelStyle,
-                          enabledBorder: const UnderlineInputBorder(
-                            borderSide: BorderSide(color: Colors.white24),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: TextField(
+                          controller: episodeCtrl,
+                          style: fieldStyle,
+                          keyboardType: TextInputType.number,
+                          decoration: InputDecoration(
+                            labelText: 'Episode',
+                            labelStyle: labelStyle,
+                            floatingLabelStyle: labelStyle,
+                            enabledBorder: const UnderlineInputBorder(
+                              borderSide: BorderSide(color: Colors.white24),
+                            ),
                           ),
                         ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: const Text(
+                  'Cancel',
+                  style: TextStyle(color: Colors.white54),
                 ),
-              ],
-            ),
+              ),
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, true),
+                child: const Text(
+                  'Search',
+                  style: TextStyle(color: Colors.white),
+                ),
+              ),
+            ],
           ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx, false),
-              child: const Text(
-                'Cancel',
-                style: TextStyle(color: Colors.white54),
-              ),
-            ),
-            TextButton(
-              onPressed: () => Navigator.pop(ctx, true),
-              child: const Text(
-                'Search',
-                style: TextStyle(color: Colors.white),
-              ),
-            ),
-          ],
-        ),
-      );
+        );
       },
     );
     final typed = titleCtrl.text.trim();
@@ -849,8 +850,9 @@ mixin _LiveSportsPlayerUi on ConsumerState<LiveSportsPlayerScreen> {
   /// Hide chrome without arming Escape (a synthetic hover must not snap chrome back).
   void _hideChromeIntentional() {
     _s._hideControlsTimer?.cancel();
-    _s._suppressChromeRevealUntil =
-        DateTime.now().add(const Duration(milliseconds: 450));
+    _s._suppressChromeRevealUntil = DateTime.now().add(
+      const Duration(milliseconds: 450),
+    );
     _s._escapeExitArmed = false;
     if (!_s._controlsVisible) return;
     setState(() => _s._controlsVisible = false);
@@ -912,7 +914,9 @@ mixin _LiveSportsPlayerUi on ConsumerState<LiveSportsPlayerScreen> {
       'chrome=${_s._controlsVisible} fs=${_s._isFullscreen} osFull=$osFull',
     );
     if (_s._controlsVisible) {
-      debugPrint('[PortalPlayer] Escape → hide chrome (no arm) fs=$inFullscreen');
+      debugPrint(
+        '[PortalPlayer] Escape → hide chrome (no arm) fs=$inFullscreen',
+      );
       _hideChromeIntentional();
       return;
     }
@@ -987,9 +991,7 @@ mixin _LiveSportsPlayerUi on ConsumerState<LiveSportsPlayerScreen> {
     }
     final src = _s._sources[_s._sourceIdx.clamp(0, _s._sources.length - 1)];
     if (src.url.isEmpty) return null;
-    final headers = <String, String>{
-      ...src.headers,
-    };
+    final headers = <String, String>{...src.headers};
     return PipHandoffSnapshot(
       url: src.url,
       headers: headers,
@@ -1054,10 +1056,7 @@ mixin _LiveSportsPlayerUi on ConsumerState<LiveSportsPlayerScreen> {
     _s._stopForNewPlayCompleter = c;
     await _s._exitIptvPlayer();
     if (!c.isCompleted) {
-      await c.future.timeout(
-        const Duration(seconds: 8),
-        onTimeout: () {},
-      );
+      await c.future.timeout(const Duration(seconds: 8), onTimeout: () {});
     }
   }
 
@@ -1198,7 +1197,8 @@ mixin _LiveSportsPlayerUi on ConsumerState<LiveSportsPlayerScreen> {
 
   Widget _buildPlayer(BuildContext context) {
     final keepOverlays = _s._guideVisible || _s._searchVisible;
-    final pipEarly = _s._isPipMode ||
+    final pipEarly =
+        _s._isPipMode ||
         _s._releasedForPip ||
         PipService.instance.isDesktopActive;
     if (!_s._playerReady && !keepOverlays && !pipEarly) {
@@ -1251,233 +1251,247 @@ mixin _LiveSportsPlayerUi on ConsumerState<LiveSportsPlayerScreen> {
             IgnorePointer(
               ignoring: mini || pipMode,
               child: Scaffold(
-          // Always transparent — full black comes from a stack [ColoredBox] so
-          // mini can hit-test through to the shell (same MediaKit resize path).
-          backgroundColor: Colors.transparent,
-          body: PlayerTvKeyScope(
-          enabled:
-              !mini &&
-              liveUseTvFocus(context) &&
-              !_s._guideVisible &&
-              !_s._searchVisible,
-          focusNode: _s._playerTvKeyFocus,
-          showControls: _s._controlsVisible,
-          onBack: () {
-            if (ShellTvFocusCoordinator.tvBackPolicyEnabled) {
-              ShellTvFocusCoordinator.handleShellBackKey();
-              return;
-            }
-            if (dismissAnyPlayerChromeOverlay()) return;
-            unawaited(_s._exitIptvPlayer());
-          },
-          onPlayPause: () {
-            unawaited(_s._togglePlayPauseFromKey());
-          },
-          onShowControls: () {
-            setState(() => _s._controlsVisible = true);
-            _scheduleHideControls();
-            _focusPlayerChrome();
-          },
-          onSeekBack: () {
-            if (!_isVodChrome || _s._duration.inSeconds <= 1) {
-              _revealControlsAndFocus(back: false);
-              return;
-            }
-            _seekRelativeSeconds(-10);
-            _scheduleHideControls();
-          },
-          onSeekForward: () {
-            if (!_isVodChrome || _s._duration.inSeconds <= 1) {
-              _revealControlsAndFocus(back: false);
-              return;
-            }
-            _seekRelativeSeconds(10);
-            _scheduleHideControls();
-          },
-          onToggleControls: _toggleControls,
-          onFocusBack: () => _revealControlsAndFocus(back: true),
-          onFocusPlay: () => _revealControlsAndFocus(back: false),
-          onClaimPlayFocus: _claimPlayFocus,
-          onControlsActivity: _scheduleHideControls,
-          child: MouseRegion(
-            onHover: (_) => _onPlayerMouseMove(),
-            // Pointer hides with the chrome; hover reveals both.
-            cursor: _s._controlsVisible
-                ? SystemMouseCursors.basic
-                : SystemMouseCursors.none,
-            child: Stack(
-              fit: StackFit.expand,
-              children: [
-                GestureDetector(
-              behavior: HitTestBehavior.translucent,
-              onTap: hideFullChrome ? null : _toggleControls,
-              // Double-click / double-tap video → toggle fullscreen (same as films).
-              // Android TV is already immersive — no fullscreen toggle.
-              onDoubleTap: () {
-                if (hideFullChrome ||
-                    _s._guideVisible ||
-                    _s._searchVisible ||
-                    liveLeanbackOnly(context)) {
-                  return;
-                }
-                unawaited(_s._toggleFullscreen());
-              },
-              child: Stack(
-                fit: StackFit.expand,
-                children: [
-                  if (!mini && !pipMode)
-                    const Positioned.fill(child: ColoredBox(color: Colors.black)),
-                  // Full-player video only — mini mounts the same GlobalKey slot
-                  // outside [IgnorePointer] so the corner stays hittable.
-                  // PiP float owns the Player — main shows [PipPlaceholder].
-                  if (!mini && !pipMode)
-                  Positioned(
-                    key: const ValueKey('iptv-player-video-slot'),
-                    left: 0,
-                    top: 0,
-                    right: 0,
-                    bottom: 0,
-                    child: ColoredBox(
-                      color: Colors.black,
-                      child: Stack(
-                        fit: StackFit.expand,
-                        children: [
-                          // No Material / RepaintBoundary: both snapshot the
-                          // macOS VLC AppKitView as a white layer between frames.
-                          ExcludeFocus(
-                            child: _buildIptvVideoSurface(),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  if (!mini && !pipMode && _s._coverDeadSurface)
-                    const Positioned.fill(
-                      child: IgnorePointer(
-                        child: ColoredBox(color: Colors.black),
-                      ),
-                    ),
-                  // Text subs (SRT/VTT) — Flutter overlay for MediaKit and Exo
-                  // (native SubtitleView inside PlatformView is GONE, issue 230).
-                  if (!hideFullChrome &&
-                      !_s._exoBackend &&
-                      _s._player != null &&
-                      !_s._isNativeSubtitle)
-                    StreamBuilder<List<String>>(
-                      stream: _s._player!.stream.subtitle,
-                      initialData: _s._player!.state.subtitle,
-                      builder: (context, snap) {
-                        final text = formatPlayerSubtitleOverlayText(
-                          snap.data ?? const [],
-                        );
-                        if (text.isEmpty) return const SizedBox.shrink();
-                        return _buildIptvCuePositioned(text);
-                      },
-                    ),
-                  if (!hideFullChrome && _s._exoBackend)
-                    ValueListenableBuilder<List<String>>(
-                      valueListenable: _s._exoCueTexts,
-                      builder: (context, lines, _) {
-                        final text = formatPlayerSubtitleOverlayText(lines);
-                        if (text.isEmpty) return const SizedBox.shrink();
-                        return _buildIptvCuePositioned(text);
-                      },
-                    ),
-                  // Reconnect/switch always; Buffering… only when picture stalled.
-                  if (!hideFullChrome && _s._showPlaybackBanner) _buildBanner(),
-                  if (!hideFullChrome && _s._escapeExitArmed)
-                    const PlayerEscapeExitHint(),
-                  // Top bar + bottom controls (below guide when open).
-                  // Hidden entirely while PiP / mini is active.
-                  if (!hideFullChrome)
-                    AnimatedOpacity(
-                      duration: const Duration(milliseconds: 220),
-                      opacity: _s._controlsVisible ? 1 : 0,
-                      child: ExcludeFocus(
-                        excluding:
-                            liveUseTvFocus(context) &&
-                            (!_s._controlsVisible ||
+                // Always transparent — full black comes from a stack [ColoredBox] so
+                // mini can hit-test through to the shell (same MediaKit resize path).
+                backgroundColor: Colors.transparent,
+                body: PlayerTvKeyScope(
+                  enabled:
+                      !mini &&
+                      liveUseTvFocus(context) &&
+                      !_s._guideVisible &&
+                      !_s._searchVisible,
+                  focusNode: _s._playerTvKeyFocus,
+                  showControls: _s._controlsVisible,
+                  onBack: () {
+                    if (ShellTvFocusCoordinator.tvBackPolicyEnabled) {
+                      ShellTvFocusCoordinator.handleShellBackKey();
+                      return;
+                    }
+                    if (dismissAnyPlayerChromeOverlay()) return;
+                    unawaited(_s._exitIptvPlayer());
+                  },
+                  onPlayPause: () {
+                    unawaited(_s._togglePlayPauseFromKey());
+                  },
+                  onShowControls: () {
+                    setState(() => _s._controlsVisible = true);
+                    _scheduleHideControls();
+                    _focusPlayerChrome();
+                  },
+                  onSeekBack: () {
+                    if (!_isVodChrome || _s._duration.inSeconds <= 1) {
+                      _revealControlsAndFocus(back: false);
+                      return;
+                    }
+                    _seekRelativeSeconds(-10);
+                    _scheduleHideControls();
+                  },
+                  onSeekForward: () {
+                    if (!_isVodChrome || _s._duration.inSeconds <= 1) {
+                      _revealControlsAndFocus(back: false);
+                      return;
+                    }
+                    _seekRelativeSeconds(10);
+                    _scheduleHideControls();
+                  },
+                  onToggleControls: _toggleControls,
+                  onFocusBack: () => _revealControlsAndFocus(back: true),
+                  onFocusPlay: () => _revealControlsAndFocus(back: false),
+                  onClaimPlayFocus: _claimPlayFocus,
+                  onControlsActivity: _scheduleHideControls,
+                  child: MouseRegion(
+                    onHover: (_) => _onPlayerMouseMove(),
+                    // Pointer hides with the chrome; hover reveals both.
+                    cursor: _s._controlsVisible
+                        ? SystemMouseCursors.basic
+                        : SystemMouseCursors.none,
+                    child: Stack(
+                      fit: StackFit.expand,
+                      children: [
+                        GestureDetector(
+                          behavior: HitTestBehavior.translucent,
+                          onTap: hideFullChrome ? null : _toggleControls,
+                          // Double-click / double-tap video → toggle fullscreen (same as films).
+                          // Android TV is already immersive — no fullscreen toggle.
+                          onDoubleTap: () {
+                            if (hideFullChrome ||
                                 _s._guideVisible ||
-                                _s._searchVisible),
-                        child: IgnorePointer(
-                          ignoring:
-                              !_s._controlsVisible ||
-                              _s._guideVisible ||
-                              _s._searchVisible,
-                          child: _buildOverlay(compact),
-                        ),
-                      ),
-                    ),
-                  // Positioned.fill must be a direct Stack child — wrapping the
-                  // overlay (which used to return Positioned) in RepaintBoundary
-                  // caused ParentDataWidget spam on every frame.
-                  if (!hideFullChrome &&
-                      _s._searchVisible &&
-                      widget.channelGuide != null)
-                    Positioned.fill(
-                      child: RepaintBoundary(
-                        child: ChannelSearchOverlay(
-                          guide: widget.channelGuide!,
-                          currentChannelId: _s._currentChannelId,
-                          onChannelSelected: _onSearchChannelSelected,
-                          onClose: () => setState(() {
-                            _s._searchVisible = false;
-                            _scheduleHideControls();
-                          }),
-                          isTv: liveUseTvFocus(context),
-                          resolvePlayUrl: (ch) => PortalGuideWire.resolvePlayUrl(
-                            widget.channelGuide!,
-                            ch,
+                                _s._searchVisible ||
+                                liveLeanbackOnly(context)) {
+                              return;
+                            }
+                            unawaited(_s._toggleFullscreen());
+                          },
+                          child: Stack(
+                            fit: StackFit.expand,
+                            children: [
+                              if (!mini && !pipMode)
+                                const Positioned.fill(
+                                  child: ColoredBox(color: Colors.black),
+                                ),
+                              // Full-player video only — mini mounts the same GlobalKey slot
+                              // outside [IgnorePointer] so the corner stays hittable.
+                              // PiP float owns the Player — main shows [PipPlaceholder].
+                              if (!mini && !pipMode)
+                                Positioned(
+                                  key: const ValueKey('iptv-player-video-slot'),
+                                  left: 0,
+                                  top: 0,
+                                  right: 0,
+                                  bottom: 0,
+                                  child: ColoredBox(
+                                    color: Colors.black,
+                                    child: Stack(
+                                      fit: StackFit.expand,
+                                      children: [
+                                        // No Material / RepaintBoundary: both snapshot the
+                                        // macOS VLC AppKitView as a white layer between frames.
+                                        ExcludeFocus(
+                                          child: _buildIptvVideoSurface(),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              if (!mini && !pipMode && _s._coverDeadSurface)
+                                const Positioned.fill(
+                                  child: IgnorePointer(
+                                    child: ColoredBox(color: Colors.black),
+                                  ),
+                                ),
+                              // Text subs (SRT/VTT) — Flutter overlay for MediaKit and Exo
+                              // (native SubtitleView inside PlatformView is GONE, issue 230).
+                              if (!hideFullChrome &&
+                                  !_s._exoBackend &&
+                                  _s._player != null &&
+                                  !_s._isNativeSubtitle)
+                                StreamBuilder<List<String>>(
+                                  stream: _s._player!.stream.subtitle,
+                                  initialData: _s._player!.state.subtitle,
+                                  builder: (context, snap) {
+                                    final text =
+                                        formatPlayerSubtitleOverlayText(
+                                          snap.data ?? const [],
+                                        );
+                                    if (text.isEmpty)
+                                      return const SizedBox.shrink();
+                                    return _buildIptvCuePositioned(text);
+                                  },
+                                ),
+                              if (!hideFullChrome && _s._exoBackend)
+                                ValueListenableBuilder<List<String>>(
+                                  valueListenable: _s._exoCueTexts,
+                                  builder: (context, lines, _) {
+                                    final text =
+                                        formatPlayerSubtitleOverlayText(lines);
+                                    if (text.isEmpty)
+                                      return const SizedBox.shrink();
+                                    return _buildIptvCuePositioned(text);
+                                  },
+                                ),
+                              // Reconnect/switch always; Buffering… only when picture stalled.
+                              if (!hideFullChrome && _s._showPlaybackBanner)
+                                _buildBanner(),
+                              if (!hideFullChrome && _s._escapeExitArmed)
+                                const PlayerEscapeExitHint(),
+                              // Top bar + bottom controls (below guide when open).
+                              // Hidden entirely while PiP / mini is active.
+                              if (!hideFullChrome)
+                                AnimatedOpacity(
+                                  duration: const Duration(milliseconds: 220),
+                                  opacity: _s._controlsVisible ? 1 : 0,
+                                  child: ExcludeFocus(
+                                    excluding:
+                                        liveUseTvFocus(context) &&
+                                        (!_s._controlsVisible ||
+                                            _s._guideVisible ||
+                                            _s._searchVisible),
+                                    child: IgnorePointer(
+                                      ignoring:
+                                          !_s._controlsVisible ||
+                                          _s._guideVisible ||
+                                          _s._searchVisible,
+                                      child: _buildOverlay(compact),
+                                    ),
+                                  ),
+                                ),
+                              // Positioned.fill must be a direct Stack child — wrapping the
+                              // overlay (which used to return Positioned) in RepaintBoundary
+                              // caused ParentDataWidget spam on every frame.
+                              if (!hideFullChrome &&
+                                  _s._searchVisible &&
+                                  widget.channelGuide != null)
+                                Positioned.fill(
+                                  child: RepaintBoundary(
+                                    child: ChannelSearchOverlay(
+                                      guide: widget.channelGuide!,
+                                      currentChannelId: _s._currentChannelId,
+                                      onChannelSelected:
+                                          _onSearchChannelSelected,
+                                      onClose: () => setState(() {
+                                        _s._searchVisible = false;
+                                        _scheduleHideControls();
+                                      }),
+                                      isTv: liveUseTvFocus(context),
+                                      resolvePlayUrl: (ch) =>
+                                          PortalGuideWire.resolvePlayUrl(
+                                            widget.channelGuide!,
+                                            ch,
+                                          ),
+                                      probeHealth: (ch) =>
+                                          PortalGuideWire.probeHealth(
+                                            widget.channelGuide!,
+                                            ch,
+                                          ),
+                                    ),
+                                  ),
+                                ),
+                              if (!hideFullChrome &&
+                                  _s._guideVisible &&
+                                  widget.channelGuide != null)
+                                Positioned.fill(
+                                  child: RepaintBoundary(
+                                    child: _buildChannelGuidePanel(),
+                                  ),
+                                ),
+                              if (!hideFullChrome && epgFuture != null)
+                                Positioned(
+                                  right: GuideChromeStyle.len(context, 16),
+                                  bottom: _floatingEpgBottomInset(
+                                    context,
+                                    compact,
+                                  ),
+                                  child: AnimatedOpacity(
+                                    duration: const Duration(milliseconds: 220),
+                                    opacity: _s._controlsVisible ? 1 : 0,
+                                    child: IgnorePointer(
+                                      ignoring: !_s._controlsVisible,
+                                      child: PortalFloatingEpg(
+                                        key: ValueKey(_s._floatingEpgKey),
+                                        future: epgFuture,
+                                        maxWidth:
+                                            GuideChromeStyle.floatingEpgMaxWidthOf(
+                                              context,
+                                              compact: compact,
+                                            ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                            ],
                           ),
-                          probeHealth: (ch) => PortalGuideWire.probeHealth(
-                            widget.channelGuide!,
-                            ch,
-                          ),
                         ),
-                      ),
-                    ),
-                  if (!hideFullChrome &&
-                      _s._guideVisible &&
-                      widget.channelGuide != null)
-                    Positioned.fill(
-                      child: RepaintBoundary(
-                        child: _buildChannelGuidePanel(),
-                      ),
-                    ),
-                  if (!hideFullChrome && epgFuture != null)
-                    Positioned(
-                      right: GuideChromeStyle.len(context, 16),
-                      bottom: _floatingEpgBottomInset(context, compact),
-                      child: AnimatedOpacity(
-                        duration: const Duration(milliseconds: 220),
-                        opacity: _s._controlsVisible ? 1 : 0,
-                        child: IgnorePointer(
-                          ignoring: !_s._controlsVisible,
-                          child: PortalFloatingEpg(
-                            key: ValueKey(_s._floatingEpgKey),
-                            future: epgFuture,
-                            maxWidth: GuideChromeStyle.floatingEpgMaxWidthOf(
-                              context,
-                              compact: compact,
-                            ),
+                        if (!hideFullChrome && !mini && !pipMode)
+                          const PlayerAirPlayCastingNotice(),
+                        if (!hideFullChrome && DesktopWindowChrome.isDesktop)
+                          DesktopWindowChrome.overlayDragStrip(
+                            showCaption: _s._controlsVisible,
                           ),
-                        ),
-                      ),
+                      ],
                     ),
-                ],
-              ),
-                ),
-                if (!hideFullChrome && !mini && !pipMode)
-                  const PlayerAirPlayCastingNotice(),
-                if (!hideFullChrome && DesktopWindowChrome.isDesktop)
-                  DesktopWindowChrome.overlayDragStrip(
-                    showCaption: _s._controlsVisible,
                   ),
-              ],
-            ),
-          ),
-        ),
-      ),
+                ),
+              ),
             ),
             if (mini) _buildInAppMiniCorner(),
             if (pipMode)
@@ -1629,9 +1643,7 @@ mixin _LiveSportsPlayerUi on ConsumerState<LiveSportsPlayerScreen> {
                 _s._statusBanner ?? 'Buffering…',
                 style: GoogleFonts.plusJakartaSans(
                   color: Colors.white,
-                  fontSize: tv
-                      ? ShellTokens.playerChromeStatusFontSizeTv
-                      : 14,
+                  fontSize: tv ? ShellTokens.playerChromeStatusFontSizeTv : 14,
                   fontWeight: FontWeight.w500,
                 ),
               ),
@@ -1662,13 +1674,14 @@ mixin _LiveSportsPlayerUi on ConsumerState<LiveSportsPlayerScreen> {
           children: [
             _buildTopBar(compact),
             const Spacer(),
-            // VOD scrubber, native LIVE badge, or MediaKit live EPG track.
+            // VOD scrubber, native LIVE badge, or live EPG/progress track.
+            // Always mounts while chrome is up so TV transport ↑ has a target.
             if (_showProgressChrome)
               _isVodChrome
                   ? _buildSeekbar(compact)
                   : (_s._avPlayerBackend || _s._vlcBackend)
-                      ? _buildNativeLiveStatusRow(compact)
-                      : _buildLiveProgressBar(compact),
+                  ? _buildNativeLiveStatusRow(compact)
+                  : _buildLiveProgressBar(compact),
             _buildBottomBar(compact),
           ],
         ),
@@ -1696,7 +1709,6 @@ mixin _LiveSportsPlayerUi on ConsumerState<LiveSportsPlayerScreen> {
   double _topBarLeftPadding(BuildContext context) =>
       ShellTokens.chromeScale(16, tv: ShellPaintScope.usesTvDensityOf(context));
 
-
   Future<void> _togglePip() async {
     await PipService.instance.toggle();
     if (!mounted) return;
@@ -1717,8 +1729,7 @@ mixin _LiveSportsPlayerUi on ConsumerState<LiveSportsPlayerScreen> {
       surface: widget.vodPlayback
           ? BuiltInPlayerMenuSurface.iptvVod
           : BuiltInPlayerMenuSurface.iptvLive,
-      streamUrl:
-          _s._sources.isNotEmpty ? _s._sources[_s._sourceIdx].url : '',
+      streamUrl: _s._sources.isNotEmpty ? _s._sources[_s._sourceIdx].url : '',
       onSelect: ({builtInEngine, externalPlayer}) async {
         if (builtInEngine != null) {
           await _s._switchBuiltInEngine(
@@ -1789,25 +1800,22 @@ mixin _LiveSportsPlayerUi on ConsumerState<LiveSportsPlayerScreen> {
   }
 
   Widget _buildTopBar(bool compact) {
-    return DesktopWindowChrome.wrapDragMove(
-      _buildTopBarActions(compact),
-    );
+    return DesktopWindowChrome.wrapDragMove(_buildTopBarActions(compact));
   }
 
   Widget _buildTopBarActions(bool compact) {
     // PiP / Cast are phone/desktop chrome - hide on leanback TV (matches VOD).
     final showPip =
         PipService.instance.isSupported && liveShowPointerChrome(context);
-    final showCast = liveShowPointerChrome(context) &&
+    final showCast =
+        liveShowPointerChrome(context) &&
         (CastingService.instance.isAirPlayAvailable ||
             CastingService.instance.isChromecastAvailable);
     // Mini button always on desktop pointer chrome — setting only gates Escape.
     final showInAppMini = liveShowPointerChrome(context);
     final tv = liveUseTvFocus(context);
     void downFromTop() {
-      if (_showProgressChrome &&
-          _isVodChrome &&
-          _s._seekFocus.canRequestFocus) {
+      if (_showProgressChrome && _s._seekFocus.canRequestFocus) {
         _s._seekFocus.requestFocus();
         return;
       }
@@ -1862,7 +1870,10 @@ mixin _LiveSportsPlayerUi on ConsumerState<LiveSportsPlayerScreen> {
       padding: EdgeInsets.fromLTRB(
         _topBarLeftPadding(context),
         _topBarTopPadding(context),
-        ShellTokens.chromeScale(8, tv: ShellPaintScope.usesTvDensityOf(context)),
+        ShellTokens.chromeScale(
+          8,
+          tv: ShellPaintScope.usesTvDensityOf(context),
+        ),
         0,
       ),
       child: SizedBox(
@@ -1993,32 +2004,32 @@ mixin _LiveSportsPlayerUi on ConsumerState<LiveSportsPlayerScreen> {
                       duration: _s._duration,
                       startTime: _s._castStartTime,
                       subtitle: _s._castSubtitle,
-                    handoff: CastHandoff(
-                      onStarted: () => unawaited(_s._pauseForCast()),
-                      onEnded: (resumeAt) =>
-                          unawaited(_s._resumeAfterCast(resumeAt)),
-                      onPosition: (pos) {
-                        if (_s._disposed || _s._isSeeking) return;
-                        if (!mounted) return;
-                        if (_s._isVod) {
-                          setState(() => _s._position = pos);
-                        } else {
-                          _s._position = pos;
-                        }
-                      },
-                      onPlaying: (playing) {
-                        if (_s._disposed || !mounted) return;
-                        setState(() {
-                          _s._playing = playing;
-                          _s._userPlayWhenReady = playing;
-                          if (!playing) {
-                            _s._pausedAt ??= DateTime.now();
+                      handoff: CastHandoff(
+                        onStarted: () => unawaited(_s._pauseForCast()),
+                        onEnded: (resumeAt) =>
+                            unawaited(_s._resumeAfterCast(resumeAt)),
+                        onPosition: (pos) {
+                          if (_s._disposed || _s._isSeeking) return;
+                          if (!mounted) return;
+                          if (_s._isVod) {
+                            setState(() => _s._position = pos);
                           } else {
-                            _s._pausedAt = null;
+                            _s._position = pos;
                           }
-                        });
-                      },
-                    ),
+                        },
+                        onPlaying: (playing) {
+                          if (_s._disposed || !mounted) return;
+                          setState(() {
+                            _s._playing = playing;
+                            _s._userPlayWhenReady = playing;
+                            if (!playing) {
+                              _s._pausedAt ??= DateTime.now();
+                            } else {
+                              _s._pausedAt = null;
+                            }
+                          });
+                        },
+                      ),
                     );
                     _scheduleHideControls();
                   },
@@ -2058,15 +2069,13 @@ mixin _LiveSportsPlayerUi on ConsumerState<LiveSportsPlayerScreen> {
     final tv = ShellPaintScope.usesTvDensityOf(context);
     final size = compact
         ? (tv
-            ? ShellTokens.playerChromeProgressLogoSizeCompactTv
-            : ShellTokens.playerChromeProgressLogoSizeCompact)
+              ? ShellTokens.playerChromeProgressLogoSizeCompactTv
+              : ShellTokens.playerChromeProgressLogoSizeCompact)
         : (tv
-            ? ShellTokens.playerChromeProgressLogoSizeTv
-            : ShellTokens.playerChromeProgressLogoSize);
+              ? ShellTokens.playerChromeProgressLogoSizeTv
+              : ShellTokens.playerChromeProgressLogoSize);
     return ClipRRect(
-      borderRadius: BorderRadius.circular(
-        ShellTokens.chromeScale(8, tv: tv),
-      ),
+      borderRadius: BorderRadius.circular(ShellTokens.chromeScale(8, tv: tv)),
       child: ForjaNetworkImage(
         key: ValueKey(_s._logoUrl!),
         url: _s._logoUrl!,
@@ -2088,6 +2097,52 @@ mixin _LiveSportsPlayerUi on ConsumerState<LiveSportsPlayerScreen> {
     return elapsed / total;
   }
 
+  /// Attach [_seekFocus] to the middle progress/LIVE row so transport ↑ can
+  /// land here while chrome is up (issue 130).
+  Widget _wrapProgressTvFocus(Widget child) {
+    if (!liveUseTvFocus(context)) return child;
+    return Focus(
+      focusNode: _s._seekFocus,
+      onKeyEvent: (node, event) {
+        if (!shellTvIsNavigationKey(event)) {
+          return KeyEventResult.ignored;
+        }
+        final key = event.logicalKey;
+        if (key == LogicalKeyboardKey.arrowUp) {
+          _claimBackFocus();
+          return KeyEventResult.handled;
+        }
+        if (key == LogicalKeyboardKey.arrowDown) {
+          _claimPlayFocus();
+          return KeyEventResult.handled;
+        }
+        if (key == LogicalKeyboardKey.arrowLeft) {
+          _claimPlayFocus();
+          return KeyEventResult.handled;
+        }
+        if (key == LogicalKeyboardKey.arrowRight) {
+          _focusRightFromSeekbar();
+          return KeyEventResult.handled;
+        }
+        return KeyEventResult.ignored;
+      },
+      child: Builder(
+        builder: (ctx) {
+          final focused = Focus.of(ctx).hasFocus;
+          return DecoratedBox(
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(4),
+              border: focused
+                  ? Border.all(color: ForjaShellColors.brandGreen, width: 1.5)
+                  : null,
+            ),
+            child: child,
+          );
+        },
+      ),
+    );
+  }
+
   /// AVPlayer / VLC live: no playhead scrubber — LIVE + status dot only.
   /// Green = playing · yellow = buffering/reconnect · red = stalled/error.
   Widget _buildNativeLiveStatusRow(bool compact) {
@@ -2107,118 +2162,126 @@ mixin _LiveSportsPlayerUi on ConsumerState<LiveSportsPlayerScreen> {
     final fontSize = tv
         ? ShellTokens.playerChromeStatusFontSizeTv
         : (compact ? 12.0 : 13.0);
-    return Container(
-      padding: EdgeInsets.symmetric(
-        horizontal: ShellTokens.chromeScale(compact ? 16 : 24, tv: tv),
-        vertical: ShellTokens.chromeScale(compact ? 6 : 8, tv: tv),
-      ),
-      child: Row(
-        children: [
-          if ((_s._logoUrl ?? '').isNotEmpty) ...[
-            _buildChannelLogo(compact),
-            SizedBox(
-              width: ShellTokens.chromeScale(compact ? 10 : 16, tv: tv),
+    return _wrapProgressTvFocus(
+      Container(
+        padding: EdgeInsets.symmetric(
+          horizontal: ShellTokens.chromeScale(compact ? 16 : 24, tv: tv),
+          vertical: ShellTokens.chromeScale(compact ? 6 : 8, tv: tv),
+        ),
+        child: Row(
+          children: [
+            if ((_s._logoUrl ?? '').isNotEmpty) ...[
+              _buildChannelLogo(compact),
+              SizedBox(
+                width: ShellTokens.chromeScale(compact ? 10 : 16, tv: tv),
+              ),
+            ],
+            Container(
+              width: ShellTokens.chromeScale(8, tv: tv),
+              height: ShellTokens.chromeScale(8, tv: tv),
+              decoration: BoxDecoration(
+                color: dot,
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(color: dot.withValues(alpha: 0.55), blurRadius: 6),
+                ],
+              ),
             ),
+            SizedBox(width: ShellTokens.chromeScale(8, tv: tv)),
+            Text(
+              'LIVE',
+              style: GoogleFonts.plusJakartaSans(
+                color: Colors.white,
+                fontSize: fontSize,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 0.8,
+                shadows: const [Shadow(blurRadius: 6, color: Colors.black87)],
+              ),
+            ),
+            const Spacer(),
           ],
-          Container(
-            width: ShellTokens.chromeScale(8, tv: tv),
-            height: ShellTokens.chromeScale(8, tv: tv),
-            decoration: BoxDecoration(
-              color: dot,
-              shape: BoxShape.circle,
-              boxShadow: [
-                BoxShadow(
-                  color: dot.withValues(alpha: 0.55),
-                  blurRadius: 6,
-                ),
-              ],
-            ),
-          ),
-          SizedBox(width: ShellTokens.chromeScale(8, tv: tv)),
-          Text(
-            'LIVE',
-            style: GoogleFonts.plusJakartaSans(
-              color: Colors.white,
-              fontSize: fontSize,
-              fontWeight: FontWeight.w700,
-              letterSpacing: 0.8,
-              shadows: const [Shadow(blurRadius: 6, color: Colors.black87)],
-            ),
-          ),
-          const Spacer(),
-        ],
+        ),
       ),
     );
   }
 
   /// Live chrome: same logo + track + time row as VOD, driven by EPG when
   /// available (read-only). Pure live with no guide still shows a full track.
-  /// Not used on Android TV Exo ([_showProgressChrome] is false there).
+  /// Exo live on ATV mounts this (or LIVE status) so D-pad ↑ has a middle row.
   Widget _buildLiveProgressBar(bool compact) {
     final future = _floatingEpgFuture();
     final tv = ShellPaintScope.usesTvDensityOf(context);
-    return Container(
-      padding: EdgeInsets.symmetric(
-        horizontal: ShellTokens.chromeScale(compact ? 16 : 24, tv: tv),
-        vertical: ShellTokens.chromeScale(compact ? 2 : 4, tv: tv),
-      ),
-      child: Row(
-        children: [
-          if ((_s._logoUrl ?? '').isNotEmpty) ...[
-            _buildChannelLogo(compact),
+    return _wrapProgressTvFocus(
+      Container(
+        padding: EdgeInsets.symmetric(
+          horizontal: ShellTokens.chromeScale(compact ? 16 : 24, tv: tv),
+          vertical: ShellTokens.chromeScale(compact ? 2 : 4, tv: tv),
+        ),
+        child: Row(
+          children: [
+            if ((_s._logoUrl ?? '').isNotEmpty) ...[
+              _buildChannelLogo(compact),
+              SizedBox(
+                width: ShellTokens.chromeScale(compact ? 10 : 16, tv: tv),
+              ),
+            ],
+            Expanded(
+              child: future == null
+                  ? _liveProgressTrack(value: 1.0, compact: compact)
+                  : FutureBuilder<List<EpgEntry>>(
+                      future: future,
+                      builder: (context, snap) {
+                        final data = snap.data ?? const <EpgEntry>[];
+                        EpgEntry? nowEntry;
+                        if (data.isNotEmpty) {
+                          nowEntry = data.cast<EpgEntry?>().firstWhere(
+                            (e) => e!.isNow,
+                            orElse: () => data.first,
+                          );
+                        }
+                        final value = nowEntry != null
+                            ? _epgProgress(nowEntry).clamp(0.0, 1.0)
+                            : 1.0;
+                        return _liveProgressTrack(
+                          value: value,
+                          compact: compact,
+                        );
+                      },
+                    ),
+            ),
             SizedBox(
-              width: ShellTokens.chromeScale(compact ? 10 : 16, tv: tv),
+              width: ShellTokens.chromeScale(compact ? 84 : 100, tv: tv),
+              child: future == null
+                  ? _liveProgressTimeLabel('LIVE', compact)
+                  : FutureBuilder<List<EpgEntry>>(
+                      future: future,
+                      builder: (context, snap) {
+                        final data = snap.data ?? const <EpgEntry>[];
+                        EpgEntry? nowEntry;
+                        if (data.isNotEmpty) {
+                          nowEntry = data.cast<EpgEntry?>().firstWhere(
+                            (e) => e!.isNow,
+                            orElse: () => data.first,
+                          );
+                        }
+                        if (nowEntry == null || !nowEntry.isNow) {
+                          return _liveProgressTimeLabel('LIVE', compact);
+                        }
+                        final elapsed = DateTime.now().difference(
+                          nowEntry.start,
+                        );
+                        final safe = elapsed.isNegative
+                            ? Duration.zero
+                            : elapsed;
+                        return _liveProgressTimeLabel(
+                          _LiveSportsPlayerScreenState._fmtDur(safe),
+                          compact,
+                        );
+                      },
+                    ),
             ),
           ],
-          Expanded(
-            child: future == null
-                ? _liveProgressTrack(value: 1.0, compact: compact)
-                : FutureBuilder<List<EpgEntry>>(
-                    future: future,
-                    builder: (context, snap) {
-                      final data = snap.data ?? const <EpgEntry>[];
-                      EpgEntry? nowEntry;
-                      if (data.isNotEmpty) {
-                        nowEntry = data.cast<EpgEntry?>().firstWhere(
-                          (e) => e!.isNow,
-                          orElse: () => data.first,
-                        );
-                      }
-                      final value = nowEntry != null
-                          ? _epgProgress(nowEntry).clamp(0.0, 1.0)
-                          : 1.0;
-                      return _liveProgressTrack(value: value, compact: compact);
-                    },
-                  ),
-          ),
-          SizedBox(
-            width: ShellTokens.chromeScale(compact ? 84 : 100, tv: tv),
-            child: future == null
-                ? _liveProgressTimeLabel('LIVE', compact)
-                : FutureBuilder<List<EpgEntry>>(
-                    future: future,
-                    builder: (context, snap) {
-                      final data = snap.data ?? const <EpgEntry>[];
-                      EpgEntry? nowEntry;
-                      if (data.isNotEmpty) {
-                        nowEntry = data.cast<EpgEntry?>().firstWhere(
-                          (e) => e!.isNow,
-                          orElse: () => data.first,
-                        );
-                      }
-                      if (nowEntry == null || !nowEntry.isNow) {
-                        return _liveProgressTimeLabel('LIVE', compact);
-                      }
-                      final elapsed = DateTime.now().difference(nowEntry.start);
-                      final safe = elapsed.isNegative ? Duration.zero : elapsed;
-                      return _liveProgressTimeLabel(
-                        _LiveSportsPlayerScreenState._fmtDur(safe),
-                        compact,
-                      );
-                    },
-                  ),
-          ),
-        ],
+        ),
       ),
     );
   }
@@ -2268,7 +2331,6 @@ mixin _LiveSportsPlayerUi on ConsumerState<LiveSportsPlayerScreen> {
   /// VOD chrome before duration is known — keeps the progress row visible.
   Widget _buildVodSeekbarWaiting(bool compact) {
     final pos = _s._position;
-    final tv = liveUseTvFocus(context);
     final densify = ShellPaintScope.usesTvDensityOf(context);
     final bar = SizedBox(
       height: ShellTokens.chromeScale(
@@ -2291,93 +2353,38 @@ mixin _LiveSportsPlayerUi on ConsumerState<LiveSportsPlayerScreen> {
         ),
       ),
     );
-    final track = !tv
-        ? bar
-        : Focus(
-            focusNode: _s._seekFocus,
-            onKeyEvent: (node, event) {
-              if (!shellTvIsNavigationKey(event)) {
-                return KeyEventResult.ignored;
-              }
-              final key = event.logicalKey;
-              if (key == LogicalKeyboardKey.arrowUp) {
-                _claimBackFocus();
-                return KeyEventResult.handled;
-              }
-              if (key == LogicalKeyboardKey.arrowDown) {
-                _claimPlayFocus();
-                return KeyEventResult.handled;
-              }
-              if (key == LogicalKeyboardKey.arrowLeft) {
-                _claimPlayFocus();
-                return KeyEventResult.handled;
-              }
-              if (key == LogicalKeyboardKey.arrowRight) {
-                _focusRightFromSeekbar();
-                return KeyEventResult.handled;
-              }
-              return KeyEventResult.ignored;
-            },
-            child: Builder(
-              builder: (ctx) {
-                final focused = Focus.of(ctx).hasFocus;
-                return DecoratedBox(
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(4),
-                    border: focused
-                        ? Border.all(
-                            color: ForjaShellColors.brandGreen,
-                            width: 1.5,
-                          )
-                        : null,
-                  ),
-                  child: bar,
-                );
-              },
-            ),
-          );
-    return Container(
-      padding: EdgeInsets.symmetric(
-        horizontal: ShellTokens.chromeScale(
-          compact ? 16 : 24,
-          tv: ShellPaintScope.usesTvDensityOf(context),
+    return _wrapProgressTvFocus(
+      Container(
+        padding: EdgeInsets.symmetric(
+          horizontal: ShellTokens.chromeScale(compact ? 16 : 24, tv: densify),
+          vertical: ShellTokens.chromeScale(compact ? 2 : 4, tv: densify),
         ),
-        vertical: ShellTokens.chromeScale(
-          compact ? 2 : 4,
-          tv: ShellPaintScope.usesTvDensityOf(context),
-        ),
-      ),
-      child: Row(
-        children: [
-          if ((_s._logoUrl ?? '').isNotEmpty) ...[
-            _buildChannelLogo(compact),
+        child: Row(
+          children: [
+            if ((_s._logoUrl ?? '').isNotEmpty) ...[
+              _buildChannelLogo(compact),
+              SizedBox(
+                width: ShellTokens.chromeScale(compact ? 10 : 16, tv: densify),
+              ),
+            ],
+            Expanded(child: bar),
             SizedBox(
-              width: ShellTokens.chromeScale(
-                compact ? 10 : 16,
-                tv: ShellPaintScope.usesTvDensityOf(context),
+              width: ShellTokens.chromeScale(compact ? 100 : 120, tv: densify),
+              child: Text(
+                '${_LiveSportsPlayerScreenState._fmtDur(pos)} / --:--',
+                textAlign: TextAlign.right,
+                style: GoogleFonts.spaceMono(
+                  color: Colors.white,
+                  fontSize: densify
+                      ? ShellTokens.playerChromeTimeFontSizeTv
+                      : (compact ? 12.0 : 13.0),
+                  fontFeatures: const [FontFeature.tabularFigures()],
+                  shadows: const [Shadow(blurRadius: 6, color: Colors.black87)],
+                ),
               ),
             ),
           ],
-          Expanded(child: track),
-          SizedBox(
-            width: ShellTokens.chromeScale(
-              compact ? 100 : 120,
-              tv: ShellPaintScope.usesTvDensityOf(context),
-            ),
-            child: Text(
-              '${_LiveSportsPlayerScreenState._fmtDur(pos)} / --:--',
-              textAlign: TextAlign.right,
-              style: GoogleFonts.spaceMono(
-                color: Colors.white,
-                fontSize: ShellPaintScope.usesTvDensityOf(context)
-                    ? ShellTokens.playerChromeTimeFontSizeTv
-                    : (compact ? 12.0 : 13.0),
-                fontFeatures: const [FontFeature.tabularFigures()],
-                shadows: const [Shadow(blurRadius: 6, color: Colors.black87)],
-              ),
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }
@@ -2530,30 +2537,23 @@ mixin _LiveSportsPlayerUi on ConsumerState<LiveSportsPlayerScreen> {
     final tvDensity = ShellPaintScope.usesTvDensityOf(context);
     final controlGap = ShellTokens.chromeScale(14, tv: tvDensity);
 
-    /// Left transport (Play / Replay) → seekbar when present, else Back.
+    /// Left transport (Play / Replay) → progress/seek. Stay put if unavailable —
+    /// never jump past the middle row to Back (issue 130).
     void upFromLeftControls() {
-      if (_showProgressChrome &&
-          _isVodChrome &&
-          _s._seekFocus.canRequestFocus) {
+      if (_showProgressChrome && _s._seekFocus.canRequestFocus) {
         _s._seekFocus.requestFocus();
-        return;
       }
-      _claimBackFocus();
     }
 
-    /// Right chrome (Search / Guide / bottom Source) → top-right Player (not Back).
+    /// Right chrome (Search / Guide / bottom Source) → progress, else Player.
     void upFromRightControls() {
-      if (_showProgressChrome &&
-          _isVodChrome &&
-          _s._seekFocus.canRequestFocus) {
+      if (_showProgressChrome && _s._seekFocus.canRequestFocus) {
         _s._seekFocus.requestFocus();
         return;
       }
       if (_s._playerMenuFocus.canRequestFocus) {
         _s._playerMenuFocus.requestFocus();
-        return;
       }
-      _claimBackFocus();
     }
 
     void claim(FocusNode node) {
@@ -2800,8 +2800,7 @@ mixin _LiveSportsPlayerUi on ConsumerState<LiveSportsPlayerScreen> {
                         onTap: _toggleMute,
                         onLongPress: () {
                           setState(
-                            () =>
-                                _s._showVolumeSlider = !_s._showVolumeSlider,
+                            () => _s._showVolumeSlider = !_s._showVolumeSlider,
                           );
                           if (_s._showVolumeSlider) {
                             _s._hideVolumeTimer?.cancel();
@@ -2824,12 +2823,12 @@ mixin _LiveSportsPlayerUi on ConsumerState<LiveSportsPlayerScreen> {
                               child: SliderTheme(
                                 data: GuideChromeStyle.sliderTheme(context)
                                     .copyWith(
-                                  inactiveTrackColor: Colors.white24,
-                                  trackHeight: 3,
-                                  thumbShape: const RoundSliderThumbShape(
-                                    enabledThumbRadius: 7,
-                                  ),
-                                ),
+                                      inactiveTrackColor: Colors.white24,
+                                      trackHeight: 3,
+                                      thumbShape: const RoundSliderThumbShape(
+                                        enabledThumbRadius: 7,
+                                      ),
+                                    ),
                                 child: Slider(
                                   value: _s._volume.clamp(0.0, 100.0),
                                   min: 0,
@@ -3186,7 +3185,8 @@ class _IptvSportsSourcePickerList extends StatefulWidget {
       _IptvSportsSourcePickerListState();
 }
 
-class _IptvSportsSourcePickerListState extends State<_IptvSportsSourcePickerList> {
+class _IptvSportsSourcePickerListState
+    extends State<_IptvSportsSourcePickerList> {
   final _healthProbe = LazyUrlHealthProbe();
   final _rowKeys = <int, GlobalKey>{};
 
@@ -3242,25 +3242,25 @@ class _IptvSportsSourcePickerListState extends State<_IptvSportsSourcePickerList
                     child: SourcesPanelChannelTile(
                       title: src.pickerTitle,
                       provider: provider,
-                      badges: [
-                        if (src.liveStreamHd) 'HD',
-                      ],
+                      badges: [if (src.liveStreamHd) 'HD'],
                       viewerCount: src.liveViewerCount > 0
                           ? src.liveViewerCount
                           : null,
                       footerLabel: host,
                       selected: selected,
-                      autofocus: selected &&
+                      autofocus:
+                          selected &&
                           PlayerPopupListFocusScope.claimAutofocus(context),
-                      probeHealthCache:
-                          _healthProbe.healthFor(iptvLiveSourceProbeKey(src)),
+                      probeHealthCache: _healthProbe.healthFor(
+                        iptvLiveSourceProbeKey(src),
+                      ),
                       onHoverProbe:
                           !iptvLiveSourceCanHoverProbe(src) || selected
-                              ? null
-                              : () => iptvLiveSourceRunHoverProbe(
-                                    src,
-                                    healthProbe: _healthProbe,
-                                  ),
+                          ? null
+                          : () => iptvLiveSourceRunHoverProbe(
+                              src,
+                              healthProbe: _healthProbe,
+                            ),
                       onPlay: () => widget.onPick(i),
                     ),
                   );
@@ -3297,9 +3297,7 @@ String? iptvSportsSourceProviderLabel(LivePlaySource source) {
 String? iptvSportsSourceEmbedHost(LivePlaySource source) {
   final embed = (source.liveEngineEmbedUrl ?? '').trim();
   final url = source.url.trim();
-  final probe = embed.isNotEmpty
-      ? embed
-      : (url.startsWith('http') ? url : '');
+  final probe = embed.isNotEmpty ? embed : (url.startsWith('http') ? url : '');
   if (probe.isEmpty) return null;
   final host = Uri.tryParse(probe)?.host.trim() ?? '';
   return host.isEmpty ? null : host;
@@ -3389,9 +3387,7 @@ PlayerPopupListTile buildIptvSourcePickerTile({
     leading: live ? iptvLiveSourceLeading(src) : sourceLogo(src),
     label: src.pickerTitle,
     badge: live ? src.liveProviderBadge : null,
-    badgeColor: live
-        ? iptvLiveProviderBadgeColor(src.liveProviderBadge)
-        : null,
+    badgeColor: live ? iptvLiveProviderBadgeColor(src.liveProviderBadge) : null,
     subtitle: iptvSourcePickerSubtitle(
       src,
       liveSourceKind: liveSourceKind,
