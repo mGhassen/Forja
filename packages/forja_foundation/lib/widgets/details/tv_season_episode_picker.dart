@@ -428,16 +428,25 @@ class _TvSeasonEpisodePickerState extends State<TvSeasonEpisodePicker> {
           positionMs: pos,
           durationMs: dur,
           onTap: () {
+            if (airDate.notShippedYet) {
+              widget.onEpisodeSelected(epNum);
+              setState(() => _tvArmedEpisode = epNum);
+              return;
+            }
+            // Remote: OK on the armed (selected) card plays it. The card is
+            // the only focus target in the row, so a second OK must not
+            // depend on a nested play node taking focus.
+            if (tvFocus &&
+                armed &&
+                selected &&
+                widget.onEpisodePlay != null) {
+              widget.onEpisodePlay!(epNum);
+              return;
+            }
             widget.onEpisodeSelected(epNum);
             setState(() => _tvArmedEpisode = epNum);
-            if (airDate.notShippedYet) return;
             WidgetsBinding.instance.addPostFrameCallback((_) {
               _scrollToSelectedEpisode();
-              if (tvFocus &&
-                  widget.onEpisodePlay != null &&
-                  _episodePlayFocus.canRequestFocus) {
-                _episodePlayFocus.requestFocus();
-              }
             });
           },
           onPlay: airDate.notShippedYet || widget.onEpisodePlay == null
@@ -620,6 +629,15 @@ class _TvSeasonEpisodePickerState extends State<TvSeasonEpisodePicker> {
       watched: watched,
       unaired: unaired,
       onTap: () {
+        // Remote: OK on the selected chip plays it; a chip has no play icon.
+        if (tvFocus &&
+            selected &&
+            _tvArmedEpisode == epNum &&
+            !unaired &&
+            widget.onEpisodePlay != null) {
+          widget.onEpisodePlay!(epNum);
+          return;
+        }
         widget.onEpisodeSelected(epNum);
         setState(() => _tvArmedEpisode = epNum);
       },
