@@ -69,7 +69,14 @@ pub fn fetch_all(
         return Ok(vec![]);
     }
 
-    let picks: Vec<_> = hits.into_iter().take(max_results).collect();
+    // The site searches by substring: "Rick and Morty S01E02" also returns
+    // "Rick and Morty: The Anime S01E02". Keep only releases named after the
+    // requested title (and episode tag when given).
+    let picks: Vec<_> = hits
+        .into_iter()
+        .filter(|h| release_matches_request(&h.name, title, season, episode))
+        .take(max_results)
+        .collect();
     let mut out = Vec::new();
     let mut seen_direct = HashSet::new();
     let mut translated_langs = HashSet::new();
@@ -124,6 +131,111 @@ pub fn fetch_all(
 
 struct SearchHit {
     detail_url: String,
+    /// Release name from the result page (anchor text, else the html slug).
+    name: String,
+}
+
+/// Normalize a title or release name to lowercase words: `'` is dropped
+/// (Grey's → greys, as scene names spell it), `&` becomes "and", `.`/`_`/`-`
+/// and punctuation become spaces, so "Rick.and.Morty.S01E02.480p" compares
+/// with "Rick and Morty".
+fn title_words(s: &str) -> Vec<String> {
+    s.to_lowercase()
+        .replace(['\'', '\u{2019}'], "")
+        .replace('&', " and ")
+        .replace(['.', '_', '-', ':', '(', ')', '[', ']', ',', '!', '?', ';'], " ")
+        .split_whitespace()
+        .map(|w| w.to_string())
+        .collect()
+}
+
+/// Title words to match against a release: a trailing `(2005)` / `(US)`
+/// qualifier or a bare trailing year in the catalog title is not part of the
+/// release name ("Doctor Who (2005)" → doctor who; "The Office (US)" → the
+/// office).
+fn request_title_words(title: &str) -> Vec<String> {
+    let trimmed = title.trim();
+    let base = match trimmed.rfind('(') {
+        Some(i) if trimmed.ends_with(')') => trimmed[..i].trim(),
+        _ => trimmed,
+    };
+    let mut words = title_words(base);
+    if words.len() > 1 {
+        let last = &words[words.len() - 1];
+        if last.len() == 4 && last.chars().all(|c| c.is_ascii_digit()) {
+            words.pop();
+        }
+    }
+    words
+}
+
+/// `(season, episode)` of a scene tag such as `s01e02` or `s1e2`.
+fn episode_tag(word: &str) -> Option<(i32, i32)> {
+    let rest = word.strip_prefix('s')?;
+    let i = rest.find('e')?;
+    let (s, e) = (&rest[..i], &rest[i + 1..]);
+    if s.is_empty() || e.is_empty() {
+        return None;
+    }
+    Some((s.parse().ok()?, e.parse().ok()?))
+}
+
+fn is_episode_tag(word: &str) -> bool {
+    episode_tag(word).is_some()
+}
+
+/// True when the release is named after [title]: the words before the
+/// episode tag (or the whole name without one) start with the title words,
+/// followed by nothing, a year, a region tag (US/UK/…) or release noise that
+/// starts with a digit (1080p, 720p). Extra title words are another show:
+/// "Rick and Morty The Anime S01E02" does not match "Rick and Morty";
+/// "Rick.and.Morty.S01E02.480p" and "Dune.2021.1080p" do.
+pub fn release_matches_request(
+    release: &str,
+    title: &str,
+    season: Option<i32>,
+    episode: Option<i32>,
+) -> bool {
+    let want = request_title_words(title);
+    if want.is_empty() {
+        return true;
+    }
+    let words = title_words(release);
+    if words.is_empty() {
+        return false;
+    }
+    let tag_at = words.iter().position(|w| is_episode_tag(w));
+    if let (Some(s), Some(e)) = (season, episode) {
+        match tag_at.and_then(|i| episode_tag(&words[i])) {
+            Some((ts, te)) if ts == s && te == e => {}
+            Some(_) => return false,
+            // No tag at all: keep (the site may slug a whole-season pack).
+            None => {}
+        }
+    }
+    let head: Vec<&str> = match tag_at {
+        Some(i) => words[..i].iter().map(|w| w.as_str()).collect(),
+        None => words.iter().map(|w| w.as_str()).collect(),
+    };
+    if head.len() < want.len() {
+        return false;
+    }
+    if !head.iter().zip(want.iter()).all(|(a, b)| *a == b.as_str()) {
+        return false;
+    }
+    let mut extra = head[want.len()..].iter();
+    loop {
+        match extra.next() {
+            None => return true,
+            Some(w) if w.starts_with(|c: char| c.is_ascii_digit()) => return true,
+            Some(w) if is_region_tag(w) => continue,
+            Some(_) => return false,
+        }
+    }
+}
+
+fn is_region_tag(word: &str) -> bool {
+    matches!(word, "us" | "uk" | "au" | "ca" | "nz")
 }
 
 struct LangEntry {
@@ -153,8 +265,14 @@ fn search(query: &str) -> Result<Vec<SearchHit>, String> {
         if !seen.insert(rel.to_string()) {
             continue;
         }
+        let anchor = cap.get(4).map(|m| m.as_str().trim()).unwrap_or("");
+        let slug = cap
+            .get(3)
+            .map(|m| m.as_str().trim_end_matches(".html"))
+            .unwrap_or("");
         out.push(SearchHit {
             detail_url: format!("{ORIGIN}/{rel}"),
+            name: if anchor.is_empty() { slug.to_string() } else { anchor.to_string() },
         });
     }
     Ok(out)
@@ -280,4 +398,104 @@ fn language_label(code: &str) -> String {
         }
     }
     code.to_string()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::release_matches_request;
+
+    #[test]
+    fn same_title_release_matches() {
+        assert!(release_matches_request(
+            "Rick.and.Morty.S01E02.480p.x264-RUBiK",
+            "Rick and Morty",
+            Some(1),
+            Some(2),
+        ));
+        assert!(release_matches_request(
+            "Rick and Morty - S01E02 - Lawnmower Dog",
+            "Rick and Morty",
+            Some(1),
+            Some(2),
+        ));
+    }
+
+    #[test]
+    fn other_show_sharing_the_prefix_is_rejected() {
+        assert!(!release_matches_request(
+            "Rick.and.Morty.The.Anime.S01E02.480p.x264-RUBiK",
+            "Rick and Morty",
+            Some(1),
+            Some(2),
+        ));
+        assert!(!release_matches_request(
+            "Rick and Morty The Anime S01E02",
+            "Rick and Morty",
+            Some(1),
+            Some(2),
+        ));
+    }
+
+    #[test]
+    fn wrong_episode_tag_is_rejected() {
+        assert!(!release_matches_request(
+            "Rick.and.Morty.S01E03.720p",
+            "Rick and Morty",
+            Some(1),
+            Some(2),
+        ));
+    }
+
+    #[test]
+    fn year_suffix_and_movies_match() {
+        assert!(release_matches_request("Dune.2021.1080p", "Dune", None, None));
+        assert!(release_matches_request("Dune (2021)", "Dune", None, None));
+        assert!(!release_matches_request("Dune Part Two 2024", "Dune", None, None));
+        assert!(release_matches_request(
+            "The.Office.US.S01E02.720p",
+            "The Office",
+            Some(1),
+            Some(2),
+        ));
+        assert!(release_matches_request(
+            "The.Office.S01E02.720p",
+            "The Office (US)",
+            Some(1),
+            Some(2),
+        ));
+        assert!(release_matches_request(
+            "Doctor.Who.S01E01",
+            "Doctor Who (2005)",
+            Some(1),
+            Some(1),
+        ));
+    }
+
+    #[test]
+    fn apostrophes_ampersands_and_short_tags() {
+        assert!(release_matches_request(
+            "Greys.Anatomy.S01E01.720p",
+            "Grey's Anatomy",
+            Some(1),
+            Some(1),
+        ));
+        assert!(release_matches_request(
+            "Law.and.Order.S01E02",
+            "Law & Order",
+            Some(1),
+            Some(2),
+        ));
+        assert!(release_matches_request(
+            "Rick and Morty S1E2",
+            "Rick and Morty",
+            Some(1),
+            Some(2),
+        ));
+        assert!(!release_matches_request(
+            "Rick and Morty S1E3",
+            "Rick and Morty",
+            Some(1),
+            Some(2),
+        ));
+    }
 }

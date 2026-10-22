@@ -58,6 +58,7 @@ PlayerKitEpisode _kitEpisodeRow({
     thumbnailUrl: thumb,
     airDateLabel: air.label,
     notShippedYet: air.notShippedYet,
+    season: video.season,
   );
 }
 

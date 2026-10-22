@@ -3352,22 +3352,34 @@ Future<bool> validateStreamSourceForCheck({
 }
 
 /// Index of [current] in a flat hub episode list, or null if not found.
-int? hubEpisodeIndex(List<PlayerKitEpisode> episodes, num current) {
+/// Index of [current] in the hub list. When [season] is known and rows carry
+/// seasons, the row of that season wins; rows without a season tag (flat
+/// lists) match by number alone. Falls back to the first number match.
+int? hubEpisodeIndex(
+  List<PlayerKitEpisode> episodes,
+  num current, {
+  int? season,
+}) {
+  int? numberOnly;
   for (var i = 0; i < episodes.length; i++) {
-    if (episodes[i].number == current) return i;
+    final e = episodes[i];
+    if (e.number != current) continue;
+    if (season == null || e.season == null || e.season == season) return i;
+    numberOnly ??= i;
   }
-  return null;
+  return numberOnly;
 }
 
 /// Whether hub playback has a previous / next list entry for [current].
 ({bool hasPrev, bool hasNext}) adjacentHubEpisodeFlags(
   List<PlayerKitEpisode>? episodes,
-  num? current,
-) {
+  num? current, {
+  int? season,
+}) {
   if (episodes == null || episodes.isEmpty || current == null) {
     return (hasPrev: false, hasNext: false);
   }
-  final idx = hubEpisodeIndex(episodes, current);
+  final idx = hubEpisodeIndex(episodes, current, season: season);
   if (idx == null) return (hasPrev: false, hasNext: false);
   return (hasPrev: idx > 0, hasNext: nextAiredHubEpisode(episodes, idx) != null);
 }

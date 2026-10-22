@@ -796,10 +796,10 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
         final bufMs = (event['buffered'] as num?)?.toInt() ?? 0;
         final pos = Duration(milliseconds: posMs);
         final dur = durMs > 0 ? Duration(milliseconds: durMs) : _duration;
+        // Any next-episode path (host callback, hub list, TMDB) arms the
+        // chip and the auto-next countdown, not only the host callback.
         final nearEnd =
-            widget.hasNextEpisode &&
-            widget.onNextEpisode != null &&
-            isNearEndOfEpisode(pos, dur);
+            _hasNextEpisodeAdjacent && isNearEndOfEpisode(pos, dur);
         // The controls overlay is always built (hidden via AnimatedOpacity, not
         // removed), so an unconditional setState here re-laid-out the whole
         // player tree twice a second over the platform view (issue 151).
@@ -822,6 +822,22 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
         setState(() {
           _showControls = true;
         });
+        // Credits shorter than the near-end window: auto next still advances
+        // once the stream ends, unless the viewer dismissed it. Only a natural
+        // end counts — an `ended` at 40 % (dead CDN, truncated file) keeps the
+        // viewer on this episode at the stalled position.
+        if (_hasNextEpisodeAdjacent &&
+            !_loadingNextEp &&
+            !_autoNextDismissed &&
+            SettingsService.autoNextEpisodeNotifier.value &&
+            (_nearEndOfEpisode ||
+                shouldPinSeekBarAtEof(
+                  uiPosition: _position,
+                  duration: _duration,
+                ))) {
+          _autoNextCountdown = false;
+          unawaited(_nextEpisode());
+        }
         break;
       case 'error':
         final msg = event['message']?.toString() ?? 'Playback error';
@@ -1401,6 +1417,7 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
         context: context,
         episodes: widget.episodes!,
         currentEpisode: widget.hubEpisodeNumber ?? widget.selectedEpisode ?? 1,
+        currentSeason: widget.selectedSeason,
         onEpisodeSelected: (ep) async {
           setState(() => _loadingNextEp = true);
           try {
@@ -2040,7 +2057,11 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
   Future<void> _refreshAdjacentEpisodeFlags() async {
     final current = widget.hubEpisodeNumber ?? widget.selectedEpisode;
     if (widget.episodes != null && widget.episodes!.isNotEmpty) {
-      final flags = adjacentHubEpisodeFlags(widget.episodes, current);
+      final flags = adjacentHubEpisodeFlags(
+        widget.episodes,
+        current,
+        season: widget.selectedSeason,
+      );
       if (!mounted) return;
       setState(() {
         _hasPrevEpisodeAdjacent = flags.hasPrev;
@@ -2084,7 +2105,11 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
     if (widget.episodes != null &&
         widget.onHubEpisodeSelected != null &&
         current != null) {
-      final idx = hubEpisodeIndex(widget.episodes!, current);
+      final idx = hubEpisodeIndex(
+        widget.episodes!,
+        current,
+        season: widget.selectedSeason,
+      );
       if (idx == null || idx <= 0) return;
       final prev = widget.episodes![idx - 1];
       setState(() => _loadingNextEp = true);
@@ -2118,10 +2143,7 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
   }
 
   bool get _showNextEpChip =>
-      widget.hasNextEpisode &&
-      widget.onNextEpisode != null &&
-      _nearEndOfEpisode &&
-      !_loadingNextEp;
+      _hasNextEpisodeAdjacent && _nearEndOfEpisode && !_loadingNextEp;
 
   /// Next Episode chip shows or hides (caller repaints). Auto next arms the
   /// countdown ring; leaving the window clears the X for the next pass.
@@ -2198,7 +2220,11 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
     if (widget.episodes != null && widget.onHubEpisodeSelected != null) {
       final current = widget.hubEpisodeNumber ?? widget.selectedEpisode;
       if (current == null) return;
-      final idx = hubEpisodeIndex(widget.episodes!, current);
+      final idx = hubEpisodeIndex(
+        widget.episodes!,
+        current,
+        season: widget.selectedSeason,
+      );
       if (idx == null) return;
       final next = nextAiredHubEpisode(widget.episodes!, idx);
       if (next == null) return;
@@ -2220,9 +2246,16 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
     if (widget.movie?.mediaType == 'tv' &&
         widget.selectedSeason != null &&
         widget.selectedEpisode != null) {
-      final next = await _computeNextTmdbEpisode();
-      if (next == null || !mounted) return;
-      await _switchToEpisode(next.season, next.episode);
+      // Claim the switch before the TMDB lookup: the countdown, the chip and
+      // the end-of-stream trigger must not race into two switches.
+      setState(() => _loadingNextEp = true);
+      try {
+        final next = await _computeNextTmdbEpisode();
+        if (next == null || !mounted) return;
+        await _switchToEpisode(next.season, next.episode);
+      } finally {
+        if (mounted) setState(() => _loadingNextEp = false);
+      }
     }
   }
 
