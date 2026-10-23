@@ -473,7 +473,8 @@ mixin _MobilePlayerPlayback
       logPeakstormResume(
         '_initPlayback resumeAt',
         target: resumeAt,
-        detail: 'widget.start=${widget.startPosition?.inSeconds}s '
+        detail:
+            'widget.start=${widget.startPosition?.inSeconds}s '
             'override=${seekOverride?.inSeconds}s',
       );
     }
@@ -709,8 +710,10 @@ mixin _MobilePlayerPlayback
                   _s._showControls = true;
                 });
               }
-              final isLocalFile = openUrl.startsWith('file://') ||
-                  (openUrl.startsWith('/') && !isLocalTorrentStreamUrl(openUrl));
+              final isLocalFile =
+                  openUrl.startsWith('file://') ||
+                  (openUrl.startsWith('/') &&
+                      !isLocalTorrentStreamUrl(openUrl));
               if (_s._providerPinned ||
                   widget.streamsPrevalidated ||
                   widget.pinSource ||
@@ -719,8 +722,8 @@ mixin _MobilePlayerPlayback
                   message: isLocalFile
                       ? 'Downloaded file can’t be played'
                       : isTorrent
-                          ? 'Torrent stream failed to open.'
-                          : 'Playback failed.',
+                      ? 'Torrent stream failed to open.'
+                      : 'Playback failed.',
                 );
               } else {
                 await _autoFallbackToNextProvider();
@@ -1029,12 +1032,11 @@ mixin _MobilePlayerPlayback
     try {
       final ok = await attemptNetworkPlaybackRemount(
         isCancelled: () => _s._disposed || !mounted || _s._hasError,
-        remount: () =>
-            _remountCurrentStreamAt(
-              resumeAt,
-              allowFallbackInit: false,
-              showReconnectingStatus: false,
-            ),
+        remount: () => _remountCurrentStreamAt(
+          resumeAt,
+          allowFallbackInit: false,
+          showReconnectingStatus: false,
+        ),
       );
       if (ok) {
         _s._statusController.complete();
@@ -1709,7 +1711,9 @@ mixin _MobilePlayerPlayback
     if (embedded.isEmpty) return;
     if (embedded.length != _s._embeddedSubtitleTrackCount) {
       _s._embeddedSubtitleTrackCount = embedded.length;
-      _s._embeddedSubtitleAutoApplied = false;
+      if (!_s._userPickedExternalSubtitle) {
+        _s._embeddedSubtitleAutoApplied = false;
+      }
     }
     if (_s._embeddedSubtitleAutoApplied) return;
     _s._embeddedSubtitleAutoTimer?.cancel();

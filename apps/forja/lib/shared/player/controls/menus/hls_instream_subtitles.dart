@@ -2,7 +2,9 @@ import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 import 'package:forja/shared/player/resolvers/track_auto_select.dart';
+import 'package:forja/shared/utils/language_display.dart';
 import 'package:http/http.dart' as http;
+import 'package:media_kit/media_kit.dart';
 
 /// One HLS subtitle rendition kept off the demuxed track list until a
 /// subtitle command. Listed from the playlist so the menu does not wait
@@ -80,7 +82,10 @@ List<HlsInStreamSubtitle> parseHlsInStreamSubtitles(
       ),
     );
   }
-  for (final sub in parseForjaHlsSubtitles(playlist, playlistUri: playlistUri)) {
+  for (final sub in parseForjaHlsSubtitles(
+    playlist,
+    playlistUri: playlistUri,
+  )) {
     add(sub);
   }
   return out;
@@ -114,6 +119,66 @@ List<Map<String, dynamic>> hlsInStreamSubtitleRows(
         'sourceName': 'In-stream',
       },
   ];
+}
+
+bool _hlsInStreamLabelMatch(HlsInStreamSubtitle sub, SubtitleTrack track) {
+  final trackTitle = (track.title ?? '').trim();
+  final subName = sub.name.trim();
+  if (subName.isNotEmpty && trackTitle.isNotEmpty && trackTitle == subName) {
+    return true;
+  }
+  final subLang = languageGroupKey(
+    sub.language.isNotEmpty ? sub.language : sub.name,
+  );
+  final trackLang = languageGroupKey(track.language ?? track.title);
+  if (subLang.isEmpty || trackLang.isEmpty || subLang == 'und') return false;
+  return subLang == trackLang;
+}
+
+/// True when the active mpv track is this playlist rendition (uri id or
+/// demux twin after [SubtitleTrack.uri] attach).
+bool hlsInStreamSubtitleSelected(
+  SubtitleTrack active,
+  HlsInStreamSubtitle sub,
+) {
+  if (active.id == 'no' || active.id == 'auto' || active.id.isEmpty) {
+    return false;
+  }
+  if (active.id == sub.uri) return true;
+  return _hlsInStreamLabelMatch(sub, active);
+}
+
+/// Uri/sideload already on the player for this HLS row — select it instead
+/// of appending another [SubtitleTrack.uri] (each append grows mpv's list).
+SubtitleTrack? findAttachedHlsInStreamTrack(
+  Iterable<SubtitleTrack> tracks,
+  HlsInStreamSubtitle sub,
+) {
+  for (final t in tracks) {
+    if (t.id == 'no' || t.id == 'auto') continue;
+    if (t.id == sub.uri) return t;
+    if (!(isSideloadedExternalSubtitleTrack(t) || t.uri || t.data)) continue;
+    if (_hlsInStreamLabelMatch(sub, t)) return t;
+  }
+  return null;
+}
+
+/// Hide a demuxed menu row that twins an HLS playlist entry while that
+/// rendition is selected or already URI-attached.
+bool embeddedTrackTwinsHlsInStream(
+  SubtitleTrack track, {
+  required Iterable<HlsInStreamSubtitle> hls,
+  required SubtitleTrack active,
+  required Iterable<SubtitleTrack> allTracks,
+}) {
+  if (track.id == 'no' || track.id == 'auto') return false;
+  for (final sub in hls) {
+    if (track.id == sub.uri) return true;
+    if (!_hlsInStreamLabelMatch(sub, track)) continue;
+    if (hlsInStreamSubtitleSelected(active, sub)) return true;
+    if (findAttachedHlsInStreamTrack(allTracks, sub) != null) return true;
+  }
+  return false;
 }
 
 bool isLocalHlsPlayUrl(String url) {
@@ -414,7 +479,10 @@ Future<List<HlsInStreamSubtitle>> _loadHlsInStreamSubtitles(
 
   final out = <HlsInStreamSubtitle>[];
   final seen = <String>{};
-  for (final sub in parseHlsInStreamSubtitles(text.body, playlistUri: text.uri)) {
+  for (final sub in parseHlsInStreamSubtitles(
+    text.body,
+    playlistUri: text.uri,
+  )) {
     if (!seen.add(sub.uri)) continue;
     out.add(sub);
   }

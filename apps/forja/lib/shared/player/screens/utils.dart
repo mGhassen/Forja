@@ -36,6 +36,7 @@ import 'package:forja/shared/playback/sources/stream_playback_knobs.dart';
 import 'package:forja/shared/playback/open/stream_open_pipeline.dart';
 import 'package:forja/shared/player/controls/episodes/catalog_episode.dart';
 import 'package:forja/shared/player/controls/menus/hls_instream_audio.dart';
+import 'package:forja/shared/player/controls/menus/hls_instream_subtitles.dart';
 import 'package:forja/shared/player/screens/peakstorm_hls_trim.dart';
 import 'package:forja/shared/player/screens/player_peakstorm_resume_diag.dart';
 import 'package:forja/shared/player/platform/ipv4_connect_proxy.dart';
@@ -1823,8 +1824,7 @@ bool isHealthyPlayheadSample({
 Duration recoveryResumePosition({
   required Duration lastHealthy,
   required Duration shown,
-}) =>
-    lastHealthy > Duration.zero ? lastHealthy : shown;
+}) => lastHealthy > Duration.zero ? lastHealthy : shown;
 
 /// keep-open EOF: `completed` can re-fire while mpv position is still 0/end.
 /// If the UI already scrubbed away, do not yank the bar back to duration.
@@ -1936,7 +1936,8 @@ Future<void> seekPlayerPreservingProgress(
     );
   }
 
-  final torrentSeek = ensureTorrentSeekable ||
+  final torrentSeek =
+      ensureTorrentSeekable ||
       isTorrentSeekPlayback(
         streamUrl: streamUrl,
         mediaPath: mediaPath,
@@ -3005,27 +3006,34 @@ List<SubtitleTrack> embeddedSubtitleTracks(Iterable<SubtitleTrack> tracks) {
       .toList();
 }
 
-/// In-stream tracks for the subtitle menu — hides mpv copies of active external subs.
+/// In-stream tracks for the subtitle menu — hides mpv copies of active
+/// external / HLS URI attaches so the playlist row is listed once.
 List<SubtitleTrack> menuEmbeddedSubtitleTracks(
   Player player, {
   String? selectedExternalSubUrl,
   List<Map<String, dynamic>> externalSubtitles = const [],
+  List<HlsInStreamSubtitle> hlsInStream = const [],
 }) {
-  final embedded = embeddedSubtitleTracks(player.state.tracks.subtitle);
-  if (selectedExternalSubUrl == null) return embedded;
+  final all = player.state.tracks.subtitle;
+  final embedded = embeddedSubtitleTracks(all);
+  final active = player.state.track.subtitle;
 
   Map<String, dynamic>? selectedOnline;
-  for (final s in externalSubtitles) {
-    if (s['url']?.toString() == selectedExternalSubUrl) {
-      selectedOnline = s;
-      break;
+  if (selectedExternalSubUrl != null) {
+    for (final s in externalSubtitles) {
+      if (s['url']?.toString() == selectedExternalSubUrl) {
+        selectedOnline = s;
+        break;
+      }
     }
   }
   final selectedDisplay = selectedOnline?['display']?.toString();
-  final active = player.state.track.subtitle;
 
   return embedded.where((t) {
-    if (active.id != 'no' && active.id != 'auto' && t.id == active.id) {
+    if (selectedExternalSubUrl != null &&
+        active.id != 'no' &&
+        active.id != 'auto' &&
+        t.id == active.id) {
       return false;
     }
     if (selectedDisplay != null &&
@@ -3033,9 +3041,24 @@ List<SubtitleTrack> menuEmbeddedSubtitleTracks(
         t.title!.trim() == selectedDisplay.trim()) {
       return false;
     }
-    if ((active.uri || active.data) &&
+    // URI/data attaches (online or HLS) leave a demux twin — hide it even
+    // when selectedExternalSubUrl is null (HLS pick clears that field).
+    if ((active.uri ||
+            active.data ||
+            isSideloadedExternalSubtitleTrack(active)) &&
+        active.id != 'no' &&
+        active.id != 'auto' &&
         t.title == active.title &&
         t.language == active.language) {
+      return false;
+    }
+    if (hlsInStream.isNotEmpty &&
+        embeddedTrackTwinsHlsInStream(
+          t,
+          hls: hlsInStream,
+          active: active,
+          allTracks: all,
+        )) {
       return false;
     }
     return true;
@@ -3381,11 +3404,17 @@ int? hubEpisodeIndex(
   }
   final idx = hubEpisodeIndex(episodes, current, season: season);
   if (idx == null) return (hasPrev: false, hasNext: false);
-  return (hasPrev: idx > 0, hasNext: nextAiredHubEpisode(episodes, idx) != null);
+  return (
+    hasPrev: idx > 0,
+    hasNext: nextAiredHubEpisode(episodes, idx) != null,
+  );
 }
 
 /// The hub list entry after [idx], or null when it is missing or not aired yet.
-PlayerKitEpisode? nextAiredHubEpisode(List<PlayerKitEpisode> episodes, int idx) {
+PlayerKitEpisode? nextAiredHubEpisode(
+  List<PlayerKitEpisode> episodes,
+  int idx,
+) {
   if (idx < 0 || idx >= episodes.length - 1) return null;
   final next = episodes[idx + 1];
   return next.notShippedYet ? null : next;
@@ -3425,7 +3454,9 @@ Future<({int season, int episode})?> nextAiredTmdbEpisode({
   if (season >= totalSeasons) return null;
   final nextSeason = await tmdb.getTvSeasonDetails(tvId, season + 1);
   final nextRows = nextSeason['episodes'] as List<dynamic>? ?? const [];
-  return aired(findEpisode(nextRows, 1)) ? (season: season + 1, episode: 1) : null;
+  return aired(findEpisode(nextRows, 1))
+      ? (season: season + 1, episode: 1)
+      : null;
 }
 
 /// Whether the floating "Next Episode" chip should show.

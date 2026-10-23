@@ -1718,7 +1718,11 @@ mixin _DesktopPlayerPlayback
     if (embedded.isEmpty) return;
     if (embedded.length != _s._embeddedSubtitleTrackCount) {
       _s._embeddedSubtitleTrackCount = embedded.length;
-      _s._embeddedSubtitleAutoApplied = false;
+      // URI attach grows the demux list; do not clear a user menu latch or
+      // auto will SubtitleTrack.uri again and duplicate In-stream rows.
+      if (!_s._userPickedExternalSubtitle) {
+        _s._embeddedSubtitleAutoApplied = false;
+      }
     }
     if (_s._embeddedSubtitleAutoApplied) return;
     _s._embeddedSubtitleAutoTimer?.cancel();

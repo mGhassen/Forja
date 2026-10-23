@@ -23,11 +23,8 @@ Map<String, String>? currentPlaybackHttpHeaders(Player player) {
 }
 
 /// Fired when the user picks Off, an embedded track, or an external file.
-typedef PlayerSubtitleSelectionCallback = void Function({
-  required bool off,
-  String? language,
-  String? title,
-});
+typedef PlayerSubtitleSelectionCallback =
+    void Function({required bool off, String? language, String? title});
 
 class PlayerSubtitleMenu {
   static Future<void> show(
@@ -42,13 +39,17 @@ class PlayerSubtitleMenu {
     required Future<bool> Function(Map<String, dynamic> sub) loadOnlineSubtitle,
     required VoidCallback onSubtitleSettings,
     PlayerSubtitleSelectionCallback? onSubtitleSelected,
+
     /// IPTV / junk titles — opens a "search by name" dialog.
     VoidCallback? onTitleSearch,
+
     /// Shown under the list when set (e.g. cleaned query in use).
     String? titleSearchHint,
+
     /// HLS master (or play URL) to read in-stream renditions from. The demuxer
     /// does not list them until one is loaded.
     String? streamUrl,
+
     /// Headers for reading [streamUrl]. Defaults to the current media headers.
     Map<String, String>? streamHeaders,
     BuildContext? anchorContext,
@@ -183,41 +184,43 @@ class PlayerSubtitleMenu {
         onOpenLanguage: (key, online) {
           WidgetsBinding.instance.addPostFrameCallback((_) {
             if (!context.mounted) return;
-            unawaited(_openLanguage(
-              context,
-              langKey: key,
-              online: online,
-              streamUrl: streamUrl,
-              streamHeaders: streamHeaders,
-              selectedExternalSubUrl: selectedExternalSubUrl,
-              externalSubtitles: externalSubtitles,
-              player: player,
-              updateSubVisibility: updateSubVisibility,
-              onExternalUrlChanged: onExternalUrlChanged,
-              loadOnlineSubtitle: loadOnlineSubtitle,
-              onSubtitleSelected: onSubtitleSelected,
-              onRoot: () => _openRoot(
+            unawaited(
+              _openLanguage(
                 context,
-                player: player,
-                externalSubtitles: externalSubtitles,
-                selectedExternalSubUrl: selectedExternalSubUrl,
-                isFetchingSubs: isFetchingSubs,
-                updateSubVisibility: updateSubVisibility,
-                onExternalUrlChanged: onExternalUrlChanged,
-                onNativeSubtitleChanged: onNativeSubtitleChanged,
-                loadOnlineSubtitle: loadOnlineSubtitle,
-                onSubtitleSettings: onSubtitleSettings,
-                onSubtitleSelected: onSubtitleSelected,
-                onTitleSearch: onTitleSearch,
-                titleSearchHint: titleSearchHint,
+                langKey: key,
+                online: online,
                 streamUrl: streamUrl,
                 streamHeaders: streamHeaders,
+                selectedExternalSubUrl: selectedExternalSubUrl,
+                externalSubtitles: externalSubtitles,
+                player: player,
+                updateSubVisibility: updateSubVisibility,
+                onExternalUrlChanged: onExternalUrlChanged,
+                loadOnlineSubtitle: loadOnlineSubtitle,
+                onSubtitleSelected: onSubtitleSelected,
+                onRoot: () => _openRoot(
+                  context,
+                  player: player,
+                  externalSubtitles: externalSubtitles,
+                  selectedExternalSubUrl: selectedExternalSubUrl,
+                  isFetchingSubs: isFetchingSubs,
+                  updateSubVisibility: updateSubVisibility,
+                  onExternalUrlChanged: onExternalUrlChanged,
+                  onNativeSubtitleChanged: onNativeSubtitleChanged,
+                  loadOnlineSubtitle: loadOnlineSubtitle,
+                  onSubtitleSettings: onSubtitleSettings,
+                  onSubtitleSelected: onSubtitleSelected,
+                  onTitleSearch: onTitleSearch,
+                  titleSearchHint: titleSearchHint,
+                  streamUrl: streamUrl,
+                  streamHeaders: streamHeaders,
+                  margin: margin,
+                  anchorContext: anchorContext,
+                ),
                 margin: margin,
                 anchorContext: anchorContext,
               ),
-              margin: margin,
-              anchorContext: anchorContext,
-            ));
+            );
           });
         },
       ),
@@ -292,7 +295,7 @@ class _MkSubtitleFolders extends StatefulWidget {
   final String? titleSearchHint;
   final VoidCallback? onTitleSearch;
   final void Function(String langKey, List<Map<String, dynamic>> online)
-      onOpenLanguage;
+  onOpenLanguage;
 
   @override
   State<_MkSubtitleFolders> createState() => _MkSubtitleFoldersState();
@@ -334,8 +337,7 @@ class _MkSubtitleFoldersState extends State<_MkSubtitleFolders> {
 
   Future<void> _syncActive() async {
     final current = widget.player.state.track.subtitle;
-    final off =
-        current.id == 'no' && widget.selectedExternalSubUrl == null;
+    final off = current.id == 'no' && widget.selectedExternalSubUrl == null;
     String? id;
     if (!off && widget.selectedExternalSubUrl == null) {
       final active = await resolveActiveSubtitleTrack(widget.player);
@@ -351,6 +353,7 @@ class _MkSubtitleFoldersState extends State<_MkSubtitleFolders> {
       widget.player,
       selectedExternalSubUrl: widget.selectedExternalSubUrl,
       externalSubtitles: widget.externalSubtitles,
+      hlsInStream: _hls,
     );
     final byLangOnline = <String, List<Map<String, dynamic>>>{};
     for (final s in widget.externalSubtitles) {
@@ -364,17 +367,14 @@ class _MkSubtitleFoldersState extends State<_MkSubtitleFolders> {
     }
     final byLangHls = <String, List<HlsInStreamSubtitle>>{};
     for (final s in _hls) {
-      final key = languageGroupKey(
-        s.language.isNotEmpty ? s.language : s.name,
-      );
+      final key = languageGroupKey(s.language.isNotEmpty ? s.language : s.name);
       byLangHls.putIfAbsent(key, () => []).add(s);
     }
     final folderKeys = <String>{
       ...byLangOnline.keys,
       ...byLangEmbedded.keys,
       ...byLangHls.keys,
-    }.toList()
-      ..sort(compareLanguageCodes);
+    }.toList()..sort(compareLanguageCodes);
     final subtitlesOff =
         widget.player.state.track.subtitle.id == 'no' &&
         widget.selectedExternalSubUrl == null;
@@ -426,10 +426,13 @@ class _MkSubtitleFoldersState extends State<_MkSubtitleFolders> {
               final hls = byLangHls[key] ?? const [];
               final active = widget.player.state.track.subtitle;
               final hlsSelected = hls.any(
-                (s) => active.id == s.uri,
+                (s) => hlsInStreamSubtitleSelected(active, s),
               );
-              final hasSelected = !subtitlesOff &&
-                  (online.any((s) => s['url'] == widget.selectedExternalSubUrl) ||
+              final hasSelected =
+                  !subtitlesOff &&
+                  (online.any(
+                        (s) => s['url'] == widget.selectedExternalSubUrl,
+                      ) ||
                       hlsSelected ||
                       (widget.selectedExternalSubUrl == null &&
                           _selectedId != null &&
@@ -515,9 +518,7 @@ class _MkSubtitleLanguageState extends State<_MkSubtitleLanguage> {
       _hls = subs
           .where(
             (s) =>
-                languageGroupKey(
-                  s.language.isNotEmpty ? s.language : s.name,
-                ) ==
+                languageGroupKey(s.language.isNotEmpty ? s.language : s.name) ==
                 key,
           )
           .toList();
@@ -542,15 +543,29 @@ class _MkSubtitleLanguageState extends State<_MkSubtitleLanguage> {
       title: sub.name,
     );
     widget.onExternalUrlChanged(null);
-    final track = SubtitleTrack.uri(
-      sub.uri,
-      title: sub.name,
-      language: sub.language,
+    final active = widget.player.state.track.subtitle;
+    if (hlsInStreamSubtitleSelected(active, sub)) {
+      PlayerPopupPanel.dismiss();
+      return;
+    }
+    final existing = findAttachedHlsInStreamTrack(
+      widget.player.state.tracks.subtitle,
+      sub,
     );
     try {
       await preparePlayerExternalSubtitleSwitch(widget.player);
-      await setPlayerExternalSubtitle(widget.player, track);
-      widget.updateSubVisibility(track);
+      if (existing != null) {
+        await widget.player.setSubtitleTrack(existing);
+        widget.updateSubVisibility(existing);
+      } else {
+        final track = SubtitleTrack.uri(
+          sub.uri,
+          title: sub.name,
+          language: sub.language,
+        );
+        await setPlayerExternalSubtitle(widget.player, track);
+        widget.updateSubVisibility(track);
+      }
       PlayerPopupPanel.dismiss();
     } catch (e) {
       debugPrint('[PlayerSubtitleMenu] HLS in-stream sub failed: $e');
@@ -559,13 +574,15 @@ class _MkSubtitleLanguageState extends State<_MkSubtitleLanguage> {
 
   @override
   Widget build(BuildContext context) {
-    final embedded = menuEmbeddedSubtitleTracks(
-      widget.player,
-      selectedExternalSubUrl: widget.selectedExternalSubUrl,
-      externalSubtitles: widget.externalSubtitles,
-    ).where((t) {
-      return languageGroupKey(t.language ?? t.title) == widget.langKey;
-    });
+    final embedded =
+        menuEmbeddedSubtitleTracks(
+          widget.player,
+          selectedExternalSubUrl: widget.selectedExternalSubUrl,
+          externalSubtitles: widget.externalSubtitles,
+          hlsInStream: _hls,
+        ).where((t) {
+          return languageGroupKey(t.language ?? t.title) == widget.langKey;
+        });
     final active = widget.player.state.track.subtitle;
 
     return ListView(
@@ -580,7 +597,8 @@ class _MkSubtitleLanguageState extends State<_MkSubtitleLanguage> {
               language: t.language,
             ),
             subtitle: 'In-stream',
-            selected: _selectedId != null &&
+            selected:
+                _selectedId != null &&
                 widget.selectedExternalSubUrl == null &&
                 t.id == _selectedId,
             onTap: () async {
@@ -610,14 +628,15 @@ class _MkSubtitleLanguageState extends State<_MkSubtitleLanguage> {
                     language: s.language,
                   ),
             subtitle: 'In-stream',
-            selected: active.id == s.uri,
+            selected: hlsInStreamSubtitleSelected(active, s),
             onTap: () => unawaited(_pickHls(s)),
           ),
         for (final s in widget.online)
           PlayerPopupListTile(
-            label: s['display']?.toString() ??
-                languageDisplayName(widget.langKey),
-            subtitle: (s['translated'] == true ? 'Translated · ' : '') +
+            label:
+                s['display']?.toString() ?? languageDisplayName(widget.langKey),
+            subtitle:
+                (s['translated'] == true ? 'Translated · ' : '') +
                 (s['sourceName']?.toString() ?? 'opensubtitles'),
             selected: s['url'] == widget.selectedExternalSubUrl,
             onTap: () async {

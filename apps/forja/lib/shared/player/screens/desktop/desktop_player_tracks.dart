@@ -295,8 +295,8 @@ mixin _DesktopPlayerTracks
     if (_s._disposed || !mounted) return;
     // Only re-attach a sideloaded file if we were actually on one. In-stream
     // remount must not invent a Levrx apply while mux tracks are still empty.
-    final restoreExternal = _s._userPickedExternalSubtitle ||
-        _s._selectedExternalSubUrl != null;
+    final restoreExternal =
+        _s._userPickedExternalSubtitle || _s._selectedExternalSubUrl != null;
     await _maybeAutoPickExternalSubtitle(forcePlayerApply: restoreExternal);
   }
 
@@ -350,8 +350,9 @@ mixin _DesktopPlayerTracks
     // A matching mux track replaces an auto-picked Wyzie file. The online
     // result often lands first; leaving it selected skips the stream track.
     if (!_s._userPickedExternalSubtitle) {
-      final earlyEmbedded =
-          embeddedSubtitleTracks(_s._player.state.tracks.subtitle);
+      final earlyEmbedded = embeddedSubtitleTracks(
+        _s._player.state.tracks.subtitle,
+      );
       if (earlyEmbedded.isNotEmpty) {
         await _s._applyAutoSubtitle();
         if (_subtitleAutoCancelled(gen)) return;
@@ -392,7 +393,9 @@ mixin _DesktopPlayerTracks
       final providerOnly = providerAttachedSubtitles(
         all: _s._externalSubtitles.isNotEmpty
             ? _s._externalSubtitles
-            : List<Map<String, dynamic>>.from(widget.externalSubtitles ?? const []),
+            : List<Map<String, dynamic>>.from(
+                widget.externalSubtitles ?? const [],
+              ),
         providerUrls: _s._providerExternalSubUrls,
       );
       final providerCandidates = externalSubtitleAutoCandidates(
@@ -414,8 +417,7 @@ mixin _DesktopPlayerTracks
 
     if (_subtitleAutoCancelled(gen)) return;
     if (!_s._userPickedExternalSubtitle) {
-      final embedded =
-          embeddedSubtitleTracks(_s._player.state.tracks.subtitle);
+      final embedded = embeddedSubtitleTracks(_s._player.state.tracks.subtitle);
       if (embedded.isNotEmpty) {
         await _s._applyAutoSubtitle();
         if (_subtitleAutoCancelled(gen)) return;
@@ -457,10 +459,7 @@ mixin _DesktopPlayerTracks
       restrictScraped: restrictScrapedSubtitleAutoPick(
         mediaType: widget.movie?.mediaType,
         engineCategory: widget.movie != null && widget.enginePlaySession != null
-            ? engineCategoryForSession(
-                widget.enginePlaySession,
-                widget.movie!,
-              )
+            ? engineCategoryForSession(widget.enginePlaySession, widget.movie!)
             : null,
       ),
     );
@@ -517,20 +516,31 @@ mixin _DesktopPlayerTracks
     if (_subtitleAutoCancelled(gen) || pick == null) return false;
     final current = _s._player.state.track.subtitle;
     final title = current.title ?? '';
-    final already = current.id != 'no' &&
+    final already =
+        current.id != 'no' &&
         current.id != 'auto' &&
         current.id.isNotEmpty &&
         (current.id == pick.uri || (title.isNotEmpty && title == pick.name));
     if (already && _s._selectedExternalSubUrl == null) return true;
+    final existing = findAttachedHlsInStreamTrack(
+      _s._player.state.tracks.subtitle,
+      pick,
+    );
     try {
       await preparePlayerExternalSubtitleSwitch(_s._player);
       if (_subtitleAutoCancelled(gen)) return false;
-      final track = SubtitleTrack.uri(
-        pick.uri,
-        title: pick.name.isNotEmpty ? pick.name : pick.language,
-        language: pick.language,
-      );
-      await setPlayerExternalSubtitle(_s._player, track);
+      final SubtitleTrack track;
+      if (existing != null) {
+        track = existing;
+        await _s._player.setSubtitleTrack(existing);
+      } else {
+        track = SubtitleTrack.uri(
+          pick.uri,
+          title: pick.name.isNotEmpty ? pick.name : pick.language,
+          language: pick.language,
+        );
+        await setPlayerExternalSubtitle(_s._player, track);
+      }
       if (_s._disposed || !mounted) return true;
       _s._updateSubVisibility(track);
       if (mounted) setState(() => _s._selectedExternalSubUrl = null);
@@ -556,7 +566,7 @@ mixin _DesktopPlayerTracks
       updateSubVisibility: _s._updateSubVisibility,
       onExternalUrlChanged: (url) => setState(() {
         _s._selectedExternalSubUrl = url;
-        if (url == null) _s._userPickedExternalSubtitle = false;
+        if (url != null) _s._userPickedExternalSubtitle = true;
       }),
       onNativeSubtitleChanged: (v) => setState(() => _s._isNativeSubtitle = v),
       loadOnlineSubtitle: (s) => _loadOnlineSubtitle(s, userInitiated: true),
@@ -569,7 +579,9 @@ mixin _DesktopPlayerTracks
       onSubtitleSelected:
           ({required bool off, String? language, String? title}) {
             _s._embeddedSubtitleAutoApplied = true;
-            if (off) _s._userPickedExternalSubtitle = false;
+            // Keep auto-pick from re-attaching URI after a menu pick (HLS
+            // clears selectedExternalSubUrl; do not treat that as "unpick").
+            _s._userPickedExternalSubtitle = !off;
             unawaited(
               _rememberSubtitlePreference(
                 off: off,

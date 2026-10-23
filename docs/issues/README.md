@@ -510,6 +510,7 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [471-[open]-…](471-[open]-player-episode-panel-season-dropdown-collapsible-search.md) | Player Episodes season dropdown + collapsible search | P1 | Medium | open | 3/3 · A 0/2 | [459](459-[open]-android-tv-series-journey-search-space-episode-ok-next-season.md) |
 | [472-[fixed]-…](fixed/472-[fixed]-player-previous-episode-stale-hub-callback.md) | Previous episode no-ops after next | P1 | High | fixed | Complete · 3/3 · A 0/2 | — |
 | [473-[fixed]-…](fixed/473-[fixed]-my-list-open-with-size-persist-card.md) | My List Open with… size + persist/card update | P1 | High | fixed | Complete · 3/3 · A 0/2 | [400](400-[open]-my-list-open-with-hub-checkbox.md) |
+| [474-[fixed]-…](fixed/474-[fixed]-mediakit-hls-instream-subtitle-menu-twins.md) | MediaKit HLS in-stream subtitle menu twins on pick | P1 | High | fixed | Complete · 4/4 · A 1/3 | [458](fixed/458-[fixed]-exo-online-subtitle-pick-no-op-and-menu-twins.md) |
 
 **Migration parity (draft):** [018](018-[draft]-migration-playback-parity-unverified.md) → [019](019-[draft]-webstreamr-enginejobs-e2e-test-gap.md)–[022](022-[draft]-playback-widget-integration-tests.md).
 

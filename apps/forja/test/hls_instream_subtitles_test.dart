@@ -1,25 +1,30 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:forja/shared/player/controls/menus/hls_instream_subtitles.dart';
+import 'package:forja/shared/player/screens/utils.dart';
+import 'package:media_kit/media_kit.dart';
 
 void main() {
-  test('parseForjaHlsSubtitles reads proxy comments and resolves relative uris', () {
-    const body = '''
+  test(
+    'parseForjaHlsSubtitles reads proxy comments and resolves relative uris',
+    () {
+      const body = '''
 #EXTM3U
 #EXT-X-STREAM-INF:BANDWIDTH=1000
 video.m3u8
 #FORJA-SUB:lang=en&name=English&uri=subs/en.m3u8
 #FORJA-SUB:lang=es&name=Espa%C3%B1ol&uri=http%3A%2F%2F127.0.0.1%3A9%2Fhls-proxy%3Furl%3Dhttps%253A%252F%252Fcdn%252Fes.m3u8
 ''';
-    final playlist = Uri.parse('http://127.0.0.1:9/ext/abc/master.m3u8');
-    final subs = parseForjaHlsSubtitles(body, playlistUri: playlist);
-    expect(subs, hasLength(2));
-    expect(subs[0].language, 'en');
-    expect(subs[0].name, 'English');
-    expect(subs[0].uri, 'http://127.0.0.1:9/ext/abc/subs/en.m3u8');
-    expect(subs[1].language, 'es');
-    expect(subs[1].name, 'Español');
-    expect(subs[1].uri, contains('/hls-proxy?url='));
-  });
+      final playlist = Uri.parse('http://127.0.0.1:9/ext/abc/master.m3u8');
+      final subs = parseForjaHlsSubtitles(body, playlistUri: playlist);
+      expect(subs, hasLength(2));
+      expect(subs[0].language, 'en');
+      expect(subs[0].name, 'English');
+      expect(subs[0].uri, 'http://127.0.0.1:9/ext/abc/subs/en.m3u8');
+      expect(subs[1].language, 'es');
+      expect(subs[1].name, 'Español');
+      expect(subs[1].uri, contains('/hls-proxy?url='));
+    },
+  );
 
   test('parseHlsInStreamSubtitles reads EXT-X-MEDIA subtitle renditions', () {
     const body = '''
@@ -80,6 +85,68 @@ video.m3u8
     expect(isLocalHlsPlayUrl('https://cdn.example/master.m3u8'), isFalse);
   });
 
+  test('hlsInStreamSubtitleSelected matches uri id or demux title twin', () {
+    const sub = HlsInStreamSubtitle(
+      language: 'en',
+      name: 'English',
+      uri: 'https://cdn.example/en.vtt',
+    );
+    expect(
+      hlsInStreamSubtitleSelected(
+        SubtitleTrack('https://cdn.example/en.vtt', 'English', 'en'),
+        sub,
+      ),
+      isTrue,
+    );
+    expect(
+      hlsInStreamSubtitleSelected(
+        const SubtitleTrack('3', 'English', 'en'),
+        sub,
+      ),
+      isTrue,
+    );
+    expect(
+      hlsInStreamSubtitleSelected(
+        const SubtitleTrack('4', 'Spanish', 'es'),
+        sub,
+      ),
+      isFalse,
+    );
+  });
+
+  test('findAttachedHlsInStreamTrack prefers uri sideload over mux label', () {
+    const sub = HlsInStreamSubtitle(
+      language: 'en',
+      name: 'English',
+      uri: 'https://cdn.example/en.vtt',
+    );
+    final uri = SubtitleTrack.uri(sub.uri, title: 'English', language: 'en');
+    final mux = const SubtitleTrack('2', 'English', 'en');
+    expect(findAttachedHlsInStreamTrack([mux, uri], sub)?.id, uri.id);
+    expect(findAttachedHlsInStreamTrack([mux], sub), isNull);
+  });
+
+  test('menuEmbeddedSubtitleTracks hides demux twin of selected HLS', () {
+    const sub = HlsInStreamSubtitle(
+      language: 'en',
+      name: 'English',
+      uri: 'https://cdn.example/en.vtt',
+    );
+    // Pure unit: filter helpers used by the menu (no live Player).
+    final demuxTwin = const SubtitleTrack('3', 'English', 'en');
+    final active = SubtitleTrack.uri(sub.uri, title: 'English', language: 'en');
+    expect(
+      embeddedTrackTwinsHlsInStream(
+        demuxTwin,
+        hls: [sub],
+        active: active,
+        allTracks: [active, demuxTwin],
+      ),
+      isTrue,
+    );
+    expect(embeddedSubtitleTracks([active, demuxTwin]).map((t) => t.id), ['3']);
+  });
+
   test('hlsInStreamRequestHeaders lets playback headers win conflicts', () {
     expect(
       hlsInStreamRequestHeaders(
@@ -89,10 +156,7 @@ video.m3u8
           'Cookie': 'a=1',
         },
       ),
-      {
-        'Referer': 'https://cdn.example/',
-        'Cookie': 'a=1',
-      },
+      {'Referer': 'https://cdn.example/', 'Cookie': 'a=1'},
     );
     expect(
       hlsInStreamRequestHeaders(
