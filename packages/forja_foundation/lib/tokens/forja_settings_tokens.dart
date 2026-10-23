@@ -24,6 +24,7 @@ abstract final class SettingsTokens {
   /// Leanback — hand width so labels stay readable (not × [tvChromeScale]).
   static const double sidebarWidthTv = 240;
   static const double detailMaxWidth = 720;
+
   /// Leanback — denser than desktop; keep form rows readable (not × chrome).
   static const double detailMaxWidthTv = 480;
 
@@ -62,6 +63,7 @@ abstract final class SettingsTokens {
   /// Toggle / action / select row content inset (title+subtitle column).
   static const double rowPadH = 2;
   static const double rowPadV = 16;
+
   /// Hand-tuned — denser than desktop, roomier than chrome ×scale (~10).
   static const double rowPadVTv = 10;
   static const double rowTitleSubtitleGap = 4;
@@ -77,14 +79,26 @@ abstract final class SettingsTokens {
   static const double addonListSeparatorHeightTv = 1;
 
   /// Category tab chips under Forja Packs / Addons (Movie & TV, Anime, …).
-  static const EdgeInsets categoryChipPad =
-      EdgeInsets.symmetric(horizontal: 12, vertical: 6);
-  static const EdgeInsets categoryChipPadTv =
-      EdgeInsets.symmetric(horizontal: 8, vertical: 3);
-  static const EdgeInsets categoryChipStripPad =
-      EdgeInsets.fromLTRB(4, 8, 4, 8);
-  static const EdgeInsets categoryChipStripPadTv =
-      EdgeInsets.fromLTRB(2, 2, 2, 2);
+  static const EdgeInsets categoryChipPad = EdgeInsets.symmetric(
+    horizontal: 12,
+    vertical: 6,
+  );
+  static const EdgeInsets categoryChipPadTv = EdgeInsets.symmetric(
+    horizontal: 8,
+    vertical: 3,
+  );
+  static const EdgeInsets categoryChipStripPad = EdgeInsets.fromLTRB(
+    4,
+    8,
+    4,
+    8,
+  );
+  static const EdgeInsets categoryChipStripPadTv = EdgeInsets.fromLTRB(
+    2,
+    2,
+    2,
+    2,
+  );
   static const double categoryChipGap = 8;
   static const double categoryChipGapTv = 4;
 
@@ -93,10 +107,8 @@ abstract final class SettingsTokens {
   static const double expandHeaderLeadingTopTv = 6;
   static const double expandHeaderPadV = 8;
   static const double expandHeaderPadVTv = 4;
-  static const EdgeInsets expandChildrenPad =
-      EdgeInsets.fromLTRB(8, 0, 2, 8);
-  static const EdgeInsets expandChildrenPadTv =
-      EdgeInsets.fromLTRB(4, 0, 2, 4);
+  static const EdgeInsets expandChildrenPad = EdgeInsets.fromLTRB(8, 0, 2, 8);
+  static const EdgeInsets expandChildrenPadTv = EdgeInsets.fromLTRB(4, 0, 2, 4);
 
   /// Flat switch geometry — thumb is always a circle (never non-uniform scaled).
   static const double switchTrackWidth = 34;
@@ -109,12 +121,14 @@ abstract final class SettingsTokens {
   /// Pack checklist / leading Material [Checkbox] layout slot (chrome family).
   static const double checkboxSize = 28;
   static const double checkboxSizeTv = checkboxSize * _s;
+
   /// Dense leading checkbox beside a switch label (e.g. Forja Auto).
   static const double checkboxSizeCompact = 24;
   static const double checkboxSizeCompactTv = checkboxSizeCompact * _s;
 
   /// Filled CTA (Install / Update all / Retry) — chrome family, type = row title.
   static const double filledButtonHeight = 36;
+
   /// Hand-tuned — chrome ×scale (~22) crushes label + icon; keep denser than
   /// desktop but roomy enough for the type ladder.
   static const double filledButtonHeightTv = 28;
@@ -131,6 +145,7 @@ abstract final class SettingsTokens {
 
   /// Expand / collapse chevron on Settings expandable rows.
   static const double expandChevronSize = 20;
+
   /// Hand-tuned — chrome ×scale of 20 still dominates denser row type.
   static const double expandChevronSizeTv = 12;
   static const double expandChevronHitSize = 40;
@@ -138,22 +153,23 @@ abstract final class SettingsTokens {
 
   /// Profile & account active-profile stage (avatar + Watching now).
   static const double profileStageAvatarSize = 88;
-  static const double profileStageAvatarSizeTv =
-      profileStageAvatarSize * _s;
+  static const double profileStageAvatarSizeTv = profileStageAvatarSize * _s;
   static const double profileStageGlowSize = 108;
   static const double profileStageGlowSizeTv = profileStageGlowSize * _s;
   static const double profileStageGap = 20;
   static const double profileStageGapTv = profileStageGap * _s;
   static const double profileStageChevronSize = 28;
   static const double profileStageChevronSizeTv = expandChevronSizeTv;
-  static const EdgeInsets profileStagePad =
-      EdgeInsets.fromLTRB(2, 10, 2, 18);
-  static const EdgeInsets profileStagePadTv =
-      EdgeInsets.fromLTRB(2, 6, 2, 10);
-  static const EdgeInsets profileStageBadgePad =
-      EdgeInsets.symmetric(horizontal: 8, vertical: 3);
-  static const EdgeInsets profileStageBadgePadTv =
-      EdgeInsets.symmetric(horizontal: 5, vertical: 2);
+  static const EdgeInsets profileStagePad = EdgeInsets.fromLTRB(2, 10, 2, 18);
+  static const EdgeInsets profileStagePadTv = EdgeInsets.fromLTRB(2, 6, 2, 10);
+  static const EdgeInsets profileStageBadgePad = EdgeInsets.symmetric(
+    horizontal: 8,
+    vertical: 3,
+  );
+  static const EdgeInsets profileStageBadgePadTv = EdgeInsets.symmetric(
+    horizontal: 5,
+    vertical: 2,
+  );
 
   /// Underline [SettingsTextField] content inset.
   static const double textFieldPadTop = 18;
@@ -194,12 +210,14 @@ abstract final class SettingsTokens {
   static const double packChoiceMinHeight = 168;
   static const double packChoiceMinHeightTv = packChoiceMinHeight * _s;
   static const double packChoiceMinHeightCompact = 112;
+
   /// Hand-tuned — chrome ×scale of 112 still leaves a tall empty band under
   /// denser type; hug content + [IntrinsicHeight] stretch instead.
   static const double packChoiceMinHeightCompactTv = 0;
   static const double packChoiceRadius = 16;
   static const double packChoiceRadiusTv = 6;
   static const double packChoiceRadiusCompact = 12;
+
   /// Hand-tuned — chrome ×scale of 12 still reads pill-like on denser TV tiles.
   static const double packChoiceRadiusCompactTv = 4;
   static const double packChoiceIconSize = 32;
@@ -209,16 +227,23 @@ abstract final class SettingsTokens {
   static const double packChoiceGap = 14;
   static const double packChoiceGapTv = 8;
   static const double packChoiceGapCompact = 10;
+
   /// Hand-tuned — chrome ×scale of 10 still reads wide next to denser TV cards.
   static const double packChoiceGapCompactTv = 6;
-  static const EdgeInsets packChoicePad =
-      EdgeInsets.fromLTRB(18, 20, 18, 18);
-  static const EdgeInsets packChoicePadTv =
-      EdgeInsets.fromLTRB(10, 10, 10, 10);
-  static const EdgeInsets packChoicePadCompact =
-      EdgeInsets.fromLTRB(12, 12, 12, 12);
-  static const EdgeInsets packChoicePadCompactTv =
-      EdgeInsets.fromLTRB(8, 8, 8, 8);
+  static const EdgeInsets packChoicePad = EdgeInsets.fromLTRB(18, 20, 18, 18);
+  static const EdgeInsets packChoicePadTv = EdgeInsets.fromLTRB(10, 10, 10, 10);
+  static const EdgeInsets packChoicePadCompact = EdgeInsets.fromLTRB(
+    12,
+    12,
+    12,
+    12,
+  );
+  static const EdgeInsets packChoicePadCompactTv = EdgeInsets.fromLTRB(
+    8,
+    8,
+    8,
+    8,
+  );
   static const double packChoiceIconTitleGap = 16;
   static const double packChoiceIconTitleGapTv = 8;
   static const double packChoiceIconTitleGapCompact = 10;
@@ -227,23 +252,43 @@ abstract final class SettingsTokens {
   static const double packChoiceTitleSubGapTv = 4;
   static const double packChoiceTitleSubGapCompact = 4;
   static const double packChoiceTitleSubGapCompactTv = 3;
+
   /// Outer pad around the Official / Community row in Settings → Forja Packs.
-  static const EdgeInsets packChoiceSectionPad =
-      EdgeInsets.fromLTRB(2, 4, 2, 14);
-  static const EdgeInsets packChoiceSectionPadTv =
-      EdgeInsets.fromLTRB(2, 2, 2, 8);
+  static const EdgeInsets packChoiceSectionPad = EdgeInsets.fromLTRB(
+    2,
+    4,
+    2,
+    14,
+  );
+  static const EdgeInsets packChoiceSectionPadTv = EdgeInsets.fromLTRB(
+    2,
+    2,
+    2,
+    8,
+  );
 
   /// [AlertDialog] / select-sheet chrome (Settings + rehosted overlays).
   static const double dialogMaxWidthFraction = 0.45;
   static const double dialogMaxWidthFractionTv = 0.32;
   static const double dialogMaxWidthMin = 320;
   static const double dialogMaxWidthMinTv = 240;
+
   /// Desktop confirm / pack-update dialogs were fixed at 420–440 before TV
   /// density work — keep that cap (do not grow toward a 10-foot sheet).
   static const double dialogMaxWidthCap = 440;
   static const double dialogMaxWidthCapTv = 360;
   static const double dialogMaxHeightFraction = 0.65;
   static const double dialogMaxHeightFractionTv = 0.55;
+
+  /// Open-with / bind picker (hub chips + search + results) — not confirm caps.
+  static const double bindSheetWidth = 480;
+  static const double bindSheetHeight = 560;
+  static const double bindSheetWidthFractionTv = 0.48;
+  static const double bindSheetWidthMinTv = 480;
+  static const double bindSheetWidthCapTv = 720;
+  static const double bindSheetHeightFractionTv = 0.78;
+  static const double bindSheetHeightMinTv = 480;
+  static const double bindSheetHeightCapTv = 820;
   static const double dialogOptionPadH = 14;
   static const double dialogOptionPadHTv = dialogOptionPadH * _s;
   static const double dialogOptionPadV = 12;
@@ -316,9 +361,9 @@ abstract final class SettingsTokens {
       _tv(context) ? rowSubtitleSizeTv : rowSubtitleSize;
 
   static EdgeInsets rowPaddingOf(BuildContext context) => EdgeInsets.symmetric(
-        horizontal: rowPadH,
-        vertical: _tv(context) ? rowPadVTv : rowPadV,
-      );
+    horizontal: rowPadH,
+    vertical: _tv(context) ? rowPadVTv : rowPadV,
+  );
 
   static EdgeInsets addonListRowPaddingOf(BuildContext context) =>
       EdgeInsets.symmetric(
@@ -466,9 +511,7 @@ abstract final class SettingsTokens {
     required bool compact,
   }) {
     if (compact) {
-      return _tv(context)
-          ? packChoiceRadiusCompactTv
-          : packChoiceRadiusCompact;
+      return _tv(context) ? packChoiceRadiusCompactTv : packChoiceRadiusCompact;
     }
     return _tv(context) ? packChoiceRadiusTv : packChoiceRadius;
   }
@@ -488,10 +531,9 @@ abstract final class SettingsTokens {
   static double packChoiceGapOf(
     BuildContext context, {
     required bool compact,
-  }) =>
-      compact
-          ? (_tv(context) ? packChoiceGapCompactTv : packChoiceGapCompact)
-          : (_tv(context) ? packChoiceGapTv : packChoiceGap);
+  }) => compact
+      ? (_tv(context) ? packChoiceGapCompactTv : packChoiceGapCompact)
+      : (_tv(context) ? packChoiceGapTv : packChoiceGap);
 
   static EdgeInsets packChoicePadOf(
     BuildContext context, {
@@ -506,38 +548,54 @@ abstract final class SettingsTokens {
   static double packChoiceIconTitleGapOf(
     BuildContext context, {
     required bool compact,
-  }) =>
-      compact
-          ? (_tv(context)
-              ? packChoiceIconTitleGapCompactTv
-              : packChoiceIconTitleGapCompact)
-          : (_tv(context) ? packChoiceIconTitleGapTv : packChoiceIconTitleGap);
+  }) => compact
+      ? (_tv(context)
+            ? packChoiceIconTitleGapCompactTv
+            : packChoiceIconTitleGapCompact)
+      : (_tv(context) ? packChoiceIconTitleGapTv : packChoiceIconTitleGap);
 
   static double packChoiceTitleSubGapOf(
     BuildContext context, {
     required bool compact,
-  }) =>
-      compact
-          ? (_tv(context)
-              ? packChoiceTitleSubGapCompactTv
-              : packChoiceTitleSubGapCompact)
-          : (_tv(context) ? packChoiceTitleSubGapTv : packChoiceTitleSubGap);
+  }) => compact
+      ? (_tv(context)
+            ? packChoiceTitleSubGapCompactTv
+            : packChoiceTitleSubGapCompact)
+      : (_tv(context) ? packChoiceTitleSubGapTv : packChoiceTitleSubGap);
 
   static EdgeInsets packChoiceSectionPadOf(BuildContext context) =>
       _tv(context) ? packChoiceSectionPadTv : packChoiceSectionPad;
 
   static double dialogMaxWidthOf(BuildContext context, double screenWidth) {
-    final fraction =
-        _tv(context) ? dialogMaxWidthFractionTv : dialogMaxWidthFraction;
+    final fraction = _tv(context)
+        ? dialogMaxWidthFractionTv
+        : dialogMaxWidthFraction;
     final min = _tv(context) ? dialogMaxWidthMinTv : dialogMaxWidthMin;
     final cap = _tv(context) ? dialogMaxWidthCapTv : dialogMaxWidthCap;
     return (screenWidth * fraction).clamp(min, cap);
   }
 
   static double dialogMaxHeightOf(BuildContext context, double screenHeight) {
-    final fraction =
-        _tv(context) ? dialogMaxHeightFractionTv : dialogMaxHeightFraction;
+    final fraction = _tv(context)
+        ? dialogMaxHeightFractionTv
+        : dialogMaxHeightFraction;
     return screenHeight * fraction;
+  }
+
+  static double bindSheetWidthOf(BuildContext context, double screenWidth) {
+    if (!_tv(context)) return bindSheetWidth;
+    return (screenWidth * bindSheetWidthFractionTv).clamp(
+      bindSheetWidthMinTv,
+      bindSheetWidthCapTv,
+    );
+  }
+
+  static double bindSheetHeightOf(BuildContext context, double screenHeight) {
+    if (!_tv(context)) return bindSheetHeight;
+    return (screenHeight * bindSheetHeightFractionTv).clamp(
+      bindSheetHeightMinTv,
+      bindSheetHeightCapTv,
+    );
   }
 
   static double dialogOptionPadHOf(BuildContext context) =>
@@ -552,12 +610,14 @@ abstract final class SettingsTokens {
   static double dialogRadiusOf(BuildContext context) =>
       _tv(context) ? dialogRadiusTv : dialogRadius;
 
-  static EdgeInsets dialogInsetPaddingOf(BuildContext context) => EdgeInsets.symmetric(
+  static EdgeInsets dialogInsetPaddingOf(BuildContext context) =>
+      EdgeInsets.symmetric(
         horizontal: _tv(context) ? dialogInsetHTv : dialogInsetH,
         vertical: _tv(context) ? dialogInsetVTv : dialogInsetV,
       );
 
-  static EdgeInsets dialogTitlePaddingOf(BuildContext context) => EdgeInsets.fromLTRB(
+  static EdgeInsets dialogTitlePaddingOf(BuildContext context) =>
+      EdgeInsets.fromLTRB(
         _tv(context) ? dialogTitlePadHTv : dialogTitlePadH,
         _tv(context) ? dialogTitlePadTopTv : dialogTitlePadTop,
         _tv(context) ? dialogTitlePadHTv : dialogTitlePadH,

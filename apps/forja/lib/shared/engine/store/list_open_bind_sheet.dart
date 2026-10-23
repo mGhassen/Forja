@@ -11,8 +11,10 @@ import 'package:forja/shared/engine/store/list_open_title_rank.dart';
 import 'package:forja_foundation/widgets/chrome/shell_chip.dart';
 import 'package:forja/shell/core/forja_shell_scope.dart';
 import 'package:forja/shell/focus/shell_focusable_tap.dart';
+import 'package:forja/shell/tv/shell_tv_focus.dart';
 import 'package:forja/shell/tv/tv_browse_text_field.dart';
 import 'package:forja_foundation/protocol/protocol.dart';
+import 'package:forja_foundation/tokens/forja_settings_tokens.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
@@ -182,14 +184,13 @@ class _ListOpenBindSheetState extends State<_ListOpenBindSheet> {
   }
 
   bool get _usesSearch => listOpenBindUsesHubSearch(
-        pickFilm: widget.pickFilm,
-        compatible: _hub.compatible,
-        hasSearch: _hub.hasSearch,
-      );
+    pickFilm: widget.pickFilm,
+    compatible: _hub.compatible,
+    hasSearch: _hub.hasSearch,
+  );
 
   /// Rebind on a hub that cannot search: the current title, unchecked.
-  bool get _filmOnly =>
-      widget.pickFilm && _hub.compatible && !_hub.hasSearch;
+  bool get _filmOnly => widget.pickFilm && _hub.compatible && !_hub.hasSearch;
 
   void _focusBelowHubs() {
     if (_usesSearch || widget.pickFilm) {
@@ -350,14 +351,16 @@ class _ListOpenBindSheetState extends State<_ListOpenBindSheet> {
         density ? desktop * ShellTokens.tvChromeScale : desktop;
     double type(double desktop) =>
         density ? ShellTokens.tvTypeSize(desktop) : desktop;
-    final sheetW = density ? (screen.width * 0.34).clamp(240.0, 360.0) : 480.0;
-    final sheetH = density ? (screen.height * 0.58).clamp(280.0, 420.0) : 560.0;
+    final sheetW = SettingsTokens.bindSheetWidthOf(context, screen.width);
+    final sheetH = SettingsTokens.bindSheetHeightOf(context, screen.height);
 
-    return Dialog(
+    Widget sheet = Dialog(
       backgroundColor: ForjaShellColors.cinematic.menuSurface,
-      insetPadding: EdgeInsets.symmetric(horizontal: px(24), vertical: px(24)),
+      insetPadding: SettingsTokens.dialogInsetPaddingOf(context),
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(px(14)),
+        borderRadius: BorderRadius.circular(
+          SettingsTokens.dialogRadiusOf(context),
+        ),
       ),
       child: SizedBox(
         width: sheetW,
@@ -508,10 +511,11 @@ class _ListOpenBindSheetState extends State<_ListOpenBindSheet> {
                   onSubmitted: (_) => _runSearch(),
                   onKeyEvent: dpad
                       ? (node, event) {
-                          if (event is! KeyDownEvent) {
+                          if (!shellTvIsNavigationKey(event)) {
                             return KeyEventResult.ignored;
                           }
-                          if (event.logicalKey == LogicalKeyboardKey.arrowDown) {
+                          if (event.logicalKey ==
+                              LogicalKeyboardKey.arrowDown) {
                             if (_hitNodes.isEmpty) {
                               return KeyEventResult.ignored;
                             }
@@ -549,6 +553,8 @@ class _ListOpenBindSheetState extends State<_ListOpenBindSheet> {
         ),
       ),
     );
+    if (!dpad) return sheet;
+    return ShellTvContainDpad(child: ShellTvLinearFocusScope(child: sheet));
   }
 }
 
@@ -936,123 +942,138 @@ class _HitsBody extends StatelessWidget {
     double type(double desktop) =>
         density ? ShellTokens.tvTypeSize(desktop) : desktop;
 
+    Widget hitTile(int i) {
+      final hit = hits[i];
+      final best = isBest(hit, i);
+      final year = hit.releaseInfo.trim().isNotEmpty
+          ? hit.releaseInfo.trim()
+          : hit.premiereDate.trim();
+      final row = Padding(
+        padding: EdgeInsets.symmetric(vertical: px(8)),
+        child: Row(
+          children: [
+            _PosterThumb(url: hit.poster.trim(), density: density),
+            SizedBox(width: px(10)),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (best)
+                    Padding(
+                      padding: EdgeInsets.only(bottom: px(2)),
+                      child: Text(
+                        'Best match',
+                        style: TextStyle(
+                          color: ForjaShellColors.brandGreen,
+                          fontSize: type(10),
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 0.3,
+                        ),
+                      ),
+                    ),
+                  Text(
+                    hit.name,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: GoogleFonts.plusJakartaSans(
+                      color: ForjaShellColors.textPrimary,
+                      fontSize: type(13),
+                      fontWeight: best ? FontWeight.w700 : FontWeight.w500,
+                    ),
+                  ),
+                  if (year.isNotEmpty) ...[
+                    SizedBox(height: px(2)),
+                    Text(
+                      year,
+                      style: TextStyle(
+                        color: ForjaShellColors.textSecondary,
+                        fontSize: type(11),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            pickFilm
+                ? Checkbox(
+                    value: pickedKey != null && pickedKey == hitKey?.call(hit),
+                    onChanged: (v) {
+                      if (v == true) onPick(hit);
+                    },
+                  )
+                : Icon(
+                    Icons.chevron_right_rounded,
+                    size: ShellPaintScope.iconOf(context, 20),
+                    color: best
+                        ? ForjaShellColors.brandGreen
+                        : ForjaShellColors.iconMuted,
+                  ),
+          ],
+        ),
+      );
+
+      final decorated = best && !pickFilm
+          ? Container(
+              decoration: BoxDecoration(
+                color: ForjaShellColors.brandGreen.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(px(8)),
+              ),
+              padding: EdgeInsets.symmetric(horizontal: px(6)),
+              child: row,
+            )
+          : Padding(
+              padding: EdgeInsets.symmetric(horizontal: px(6)),
+              child: row,
+            );
+
+      if (dpad && i < focusNodes.length) {
+        // Vertical ↑/↓: ShellTvLinearFocusScope. Keep all hit nodes mounted
+        // (Column, not ListView) so ↑ never no-ops on a recycled FocusNode.
+        return shellFocusableTap(
+          context: context,
+          onTap: () => onPick(hit),
+          borderRadius: px(8),
+          focusNode: focusNodes[i],
+          scaleOnFocus: 1,
+          showFocusBorder: true,
+          ensureVisibleMode: ShellPaintEnsureVisible.item,
+          onUpEdge: i == 0 ? onUpFromFirst : null,
+          onLeftEdge: () {},
+          onRightEdge: () {},
+          child: decorated,
+        );
+      }
+      if (pickFilm) return decorated;
+      return Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: () => onPick(hit),
+          borderRadius: BorderRadius.circular(px(8)),
+          child: decorated,
+        ),
+      );
+    }
+
+    if (dpad) {
+      return SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            for (var i = 0; i < hits.length; i++) ...[
+              if (i > 0)
+                Divider(height: 1, color: ForjaShellColors.borderSubtle),
+              hitTile(i),
+            ],
+          ],
+        ),
+      );
+    }
+
     return ListView.separated(
       itemCount: hits.length,
       separatorBuilder: (_, _) =>
           Divider(height: 1, color: ForjaShellColors.borderSubtle),
-      itemBuilder: (context, i) {
-        final hit = hits[i];
-        final best = isBest(hit, i);
-        final year = hit.releaseInfo.trim().isNotEmpty
-            ? hit.releaseInfo.trim()
-            : hit.premiereDate.trim();
-        final row = Padding(
-          padding: EdgeInsets.symmetric(vertical: px(8)),
-          child: Row(
-            children: [
-              _PosterThumb(url: hit.poster.trim(), density: density),
-              SizedBox(width: px(10)),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    if (best)
-                      Padding(
-                        padding: EdgeInsets.only(bottom: px(2)),
-                        child: Text(
-                          'Best match',
-                          style: TextStyle(
-                            color: ForjaShellColors.brandGreen,
-                            fontSize: type(10),
-                            fontWeight: FontWeight.w700,
-                            letterSpacing: 0.3,
-                          ),
-                        ),
-                      ),
-                    Text(
-                      hit.name,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: GoogleFonts.plusJakartaSans(
-                        color: ForjaShellColors.textPrimary,
-                        fontSize: type(13),
-                        fontWeight: best ? FontWeight.w700 : FontWeight.w500,
-                      ),
-                    ),
-                    if (year.isNotEmpty) ...[
-                      SizedBox(height: px(2)),
-                      Text(
-                        year,
-                        style: TextStyle(
-                          color: ForjaShellColors.textSecondary,
-                          fontSize: type(11),
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-              ),
-              pickFilm
-                  ? Checkbox(
-                      value: pickedKey != null && pickedKey == hitKey?.call(hit),
-                      onChanged: (v) {
-                        if (v == true) onPick(hit);
-                      },
-                    )
-                  : Icon(
-                      Icons.chevron_right_rounded,
-                      size: ShellPaintScope.iconOf(context, 20),
-                      color: best
-                          ? ForjaShellColors.brandGreen
-                          : ForjaShellColors.iconMuted,
-                    ),
-            ],
-          ),
-        );
-
-        final decorated = best && !pickFilm
-            ? Container(
-                decoration: BoxDecoration(
-                  color: ForjaShellColors.brandGreen.withValues(alpha: 0.08),
-                  borderRadius: BorderRadius.circular(px(8)),
-                ),
-                padding: EdgeInsets.symmetric(horizontal: px(6)),
-                child: row,
-              )
-            : Padding(
-                padding: EdgeInsets.symmetric(horizontal: px(6)),
-                child: row,
-              );
-
-        if (dpad && i < focusNodes.length) {
-          return shellFocusableTap(
-            context: context,
-            onTap: () => onPick(hit),
-            borderRadius: px(8),
-            focusNode: focusNodes[i],
-            scaleOnFocus: 1,
-            showFocusBorder: true,
-            onUpEdge: i == 0
-                ? onUpFromFirst
-                : () => focusNodes[i - 1].requestFocus(),
-            onDownEdge: i == hits.length - 1
-                ? () {}
-                : () => focusNodes[i + 1].requestFocus(),
-            onLeftEdge: () {},
-            onRightEdge: () {},
-            child: decorated,
-          );
-        }
-        if (pickFilm) return decorated;
-        return Material(
-          color: Colors.transparent,
-          child: InkWell(
-            onTap: () => onPick(hit),
-            borderRadius: BorderRadius.circular(px(8)),
-            child: decorated,
-          ),
-        );
-      },
+      itemBuilder: (_, i) => hitTile(i),
     );
   }
 }

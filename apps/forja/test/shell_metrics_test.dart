@@ -15,6 +15,15 @@ import 'package:forja_foundation/tokens/portal_list_tokens.dart';
 import 'package:forja_foundation/widgets/chrome/catalog_poster_grid.dart';
 
 void main() {
+  test('Open-with bind sheet TV size exceeds settings confirm caps', () {
+    expect(SettingsTokens.bindSheetWidthMinTv, greaterThanOrEqualTo(480));
+    expect(
+      SettingsTokens.bindSheetWidthCapTv,
+      greaterThan(SettingsTokens.dialogMaxWidthCapTv),
+    );
+    expect(SettingsTokens.bindSheetHeightMinTv, greaterThanOrEqualTo(480));
+  });
+
   test('tv density families: chrome scale + hand-tuned cards/hero/portals', () {
     expect(ShellTokens.tvChromeScale, 0.62);
     expect(ShellTokens.tvHeroScale, 0.80);
@@ -51,23 +60,14 @@ void main() {
       closeTo(ShellTokens.controlHeight * ShellTokens.tvChromeScale, 0.001),
     );
     // Sources provider chips — H matches action chips; V is a leanback hit target.
-    expect(
-      ShellTokens.torrentPanelChipPadHTv,
-      ShellTokens.actionChipPadHTv,
-    );
+    expect(ShellTokens.torrentPanelChipPadHTv, ShellTokens.actionChipPadHTv);
     expect(ShellTokens.torrentPanelChipPadVTv, 6);
     expect(
       ShellTokens.torrentPanelChipPadVTv,
       lessThan(ShellTokens.torrentPanelChipPadVDesktop),
     );
-    expect(
-      ShellTokens.torrentPanelChipFontSizeTv,
-      ShellTokens.tvMetaFontSize,
-    );
-    expect(
-      ShellTokens.torrentPanelMetaFontSizeTv,
-      ShellTokens.tvMetaFontSize,
-    );
+    expect(ShellTokens.torrentPanelChipFontSizeTv, ShellTokens.tvMetaFontSize);
+    expect(ShellTokens.torrentPanelMetaFontSizeTv, ShellTokens.tvMetaFontSize);
     expect(
       ShellTokens.torrentPanelMetaIconSizeTv,
       ShellTokens.actionChipIconSizeTv,
@@ -113,10 +113,7 @@ void main() {
       ShellTokens.streamLoadingHeadlineFontSizeTv,
       ShellTokens.tvTitleFontSize,
     );
-    expect(
-      ShellTokens.streamLoadingHintFontSizeTv,
-      ShellTokens.tvBodyFontSize,
-    );
+    expect(ShellTokens.streamLoadingHintFontSizeTv, ShellTokens.tvBodyFontSize);
     expect(
       ShellTokens.streamLoadingCancelFontSizeTv,
       ShellTokens.tvBodyFontSize,
@@ -158,7 +155,10 @@ void main() {
     // Hero family — softer than chrome crush.
     expect(
       ShellTokens.heroMinHeightTv,
-      closeTo(ShellTokens.heroMinHeightDesktop * ShellTokens.tvHeroScale, 0.001),
+      closeTo(
+        ShellTokens.heroMinHeightDesktop * ShellTokens.tvHeroScale,
+        0.001,
+      ),
     );
     expect(
       ShellTokens.heroMinHeightTv,
@@ -166,10 +166,7 @@ void main() {
     );
     // Portals family — hand row height (denser than desktop, not × chrome).
     expect(PortalListTokens.rowHeightTv, 72);
-    expect(
-      PortalListTokens.rowHeightTv,
-      lessThan(PortalListTokens.rowHeight),
-    );
+    expect(PortalListTokens.rowHeightTv, lessThan(PortalListTokens.rowHeight));
     expect(
       PortalListTokens.headerIconSizeTv,
       closeTo(
@@ -204,7 +201,10 @@ void main() {
     expect(ShellTokens.tvMetaFontSize, 8);
     expect(SettingsTokens.sidebarWidth, 280);
     expect(SettingsTokens.sidebarWidthTv, 240);
-    expect(SettingsTokens.detailMaxWidthTv, lessThan(SettingsTokens.detailMaxWidth));
+    expect(
+      SettingsTokens.detailMaxWidthTv,
+      lessThan(SettingsTokens.detailMaxWidth),
+    );
     expect(SettingsTokens.detailMaxWidthTv, 480);
     // Settings roles → shell ladder (title / body / meta) — no parallel scale.
     expect(SettingsTokens.hubTitleSizeTv, ShellTokens.tvTitleFontSize);
@@ -242,20 +242,11 @@ void main() {
         0.001,
       ),
     );
-    expect(
-      ShellTokens.formInputFontSizeTv,
-      ShellTokens.tvBodyFontSize,
-    );
-    expect(
-      ShellTokens.formInputHintFontSizeTv,
-      ShellTokens.tvMetaFontSize,
-    );
+    expect(ShellTokens.formInputFontSizeTv, ShellTokens.tvBodyFontSize);
+    expect(ShellTokens.formInputHintFontSizeTv, ShellTokens.tvMetaFontSize);
     expect(
       ShellTokens.formInputIconSizeTv,
-      closeTo(
-        ShellTokens.formInputIconSize * ShellTokens.tvChromeScale,
-        0.001,
-      ),
+      closeTo(ShellTokens.formInputIconSize * ShellTokens.tvChromeScale, 0.001),
     );
     expect(SettingsTokens.sliderThumbRadiusTv, 5);
     expect(
@@ -268,7 +259,10 @@ void main() {
       SettingsTokens.dialogMaxWidthCapTv,
       lessThan(SettingsTokens.dialogMaxWidthCap),
     );
-    expect(SettingsTokens.dialogCheckSizeTv, lessThan(SettingsTokens.dialogCheckSize));
+    expect(
+      SettingsTokens.dialogCheckSizeTv,
+      lessThan(SettingsTokens.dialogCheckSize),
+    );
     expect(
       SettingsTokens.dialogOptionPadVTv,
       closeTo(
@@ -286,10 +280,7 @@ void main() {
     );
     expect(
       DetailsTokens.backHitSizeOf(true),
-      closeTo(
-        DetailsTokens.backIconSizeTv + DetailsTokens.backHitPadTv,
-        0.001,
-      ),
+      closeTo(DetailsTokens.backIconSizeTv + DetailsTokens.backHitPadTv, 0.001),
     );
   });
 
@@ -356,8 +347,14 @@ void main() {
   });
 
   test('mobile metrics row exists with compact card width', () {
-    expect(ShellMetrics.mobile.posterCardWidth, ShellTokens.posterCardWidthMobile);
-    expect(ShellMetrics.desktop.posterCardWidth, ShellTokens.posterCardWidthDesktop);
+    expect(
+      ShellMetrics.mobile.posterCardWidth,
+      ShellTokens.posterCardWidthMobile,
+    );
+    expect(
+      ShellMetrics.desktop.posterCardWidth,
+      ShellTokens.posterCardWidthDesktop,
+    );
     expect(ShellMetrics.tv.posterCardWidth, ShellTokens.posterCardWidthTv);
   });
 
@@ -383,46 +380,45 @@ void main() {
     expect(desktopCfg.chromeKind, ShellChromeKind.navRail);
   });
 
-  testWidgets(
-    'player floating menus never force centered layout on TV',
-    (tester) async {
-      late bool desktopCentered;
-      late bool tvCentered;
+  testWidgets('player floating menus never force centered layout on TV', (
+    tester,
+  ) async {
+    late bool desktopCentered;
+    late bool tvCentered;
 
-      await tester.pumpWidget(
-        MaterialApp(
-          home: Column(
-            children: [
-              ShellScope(
-                profile: ShellProfile.desktop,
-                config: shellPlatformConfigFor(ShellProfile.desktop),
-                child: Builder(
-                  builder: (context) {
-                    desktopCentered = playerTvUsesCenteredDialogs(context);
-                    return const SizedBox.shrink();
-                  },
-                ),
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Column(
+          children: [
+            ShellScope(
+              profile: ShellProfile.desktop,
+              config: shellPlatformConfigFor(ShellProfile.desktop),
+              child: Builder(
+                builder: (context) {
+                  desktopCentered = playerTvUsesCenteredDialogs(context);
+                  return const SizedBox.shrink();
+                },
               ),
-              ShellScope(
-                profile: ShellProfile.tv,
-                config: shellPlatformConfigFor(ShellProfile.tv),
-                child: Builder(
-                  builder: (context) {
-                    tvCentered = playerTvUsesCenteredDialogs(context);
-                    return const SizedBox.shrink();
-                  },
-                ),
+            ),
+            ShellScope(
+              profile: ShellProfile.tv,
+              config: shellPlatformConfigFor(ShellProfile.tv),
+              child: Builder(
+                builder: (context) {
+                  tvCentered = playerTvUsesCenteredDialogs(context);
+                  return const SizedBox.shrink();
+                },
               ),
-            ],
-          ),
+            ),
+          ],
         ),
-      );
+      ),
+    );
 
-      expect(ShellInputPolicy.desktop.useFocusableMoodChips, isTrue);
-      expect(desktopCentered, isFalse);
-      expect(tvCentered, isFalse);
-    },
-  );
+    expect(ShellInputPolicy.desktop.useFocusableMoodChips, isTrue);
+    expect(desktopCentered, isFalse);
+    expect(tvCentered, isFalse);
+  });
 
   testWidgets('browse-only text fields are leanback TV only', (tester) async {
     late bool desktopBrowse;
