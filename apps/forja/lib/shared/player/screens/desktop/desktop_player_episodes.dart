@@ -275,36 +275,10 @@ mixin _DesktopPlayerEpisodes
   Future<void> _previousEpisode() async {
     if (_s._isLoadingNextEp) return;
 
-    final current = widget.hubEpisodeNumber ?? widget.selectedEpisode;
-    if (widget.episodes != null &&
-        widget.onHubEpisodeSelected != null &&
-        current != null) {
-      final idx = hubEpisodeIndex(
-        widget.episodes!,
-        current,
-        season: widget.selectedSeason,
-      );
-      if (idx == null || idx <= 0) return;
-      final prev = widget.episodes![idx - 1];
-      _beginEpisodeLoading(
-        label: 'Episode ${prev.displayNumber}',
-        status: 'Loading previous episode…',
-      );
-      try {
-        _s._saveWatchHistory();
-        await _silenceForEpisodeHandoff();
-        await widget.onHubEpisodeSelected!(prev);
-        if (mounted && (ModalRoute.of(context)?.isCurrent ?? false)) {
-          await _resumeAfterFailedEpisodeHandoff();
-          _endEpisodeLoading();
-        }
-      } catch (e) {
-        await _resumeAfterFailedEpisodeHandoff();
-        await _failEpisodeLoading('Could not load the previous episode');
-      }
-      return;
-    }
-
+    // Same path as next: resolve then _switchToEpisode with this player's
+    // context. Do not call onHubEpisodeSelected — that callback closes over
+    // the route that opened the player, which pushAndRemoveUntil disposes
+    // after the first episode switch (silent no-op on previous).
     _beginEpisodeLoading(
       label: 'Previous episode',
       status: 'Looking up previous episode…',
@@ -376,7 +350,11 @@ mixin _DesktopPlayerEpisodes
     final hub = widget.episodes;
     final hubCurrent = widget.hubEpisodeNumber ?? widget.selectedEpisode;
     if (hub != null && hub.isNotEmpty && hubCurrent != null) {
-      final idx = hubEpisodeIndex(hub, hubCurrent, season: widget.selectedSeason);
+      final idx = hubEpisodeIndex(
+        hub,
+        hubCurrent,
+        season: widget.selectedSeason,
+      );
       if (idx == null) return null;
       final next = nextAiredHubEpisode(hub, idx);
       if (next == null) return null;
@@ -401,7 +379,7 @@ mixin _DesktopPlayerEpisodes
         }
         return null;
       }
-      return (season: 1, episode: next);
+      return (season: widget.selectedSeason ?? 1, episode: next);
     }
 
     if (widget.movie == null ||
@@ -436,7 +414,11 @@ mixin _DesktopPlayerEpisodes
     final hub = widget.episodes;
     final hubCurrent = widget.hubEpisodeNumber ?? widget.selectedEpisode;
     if (hub != null && hub.isNotEmpty && hubCurrent != null) {
-      final idx = hubEpisodeIndex(hub, hubCurrent, season: widget.selectedSeason);
+      final idx = hubEpisodeIndex(
+        hub,
+        hubCurrent,
+        season: widget.selectedSeason,
+      );
       if (idx == null || idx <= 0) return null;
       final prev = hub[idx - 1];
       return (
@@ -449,7 +431,7 @@ mixin _DesktopPlayerEpisodes
     if (session?.isHubFlatList == true && widget.selectedEpisode != null) {
       final prev = widget.selectedEpisode! - 1;
       if (prev < 1) return null;
-      return (season: 1, episode: prev);
+      return (season: widget.selectedSeason ?? 1, episode: prev);
     }
 
     if (widget.movie == null ||
@@ -711,41 +693,17 @@ mixin _DesktopPlayerEpisodes
     if (widget.episodes != null && widget.episodes!.isNotEmpty) {
       if (!mounted) return;
       PlayerPopupPanel.dismiss();
-      final useHubCallback = widget.onHubEpisodeSelected != null;
       PlayerKitEpisodePanel.show(
         context: context,
         episodes: widget.episodes!,
         currentEpisode: widget.hubEpisodeNumber ?? widget.selectedEpisode ?? 1,
         currentSeason: widget.selectedSeason,
         onEpisodeSelected: (ep) async {
-          final enginePid = _s._currentProvider ?? widget.activeProvider;
-          if (isEnginePlayerSession(enginePid)) {
-            await _switchToEpisode(
-              ep.season ?? widget.selectedSeason ?? 1,
-              ep.number.round(),
-            );
-            return;
-          }
-          if (useHubCallback) {
-            _beginEpisodeLoading(
-              label: 'Episode ${ep.displayNumber}',
-              status: 'Loading episode info…',
-            );
-            try {
-              _s._saveWatchHistory();
-              await _silenceForEpisodeHandoff();
-              await widget.onHubEpisodeSelected!(ep);
-              if (mounted && (ModalRoute.of(context)?.isCurrent ?? false)) {
-                await _resumeAfterFailedEpisodeHandoff();
-                _endEpisodeLoading();
-              }
-            } catch (e) {
-              await _resumeAfterFailedEpisodeHandoff();
-              await _failEpisodeLoading('Could not load this episode');
-            }
-            return;
-          }
-          await _switchToEpisode(1, ep.number.round());
+          // Live player context — not onHubEpisodeSelected (stale after switch).
+          await _switchToEpisode(
+            ep.season ?? widget.selectedSeason ?? 1,
+            ep.number.round(),
+          );
         },
         fallbackBackdropPath: widget.movie?.backdropPath,
         fallbackPosterPath: widget.movie?.posterPath,

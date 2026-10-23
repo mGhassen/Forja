@@ -25,6 +25,9 @@ abstract final class DetailsTokens {
   static const double heroContentTopInsetTv = heroContentTopInset * _s;
   static const double heroDescriptionWidthFraction = 0.40;
 
+  /// Wider on TV — leanback keeps action pills at intrinsic size (no FittedBox).
+  static const double heroDescriptionWidthFractionTv = 0.52;
+
   /// Gap after the hero before the first section, and between every section.
   static const double sectionSpacing = 48;
   static const double sectionSpacingTv = sectionSpacing * _s;
@@ -165,6 +168,7 @@ abstract final class DetailsTokens {
   static const double episodeChipFontSize = 15;
   static const double episodeChipFontSizeTv = episodeChipFontSize * _s;
   static const int episodeChipColumnsMin = 4;
+
   /// High ceiling — must match Wrap fit width (clamping to 12 broke D-pad at col 12).
   static const int episodeChipColumnsMax = 48;
 
@@ -172,6 +176,7 @@ abstract final class DetailsTokens {
   static const double episodeChipWatchedBadgeSize = 18;
   static const double episodeChipWatchedBadgeSizeTv =
       episodeChipWatchedBadgeSize * _s;
+
   /// Negative = outside the chip (into the gap). Half the badge sits past the corner.
   static const double episodeChipWatchedBadgeInset = -6;
   static const double episodeChipWatchedBadgeInsetTv =

@@ -50,7 +50,8 @@ class PlaySession {
     return v != null && v.isNotEmpty ? v : null;
   }
 
-  /// Kit episodic lists — flat episode numbers when meta carries videos.
+  /// Kit episodic lists — episode numbers may be flat; callers still carry
+  /// [selectedSeason] when videos include seasons (do not force season 1).
   bool get isHubFlatList {
     final videos = metaItem?.videos;
     if (videos != null && videos.isNotEmpty) return true;

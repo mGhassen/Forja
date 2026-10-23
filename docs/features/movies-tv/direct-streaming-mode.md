@@ -18,7 +18,7 @@ The white **Play** / **Resume** with link icon opens **Sources** (Direct torrent
 
 - Let green **Play** / **Resume** auto-extract the best working link in provider order
 - Fall through extractors in the order you set in Settings
-- While servers are checking, the loading screen shows `N / M CHECKED · K UP` progress. For series it also shows the selected episode (`S02E05`) under the status line. Next to **Cancel**, tap the layers icon to open the **server list** — live Waiting / Checking / Up / Down status for each provider. Tap a waiting or down server to **check it manually** (stops Auto order and resolves that provider only)
+- While servers are checking, the loading screen shows `N / M CHECKED · K UP` progress. For series it also shows the selected episode (`S02E05`) under the status line. Next to **Cancel**, tap the layers icon to open the **server list** — live Waiting / Checking / Up / Down status for each provider. Hover or D-pad focus turns **Cancel**, layers, and a server row green. Tap a waiting or down server to **check it manually** (stops Auto order and resolves that provider only)
 - Before mpv opens a link, Forja HTTP-probes it (every built-in provider) — dead CDNs fail fast and Auto continues to the next server
 - **Simple resolve** (default): walks **Tries** one server at a time with real budgets — engine HTTP plugins and embed sniffs get full per-provider timeouts so slower paths are not cut off while faster embeds alone “work”
 - A server only counts as streaming when video actually opens (not when extract alone returns a URL)

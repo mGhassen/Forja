@@ -43,7 +43,8 @@ PlayContext catalogPlayContextFromMeta({
     selectedPluginIds = {providerFromVideo};
   }
 
-  final malId = open?.effectiveExtract.intVal('malId') ??
+  final malId =
+      open?.effectiveExtract.intVal('malId') ??
       int.tryParse(open?.extraString('mal') ?? '');
 
   return PlayContext(
@@ -56,14 +57,17 @@ PlayContext catalogPlayContextFromMeta({
     malId: malId,
     episodeVideoIdByNumber: episodeIds,
     audioCategory: audioCategory ?? extras['category']?.toString(),
-    kitEpisodes: isTv
-        ? episodesFromMeta(meta.copyWith(videos: vids))
-        : null,
+    kitEpisodes: isTv ? episodesFromMeta(meta.copyWith(videos: vids)) : null,
     selectedPluginIds: selectedPluginIds,
     startPosition: startPosition,
     preferredPluginId: preferredPluginId,
     savedStreamUrl: savedStreamUrl,
-    loadingSubtitle: isMovie ? null : 'EP $epNum',
+    loadingSubtitle: isMovie
+        ? null
+        : playbackLoadingEpisodeSubtitle(
+            season: isTv ? seasonNum : null,
+            episode: epNum,
+          ),
   );
 }
 
@@ -107,4 +111,3 @@ Map<int, String> _videoIdByEpisode(List<MetaVideo> videos) {
   }
   return out;
 }
-

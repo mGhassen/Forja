@@ -411,7 +411,10 @@ mixin _DesktopPlayerUi
     if (widget.episodes == null) return null;
     final n = widget.hubEpisodeNumber ?? widget.selectedEpisode;
     if (n == null) return null;
-    return 'Episode ${n == n.truncateToDouble() ? n.toInt() : n}';
+    final ep = n == n.truncateToDouble() ? n.toInt() : n;
+    final season = widget.selectedSeason;
+    if (season != null) return 'S$season E$ep';
+    return 'Episode $ep';
   }
 
   String? get _pausedEpisodeOverview =>

@@ -10,7 +10,7 @@
 
 | | |
 |--|--|
-| **Progress** | **11 / 11** fix · **8 / 9** acceptance |
+| **Progress** | **12 / 12** fix · **8 / 9** acceptance |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -52,6 +52,7 @@ Search → multi-season show → seasons → episode → play → subtitles → 
 | 9 | I459-T09 | Search page keeps query, results, filters and focused card across a player session (session object owned by the screen outside the chrome stub) | ✅ |
 | 10 | I459-T10 | Subtitle promo filter also drops the `hoofoot.ru` sports-stream ad cue injected at 0:00 by some French files | ✅ |
 | 11 | I459-T11 | Review pass: end-of-stream auto advance only on a natural end (near-end window or seek bar at EOF); TMDB next claims `_loadingNextEp` before its lookup; episode video id looked up by season + number; subtitlecat matcher drops apostrophes, maps `&` to "and", parses `S1E2` tags numerically and ignores a `(US)` / `(2005)` title qualifier; search session restores a query with no results; details releases its surface wait on dispose | ✅ |
+| 12 | I459-T12 | Residual flat-list next/prev and Episodes-panel fallback still forced `season: 1`; hub `markWatchedIfFinished` same — carry `selectedSeason` / episode season so S4E5 → S4E6 and details progress stays on S4 | ✅ |
 
 ## Acceptance
 
@@ -66,6 +67,10 @@ Search → multi-season show → seasons → episode → play → subtitles → 
 | 7 | I459-A07 | TV emulator: Back from the player after the auto advance shows the details page, Back again shows the `rick and morty` results with the opened card focused, Back again returns Home | ✅ |
 | 8 | I459-A08 | Targeted app tests pass (`tv_season_episode_picker`, `player_next_episode_chip`, `exo_subtitle_session`, `catalog_hub_search_capabilities`, `engine_resume_progress`, `catalog_resume_seeds`, `shell_navigation_levels`) | ✅ |
 | 9 | I459-A09 | Physical Android TV pass of A02–A07 | ⬜ |
+
+## Residual (code fixed; A09 still open)
+
+After T04, pack flat-list next/prev and the Episodes panel non-engine fallback still hard-coded season 1, and hub watched-mark used season 1 — so mid-season next (e.g. S4E5) jumped to S1E6 and details showed S1. Tracked as I459-T12. Keep issue **open** until I459-A09 physical pass.
 
 ## Also measured (not fixed here)
 

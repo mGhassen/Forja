@@ -506,6 +506,9 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [467-[open]-…](467-[open]-cross-account-simkl-connected-secrets-isolation.md) | Cross-account Simkl / connected secrets isolation | P1 | High | open | 6/6 · A 0/3 | — |
 | [468-[fixed]-…](fixed/468-[fixed]-my-list-open-default-hub-ignored.md) | My List type default hub ignored on open | P1 | High | fixed | Complete · 2/2 · A 1/2 | — |
 | [469-[fixed]-…](fixed/469-[fixed]-android-tv-open-with-sheet-size-dpad.md) | Android TV Open with… sheet size + D-pad ↑ stuck | P1 | High | fixed | Complete · 2/2 · A 0/2 | [400](400-[open]-my-list-open-with-hub-checkbox.md) |
+| [470-[fixed]-…](fixed/470-[fixed]-loading-overlay-season-episode.md) | Loading overlay omits season/episode | P2 | Medium | fixed | Complete · 2/2 · A 0/2 | — |
+| [471-[open]-…](471-[open]-player-episode-panel-season-dropdown-collapsible-search.md) | Player Episodes season dropdown + collapsible search | P1 | Medium | open | 3/3 · A 0/2 | [459](459-[open]-android-tv-series-journey-search-space-episode-ok-next-season.md) |
+| [472-[fixed]-…](fixed/472-[fixed]-player-previous-episode-stale-hub-callback.md) | Previous episode no-ops after next | P1 | High | fixed | Complete · 3/3 · A 0/2 | — |
 
 **Migration parity (draft):** [018](018-[draft]-migration-playback-parity-unverified.md) → [019](019-[draft]-webstreamr-enginejobs-e2e-test-gap.md)–[022](022-[draft]-playback-widget-integration-tests.md).
 

@@ -40,3 +40,10 @@ class PlayContext {
 
   MetaOpen? get effectiveOpen => metaOpen ?? metaItem?.open;
 }
+
+/// Loading-overlay episode line: season + episode when both known.
+String? playbackLoadingEpisodeSubtitle({int? season, int? episode}) {
+  if (episode == null) return null;
+  if (season != null) return 'Season $season · Episode $episode';
+  return 'Episode $episode';
+}

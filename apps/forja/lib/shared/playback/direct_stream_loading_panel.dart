@@ -9,12 +9,10 @@ class DirectStreamLoadingPanel extends StatelessWidget {
   const DirectStreamLoadingPanel({
     super.key,
     required this.message,
-    this.subtitle,
     this.probes = const [],
   });
 
   final String message;
-  final String? subtitle;
   final List<StreamProviderProbe> probes;
 
   bool get _probeMode => probes.isNotEmpty;
@@ -29,9 +27,8 @@ class DirectStreamLoadingPanel extends StatelessWidget {
       )
       .length;
 
-  int get _probeReady => probes
-      .where((p) => p.status == StreamProviderProbeStatus.success)
-      .length;
+  int get _probeReady =>
+      probes.where((p) => p.status == StreamProviderProbeStatus.success).length;
 
   int get _probeSkipped => probes
       .where((p) => p.status == StreamProviderProbeStatus.skippedOnTv)
@@ -65,8 +62,9 @@ class DirectStreamLoadingPanel extends StatelessWidget {
     return _sentenceCase(message);
   }
 
+  /// Status copy only — season/episode lives under the logo on [LoadingOverlay].
   String? get _hint {
-    if (!_probeMode) return subtitle;
+    if (!_probeMode) return null;
     final msg = message.trim().toUpperCase();
     if (msg.contains('OPENING')) return 'Starting playback';
     if (msg.contains('PROBING')) return 'Testing which links play';
@@ -76,7 +74,7 @@ class DirectStreamLoadingPanel extends StatelessWidget {
     if (msg.contains('FINDING') || msg.contains('LOOKING') || msg.isEmpty) {
       return 'Looking up available providers';
     }
-    return subtitle;
+    return null;
   }
 
   static String _sentenceCase(String raw) {

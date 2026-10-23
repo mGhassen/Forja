@@ -10,12 +10,13 @@ import 'package:forja_foundation/protocol/protocol.dart';
 import 'package:rust/rust.dart';
 
 /// Player / kit progress save — optional [sourceId]/[streamUrl] for resume pin.
-typedef PlaySaveProgress = Future<void> Function(
-  Duration position,
-  Duration duration, {
-  String? sourceId,
-  String? streamUrl,
-});
+typedef PlaySaveProgress =
+    Future<void> Function(
+      Duration position,
+      Duration duration, {
+      String? sourceId,
+      String? streamUrl,
+    });
 
 /// Hub tab media types — episodic catalog rows, not Home TMDB watch history.
 bool isKitTabMediaType(String? mediaType) {
@@ -51,16 +52,12 @@ bool usesHomeWatchHistory({
 }
 
 class KitPlayHooks {
-  const KitPlayHooks({
-    this.session,
-    this.episodeNumber,
-    this.onSaveProgress,
-  });
+  const KitPlayHooks({this.session, this.episodeNumber, this.onSaveProgress});
 
   const KitPlayHooks.none()
-      : session = null,
-        episodeNumber = null,
-        onSaveProgress = null;
+    : session = null,
+      episodeNumber = null,
+      onSaveProgress = null;
 
   final PlaySession? session;
   final num? episodeNumber;
@@ -92,7 +89,8 @@ KitPlayHooks buildPlayHooks({
   }
 
   final ep = episode ?? (hubMediaIsEpisodic(movie) ? (season ?? 1) : null);
-  final session = playSession ??
+  final session =
+      playSession ??
       PlaySession(
         pluginId: pluginId,
         metaItem: meta,
@@ -153,8 +151,9 @@ Future<void> _recordWatchHistory({
 
 Movie movieWithResolvedArt(Movie movie) {
   final poster = movie.posterPath.trim();
-  final backdropRaw =
-      movie.backdropPath.trim().isNotEmpty ? movie.backdropPath : poster;
+  final backdropRaw = movie.backdropPath.trim().isNotEmpty
+      ? movie.backdropPath
+      : poster;
   String resolve(String raw) {
     final u = raw.trim();
     if (u.isEmpty) return u;
@@ -197,14 +196,13 @@ Future<void> seedEngineWatchHistory({
   required num? episodeNumber,
   int? season,
   List<PlayerKitEpisode>? episodes,
-}) =>
-    seedPlayWatchHistory(
-      session: session,
-      movie: movie,
-      episodeNumber: episodeNumber,
-      season: season,
-      episodes: episodes,
-    );
+}) => seedPlayWatchHistory(
+  session: session,
+  movie: movie,
+  episodeNumber: episodeNumber,
+  season: season,
+  episodes: episodes,
+);
 
 PlaySaveProgress? catalogPlaySaveProgressCallback({
   required PlaySession? session,
@@ -219,10 +217,7 @@ PlaySaveProgress? catalogPlaySaveProgressCallback({
   final seasonNum = season ?? 1;
 
   return (pos, dur, {sourceId, streamUrl}) async {
-    final finished = isWatchFinished(
-      pos.inMilliseconds,
-      dur.inMilliseconds,
-    );
+    final finished = isWatchFinished(pos.inMilliseconds, dur.inMilliseconds);
     // Never write ≥85% into the hub CW row first — that hides the show before
     // up-next can seed. In-progress heartbeats still record normally.
     if (!finished) {
@@ -277,14 +272,13 @@ PlaySaveProgress? hubEngineSaveProgressCallback({
   required num? episodeNumber,
   int? season,
   List<PlayerKitEpisode>? episodes,
-}) =>
-    catalogPlaySaveProgressCallback(
-      session: session,
-      movie: movie,
-      episodeNumber: episodeNumber,
-      season: season,
-      episodes: episodes,
-    );
+}) => catalogPlaySaveProgressCallback(
+  session: session,
+  movie: movie,
+  episodeNumber: episodeNumber,
+  season: season,
+  episodes: episodes,
+);
 
 /// Mark watched + seed next CW. Returns true when up-next was written.
 Future<bool> _syncEpisodeWatched({
@@ -328,17 +322,14 @@ Future<bool> _syncEpisodeWatched({
   final catalog = pluginId;
   final marked = await EpisodeWatchedService().markWatchedIfFinished(
     mediaId: mediaId,
-    season: 1,
+    season: season,
     episode: ep,
     positionMs: pos.inMilliseconds,
     durationMs: dur.inMilliseconds,
     catalog: catalog,
   );
   if (marked) {
-    final target = ListFollowTarget.fromMeta(
-      pluginId: pluginId,
-      meta: meta,
-    );
+    final target = ListFollowTarget.fromMeta(pluginId: pluginId, meta: meta);
     if (target != null) {
       ListFollow.syncEpisodeWatched(target, episode: ep);
       await ListFollowFromWatched.applyHubAfterAutoMark(

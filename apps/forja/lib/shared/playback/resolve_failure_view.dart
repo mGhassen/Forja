@@ -6,8 +6,10 @@ import 'package:flutter/services.dart';
 import 'package:forja/shared/playback/loading_overlay.dart';
 import 'package:forja/shell/focus/shell_focusable_tap.dart';
 import 'package:forja/shell/desktop/desktop_window_chrome.dart';
+import 'package:forja/shell/core/forja_shell_input_policy.dart';
 import 'package:forja/shell/core/forja_shell_scope.dart';
 import 'package:forja/shared/theme/app_theme.dart';
+import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 
@@ -284,13 +286,10 @@ class _ResolveFailurePanelState extends State<ResolveFailurePanel> {
           if (failure.onSecondary != null) ...[
             SizedBox(height: secondaryGap),
             leanback
-                ? shellFocusableTap(
-                    context: context,
-                    onTap: failure.onSecondary,
+                ? _ResolveGreenTextChip(
                     focusNode: _secondaryFocus,
+                    onTap: failure.onSecondary!,
                     borderRadius: buttonRadius,
-                    scaleOnFocus: 1.0,
-                    showFocusBorder: true,
                     onUpEdge: failure.onPrimary != null
                         ? () {
                             if (_primaryFocus.canRequestFocus) {
@@ -298,21 +297,12 @@ class _ResolveFailurePanelState extends State<ResolveFailurePanel> {
                             }
                           }
                         : null,
-                    child: Padding(
-                      padding: EdgeInsets.symmetric(
-                        horizontal: secondaryPadH,
-                        vertical: secondaryPadV,
-                      ),
-                      child: Text(
-                        failure.secondaryLabel,
-                        style: TextStyle(
-                          color: Colors.white.withValues(alpha: 0.75),
-                          fontFamily: 'Poppins',
-                          fontWeight: FontWeight.w500,
-                          fontSize: secondaryFont,
-                        ),
-                      ),
+                    padding: EdgeInsets.symmetric(
+                      horizontal: secondaryPadH,
+                      vertical: secondaryPadV,
                     ),
+                    label: failure.secondaryLabel,
+                    fontSize: secondaryFont,
                   )
                 : TextButton(
                     onPressed: failure.onSecondary,
@@ -384,6 +374,88 @@ class _PrimaryFailureButtonFace extends StatelessWidget {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+
+/// Close / secondary on leanback — green button chrome on focus (same as loading Cancel).
+class _ResolveGreenTextChip extends StatefulWidget {
+  const _ResolveGreenTextChip({
+    required this.focusNode,
+    required this.onTap,
+    required this.borderRadius,
+    required this.padding,
+    required this.label,
+    required this.fontSize,
+    this.onUpEdge,
+  });
+
+  final FocusNode focusNode;
+  final VoidCallback onTap;
+  final double borderRadius;
+  final EdgeInsetsGeometry padding;
+  final String label;
+  final double fontSize;
+  final VoidCallback? onUpEdge;
+
+  @override
+  State<_ResolveGreenTextChip> createState() => _ResolveGreenTextChipState();
+}
+
+class _ResolveGreenTextChipState extends State<_ResolveGreenTextChip> {
+  bool _focused = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final policy = ShellScope.inputPolicyOf(context);
+    final active = ShellInputPolicy.interactiveActive(
+      policy,
+      hovered: false,
+      focused: _focused,
+      context: context,
+    );
+    return FocusableControl(
+      focusNode: widget.focusNode,
+      borderRadius: widget.borderRadius,
+      scaleOnFocus: 1.0,
+      showFocusBorder: false,
+      showFocusFill: false,
+      onTap: widget.onTap,
+      onUpEdge: widget.onUpEdge,
+      onFocusChange: (f) {
+        if (_focused == f) return;
+        setState(() => _focused = f);
+      },
+      child: AnimatedContainer(
+        duration: policy.instantFocusChrome
+            ? Duration.zero
+            : const Duration(milliseconds: 120),
+        padding: widget.padding,
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(widget.borderRadius),
+          color: active
+              ? ForjaShellColors.brandGreen.withValues(alpha: 0.14)
+              : Colors.transparent,
+          border: Border.all(
+            color: active
+                ? ForjaShellColors.brandGreen
+                : Colors.transparent,
+            width: active ? 1.5 : 0,
+          ),
+        ),
+        child: Text(
+          widget.label,
+          style: TextStyle(
+            color: active
+                ? ForjaShellColors.brandGreen
+                : Colors.white.withValues(alpha: 0.75),
+            fontFamily: 'Poppins',
+            fontWeight: FontWeight.w500,
+            fontSize: widget.fontSize,
+          ),
         ),
       ),
     );

@@ -800,8 +800,7 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
         final dur = durMs > 0 ? Duration(milliseconds: durMs) : _duration;
         // Any next-episode path (host callback, hub list, TMDB) arms the
         // chip and the auto-next countdown, not only the host callback.
-        final nearEnd =
-            _hasNextEpisodeAdjacent && isNearEndOfEpisode(pos, dur);
+        final nearEnd = _hasNextEpisodeAdjacent && isNearEndOfEpisode(pos, dur);
         // The controls overlay is always built (hidden via AnimatedOpacity, not
         // removed), so an unconditional setState here re-laid-out the whole
         // player tree twice a second over the platform view (issue 151).
@@ -1411,9 +1410,7 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
   }
 
   Future<void> _showEpisodesMenu(BuildContext anchorContext) async {
-    if (widget.episodes != null &&
-        widget.episodes!.isNotEmpty &&
-        widget.onHubEpisodeSelected != null) {
+    if (widget.episodes != null && widget.episodes!.isNotEmpty) {
       PlayerPopupPanel.dismiss();
       await PlayerKitEpisodePanel.show(
         context: context,
@@ -1421,19 +1418,11 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
         currentEpisode: widget.hubEpisodeNumber ?? widget.selectedEpisode ?? 1,
         currentSeason: widget.selectedSeason,
         onEpisodeSelected: (ep) async {
-          setState(() => _loadingNextEp = true);
-          try {
-            await widget.onHubEpisodeSelected!(ep);
-            if (mounted) {
-              setState(() => _loadingNextEp = false);
-            }
-          } catch (_) {
-            if (!mounted) return;
-            await Future<void>.delayed(const Duration(seconds: 2));
-            if (mounted) {
-              setState(() => _loadingNextEp = false);
-            }
-          }
+          // Live player context — not onHubEpisodeSelected (stale after switch).
+          await _switchToEpisode(
+            ep.season ?? widget.selectedSeason ?? 1,
+            ep.number.round(),
+          );
         },
         fallbackBackdropPath: widget.movie?.backdropPath,
         fallbackPosterPath: widget.movie?.posterPath,
@@ -2104,29 +2093,20 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
 
   Future<void> _previousEpisode() async {
     if (_loadingNextEp) return;
+
+    // Same as next: switch with this player's context. Do not call
+    // onHubEpisodeSelected — it closes over a route disposed after the first
+    // pushAndRemoveUntil episode switch (silent no-op).
+    final hub = widget.episodes;
     final current = widget.hubEpisodeNumber ?? widget.selectedEpisode;
-    if (widget.episodes != null &&
-        widget.onHubEpisodeSelected != null &&
-        current != null) {
-      final idx = hubEpisodeIndex(
-        widget.episodes!,
-        current,
-        season: widget.selectedSeason,
-      );
+    if (hub != null && hub.isNotEmpty && current != null) {
+      final idx = hubEpisodeIndex(hub, current, season: widget.selectedSeason);
       if (idx == null || idx <= 0) return;
-      final prev = widget.episodes![idx - 1];
-      setState(() => _loadingNextEp = true);
-      try {
-        try {
-          await ExoPlayerBridge.stop(_viewId);
-        } catch (_) {}
-        await widget.onHubEpisodeSelected!(prev);
-        if (mounted) setState(() => _loadingNextEp = false);
-      } catch (_) {
-        if (!mounted) return;
-        await Future<void>.delayed(const Duration(seconds: 2));
-        if (mounted) setState(() => _loadingNextEp = false);
-      }
+      final prev = hub[idx - 1];
+      await _switchToEpisode(
+        prev.season ?? widget.selectedSeason ?? 1,
+        prev.number.round(),
+      );
       return;
     }
 
@@ -2220,7 +2200,9 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
       return;
     }
 
-    if (widget.episodes != null && widget.onHubEpisodeSelected != null) {
+    // Hub list: switch with this player's context (not onHubEpisodeSelected —
+    // that callback's BuildContext dies after pushAndRemoveUntil).
+    if (widget.episodes != null) {
       final current = widget.hubEpisodeNumber ?? widget.selectedEpisode;
       if (current == null) return;
       final idx = hubEpisodeIndex(
@@ -2231,18 +2213,10 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
       if (idx == null) return;
       final next = nextAiredHubEpisode(widget.episodes!, idx);
       if (next == null) return;
-      setState(() => _loadingNextEp = true);
-      try {
-        try {
-          await ExoPlayerBridge.stop(_viewId);
-        } catch (_) {}
-        await widget.onHubEpisodeSelected!(next);
-        if (mounted) setState(() => _loadingNextEp = false);
-      } catch (_) {
-        if (!mounted) return;
-        await Future<void>.delayed(const Duration(seconds: 2));
-        if (mounted) setState(() => _loadingNextEp = false);
-      }
+      await _switchToEpisode(
+        next.season ?? widget.selectedSeason ?? 1,
+        next.number.round(),
+      );
       return;
     }
 
@@ -2277,11 +2251,13 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
   }
 
   String? get _episodeLine {
-    if (widget.hubEpisodeNumber != null) {
-      return 'Episode ${widget.hubEpisodeNumber}';
-    }
-    if (widget.selectedEpisode != null && widget.selectedSeason != null) {
-      return 'S${widget.selectedSeason} E${widget.selectedEpisode}';
+    final n = widget.hubEpisodeNumber ?? widget.selectedEpisode;
+    if (n == null) return null;
+    final ep = n == n.truncateToDouble() ? n.toInt() : n;
+    final season = widget.selectedSeason;
+    if (season != null) return 'S$season E$ep';
+    if (widget.hubEpisodeNumber != null || widget.episodes != null) {
+      return 'Episode $ep';
     }
     return null;
   }

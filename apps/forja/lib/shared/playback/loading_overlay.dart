@@ -6,7 +6,6 @@ import 'package:flutter/services.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:forja_foundation/components/forja_image_cache.dart';
 import 'package:rust/rust.dart';
-import 'package:forja/shell/focus/shell_focusable_tap.dart';
 import 'package:forja/shell/desktop/desktop_window_chrome.dart';
 import 'package:forja/shell/core/forja_shell_input_policy.dart';
 import 'package:forja/shell/core/forja_shell_scope.dart';
@@ -80,9 +79,7 @@ void dismissActiveLoadingOverlayRoute([NavigatorState? navigator]) {
       // If loading is current (player already gone / missed removeRoute), pop
       // it. While the player is still on top the predicate is already true —
       // no-op, which is what we want after a successful under-player remove.
-      nav.popUntil(
-        (route) => route.settings.name != loadingOverlayRouteName,
-      );
+      nav.popUntil((route) => route.settings.name != loadingOverlayRouteName);
     } catch (_) {
       // Navigator locked or disposed mid-exit - post-frame retry below.
     }
@@ -95,6 +92,7 @@ void dismissActiveLoadingOverlayRoute([NavigatorState? navigator]) {
 Future<T?> showLoadingOverlayDialog<T>(
   BuildContext context, {
   required WidgetBuilder builder,
+
   /// Same navigator as [AppRouter.openPlayer] so Back cannot leave a loading
   /// dialog stranded on the shell overlay under a root player route.
   bool useRootNavigator = true,
@@ -257,7 +255,8 @@ class LoadingOverlay extends StatefulWidget {
   State<LoadingOverlay> createState() => _LoadingOverlayState();
 }
 
-class _LoadingOverlayState extends State<LoadingOverlay> with TickerProviderStateMixin {
+class _LoadingOverlayState extends State<LoadingOverlay>
+    with TickerProviderStateMixin {
   /// Space reserved at the bottom for progress / cancel so the title logo
   /// centers in the clear area above instead of overlapping it.
   static const double _statusStripReserveDesktop =
@@ -273,8 +272,9 @@ class _LoadingOverlayState extends State<LoadingOverlay> with TickerProviderStat
   List<StreamProviderProbe> _probes = const [];
   bool _providerListOpen = false;
   ResolveFailure? _failure;
-  final FocusNode _providersButtonFocus =
-      FocusNode(debugLabel: 'loading-providers');
+  final FocusNode _providersButtonFocus = FocusNode(
+    debugLabel: 'loading-providers',
+  );
   final FocusNode _cancelFocus = FocusNode(debugLabel: 'loading-cancel');
   final List<FocusNode> _providerRowFocus = [];
   final ScrollController _providerListScroll = ScrollController();
@@ -302,9 +302,8 @@ class _LoadingOverlayState extends State<LoadingOverlay> with TickerProviderStat
   @override
   void initState() {
     super.initState();
-    _message = widget.messageNotifier?.value ??
-        widget.message ??
-        'Starting stream';
+    _message =
+        widget.messageNotifier?.value ?? widget.message ?? 'Starting stream';
     _kind = widget.kindNotifier?.value ?? StreamLoadingKind.direct;
     _torrentStatus = widget.torrentStatusNotifier?.value;
     _failure = widget.failureNotifier?.value;
@@ -599,8 +598,9 @@ class _LoadingOverlayState extends State<LoadingOverlay> with TickerProviderStat
       StreamProviderProbeStatus.success => const Color(0xFF22C55E),
       StreamProviderProbeStatus.failed => const Color(0xFFEF4444),
       StreamProviderProbeStatus.trying => AppTheme.primaryColor,
-      StreamProviderProbeStatus.skippedOnTv =>
-        Colors.white.withValues(alpha: 0.35),
+      StreamProviderProbeStatus.skippedOnTv => Colors.white.withValues(
+        alpha: 0.35,
+      ),
       StreamProviderProbeStatus.pending => Colors.white.withValues(alpha: 0.45),
     };
   }
@@ -616,36 +616,33 @@ class _LoadingOverlayState extends State<LoadingOverlay> with TickerProviderStat
         : ShellTokens.streamLoadingProviderPendingDot;
     return switch (status) {
       StreamProviderProbeStatus.trying => SizedBox(
-          width: glyph,
-          height: glyph,
-          child: CircularProgressIndicator(
-            strokeWidth: tv ? 1.6 : 2,
-            color: color,
-          ),
+        width: glyph,
+        height: glyph,
+        child: CircularProgressIndicator(
+          strokeWidth: tv ? 1.6 : 2,
+          color: color,
         ),
+      ),
       StreamProviderProbeStatus.failed => Icon(
-          Icons.cancel_rounded,
-          size: ShellPaintScope.iconOf(context, 16),
-          color: color,
-        ),
+        Icons.cancel_rounded,
+        size: ShellPaintScope.iconOf(context, 16),
+        color: color,
+      ),
       StreamProviderProbeStatus.success => Icon(
-          Icons.check_circle_rounded,
-          size: ShellPaintScope.iconOf(context, 16),
-          color: color,
-        ),
+        Icons.check_circle_rounded,
+        size: ShellPaintScope.iconOf(context, 16),
+        color: color,
+      ),
       StreamProviderProbeStatus.skippedOnTv => Icon(
-          Icons.remove_circle_outline_rounded,
-          size: ShellPaintScope.iconOf(context, 16),
-          color: color,
-        ),
+        Icons.remove_circle_outline_rounded,
+        size: ShellPaintScope.iconOf(context, 16),
+        color: color,
+      ),
       StreamProviderProbeStatus.pending => Container(
-          width: pending,
-          height: pending,
-          decoration: BoxDecoration(
-            color: color,
-            shape: BoxShape.circle,
-          ),
-        ),
+        width: pending,
+        height: pending,
+        decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+      ),
     };
   }
 
@@ -730,11 +727,7 @@ class _LoadingOverlayState extends State<LoadingOverlay> with TickerProviderStat
     if (_isTorrentKind && _torrentStatus != null) {
       return TorrentLoadingStatusPanel(status: _torrentStatus!);
     }
-    return DirectStreamLoadingPanel(
-      message: _message,
-      subtitle: widget.subtitle,
-      probes: _probes,
-    );
+    return DirectStreamLoadingPanel(message: _message, probes: _probes);
   }
 
   Widget _providerListPanel() {
@@ -787,10 +780,8 @@ class _LoadingOverlayState extends State<LoadingOverlay> with TickerProviderStat
           shrinkWrap: true,
           padding: EdgeInsets.symmetric(vertical: listPadV),
           itemCount: _probes.length,
-          separatorBuilder: (_, _) => Divider(
-            height: 1,
-            color: Colors.white.withValues(alpha: 0.08),
-          ),
+          separatorBuilder: (_, _) =>
+              Divider(height: 1, color: Colors.white.withValues(alpha: 0.08)),
           itemBuilder: (context, index) {
             final probe = _probes[index];
             final canTap = _canManualCheck(probe);
@@ -861,7 +852,7 @@ class _LoadingOverlayState extends State<LoadingOverlay> with TickerProviderStat
     );
   }
 
-  Widget _cancelChipFace() {
+  Widget _cancelChipFace({required bool active}) {
     final tv = ShellPaintScope.usesTvDensityOf(context);
     final padH = tv
         ? ShellTokens.streamLoadingCancelPadHTv
@@ -875,16 +866,16 @@ class _LoadingOverlayState extends State<LoadingOverlay> with TickerProviderStat
     final fontSize = tv
         ? ShellTokens.streamLoadingCancelFontSizeTv
         : ShellTokens.streamLoadingCancelFontSize;
-    return Container(
+    return _loadingChromeFace(
+      active: active,
+      radius: radius,
       padding: EdgeInsets.symmetric(horizontal: padH, vertical: padV),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(radius),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.3)),
-      ),
       child: Text(
         'CANCEL',
         style: TextStyle(
-          color: Colors.white.withValues(alpha: 0.7),
+          color: active
+              ? ForjaShellColors.brandGreen
+              : Colors.white.withValues(alpha: 0.7),
           fontSize: fontSize,
           fontWeight: FontWeight.bold,
           letterSpacing: 3,
@@ -894,7 +885,7 @@ class _LoadingOverlayState extends State<LoadingOverlay> with TickerProviderStat
     );
   }
 
-  Widget _serversChipFace({required bool open}) {
+  Widget _serversChipFace({required bool open, required bool active}) {
     final tv = ShellPaintScope.usesTvDensityOf(context);
     final pad = tv
         ? ShellTokens.streamLoadingServersChipPadTv
@@ -902,46 +893,57 @@ class _LoadingOverlayState extends State<LoadingOverlay> with TickerProviderStat
     final radius = tv
         ? ShellTokens.streamLoadingCancelRadiusTv
         : ShellTokens.streamLoadingCancelRadius;
-    return Container(
+    final idleFill = open
+        ? Colors.white.withValues(alpha: 0.12)
+        : Colors.transparent;
+    return _loadingChromeFace(
+      active: active,
+      radius: radius,
       padding: EdgeInsets.all(pad),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(radius),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.3)),
-        color: open ? Colors.white.withValues(alpha: 0.12) : Colors.transparent,
-      ),
+      idleFill: idleFill,
       child: Icon(
         open ? Icons.layers : Icons.layers_outlined,
-        size: ShellPaintScope.iconOf(
-          context,
-          ShellTokens.playerChromeIconSize,
-        ),
-        color: Colors.white.withValues(alpha: open ? 0.95 : 0.7),
+        size: ShellPaintScope.iconOf(context, ShellTokens.playerChromeIconSize),
+        color: active
+            ? ForjaShellColors.brandGreen
+            : Colors.white.withValues(alpha: open ? 0.95 : 0.7),
       ),
+    );
+  }
+
+  /// Idle white outline; hover / D-pad focus → brand-green button chrome.
+  Widget _loadingChromeFace({
+    required bool active,
+    required double radius,
+    required EdgeInsetsGeometry padding,
+    required Widget child,
+    Color idleFill = Colors.transparent,
+  }) {
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 120),
+      padding: padding,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(radius),
+        color: active
+            ? ForjaShellColors.brandGreen.withValues(alpha: 0.14)
+            : idleFill,
+        border: Border.all(
+          color: active
+              ? ForjaShellColors.brandGreen
+              : Colors.white.withValues(alpha: 0.3),
+          width: active ? 1.5 : 1,
+        ),
+      ),
+      child: child,
     );
   }
 
   Widget _cancelActionRow() {
     final showListToggle = _showProviderProbes;
-    final policy =
-        ShellScope.maybeOf(context)?.inputPolicy ?? ShellInputPolicy.desktop;
-    // Desktop hybrid shares TV D-pad flags but must keep Material hover/click.
-    final leanback = policy.useFocusableMoodChips && !policy.scaleOnHover;
     final tv = ShellPaintScope.usesTvDensityOf(context);
     final radius = tv
         ? ShellTokens.streamLoadingCancelRadiusTv
         : ShellTokens.streamLoadingCancelRadius;
-    final padH = tv
-        ? ShellTokens.streamLoadingCancelPadHTv
-        : ShellTokens.streamLoadingCancelPadH;
-    final padV = tv
-        ? ShellTokens.streamLoadingCancelPadVTv
-        : ShellTokens.streamLoadingCancelPadV;
-    final fontSize = tv
-        ? ShellTokens.streamLoadingCancelFontSizeTv
-        : ShellTokens.streamLoadingCancelFontSize;
-    final chipPad = tv
-        ? ShellTokens.streamLoadingServersChipPadTv
-        : ShellTokens.streamLoadingServersChipPad;
     final listGap = tv
         ? ShellTokens.streamLoadingProviderListGapTv
         : ShellTokens.streamLoadingProviderListGap;
@@ -955,94 +957,39 @@ class _LoadingOverlayState extends State<LoadingOverlay> with TickerProviderStat
         ? ShellTokens.streamLoadingActionGapTv
         : ShellTokens.streamLoadingActionGap;
 
-    final cancelButton = leanback
-        ? shellFocusableTap(
-            context: context,
-            focusNode: _cancelFocus,
-            onTap: widget.onCancel,
-            borderRadius: radius,
-            scaleOnFocus: 1.0,
-            showFocusBorder: true,
-            onRightEdge: showListToggle
-                ? () {
-                    if (_providersButtonFocus.canRequestFocus) {
-                      _providersButtonFocus.requestFocus();
-                    }
-                  }
-                : null,
-            onUpEdge: _providerListOpen ? _focusLastProviderRow : null,
-            child: _cancelChipFace(),
-          )
-        : TextButton(
-            onPressed: widget.onCancel,
-            style: TextButton.styleFrom(
-              foregroundColor: Colors.white.withValues(alpha: 0.7),
-              padding: EdgeInsets.symmetric(
-                horizontal: padH,
-                vertical: padV,
-              ),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(radius),
-                side: BorderSide(
-                  color: Colors.white.withValues(alpha: 0.3),
-                ),
-              ),
-            ),
-            child: Text(
-              'CANCEL',
-              style: TextStyle(
-                fontSize: fontSize,
-                fontWeight: FontWeight.bold,
-                letterSpacing: 3,
-                fontFamily: 'Poppins',
-              ),
-            ),
-          );
+    final cancelButton = _LoadingGreenChip(
+      focusNode: _cancelFocus,
+      onTap: widget.onCancel!,
+      borderRadius: radius,
+      onRightEdge: showListToggle
+          ? () {
+              if (_providersButtonFocus.canRequestFocus) {
+                _providersButtonFocus.requestFocus();
+              }
+            }
+          : null,
+      onUpEdge: _providerListOpen ? _focusLastProviderRow : null,
+      builder: (active) => _cancelChipFace(active: active),
+    );
 
     if (!showListToggle) return cancelButton;
 
-    final listButton = leanback
-        ? shellFocusableTap(
-            context: context,
-            focusNode: _providersButtonFocus,
-            onTap: _toggleProviderList,
-            borderRadius: radius,
-            scaleOnFocus: 1.0,
-            showFocusBorder: true,
-            onLeftEdge: () {
-              if (_cancelFocus.canRequestFocus) {
-                _cancelFocus.requestFocus();
-              }
-            },
-            onUpEdge: _providerListOpen ? _focusLastProviderRow : null,
-            child: _serversChipFace(open: _providerListOpen),
-          )
-        : IconButton(
-            onPressed: _toggleProviderList,
-            tooltip: _providerListOpen ? 'Hide servers' : 'Show servers',
-            style: IconButton.styleFrom(
-              foregroundColor: Colors.white.withValues(
-                alpha: _providerListOpen ? 0.95 : 0.7,
-              ),
-              backgroundColor: _providerListOpen
-                  ? Colors.white.withValues(alpha: 0.12)
-                  : Colors.transparent,
-              side: BorderSide(
-                color: Colors.white.withValues(alpha: 0.3),
-              ),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(radius),
-              ),
-              padding: EdgeInsets.all(chipPad),
-            ),
-            icon: Icon(
-              _providerListOpen ? Icons.layers : Icons.layers_outlined,
-              size: ShellPaintScope.iconOf(
-                context,
-                ShellTokens.playerChromeIconSize,
-              ),
-            ),
-          );
+    final listButton = Tooltip(
+      message: _providerListOpen ? 'Hide servers' : 'Show servers',
+      child: _LoadingGreenChip(
+        focusNode: _providersButtonFocus,
+        onTap: _toggleProviderList,
+        borderRadius: radius,
+        onLeftEdge: () {
+          if (_cancelFocus.canRequestFocus) {
+            _cancelFocus.requestFocus();
+          }
+        },
+        onUpEdge: _providerListOpen ? _focusLastProviderRow : null,
+        builder: (active) =>
+            _serversChipFace(open: _providerListOpen, active: active),
+      ),
+    );
 
     return Column(
       mainAxisSize: MainAxisSize.min,
@@ -1115,6 +1062,57 @@ class _LoadingOverlayState extends State<LoadingOverlay> with TickerProviderStat
     );
   }
 
+  Widget _logoHero() {
+    final tv = ShellPaintScope.usesTvDensityOf(context);
+    final episode = widget.subtitle?.trim();
+    final episodeGap = tv
+        ? ShellTokens.streamLoadingHintGapTv
+        : ShellTokens.streamLoadingHintGap;
+    final episodeSize = tv
+        ? ShellTokens.streamLoadingHintFontSizeTv
+        : ShellTokens.streamLoadingHintFontSize;
+    final episodePad = tv
+        ? ShellTokens.streamLoadingTitlePadHTv
+        : ShellTokens.streamLoadingTitlePadH;
+    final logo = _logoImageUrl != null
+        ? CachedNetworkImage(
+            cacheManager: ForjaImageCacheManager(),
+            imageUrl: _logoImageUrl!,
+            width: MediaQuery.of(context).size.width * 0.55,
+            height: MediaQuery.of(context).size.height * 0.28,
+            fit: BoxFit.contain,
+            alignment: Alignment.center,
+            placeholder: (_, _) => _titleFallback(),
+            errorWidget: (_, _, _) => _titleFallback(),
+          )
+        : _titleFallback();
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        FadeTransition(opacity: _pulseAnimation, child: logo),
+        if (episode != null && episode.isNotEmpty) ...[
+          SizedBox(height: episodeGap),
+          Padding(
+            padding: EdgeInsets.symmetric(horizontal: episodePad),
+            child: Text(
+              episode,
+              textAlign: TextAlign.center,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: Colors.white.withValues(alpha: 0.72),
+                fontSize: episodeSize,
+                fontWeight: FontWeight.w600,
+                letterSpacing: 0.3,
+                fontFamily: 'Poppins',
+              ),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final backdropUrl = _resolveBackdropUrl();
@@ -1133,11 +1131,11 @@ class _LoadingOverlayState extends State<LoadingOverlay> with TickerProviderStat
         : ShellTokens.streamLoadingSpinnerGap;
     final cancelGap = _showProviderProbes
         ? (tv
-            ? ShellTokens.streamLoadingCancelGapWithProbesTv
-            : ShellTokens.streamLoadingCancelGapWithProbes)
+              ? ShellTokens.streamLoadingCancelGapWithProbesTv
+              : ShellTokens.streamLoadingCancelGapWithProbes)
         : (tv
-            ? ShellTokens.streamLoadingCancelGapTv
-            : ShellTokens.streamLoadingCancelGap);
+              ? ShellTokens.streamLoadingCancelGapTv
+              : ShellTokens.streamLoadingCancelGap);
     final overlay = FadeTransition(
       opacity: _fadeOutAnimation,
       child: Material(
@@ -1157,11 +1155,7 @@ class _LoadingOverlayState extends State<LoadingOverlay> with TickerProviderStat
                 )
               else
                 const ColoredBox(color: Colors.black),
-              Container(
-                color: Colors.black.withValues(
-                  alpha: 0.72,
-                ),
-              ),
+              Container(color: Colors.black.withValues(alpha: 0.72)),
               // Logo sits in the upper region so it does not collide with the
               // status/cancel strip at the bottom.
               Positioned(
@@ -1169,23 +1163,7 @@ class _LoadingOverlayState extends State<LoadingOverlay> with TickerProviderStat
                 left: 0,
                 right: 0,
                 bottom: _logoBottomReserve(context),
-                child: Center(
-                  child: FadeTransition(
-                    opacity: _pulseAnimation,
-                    child: _logoImageUrl != null
-                        ? CachedNetworkImage(
-                            cacheManager: ForjaImageCacheManager(),
-                            imageUrl: _logoImageUrl!,
-                            width: MediaQuery.of(context).size.width * 0.55,
-                            height: MediaQuery.of(context).size.height * 0.28,
-                            fit: BoxFit.contain,
-                            alignment: Alignment.center,
-                            placeholder: (_, _) => _titleFallback(),
-                            errorWidget: (_, _, _) => _titleFallback(),
-                          )
-                        : _titleFallback(),
-                  ),
-                ),
+                child: Center(child: _logoHero()),
               ),
               DesktopWindowChrome.overlayDragStrip(),
               Positioned(
@@ -1198,10 +1176,7 @@ class _LoadingOverlayState extends State<LoadingOverlay> with TickerProviderStat
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       if (_showingFailure)
-                        ResolveFailurePanel(
-                          failure: _failure!,
-                          compact: true,
-                        )
+                        ResolveFailurePanel(failure: _failure!, compact: true)
                       else ...[
                         _optionalResolveBanners(),
                         CircularProgressIndicator(
@@ -1241,9 +1216,13 @@ class _LoadingOverlayState extends State<LoadingOverlay> with TickerProviderStat
           ? overlay
           : TvOverlayScope(
               // Leanback focus trap only — desktop Material cancel keeps pointer.
-              enabled: (ShellScope.maybeOf(context)?.inputPolicy.useFocusableMoodChips ??
+              enabled:
+                  (ShellScope.maybeOf(
+                        context,
+                      )?.inputPolicy.useFocusableMoodChips ??
                       false) &&
-                  !(ShellScope.maybeOf(context)?.inputPolicy.scaleOnHover ?? true),
+                  !(ShellScope.maybeOf(context)?.inputPolicy.scaleOnHover ??
+                      true),
               onDismiss: escapeAction,
               autofocusFirst: false,
               debugLabel: 'loading-overlay',
@@ -1290,7 +1269,81 @@ class LoadingOverlayBackHint extends StatelessWidget {
   }
 }
 
-/// Server row on the loading overlay — green tint on mouse hover / D-pad focus.
+/// Cancel / servers chip — brand-green fill + border on hover / D-pad focus.
+class _LoadingGreenChip extends StatefulWidget {
+  const _LoadingGreenChip({
+    required this.focusNode,
+    required this.onTap,
+    required this.builder,
+    required this.borderRadius,
+    this.onLeftEdge,
+    this.onRightEdge,
+    this.onUpEdge,
+  });
+
+  final FocusNode focusNode;
+  final VoidCallback onTap;
+  final Widget Function(bool active) builder;
+  final double borderRadius;
+  final VoidCallback? onLeftEdge;
+  final VoidCallback? onRightEdge;
+  final VoidCallback? onUpEdge;
+
+  @override
+  State<_LoadingGreenChip> createState() => _LoadingGreenChipState();
+}
+
+class _LoadingGreenChipState extends State<_LoadingGreenChip> {
+  final ValueNotifier<bool> _hoveredN = ValueNotifier(false);
+  bool _focused = false;
+
+  @override
+  void dispose() {
+    _hoveredN.dispose();
+    super.dispose();
+  }
+
+  void _setHovered(bool hovered) {
+    if (_hoveredN.value == hovered) return;
+    _hoveredN.value = hovered;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final policy =
+        ShellScope.maybeOf(context)?.inputPolicy ?? ShellInputPolicy.desktop;
+    return FocusableControl(
+      focusNode: widget.focusNode,
+      borderRadius: widget.borderRadius,
+      scaleOnFocus: 1.0,
+      showFocusBorder: false,
+      showFocusFill: false,
+      onTap: widget.onTap,
+      onLeftEdge: widget.onLeftEdge,
+      onRightEdge: widget.onRightEdge,
+      onUpEdge: widget.onUpEdge,
+      onHoverChange: _setHovered,
+      onFocusChange: (f) {
+        if (_focused == f) return;
+        setState(() => _focused = f);
+      },
+      child: ListenableBuilder(
+        listenable: _hoveredN,
+        builder: (context, _) {
+          final active = ShellInputPolicy.interactiveActive(
+            policy,
+            hovered: _hoveredN.value,
+            focused: _focused,
+            context: context,
+          );
+          return widget.builder(active);
+        },
+      ),
+    );
+  }
+}
+
+/// Server row on the loading overlay — green tint + border on hover / D-pad focus.
 class _LoadingServerRow extends StatefulWidget {
   const _LoadingServerRow({
     required this.focusNode,
@@ -1314,8 +1367,9 @@ class _LoadingServerRowState extends State<_LoadingServerRow> {
   final ValueNotifier<bool> _hoveredN = ValueNotifier(false);
   bool _focused = false;
 
-  static final Color _greenTint =
-      ForjaShellColors.brandGreen.withValues(alpha: 0.14);
+  static final Color _greenTint = ForjaShellColors.brandGreen.withValues(
+    alpha: 0.14,
+  );
 
   @override
   void dispose() {
@@ -1362,6 +1416,9 @@ class _LoadingServerRowState extends State<_LoadingServerRow> {
             decoration: BoxDecoration(
               color: active ? _greenTint : Colors.transparent,
               borderRadius: BorderRadius.circular(8),
+              border: active
+                  ? Border.all(color: ForjaShellColors.brandGreen, width: 1.5)
+                  : null,
             ),
             child: widget.child,
           );

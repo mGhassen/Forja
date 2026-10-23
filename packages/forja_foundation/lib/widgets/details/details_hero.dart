@@ -49,6 +49,7 @@ class DetailsHero extends StatelessWidget {
   });
 
   final String backdropUrl;
+
   /// Extra hero backdrops (full URLs). Rotates randomly with [backdropUrl].
   final List<String> backdropUrls;
   final String title;
@@ -57,22 +58,29 @@ class DetailsHero extends StatelessWidget {
   final List<String> metaParts;
   final double? rating;
   final String overview;
+
   /// Right-column fact rows (host maps TMDB/rich extras → these).
   final List<MapEntry<String, String>> facts;
   final String? logoUrl;
   final Widget? actionRow;
+
   /// Fills remaining hero height below [actionRow] (live match streams, etc.).
   final Widget? belowActionRow;
+
   /// When true, [belowActionRow] spans the full hero content width instead of
   /// the narrow description column (40% on desktop).
   final bool belowActionRowFullWidth;
+
   /// Gap between [actionRow] and [belowActionRow] (live match streams can sit closer).
   final double belowActionRowGap;
+
   /// When false, [actionRow] keeps intrinsic size (no FittedBox scaleDown).
   final bool scaleActionRow;
+
   /// Full-bleed soft scrim from title through [belowActionRow] (live match details).
   final bool contentScrim;
   final double? height;
+
   /// Host wires [WatchProgressBar] (or any progress paint).
   final Widget? progressBar;
   final double? bodyOverlap;
@@ -90,10 +98,13 @@ class DetailsHero extends StatelessWidget {
 
   /// Host maps [ShellInputPolicy.kenBurnsBackdrop].
   final bool enableKenBurns;
+
   /// Host maps [ShellMetrics.usesTvDensity].
   final bool tvDensity;
+
   /// Host maps [ShellInputPolicy.useFocusableMoodChips].
   final bool plainTitle;
+
   /// Host maps desktop text select.
   final bool selectableTitle;
   final int factsValueMaxLines;
@@ -104,9 +115,10 @@ class DetailsHero extends StatelessWidget {
     final bottomInset = MediaQuery.paddingOf(context).bottom;
     final topInset = MediaQuery.paddingOf(context).top;
     final viewportWidth = MediaQuery.sizeOf(context).width;
-    final contentInset = contentPadding ??
-        DetailsTokens.contentHorizontalPadding(viewportWidth);
-    final heroContentTop = topInset +
+    final contentInset =
+        contentPadding ?? DetailsTokens.contentHorizontalPadding(viewportWidth);
+    final heroContentTop =
+        topInset +
         (tvDensity
             ? DetailsTokens.heroContentTopInsetTv
             : DetailsTokens.heroContentTopInset);
@@ -115,11 +127,12 @@ class DetailsHero extends StatelessWidget {
     final resolvedOverlap = overlapsFirstRow
         ? rawOverlap
         : (tvDensity
-            ? DetailsTokens.heroBodyOverlapTv
-            : DetailsTokens.heroBodyOverlap);
+              ? DetailsTokens.heroBodyOverlapTv
+              : DetailsTokens.heroBodyOverlap);
     // Keep title / Play above the overlapping first body row.
-    final contentBottom =
-        overlapsFirstRow ? rawOverlap + bottomInset : bottomInset;
+    final contentBottom = overlapsFirstRow
+        ? rawOverlap + bottomInset
+        : bottomInset;
 
     return SizedBox(
       height: h,
@@ -157,8 +170,7 @@ class DetailsHero extends StatelessWidget {
                           : 0,
                     ),
                     child: Padding(
-                      padding:
-                          EdgeInsets.symmetric(horizontal: contentInset),
+                      padding: EdgeInsets.symmetric(horizontal: contentInset),
                       child: _DetailsHeroLayout(
                         title: title,
                         subtitle: subtitle,
@@ -182,8 +194,10 @@ class DetailsHero extends StatelessWidget {
                         descriptionWidthFraction: descriptionWidthFraction,
                         // Inside horizontal padding — do not re-count inset.
                         availableWidth:
-                            (constraints.maxWidth - 2 * contentInset)
-                                .clamp(0.0, double.infinity),
+                            (constraints.maxWidth - 2 * contentInset).clamp(
+                              0.0,
+                              double.infinity,
+                            ),
                         maxHeight: constraints.maxHeight,
                       ),
                     ),
@@ -247,6 +261,7 @@ class DetailsHeroSurface extends StatelessWidget {
   final List<String> backdropUrls;
   final double? height;
   final double? bodyOverlap;
+
   /// Soft bottom fade when body rows overlap the backdrop (old episode bleed).
   final bool softFade;
   final bool enableKenBurns;
@@ -298,9 +313,7 @@ class DetailsHeroSurface extends StatelessWidget {
               left: 0,
               right: 0,
               bottom: 0,
-              height: softFade
-                  ? h * 0.42
-                  : h * 0.55 + resolvedOverlap,
+              height: softFade ? h * 0.42 : h * 0.55 + resolvedOverlap,
               child: IgnorePointer(
                 child: _HeroBottomFade(shellBg: shellBg, soft: softFade),
               ),
@@ -362,9 +375,7 @@ class _DetailsHeroLayout extends StatelessWidget {
 
   Widget? _factsChild() {
     final panel = FactsPanel(
-      rows: [
-        for (final e in facts) (label: e.key, value: e.value),
-      ],
+      rows: [for (final e in facts) (label: e.key, value: e.value)],
       valueMaxLines: factsValueMaxLines,
     );
     return panel.hasContent ? panel : null;
@@ -374,12 +385,16 @@ class _DetailsHeroLayout extends StatelessWidget {
   Widget build(BuildContext context) {
     final width = MediaQuery.sizeOf(context).width;
     final compact = width < 900;
-    final leftColumnWidth = width *
+    final leftColumnWidth =
+        width *
         (descriptionWidthFraction ??
-            DetailsTokens.heroDescriptionWidthFraction);
+            (tvDensity
+                ? DetailsTokens.heroDescriptionWidthFractionTv
+                : DetailsTokens.heroDescriptionWidthFraction));
     final rawLogo = (logoUrl ?? '').trim();
-    final resolvedLogo =
-        rawLogo.isEmpty ? null : resolveAbsoluteCoverUrl(rawLogo);
+    final resolvedLogo = rawLogo.isEmpty
+        ? null
+        : resolveAbsoluteCoverUrl(rawLogo);
     final useFullWidthList =
         belowActionRow != null && belowActionRowFullWidth && maxHeight != null;
     // Live match streams: action row (Providers / Live TV + search) needs the
@@ -529,12 +544,12 @@ class _DetailsHeroMainColumn extends StatelessWidget {
   });
 
   static TextStyle overviewStyle({required bool tvDensity}) => TextStyle(
-        fontSize: tvDensity
-            ? DetailsTokens.bodyFontSizeTv
-            : DetailsTokens.bodyFontSize,
-        height: 1.6,
-        color: const Color(0xB8FFFFFF),
-      );
+    fontSize: tvDensity
+        ? DetailsTokens.bodyFontSizeTv
+        : DetailsTokens.bodyFontSize,
+    height: 1.6,
+    color: const Color(0xB8FFFFFF),
+  );
 
   TextStyle get _overviewStyle => overviewStyle(tvDensity: tvDensity);
 
@@ -548,9 +563,8 @@ class _DetailsHeroMainColumn extends StatelessWidget {
   double get _subtitleBlockHeight => tvDensity
       ? DetailsTokens.heroActionsBlockHeightTv
       : DetailsTokens.heroActionsBlockHeight;
-  double get _bodyFont => tvDensity
-      ? DetailsTokens.bodyFontSizeTv
-      : DetailsTokens.bodyFontSize;
+  double get _bodyFont =>
+      tvDensity ? DetailsTokens.bodyFontSizeTv : DetailsTokens.bodyFontSize;
   static const _genreBlockHeight = 20.0;
   static const _metaBlockHeight = 24.0;
   static const _overviewGap = 14.0;
@@ -607,7 +621,8 @@ class _DetailsHeroMainColumn extends StatelessWidget {
     required bool showSeriesProgress,
   }) {
     var reserved = 0.0;
-    if (actionRow != null) reserved += _actionGap + ShellTokens.shellButtonHeight;
+    if (actionRow != null)
+      reserved += _actionGap + ShellTokens.shellButtonHeight;
     if (belowActionRow != null) reserved += belowActionRowGap;
     if (showProgress) reserved += 14 + _progressBlockHeight;
     if (showSeriesProgress) {
@@ -647,12 +662,13 @@ class _DetailsHeroMainColumn extends StatelessWidget {
     // Keep title + Play first. Text titles shrink before dropping overview.
     double? metaBudget;
     if (bounded) {
-      metaBudget = (maxHeight! -
-              _footerReserve(
-                showProgress: showProgress,
-                showSeriesProgress: showSeriesProgress,
-              ))
-          .clamp(0.0, maxHeight!);
+      metaBudget =
+          (maxHeight! -
+                  _footerReserve(
+                    showProgress: showProgress,
+                    showSeriesProgress: showSeriesProgress,
+                  ))
+              .clamp(0.0, maxHeight!);
 
       bool overBudget() =>
           _metaUsedHeight(
@@ -665,12 +681,13 @@ class _DetailsHeroMainColumn extends StatelessWidget {
           metaBudget!;
 
       void refreshBudget() {
-        metaBudget = (maxHeight! -
-                _footerReserve(
-                  showProgress: showProgress,
-                  showSeriesProgress: showSeriesProgress,
-                ))
-            .clamp(0.0, maxHeight!);
+        metaBudget =
+            (maxHeight! -
+                    _footerReserve(
+                      showProgress: showProgress,
+                      showSeriesProgress: showSeriesProgress,
+                    ))
+                .clamp(0.0, maxHeight!);
       }
 
       if (overBudget()) showSubtitle = false;
@@ -712,7 +729,7 @@ class _DetailsHeroMainColumn extends StatelessWidget {
             height: titleHeight,
             child: Align(
               alignment: AlignmentDirectional.bottomStart,
-                  child: _titleWidget(titleHeight),
+              child: _titleWidget(titleHeight),
             ),
           )
         else
@@ -774,17 +791,11 @@ class _DetailsHeroMainColumn extends StatelessWidget {
     final footer = <Widget>[
       if (actionRow != null) ...[
         const SizedBox(height: _actionGap),
-        DetailsHeroActionRowFit(
-          scaleDown: scaleActionRow,
-          child: actionRow!,
-        ),
+        DetailsHeroActionRowFit(scaleDown: scaleActionRow, child: actionRow!),
       ],
       if (showProgress) ...[
         const SizedBox(height: 14),
-        SizedBox(
-          width: 220,
-          child: progressBar!,
-        ),
+        SizedBox(width: 220, child: progressBar!),
       ],
       if (showSeriesProgress) ...[
         SizedBox(height: showProgress ? 8 : 14),
@@ -826,9 +837,9 @@ class _DetailsHeroMainColumn extends StatelessWidget {
             if (actionRow != null) ...[
               const SizedBox(height: _actionGap),
               DetailsHeroActionRowFit(
-          scaleDown: scaleActionRow,
-          child: actionRow!,
-        ),
+                scaleDown: scaleActionRow,
+                child: actionRow!,
+              ),
             ],
             SizedBox(height: belowActionRowGap),
             Expanded(child: belowActionRow!),
@@ -874,9 +885,8 @@ class DetailsHeroMetaLine extends StatelessWidget {
   final bool singleLine;
   final bool tvDensity;
 
-  double get _body => tvDensity
-      ? DetailsTokens.bodyFontSizeTv
-      : DetailsTokens.bodyFontSize;
+  double get _body =>
+      tvDensity ? DetailsTokens.bodyFontSizeTv : DetailsTokens.bodyFontSize;
 
   @override
   Widget build(BuildContext context) {

@@ -9,6 +9,7 @@ import 'package:forja/shared/playback/sources/stream_orchestrator.dart';
 import 'package:forja/shared/playback/probe/engine_catalog_stream_probe.dart';
 import 'package:forja/shared/playback/probe/stream_drm_platform.dart';
 import 'package:forja/shared/playback/kit_episodes.dart';
+import 'package:forja/shared/playback/play_context.dart';
 import 'package:forja/shared/playback/play_hooks.dart';
 import 'package:forja/shared/playback/play_session.dart';
 
@@ -121,9 +122,10 @@ Future<void> switchEpisodeViaEngineAutoPlay({
       season: season,
       episode: episode,
     ),
-    loadingSubtitle: s?.hasMetaContext == true
-        ? 'EP $episode'
-        : 'Season $season · Episode $episode',
+    loadingSubtitle: playbackLoadingEpisodeSubtitle(
+      season: season,
+      episode: episode,
+    ),
     playSession: s,
     episodes: episodes,
     hubEpisodeNumber: episode,
@@ -275,7 +277,10 @@ Future<EngineAutoPlayPick?> runEngineAutoPlay({
     metaId: activeSession.meta?.id,
     malId: extract.intVal('malId') ?? malId,
     audioCategory: audioCategory ?? activeSession.audioCategory,
-    episodeVideoId: activeSession.episodeVideoIdFor(episode ?? 1, season: season),
+    episodeVideoId: activeSession.episodeVideoIdFor(
+      episode ?? 1,
+      season: season,
+    ),
   );
 
   var cancelled = false;
@@ -689,7 +694,10 @@ Future<EngineAutoPlayPick?> runEngineAutoPlay({
         open: activeSession.effectiveOpen,
         season: season,
         episode: episode,
-        episodeVideoId: activeSession.episodeVideoIdFor(episode ?? 1, season: season),
+        episodeVideoId: activeSession.episodeVideoIdFor(
+          episode ?? 1,
+          season: season,
+        ),
         panelCategoryHint: category,
       );
       EngineExtractResult? batch;
@@ -708,7 +716,10 @@ Future<EngineAutoPlayPick?> runEngineAutoPlay({
             year: year,
             movie: movie,
             open: activeSession.effectiveOpen,
-            episodeVideoId: activeSession.episodeVideoIdFor(episode ?? 1, season: season),
+            episodeVideoId: activeSession.episodeVideoIdFor(
+              episode ?? 1,
+              season: season,
+            ),
             audioCategory: audioCategory ?? activeSession.audioCategory,
             streamLanguageKeys: streamLanguageKeys,
             allowHostFallback: false,

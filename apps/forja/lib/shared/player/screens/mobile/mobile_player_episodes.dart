@@ -142,9 +142,7 @@ mixin _MobilePlayerEpisodes on ConsumerState<MobilePlayerScreen> {
   }
 
   bool get _showNextEpButton =>
-      _isNextEpisodeAvailable &&
-      _s._nearEndOfEpisode &&
-      !_s._isLoadingNextEp;
+      _isNextEpisodeAvailable && _s._nearEndOfEpisode && !_s._isLoadingNextEp;
 
   /// Call inside setState when the Next Episode chip shows or hides. Auto next
   /// arms the countdown ring; leaving the window clears the X for the next pass.
@@ -155,7 +153,8 @@ mixin _MobilePlayerEpisodes on ConsumerState<MobilePlayerScreen> {
       _s._nextEpChipAutoFocus = false;
       return;
     }
-    _s._autoNextCountdown = SettingsService.autoNextEpisodeNotifier.value &&
+    _s._autoNextCountdown =
+        SettingsService.autoNextEpisodeNotifier.value &&
         !_s._loopEnabled &&
         !_s._autoNextDismissed;
   }
@@ -223,8 +222,7 @@ mixin _MobilePlayerEpisodes on ConsumerState<MobilePlayerScreen> {
     );
   }
 
-  bool get _showSkipChip =>
-      _s._activeSkipLabel != null && !_s._skipDismissed;
+  bool get _showSkipChip => _s._activeSkipLabel != null && !_s._skipDismissed;
 
   /// Chrome hidden: Next Episode first (it carries the countdown), else Skip.
   void _claimFloatingChipFocus() {
@@ -304,11 +302,13 @@ mixin _MobilePlayerEpisodes on ConsumerState<MobilePlayerScreen> {
 
   /// Right-hand cluster ← : next/prev episode (when shown) → Forward 10s.
   void _focusLeftOfRightTransport() {
-    if (_s._hasNextEpisodeAdjacent && _s._transportNextEpFocus.canRequestFocus) {
+    if (_s._hasNextEpisodeAdjacent &&
+        _s._transportNextEpFocus.canRequestFocus) {
       _s._transportNextEpFocus.requestFocus();
       return;
     }
-    if (_s._hasPrevEpisodeAdjacent && _s._transportPrevEpFocus.canRequestFocus) {
+    if (_s._hasPrevEpisodeAdjacent &&
+        _s._transportPrevEpFocus.canRequestFocus) {
       _s._transportPrevEpFocus.requestFocus();
       return;
     }
@@ -317,11 +317,13 @@ mixin _MobilePlayerEpisodes on ConsumerState<MobilePlayerScreen> {
 
   /// Forward 10s → prev/next episode (when shown) → right-hand action cluster.
   void _focusRightOfForward() {
-    if (_s._hasPrevEpisodeAdjacent && _s._transportPrevEpFocus.canRequestFocus) {
+    if (_s._hasPrevEpisodeAdjacent &&
+        _s._transportPrevEpFocus.canRequestFocus) {
       _s._transportPrevEpFocus.requestFocus();
       return;
     }
-    if (_s._hasNextEpisodeAdjacent && _s._transportNextEpFocus.canRequestFocus) {
+    if (_s._hasNextEpisodeAdjacent &&
+        _s._transportNextEpFocus.canRequestFocus) {
       _s._transportNextEpFocus.requestFocus();
       return;
     }
@@ -409,36 +411,10 @@ mixin _MobilePlayerEpisodes on ConsumerState<MobilePlayerScreen> {
   Future<void> _previousEpisode() async {
     if (_s._isLoadingNextEp) return;
 
-    final current = widget.hubEpisodeNumber ?? widget.selectedEpisode;
-    if (widget.episodes != null &&
-        widget.onHubEpisodeSelected != null &&
-        current != null) {
-      final idx = hubEpisodeIndex(
-        widget.episodes!,
-        current,
-        season: widget.selectedSeason,
-      );
-      if (idx == null || idx <= 0) return;
-      final prev = widget.episodes![idx - 1];
-      _beginEpisodeLoading(
-        label: 'Episode ${prev.displayNumber}',
-        status: 'Loading previous episode…',
-      );
-      try {
-        _s._saveWatchHistory();
-        await _silenceForEpisodeHandoff();
-        await widget.onHubEpisodeSelected!(prev);
-        if (mounted && (ModalRoute.of(context)?.isCurrent ?? false)) {
-          await _resumeAfterFailedEpisodeHandoff();
-          _endEpisodeLoading();
-        }
-      } catch (e) {
-        await _resumeAfterFailedEpisodeHandoff();
-        await _failEpisodeLoading('Could not load the previous episode');
-      }
-      return;
-    }
-
+    // Same path as next: resolve then _switchToEpisode with this player's
+    // context. Do not call onHubEpisodeSelected — that callback closes over
+    // the route that opened the player, which pushAndRemoveUntil disposes
+    // after the first episode switch (silent no-op on previous).
     _beginEpisodeLoading(
       label: 'Previous episode',
       status: 'Looking up previous episode…',
@@ -594,7 +570,11 @@ mixin _MobilePlayerEpisodes on ConsumerState<MobilePlayerScreen> {
     final hub = widget.episodes;
     final hubCurrent = widget.hubEpisodeNumber ?? widget.selectedEpisode;
     if (hub != null && hub.isNotEmpty && hubCurrent != null) {
-      final idx = hubEpisodeIndex(hub, hubCurrent, season: widget.selectedSeason);
+      final idx = hubEpisodeIndex(
+        hub,
+        hubCurrent,
+        season: widget.selectedSeason,
+      );
       if (idx == null) return null;
       final next = nextAiredHubEpisode(hub, idx);
       if (next == null) return null;
@@ -619,7 +599,7 @@ mixin _MobilePlayerEpisodes on ConsumerState<MobilePlayerScreen> {
         }
         return null;
       }
-      return (season: 1, episode: next);
+      return (season: widget.selectedSeason ?? 1, episode: next);
     }
 
     if (widget.movie == null ||
@@ -654,7 +634,11 @@ mixin _MobilePlayerEpisodes on ConsumerState<MobilePlayerScreen> {
     final hub = widget.episodes;
     final hubCurrent = widget.hubEpisodeNumber ?? widget.selectedEpisode;
     if (hub != null && hub.isNotEmpty && hubCurrent != null) {
-      final idx = hubEpisodeIndex(hub, hubCurrent, season: widget.selectedSeason);
+      final idx = hubEpisodeIndex(
+        hub,
+        hubCurrent,
+        season: widget.selectedSeason,
+      );
       if (idx == null || idx <= 0) return null;
       final prev = hub[idx - 1];
       return (
@@ -667,7 +651,7 @@ mixin _MobilePlayerEpisodes on ConsumerState<MobilePlayerScreen> {
     if (session?.isHubFlatList == true && widget.selectedEpisode != null) {
       final prev = widget.selectedEpisode! - 1;
       if (prev < 1) return null;
-      return (season: 1, episode: prev);
+      return (season: widget.selectedSeason ?? 1, episode: prev);
     }
 
     if (widget.movie == null ||
@@ -830,9 +814,7 @@ mixin _MobilePlayerEpisodes on ConsumerState<MobilePlayerScreen> {
           stremioId: widget.stremioId,
           stremioAddonBaseUrl:
               _s._catalogAddonBaseUrl ?? widget.stremioAddonBaseUrl,
-          torrentEp: metaOpenTorrentEp(
-            widget.enginePlaySession?.effectiveOpen,
-          ),
+          torrentEp: metaOpenTorrentEp(widget.enginePlaySession?.effectiveOpen),
         );
         if (resolved != null) break;
       }
@@ -897,41 +879,17 @@ mixin _MobilePlayerEpisodes on ConsumerState<MobilePlayerScreen> {
     if (widget.episodes != null && widget.episodes!.isNotEmpty) {
       if (!mounted) return;
       PlayerPopupPanel.dismiss();
-      final useHubCallback = widget.onHubEpisodeSelected != null;
       PlayerKitEpisodePanel.show(
         context: context,
         episodes: widget.episodes!,
         currentEpisode: widget.hubEpisodeNumber ?? widget.selectedEpisode ?? 1,
         currentSeason: widget.selectedSeason,
         onEpisodeSelected: (ep) async {
-          final enginePid = _s._currentProvider ?? widget.activeProvider;
-          if (isEnginePlayerSession(enginePid)) {
-            await _switchToEpisode(
-              ep.season ?? widget.selectedSeason ?? 1,
-              ep.number.round(),
-            );
-            return;
-          }
-          if (useHubCallback) {
-            _beginEpisodeLoading(
-              label: 'Episode ${ep.displayNumber}',
-              status: 'Loading episode info…',
-            );
-            try {
-              _s._saveWatchHistory();
-              await _silenceForEpisodeHandoff();
-              await widget.onHubEpisodeSelected!(ep);
-              if (mounted && (ModalRoute.of(context)?.isCurrent ?? false)) {
-                await _resumeAfterFailedEpisodeHandoff();
-                _endEpisodeLoading();
-              }
-            } catch (e) {
-              await _resumeAfterFailedEpisodeHandoff();
-              await _failEpisodeLoading('Could not load this episode');
-            }
-            return;
-          }
-          await _switchToEpisode(1, ep.number.round());
+          // Live player context — not onHubEpisodeSelected (stale after switch).
+          await _switchToEpisode(
+            ep.season ?? widget.selectedSeason ?? 1,
+            ep.number.round(),
+          );
         },
         fallbackBackdropPath: widget.movie?.backdropPath,
         fallbackPosterPath: widget.movie?.posterPath,
