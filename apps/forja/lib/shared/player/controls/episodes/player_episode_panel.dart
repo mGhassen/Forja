@@ -781,6 +781,7 @@ class PlayerKitEpisodePanel {
     required List<PlayerKitEpisode> episodes,
     required num currentEpisode,
     required Future<void> Function(PlayerKitEpisode episode) onEpisodeSelected,
+    int? currentSeason,
     String? fallbackBackdropPath,
     String? fallbackPosterPath,
   }) {
@@ -796,6 +797,7 @@ class PlayerKitEpisodePanel {
         builder: (context, _) => _HubEpisodePanelOverlay(
           episodes: episodes,
           currentEpisode: currentEpisode,
+          currentSeason: currentSeason,
           onEpisodeSelected: onEpisodeSelected,
           onClose: dismiss,
           fallbackBackdropPath: fallbackBackdropPath,
@@ -815,12 +817,14 @@ class _HubEpisodePanelOverlay extends StatefulWidget {
     required this.currentEpisode,
     required this.onEpisodeSelected,
     required this.onClose,
+    this.currentSeason,
     this.fallbackBackdropPath,
     this.fallbackPosterPath,
   });
 
   final List<PlayerKitEpisode> episodes;
   final num currentEpisode;
+  final int? currentSeason;
   final Future<void> Function(PlayerKitEpisode episode) onEpisodeSelected;
   final VoidCallback onClose;
   final String? fallbackBackdropPath;
@@ -850,6 +854,7 @@ class _HubEpisodePanelOverlayState extends State<_HubEpisodePanelOverlay> {
       child: _HubEpisodePanelBody(
         episodes: widget.episodes,
         currentEpisode: widget.currentEpisode,
+        currentSeason: widget.currentSeason,
         onEpisodeSelected: widget.onEpisodeSelected,
         onClose: widget.onClose,
         fallbackBackdropPath: widget.fallbackBackdropPath,
@@ -865,12 +870,14 @@ class _HubEpisodePanelBody extends StatefulWidget {
     required this.currentEpisode,
     required this.onEpisodeSelected,
     required this.onClose,
+    this.currentSeason,
     this.fallbackBackdropPath,
     this.fallbackPosterPath,
   });
 
   final List<PlayerKitEpisode> episodes;
   final num currentEpisode;
+  final int? currentSeason;
   final Future<void> Function(PlayerKitEpisode episode) onEpisodeSelected;
   final VoidCallback onClose;
   final String? fallbackBackdropPath;
@@ -923,6 +930,21 @@ class _HubEpisodePanelBodyState extends State<_HubEpisodePanelBody> {
   int _chunkIndexForEpisode(num episode) =>
       episodeChunkIndexForNumber(episode);
 
+  /// Lists that span seasons repeat episode numbers; the playing row is the
+  /// one in the current season.
+  bool _isCurrent(PlayerKitEpisode ep) =>
+      ep.number == widget.currentEpisode &&
+      (widget.currentSeason == null ||
+          ep.season == null ||
+          ep.season == widget.currentSeason);
+
+  late final bool _multiSeason =
+      widget.episodes.map((e) => e.season).whereType<int>().toSet().length > 1;
+
+  String _badgeFor(PlayerKitEpisode ep) => _multiSeason && ep.season != null
+      ? 'S${ep.season} E${ep.displayNumber}'
+      : 'E${ep.displayNumber}';
+
   @override
   void initState() {
     super.initState();
@@ -967,8 +989,7 @@ class _HubEpisodePanelBodyState extends State<_HubEpisodePanelBody> {
     if (!_tvFocus) return;
     final list = _visibleEpisodes;
     if (list.isEmpty) return;
-    var index = preferIndex ??
-        list.indexWhere((e) => e.number == widget.currentEpisode);
+    var index = preferIndex ?? list.indexWhere(_isCurrent);
     if (index < 0) index = 0;
     if (_scrollController.hasClients) {
       const rowHeight = 116.0;
@@ -1056,9 +1077,7 @@ class _HubEpisodePanelBodyState extends State<_HubEpisodePanelBody> {
       WidgetsBinding.instance.addPostFrameCallback((_) => _scrollToCurrent());
       return;
     }
-    final index = _visibleEpisodes.indexWhere(
-      (e) => e.number == widget.currentEpisode,
-    );
+    final index = _visibleEpisodes.indexWhere(_isCurrent);
     if (index < 0 || !_scrollController.hasClients) return;
     const rowHeight = 116.0;
     final offset = (index * rowHeight).clamp(0.0, _scrollController.position.maxScrollExtent);
@@ -1083,7 +1102,7 @@ class _HubEpisodePanelBodyState extends State<_HubEpisodePanelBody> {
 
   Future<void> _select(PlayerKitEpisode episode) async {
     if (episode.notShippedYet) return;
-    if (episode.number == widget.currentEpisode) {
+    if (_isCurrent(episode)) {
       widget.onClose();
       return;
     }
@@ -1179,7 +1198,7 @@ class _HubEpisodePanelBodyState extends State<_HubEpisodePanelBody> {
                       separatorBuilder: (_, _) => const SizedBox(height: 2),
                       itemBuilder: (_, i) {
                         final ep = visible[i];
-                        final selected = ep.number == widget.currentEpisode;
+                        final selected = _isCurrent(ep);
                         final airDate = EpisodeAirDateInfo(
                           label: ep.airDateLabel,
                           notShippedYet: ep.notShippedYet,
@@ -1188,7 +1207,7 @@ class _HubEpisodePanelBodyState extends State<_HubEpisodePanelBody> {
                           episodeNumber: ep.number is int
                               ? ep.number as int
                               : ep.number.toInt(),
-                          episodeBadge: 'E${ep.displayNumber}',
+                          episodeBadge: _badgeFor(ep),
                           title: ep.title,
                           overview: ep.overview ?? '',
                           runtime: ep.runtimeMinutes,

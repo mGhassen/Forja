@@ -186,6 +186,15 @@ void main() {
       expect(out, contains('Hello'));
     });
 
+    test('drops the hoofoot sports-stream ad cue', () {
+      const ad = 'Visit hoofoot.ru to watch all sports\nlivestream and highlights for free';
+      final vtt = 'WEBVTT\n\n00:00:00.000 --> 00:00:08.000\n$ad\n\n'
+          '00:00:25.876 --> 00:00:29.156\nHello\n';
+      final out = utf8.decode(stripSubtitlePromoCues(utf8.encode(vtt)));
+      expect(out, isNot(contains('hoofoot')));
+      expect(out, contains('Hello'));
+    });
+
     test('leaves clean files untouched', () {
       final bytes = utf8.encode('1\n00:00:01,000 --> 00:00:04,000\nHi\n');
       expect(identical(stripSubtitlePromoCues(bytes), bytes), isTrue);

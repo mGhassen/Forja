@@ -73,7 +73,7 @@ String? stremioIdFromSourcesBag({
     open: session?.effectiveOpen,
     season: season,
     episode: episode,
-    episodeVideoId: session?.episodeVideoIdFor(episode ?? 1),
+    episodeVideoId: session?.episodeVideoIdFor(episode ?? 1, season: season),
   ).stremioBag;
   if (bag != null && bag.hasCustomAddon) {
     return bag.customStremioId!.trim();
@@ -103,7 +103,7 @@ Future<void> switchEpisodeViaEngineAutoPlay({
     open: s?.effectiveOpen,
     movie: movie,
     episode: episode,
-    episodeVideoId: s?.episodeVideoIdFor(episode),
+    episodeVideoId: s?.episodeVideoIdFor(episode, season: season),
     panelCategoryHint: engineCategoryForSession(s, movie),
   );
   return runEngineAutoPlay(
@@ -157,7 +157,9 @@ Future<void> Function(PlayerKitEpisode episode)? _hubEngineEpisodePicker({
     await switchEpisodeViaEngineAutoPlay(
       context: context,
       movie: movie,
-      season: season ?? 1,
+      // The picked row carries its own season (cross-season next / panel
+      // pick); fall back to the season this play started in.
+      season: ep.season ?? season ?? 1,
       episode: ep.number.round(),
       session: session,
       episodes: episodes,
@@ -253,7 +255,7 @@ Future<EngineAutoPlayPick?> runEngineAutoPlay({
     open: session?.effectiveOpen,
     movie: movie,
     episode: episode,
-    episodeVideoId: session?.episodeVideoIdFor(episode ?? 1),
+    episodeVideoId: session?.episodeVideoIdFor(episode ?? 1, season: season),
     panelCategoryHint: engineCategory,
   );
   final category = extract.panelCategory;
@@ -273,7 +275,7 @@ Future<EngineAutoPlayPick?> runEngineAutoPlay({
     metaId: activeSession.meta?.id,
     malId: extract.intVal('malId') ?? malId,
     audioCategory: audioCategory ?? activeSession.audioCategory,
-    episodeVideoId: activeSession.episodeVideoIdFor(episode ?? 1),
+    episodeVideoId: activeSession.episodeVideoIdFor(episode ?? 1, season: season),
   );
 
   var cancelled = false;
@@ -687,7 +689,7 @@ Future<EngineAutoPlayPick?> runEngineAutoPlay({
         open: activeSession.effectiveOpen,
         season: season,
         episode: episode,
-        episodeVideoId: activeSession.episodeVideoIdFor(episode ?? 1),
+        episodeVideoId: activeSession.episodeVideoIdFor(episode ?? 1, season: season),
         panelCategoryHint: category,
       );
       EngineExtractResult? batch;
@@ -706,7 +708,7 @@ Future<EngineAutoPlayPick?> runEngineAutoPlay({
             year: year,
             movie: movie,
             open: activeSession.effectiveOpen,
-            episodeVideoId: activeSession.episodeVideoIdFor(episode ?? 1),
+            episodeVideoId: activeSession.episodeVideoIdFor(episode ?? 1, season: season),
             audioCategory: audioCategory ?? activeSession.audioCategory,
             streamLanguageKeys: streamLanguageKeys,
             allowHostFallback: false,
@@ -1107,7 +1109,7 @@ Future<List<StreamSource>?> reloadEngineStreams({
     open: session?.effectiveOpen,
     movie: movie,
     episode: episode,
-    episodeVideoId: session?.episodeVideoIdFor(episode ?? 1),
+    episodeVideoId: session?.episodeVideoIdFor(episode ?? 1, season: season),
     panelCategoryHint: engineCategoryForSession(session, movie),
   );
   final headless = StreamLoadingSession(

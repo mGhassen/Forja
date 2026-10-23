@@ -340,6 +340,21 @@ typedef KitRecommendationsLoader = Future<List<String>> Function({
 });
 typedef KitSearchOpen = void Function(KitSearchResult result);
 
+/// Query, results and the focused card of a search page, kept by the screen
+/// that owns the page. The page unmounts while a fullscreen player is up
+/// (chrome stub) and rebuilds from this when the player closes, so Back from
+/// a title you just watched lands on the same results.
+class KitSearchSession {
+  String query = '';
+  String activeQuery = '';
+  List<KitSearchResult> results = const [];
+  bool canLoadMore = false;
+  SearchFilters filters = SearchFilters.empty;
+  int gridFocusedIndex = 0;
+
+  bool get isEmpty => query.trim().isEmpty && results.isEmpty;
+}
+
 class KitSearchPage extends StatefulWidget {
   const KitSearchPage({
     super.key,
@@ -351,10 +366,14 @@ class KitSearchPage extends StatefulWidget {
     this.onSearchProgressive,
     this.onSearchLoadMore,
     this.structuredSearch = false,
+    this.session,
   });
 
   final String hintText;
   final String tvTabId;
+
+  /// Survives the page across player sessions; null keeps the page stateless.
+  final KitSearchSession? session;
   final KitSearchQuery onSearch;
 
   final KitSearchProgressive? onSearchProgressive;
@@ -412,6 +431,7 @@ class _KitSearchPageState extends State<KitSearchPage> {
   @override
   void initState() {
     super.initState();
+    _restoreSession();
     ShellBus.registerFindShortcutHandler(_handleFindShortcut);
     _focusNode.addListener(_onSearchFieldFocusChange);
     _focusNode.onKeyEvent = _searchFieldKeyEvent;
@@ -422,6 +442,32 @@ class _KitSearchPageState extends State<KitSearchPage> {
     });
     _loadRecommendations();
     _loadRecentQueries();
+  }
+
+  void _restoreSession() {
+    final session = widget.session;
+    if (session == null || session.isEmpty) return;
+    _controller.text = session.query;
+    _query = session.query;
+    _activeSearchQuery = session.activeQuery;
+    _results = List<KitSearchResult>.from(session.results);
+    _canLoadMore = session.canLoadMore;
+    _filters = session.filters;
+    _gridFocusedIndex = _results.isEmpty
+        ? 0
+        : session.gridFocusedIndex.clamp(0, _results.length - 1);
+  }
+
+  void _saveSession() {
+    final session = widget.session;
+    if (session == null) return;
+    session
+      ..query = _controller.text
+      ..activeQuery = _activeSearchQuery
+      ..results = List<KitSearchResult>.from(_results)
+      ..canLoadMore = _canLoadMore
+      ..filters = _filters
+      ..gridFocusedIndex = _gridFocusedIndex;
   }
 
   Future<void> _loadRecentQueries() async {
@@ -615,6 +661,7 @@ class _KitSearchPageState extends State<KitSearchPage> {
 
   @override
   void dispose() {
+    _saveSession();
     ShellBus.unregisterFindShortcutHandler(_handleFindShortcut);
     ShellBus.shellOverlayHasPage.removeListener(_onShellOverlayChanged);
     _detachRouteAnimationListener();
@@ -1198,8 +1245,15 @@ class _KitSearchPageState extends State<KitSearchPage> {
     if (_leanbackTextInput(context) &&
         shellTvIsActivateKey(event) &&
         _searchFieldEditing) {
-      // Swallow the twin Select/Enter from the OK that opened editing.
-      return KeyEventResult.handled;
+      // Space is a character while typing; it must reach the field.
+      if (event.logicalKey == LogicalKeyboardKey.space) {
+        return KeyEventResult.ignored;
+      }
+      // Swallow only the twin Select/Enter from the OK that opened editing;
+      // once typing is armed, Enter submits through the field.
+      return _searchSubmitArmed
+          ? KeyEventResult.ignored
+          : KeyEventResult.handled;
     }
     if (_leanbackTextInput(context) &&
         shellTvIsActivateKey(event) &&
@@ -2028,6 +2082,9 @@ class _KitSearchPageResult {
 class _KitSearchScreenState extends State<KitSearchScreen> {
   static const _pageSize = 20;
 
+  /// Outlives the stubbed page while a player is up.
+  final KitSearchSession _session = KitSearchSession();
+
   String _pagingQuery = '';
   int _pagingPage = 0;
   Map<String, dynamic>? _pagingSeed;
@@ -2244,6 +2301,7 @@ class _KitSearchScreenState extends State<KitSearchScreen> {
             onSearchLoadMore: _packSearchLoadMore,
             loadRecommendations: loadRecommendations ?? _packRecommendations,
             onOpen: onOpen,
+            session: _session,
           );
         },
       ),

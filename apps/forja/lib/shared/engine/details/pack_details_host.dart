@@ -176,6 +176,9 @@ class _PackDetailsHostState extends ConsumerState<PackDetailsHost> {
 
   @override
   void dispose() {
+    // Release a pending player-surface wait so no listener outlives us.
+    final wait = _playerSurfaceWait;
+    if (wait != null && !wait.isCompleted) wait.complete();
     WatchHistory.revision.removeListener(_onWatchHistoryChanged);
     PackFiltersRegistry.revision.removeListener(_onPackFiltersChanged);
     packSettingsRevisionListenable.removeListener(_onPackSettingsChanged);
@@ -910,9 +913,35 @@ class _PackDetailsHostState extends ConsumerState<PackDetailsHost> {
     );
     await runPlayFromContext(context: context, ctx: ctx);
     if (!mounted) return;
+    // An in-player episode switch replaces the player route, which completes
+    // the future above while the next episode is still playing. Reload
+    // progress once the player surface is really gone, so the details page
+    // selects the episode the viewer actually stopped on.
+    await _awaitPlayerSurfaceClosed();
+    if (!mounted) return;
     await _loadWatchProgress();
     await _loadWatchedEpisodes();
     await _afterPlayClosed();
+  }
+
+  Completer<void>? _playerSurfaceWait;
+
+  Future<void> _awaitPlayerSurfaceClosed() async {
+    final active = ShellBus.playerSurfaceActive;
+    if (!active.value) return;
+    final closed = Completer<void>();
+    _playerSurfaceWait = closed;
+    void onChange() {
+      if (!active.value && !closed.isCompleted) closed.complete();
+    }
+
+    active.addListener(onChange);
+    try {
+      await closed.future;
+    } finally {
+      active.removeListener(onChange);
+      if (identical(_playerSurfaceWait, closed)) _playerSurfaceWait = null;
+    }
   }
 
   Future<void> _playFirstDownload() async {
