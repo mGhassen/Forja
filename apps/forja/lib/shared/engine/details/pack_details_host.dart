@@ -1352,6 +1352,9 @@ class _PackDetailsHostState extends ConsumerState<PackDetailsHost> {
         plainTitle: policy.useFocusableMoodChips,
         selectableTitle: shellDesktopTextSelect(context),
         factsValueMaxLines: policy.useFocusableMoodChips ? 2 : 1,
+        // FittedBox scaleDown + overlay menus → full-size ghost SUB/DUB pill.
+        // Match live details: keep intrinsic size on TV.
+        scaleActionRow: !tvFocus,
         actionRow: DetailsHeroTvActionScope(
           tabId: MediaDetailsTv.tabId,
           itemCount: heroActionCount,

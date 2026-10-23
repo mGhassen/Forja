@@ -159,19 +159,15 @@ class _KindDropdownSegmentState extends State<_KindDropdownSegment> {
   int get _kindCount =>
       widget.langs.where((l) => widget.selected.contains(l.key)).length;
 
-  @override
-  void didUpdateWidget(covariant _KindDropdownSegment oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.selected != widget.selected ||
-        oldWidget.langs != widget.langs) {
-      final entry = _entry;
-      if (entry == null) return;
-      // Defer — sync markNeedsBuild here runs mid-parent-build and asserts.
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!mounted || !identical(_entry, entry)) return;
-        entry.markNeedsBuild();
-      });
-    }
+  /// Refresh open menu after parent applies selection — never from
+  /// [didUpdateWidget] (that runs mid-build and asserts on OverlayEntry).
+  void _scheduleOverlayRefresh() {
+    final entry = _entry;
+    if (entry == null) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !identical(_entry, entry)) return;
+      entry.markNeedsBuild();
+    });
   }
 
   @override
@@ -227,6 +223,7 @@ class _KindDropdownSegmentState extends State<_KindDropdownSegment> {
       }
     }
     widget.onChanged(next);
+    _scheduleOverlayRefresh();
   }
 
   void _clearKind() {
@@ -235,6 +232,7 @@ class _KindDropdownSegmentState extends State<_KindDropdownSegment> {
         if (!k.startsWith('${widget.kind}:')) k,
     };
     widget.onChanged(next);
+    _scheduleOverlayRefresh();
   }
 
   Rect? _anchorRectInOverlay(BuildContext overlayContext) {
