@@ -111,13 +111,22 @@ class _ListOpenBindSheetState extends State<_ListOpenBindSheet> {
   List<MetaItem> _hits = const [];
   String? _error;
   String? _pickedKey;
+  MetaItem? _preview;
   bool _closed = false;
   bool _saving = false;
+
+  MetaItem get _headerMeta => _preview ?? widget.sourceMeta;
 
   String get _yearHint {
     final r = widget.sourceMeta.releaseInfo.trim();
     if (r.isNotEmpty) return r;
     return widget.sourceMeta.premiereDate.trim();
+  }
+
+  String get _headerYear {
+    final r = _headerMeta.releaseInfo.trim();
+    if (r.isNotEmpty) return r;
+    return _headerMeta.premiereDate.trim();
   }
 
   @override
@@ -213,6 +222,7 @@ class _ListOpenBindSheetState extends State<_ListOpenBindSheet> {
     setState(() {
       _hub = hub;
       _pickedKey = null;
+      _preview = null;
       _fitHitFocus(0);
       _hits = const [];
       _error = null;
@@ -303,7 +313,10 @@ class _ListOpenBindSheetState extends State<_ListOpenBindSheet> {
     final ok = await save(result);
     _saving = false;
     if (!mounted || !ok) return;
-    setState(() => _pickedKey = key);
+    setState(() {
+      _pickedKey = key;
+      _preview = result.hit ?? widget.sourceMeta;
+    });
   }
 
   void _confirmCompatible() {
@@ -344,8 +357,8 @@ class _ListOpenBindSheetState extends State<_ListOpenBindSheet> {
     final density = ShellScope.metricsOf(context).usesTvDensity;
     final leanback = policy.browseTextUntilActivate;
     final dpad = policy.useFocusableMoodChips;
-    final poster = widget.sourceMeta.poster.trim();
-    final release = _yearHint;
+    final poster = _headerMeta.poster.trim();
+    final release = _headerYear;
     final screen = MediaQuery.sizeOf(context);
     double px(double desktop) =>
         density ? desktop * ShellTokens.tvChromeScale : desktop;
@@ -414,9 +427,9 @@ class _ListOpenBindSheetState extends State<_ListOpenBindSheet> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          widget.sourceMeta.name.trim().isEmpty
+                          _headerMeta.name.trim().isEmpty
                               ? 'Untitled'
-                              : widget.sourceMeta.name.trim(),
+                              : _headerMeta.name.trim(),
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
                           style: GoogleFonts.plusJakartaSans(
@@ -687,7 +700,14 @@ class _FilmCheckRow extends StatelessWidget {
         child: row,
       );
     }
-    return row;
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onPick,
+        borderRadius: BorderRadius.circular(px(8)),
+        child: row,
+      ),
+    );
   }
 }
 
@@ -1012,7 +1032,9 @@ class _HitsBody extends StatelessWidget {
         ),
       );
 
-      final decorated = best && !pickFilm
+      final checked =
+          pickFilm && pickedKey != null && pickedKey == hitKey?.call(hit);
+      final decorated = (best && !pickFilm) || checked
           ? Container(
               decoration: BoxDecoration(
                 color: ForjaShellColors.brandGreen.withValues(alpha: 0.08),
@@ -1043,7 +1065,6 @@ class _HitsBody extends StatelessWidget {
           child: decorated,
         );
       }
-      if (pickFilm) return decorated;
       return Material(
         color: Colors.transparent,
         child: InkWell(

@@ -281,8 +281,12 @@ abstract final class SettingsTokens {
   static const double dialogMaxHeightFractionTv = 0.55;
 
   /// Open-with / bind picker (hub chips + search + results) — not confirm caps.
-  static const double bindSheetWidth = 480;
-  static const double bindSheetHeight = 560;
+  static const double bindSheetWidthFraction = 0.58;
+  static const double bindSheetWidthMin = 640;
+  static const double bindSheetWidthCap = 840;
+  static const double bindSheetHeightFraction = 0.82;
+  static const double bindSheetHeightMin = 640;
+  static const double bindSheetHeightCap = 920;
   static const double bindSheetWidthFractionTv = 0.48;
   static const double bindSheetWidthMinTv = 480;
   static const double bindSheetWidthCapTv = 720;
@@ -583,18 +587,28 @@ abstract final class SettingsTokens {
   }
 
   static double bindSheetWidthOf(BuildContext context, double screenWidth) {
-    if (!_tv(context)) return bindSheetWidth;
-    return (screenWidth * bindSheetWidthFractionTv).clamp(
-      bindSheetWidthMinTv,
-      bindSheetWidthCapTv,
+    if (_tv(context)) {
+      return (screenWidth * bindSheetWidthFractionTv).clamp(
+        bindSheetWidthMinTv,
+        bindSheetWidthCapTv,
+      );
+    }
+    return (screenWidth * bindSheetWidthFraction).clamp(
+      bindSheetWidthMin,
+      bindSheetWidthCap,
     );
   }
 
   static double bindSheetHeightOf(BuildContext context, double screenHeight) {
-    if (!_tv(context)) return bindSheetHeight;
-    return (screenHeight * bindSheetHeightFractionTv).clamp(
-      bindSheetHeightMinTv,
-      bindSheetHeightCapTv,
+    if (_tv(context)) {
+      return (screenHeight * bindSheetHeightFractionTv).clamp(
+        bindSheetHeightMinTv,
+        bindSheetHeightCapTv,
+      );
+    }
+    return (screenHeight * bindSheetHeightFraction).clamp(
+      bindSheetHeightMin,
+      bindSheetHeightCap,
     );
   }
 

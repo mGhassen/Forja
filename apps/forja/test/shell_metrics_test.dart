@@ -15,7 +15,13 @@ import 'package:forja_foundation/tokens/portal_list_tokens.dart';
 import 'package:forja_foundation/widgets/chrome/catalog_poster_grid.dart';
 
 void main() {
-  test('Open-with bind sheet TV size exceeds settings confirm caps', () {
+  test('Open-with bind sheet size exceeds settings confirm caps', () {
+    expect(SettingsTokens.bindSheetWidthMin, greaterThanOrEqualTo(640));
+    expect(SettingsTokens.bindSheetHeightMin, greaterThanOrEqualTo(640));
+    expect(
+      SettingsTokens.bindSheetWidthCap,
+      greaterThan(SettingsTokens.dialogMaxWidthCap),
+    );
     expect(SettingsTokens.bindSheetWidthMinTv, greaterThanOrEqualTo(480));
     expect(
       SettingsTokens.bindSheetWidthCapTv,

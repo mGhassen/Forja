@@ -292,18 +292,38 @@ void main() {
         'metaOpen': {'surface': 'drama', 'id': '9'},
         'catalogOpen': {'surface': 'drama', 'id': '9'},
         'mediaType': 'drama',
+        'title': 'Bound Title',
+        'name': 'Bound Title',
+        'poster': 'https://example/p.jpg',
+        'posterPath': 'https://example/p.jpg',
       };
       final grid = {
         'pluginId': 'hub-a',
         'open': {'surface': 'tmdb', 'id': '1'},
+        'title': 'Old',
+        'poster': 'https://example/old.jpg',
         'meta': {
           'open': {'surface': 'tmdb', 'id': '1'},
+          'name': 'Old',
+          'poster': 'https://example/old.jpg',
+        },
+        'paint': {
+          'props': {'title': 'Old', 'imageUrl': 'https://example/old.jpg'},
         },
       };
       stampListOpenBinding(saved, grid);
       expect(grid['pluginId'], 'hub-b');
       expect((grid['open'] as Map)['id'], '9');
       expect(((grid['meta'] as Map)['open'] as Map)['surface'], 'drama');
+      expect(grid['title'], 'Bound Title');
+      expect(grid['poster'], 'https://example/p.jpg');
+      expect((grid['meta'] as Map)['name'], 'Bound Title');
+      expect((grid['meta'] as Map)['poster'], 'https://example/p.jpg');
+      expect(((grid['paint'] as Map)['props'] as Map)['title'], 'Bound Title');
+      expect(
+        ((grid['paint'] as Map)['props'] as Map)['imageUrl'],
+        'https://example/p.jpg',
+      );
     });
   });
 }

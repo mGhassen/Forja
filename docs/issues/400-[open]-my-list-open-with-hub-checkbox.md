@@ -48,3 +48,4 @@ Open with… treated a compatible hub (usually Home) as already chosen: a checke
 
 - [RFC-108](../rfc/fixed/108-[fixed]-my-list-open-hub-binding.md)
 - [My List](../features/movies-tv/my-list.md)
+- [473](fixed/473-[fixed]-my-list-open-with-size-persist-card.md) (desktop size + row click persist / card refresh)

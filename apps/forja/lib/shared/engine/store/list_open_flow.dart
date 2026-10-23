@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja/shared/engine/runtime/kit/paint_artifact.dart';
 import 'package:forja/shared/engine/runtime/nav/plugin_nav.dart';
 import 'package:forja/shared/engine/runtime/open/catalog_open.dart';
 import 'package:forja/shared/engine/store/legacy_list_item.dart';
 import 'package:forja/shared/engine/store/list_open_bind_sheet.dart';
 import 'package:forja/shared/engine/store/list_open_binding.dart';
+import 'package:forja/shared/engine/store/list_providers.dart';
 import 'package:forja/shell/feedback/forja_toast.dart';
 import 'package:forja_foundation/protocol/protocol.dart';
 
@@ -209,7 +211,13 @@ Future<void> openListItemWithBinding(
           bound: bound,
           sourceItem: sourceItem,
         );
-        return saved != null;
+        if (saved == null) return false;
+        ProviderContainer? container;
+        try {
+          container = ProviderScope.containerOf(context, listen: false);
+        } catch (_) {}
+        invalidateListHubFeeds(container);
+        return true;
       },
     );
     return;
@@ -253,14 +261,37 @@ void stampListOpenBinding(
     'catalogOpen',
     'listStatus',
     'mediaType',
+    'title',
+    'name',
+    'poster',
+    'posterPath',
+    'background',
+    'backdropPath',
   ]) {
     if (!saved.containsKey(key)) continue;
     target[key] = saved[key];
   }
   final meta = target['meta'];
   final open = saved['open'];
-  if (meta is Map && open != null) {
-    meta['open'] = open;
+  if (meta is Map) {
+    if (open != null) meta['open'] = open;
+    for (final key in const ['name', 'poster', 'background']) {
+      if (!saved.containsKey(key)) continue;
+      meta[key] = saved[key];
+    }
+  }
+  final paint = target['paint'];
+  if (paint is Map) {
+    final props = paint['props'];
+    if (props is Map) {
+      final title = saved['title'] ?? saved['name'];
+      if (title != null) props['title'] = title;
+      final poster = saved['poster'] ?? saved['posterPath'];
+      if (poster != null) {
+        props['imageUrl'] = poster;
+        props['posterUrl'] = poster;
+      }
+    }
   }
 }
 

@@ -14,7 +14,7 @@ enum ButtonVariant {
   outline,
   destructive,
 
-  /// Brand-green tinted fill at rest (Settings accent CTAs).
+  /// Brand-green tinted chrome; label goes green only when focused / hovered.
   accent,
   link,
   plainIcon,
@@ -324,12 +324,13 @@ class _ButtonState extends State<Button> {
           border: null,
         );
       }
-      // Accent CTAs (Update all): keep tinted fill/border; [color] pins label.
+      // Accent CTAs (Update all): [color] means engaged label (TV IgnorePointer
+      // passes brand green only while focused — rest uses the null-color branch).
       if (variant == ButtonVariant.accent) {
         return _ButtonColors(
           foreground: color,
-          background: color.withValues(alpha: engaged ? 0.18 : 0.12),
-          border: color.withValues(alpha: engaged ? 0.7 : 0.55),
+          background: color.withValues(alpha: 0.18),
+          border: color.withValues(alpha: 0.7),
         );
       }
       if (engaged && hoverColor != null) {
@@ -390,10 +391,9 @@ class _ButtonState extends State<Button> {
         background: Color(0x1FF87171),
         border: Color(0x8CF87171),
       ),
-      // Brand green label + chrome at rest (Settings Update all). Engaged
-      // only deepens the fill/border — foreground stays green either way.
+      // Green chrome at rest; brand-green label only when focused / hovered.
       ButtonVariant.accent => _ButtonColors(
-        foreground: theme.brandGreen,
+        foreground: engaged ? theme.brandGreen : theme.textPrimary,
         background: theme.brandGreen.withValues(alpha: engaged ? 0.18 : 0.12),
         border: theme.brandGreen.withValues(alpha: engaged ? 0.7 : 0.55),
       ),

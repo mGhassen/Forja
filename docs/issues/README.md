@@ -509,6 +509,7 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [470-[fixed]-…](fixed/470-[fixed]-loading-overlay-season-episode.md) | Loading overlay omits season/episode | P2 | Medium | fixed | Complete · 2/2 · A 0/2 | — |
 | [471-[open]-…](471-[open]-player-episode-panel-season-dropdown-collapsible-search.md) | Player Episodes season dropdown + collapsible search | P1 | Medium | open | 3/3 · A 0/2 | [459](459-[open]-android-tv-series-journey-search-space-episode-ok-next-season.md) |
 | [472-[fixed]-…](fixed/472-[fixed]-player-previous-episode-stale-hub-callback.md) | Previous episode no-ops after next | P1 | High | fixed | Complete · 3/3 · A 0/2 | — |
+| [473-[fixed]-…](fixed/473-[fixed]-my-list-open-with-size-persist-card.md) | My List Open with… size + persist/card update | P1 | High | fixed | Complete · 3/3 · A 0/2 | [400](400-[open]-my-list-open-with-hub-checkbox.md) |
 
 **Migration parity (draft):** [018](018-[draft]-migration-playback-parity-unverified.md) → [019](019-[draft]-webstreamr-enginejobs-e2e-test-gap.md)–[022](022-[draft]-playback-widget-integration-tests.md).
 

@@ -2264,7 +2264,7 @@ class SettingsFilledButton extends StatelessWidget {
   final bool busy;
   final bool secondary;
 
-  /// Brand-green tinted CTA (e.g. pack Update all).
+  /// Green-chrome CTA; label goes brand green on focus/hover (e.g. Update all).
   final bool accent;
 
   /// Alert-red CTA (e.g. P2P “I am aware”).
@@ -2320,9 +2320,9 @@ class SettingsFilledButton extends StatelessWidget {
             fontSize: fontSize,
             padding: EdgeInsets.symmetric(horizontal: padH),
             variant: variant,
-            // Force brand-green label for accent CTAs (Update all) even when
-            // Material theme labelLarge would otherwise paint near-white.
-            color: variant == ButtonVariant.accent
+            // TV IgnorePointer: Button never sees focused/hovered. Pass green
+            // only while engaged so Update all stays white at rest.
+            color: variant == ButtonVariant.accent && focused
                 ? ForjaShellColors.brandGreen
                 : null,
           ),
@@ -2365,7 +2365,6 @@ class SettingsFilledButton extends StatelessWidget {
       padding: EdgeInsets.symmetric(horizontal: padH),
       focusNode: focusNode,
       variant: _variant,
-      color: accent ? ForjaShellColors.brandGreen : null,
     );
     if (expand) return button;
     return Align(alignment: AlignmentDirectional.centerStart, child: button);

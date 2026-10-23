@@ -285,5 +285,27 @@ abstract final class ListOpenBinding {
     item['open'] = open.toJson();
     item['catalogOpen'] = open.toJson();
     item['listStatus'] = status;
+    final title = meta.name.trim();
+    if (title.isNotEmpty) {
+      item['title'] = title;
+      item['name'] = title;
+    }
+    final poster = meta.poster.trim();
+    if (poster.isNotEmpty) {
+      item['poster'] = poster;
+      item['posterPath'] = poster;
+    }
+    final bg = meta.background.trim();
+    if (bg.isNotEmpty) {
+      item['background'] = bg;
+      item['backdropPath'] = bg;
+    }
+    final nested = item['meta'];
+    if (nested is Map) {
+      nested['open'] = open.toJson();
+      if (title.isNotEmpty) nested['name'] = title;
+      if (poster.isNotEmpty) nested['poster'] = poster;
+      if (bg.isNotEmpty) nested['background'] = bg;
+    }
   }
 }
