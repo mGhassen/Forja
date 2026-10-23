@@ -162,10 +162,15 @@ class _KindDropdownSegmentState extends State<_KindDropdownSegment> {
   @override
   void didUpdateWidget(covariant _KindDropdownSegment oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (_open &&
-        (oldWidget.selected != widget.selected ||
-            oldWidget.langs != widget.langs)) {
-      _entry?.markNeedsBuild();
+    if (oldWidget.selected != widget.selected ||
+        oldWidget.langs != widget.langs) {
+      final entry = _entry;
+      if (entry == null) return;
+      // Defer — sync markNeedsBuild here runs mid-parent-build and asserts.
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted || !identical(_entry, entry)) return;
+        entry.markNeedsBuild();
+      });
     }
   }
 
@@ -278,13 +283,25 @@ class _KindDropdownSegmentState extends State<_KindDropdownSegment> {
         final gap = DetailsTokens.listStatusMenuGapOf(tvDensity);
         final screen = MediaQuery.sizeOf(overlayCtx);
         final menuMaxW = ShellTokens.chromeScale(280, tv: tvDensity);
+        final menuCap = ShellTokens.chromeScale(420, tv: tvDensity);
         double left = anchor?.left ?? 16;
         double top = (anchor?.bottom ?? 80) + gap;
         if (left + menuMaxW > screen.width - 8) {
           left = (screen.width - menuMaxW - 8).clamp(8.0, screen.width);
         }
-        if (top > screen.height - 120) {
-          top = ((anchor?.top ?? top) - gap - 8).clamp(8.0, screen.height);
+        final spaceBelow = screen.height - top - 8;
+        double menuMaxH = menuCap;
+        if (spaceBelow < menuCap) {
+          final spaceAbove = (anchor?.top ?? top) - gap - 8;
+          if (spaceAbove > spaceBelow) {
+            menuMaxH = spaceAbove.clamp(120.0, menuCap);
+            top = ((anchor?.top ?? top) - gap - menuMaxH).clamp(
+              8.0,
+              screen.height,
+            );
+          } else {
+            menuMaxH = spaceBelow.clamp(120.0, menuCap);
+          }
         }
         return ShellScope.rehost(
           context,
@@ -317,6 +334,7 @@ class _KindDropdownSegmentState extends State<_KindDropdownSegment> {
                           kindActive: _kindActive,
                           tvFocus: policy.leanbackOnly,
                           tvDensity: tvDensity,
+                          maxHeight: menuMaxH,
                           onClear: _clearKind,
                           onToggle: _toggleKey,
                         ),
@@ -408,6 +426,7 @@ class _LanguageMenuPanel extends StatelessWidget {
     required this.kindActive,
     required this.tvFocus,
     required this.tvDensity,
+    required this.maxHeight,
     required this.onClear,
     required this.onToggle,
   });
@@ -418,6 +437,7 @@ class _LanguageMenuPanel extends StatelessWidget {
   final bool kindActive;
   final bool tvFocus;
   final bool tvDensity;
+  final double maxHeight;
   final VoidCallback onClear;
   final void Function(String key, bool checked) onToggle;
 
@@ -426,7 +446,7 @@ class _LanguageMenuPanel extends StatelessWidget {
     final cinematic = ForjaShellColors.cinematic;
     final minW = ShellTokens.chromeScale(168, tv: tvDensity);
     final maxW = ShellTokens.chromeScale(280, tv: tvDensity);
-    final maxH = ShellTokens.chromeScale(420, tv: tvDensity);
+    final maxH = maxHeight;
     final radius = ShellTokens.chromeScale(
       ShellTokens.shellChipRadius,
       tv: tvDensity,

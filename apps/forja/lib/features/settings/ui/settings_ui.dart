@@ -2300,8 +2300,8 @@ class SettingsFilledButton extends StatelessWidget {
       final enabled = onPressed != null && !busy;
       Widget paint({required bool focused}) {
         // FocusableControl owns the node + IgnorePointer — Button never sees
-        // WidgetState.focused. Swap to accent so Install / primary CTAs go
-        // brand green on focus instead of the gray flat-menu ring.
+        // WidgetState.focused / hovered. Swap to accent so Install / primary
+        // CTAs go brand green on focus/hover instead of the gray flat-menu ring.
         final variant =
             focused &&
                 (_variant == ButtonVariant.primary ||
@@ -2320,6 +2320,11 @@ class SettingsFilledButton extends StatelessWidget {
             fontSize: fontSize,
             padding: EdgeInsets.symmetric(horizontal: padH),
             variant: variant,
+            // Force brand-green label for accent CTAs (Update all) even when
+            // Material theme labelLarge would otherwise paint near-white.
+            color: variant == ButtonVariant.accent
+                ? ForjaShellColors.brandGreen
+                : null,
           ),
         );
       }
@@ -2360,14 +2365,16 @@ class SettingsFilledButton extends StatelessWidget {
       padding: EdgeInsets.symmetric(horizontal: padH),
       focusNode: focusNode,
       variant: _variant,
+      color: accent ? ForjaShellColors.brandGreen : null,
     );
     if (expand) return button;
     return Align(alignment: AlignmentDirectional.centerStart, child: button);
   }
 }
 
-/// TV: FocusableControl owns focus — [Button] never gets [WidgetState.focused].
-/// Rebuild paint on focus so primary CTAs go brand green (no gray flat ring).
+/// TV / desktop hybrid: FocusableControl owns focus — [Button] never gets
+/// [WidgetState.focused] / hovered (IgnorePointer). Rebuild paint on focus
+/// **and** mouse hover so primary CTAs go brand green (no gray flat ring).
 class _SettingsFilledTvFocus extends StatefulWidget {
   const _SettingsFilledTvFocus({
     required this.onTap,
@@ -2399,6 +2406,7 @@ class _SettingsFilledTvFocus extends StatefulWidget {
 
 class _SettingsFilledTvFocusState extends State<_SettingsFilledTvFocus> {
   bool _focused = false;
+  bool _hovered = false;
 
   @override
   Widget build(BuildContext context) {
@@ -2425,7 +2433,13 @@ class _SettingsFilledTvFocusState extends State<_SettingsFilledTvFocus> {
         if (_focused == f) return;
         setState(() => _focused = f);
       },
-      child: widget.paint(focused: _focused),
+      onHoverChange: (h) {
+        if (_hovered == h) return;
+        setState(() => _hovered = h);
+      },
+      // Desktop: mouse hover must paint green too — FocusableControl never
+      // forwards hover into the IgnorePointer [Button].
+      child: widget.paint(focused: _focused || _hovered),
     );
   }
 }

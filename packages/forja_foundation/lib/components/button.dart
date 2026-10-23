@@ -196,6 +196,17 @@ class _ButtonState extends State<Button> {
     }
 
     final style = ButtonStyle(
+      // Pin label color here — Material defaults to theme labelLarge (near-white)
+      // and can win over a child TextStyle when the button is under
+      // IgnorePointer (Settings desktop hybrid never sees WidgetState.hovered).
+      textStyle: WidgetStatePropertyAll(
+        TextStyle(
+          color: colors.foreground,
+          fontSize: resolvedFontSize,
+          fontWeight: FontWeight.w700,
+          letterSpacing: 0.2,
+        ),
+      ),
       foregroundColor: WidgetStatePropertyAll(colors.foreground),
       backgroundColor: WidgetStatePropertyAll(colors.background),
       overlayColor: WidgetStatePropertyAll(
@@ -208,6 +219,8 @@ class _ButtonState extends State<Button> {
           : const WidgetStatePropertyAll(BorderSide.none),
       elevation: const WidgetStatePropertyAll(0),
       shadowColor: const WidgetStatePropertyAll(Colors.transparent),
+      // Avoid animating labelLarge white → brand green on first paint.
+      animationDuration: Duration.zero,
     );
 
     Widget button = _MouseDownButton(
@@ -311,6 +324,14 @@ class _ButtonState extends State<Button> {
           border: null,
         );
       }
+      // Accent CTAs (Update all): keep tinted fill/border; [color] pins label.
+      if (variant == ButtonVariant.accent) {
+        return _ButtonColors(
+          foreground: color,
+          background: color.withValues(alpha: engaged ? 0.18 : 0.12),
+          border: color.withValues(alpha: engaged ? 0.7 : 0.55),
+        );
+      }
       if (engaged && hoverColor != null) {
         return _ButtonColors(
           foreground: hoverColor,
@@ -369,18 +390,13 @@ class _ButtonState extends State<Button> {
         background: Color(0x1FF87171),
         border: Color(0x8CF87171),
       ),
-      ButtonVariant.accent =>
-        engaged
-            ? _ButtonColors(
-                foreground: theme.brandGreen,
-                background: theme.brandGreen.withValues(alpha: 0.18),
-                border: theme.brandGreen.withValues(alpha: 0.7),
-              )
-            : _ButtonColors(
-                foreground: theme.brandGreen,
-                background: theme.brandGreen.withValues(alpha: 0.12),
-                border: theme.brandGreen.withValues(alpha: 0.55),
-              ),
+      // Brand green label + chrome at rest (Settings Update all). Engaged
+      // only deepens the fill/border — foreground stays green either way.
+      ButtonVariant.accent => _ButtonColors(
+        foreground: theme.brandGreen,
+        background: theme.brandGreen.withValues(alpha: engaged ? 0.18 : 0.12),
+        border: theme.brandGreen.withValues(alpha: engaged ? 0.7 : 0.55),
+      ),
       ButtonVariant.link =>
         engaged
             ? engagedColors

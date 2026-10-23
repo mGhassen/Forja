@@ -10,7 +10,7 @@
 
 | | |
 |--|--|
-| **Progress** | **Complete** · **2 / 2** fix · **0 / 2** acceptance |
+| **Progress** | **Complete** · **4 / 4** fix · **0 / 2** acceptance |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -32,6 +32,8 @@
 |--:|----|-------------|--------|
 | 1 | I466-T01 | Position menu with `localToGlobal` + `Positioned` (no LayerLink follower) | ✅ |
 | 2 | I466-T02 | Rehost [ShellPaintScope]; menu row type/padding/icons via TV chrome tokens | ✅ |
+| 3 | I466-T03 | Defer overlay `markNeedsBuild` post-frame (sync call asserted mid-build on select) | ✅ |
+| 4 | I466-T04 | Clamp menu max height to remaining viewport above/below anchor | ✅ |
 
 ## Acceptance
 

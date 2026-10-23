@@ -389,7 +389,8 @@ class _ShellNavRailState extends State<ShellNavRail> {
                         labelSlotHeight: preferredLabelSlot,
                       );
                       final navExtent =
-                          _navIds.length * (oneItem + metrics.navRailItemSpacing);
+                          _navIds.length *
+                          (oneItem + metrics.navRailItemSpacing);
 
                       return Column(
                         children: [
@@ -1097,16 +1098,18 @@ class _ShellNavRailItemState extends State<_ShellNavRailItem> {
         : active
         ? ForjaShellColors.iconHover
         : ForjaShellColors.iconMuted;
+    // Profile (custom avatar) skips icon tint but still greens the label on
+    // hover/focus — same language as destination-accent tabs.
     final labelColor = useDestinationAccent
         ? (widget.selected || active
               ? destinationAccent
               : ForjaShellColors.iconMuted)
+        : active
+        ? destinationAccent
         : selectedFocused
         ? Colors.white
         : widget.selected
         ? ForjaShellColors.textPrimary
-        : active
-        ? ForjaShellColors.textSecondary
         : ForjaShellColors.iconMuted;
     // Desktop: typewriter on hover. TV: static label when D-pad focus is visible.
     final showLabel =

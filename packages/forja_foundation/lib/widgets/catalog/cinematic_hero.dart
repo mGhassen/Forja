@@ -781,12 +781,12 @@ class CinematicHeroState extends State<CinematicHero>
               child: widget.galleryOverlayBuilder!(context),
             ),
           if (widget.galleryOverlayBuilder != null && slides.length >= 2)
-            PositionedDirectional(
-              // Backdrop strip only — exclude the Featured bleed so arrows
-              // center on the photo / CTA band, not the full hero height.
-              start: solidLeftWidth,
+            Positioned(
+              // Full hero width, edges only — exclude Featured bleed so Y
+              // stays on the photo / CTA band.
+              left: 0,
+              right: 0,
               top: 0,
-              end: 0,
               bottom: pageBleed ? textBottomInset : 0,
               child: IgnorePointer(
                 child: AnimatedOpacity(
@@ -1791,7 +1791,7 @@ class _HeroCtaPauseSensorState extends State<_HeroCtaPauseSensor> {
   }
 }
 
-/// Soft ←/→ chevrons over the backdrop strip while gallery focus is held.
+/// Soft ←/→ chevrons on the hero edges while gallery focus is held.
 class _HeroGalleryNavHints extends StatelessWidget {
   const _HeroGalleryNavHints();
 
@@ -1804,46 +1804,40 @@ class _HeroGalleryNavHints extends StatelessWidget {
     final icon = tv
         ? ShellTokens.heroGalleryArrowIconSizeTv
         : ShellTokens.heroGalleryArrowIconSize;
+    final inset = ShellTokens.heroGalleryArrowEdgeInset;
     final rtl = Directionality.of(context) == TextDirection.rtl;
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final stripW = constraints.maxWidth.clamp(1.0, double.infinity);
-        final startInset = stripW * ShellTokens.heroGalleryArrowStartFraction;
-        final endInset = stripW * ShellTokens.heroGalleryArrowEndFraction;
-        return Stack(
-          fit: StackFit.expand,
-          children: [
-            PositionedDirectional(
-              start: startInset,
-              top: 0,
-              bottom: 0,
-              child: Center(
-                child: _HeroGalleryArrow(
-                  controlSize: control,
-                  iconSize: icon,
-                  icon: rtl
-                      ? Icons.chevron_right_rounded
-                      : Icons.chevron_left_rounded,
-                ),
-              ),
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        Positioned(
+          left: inset,
+          top: 0,
+          bottom: 0,
+          child: Center(
+            child: _HeroGalleryArrow(
+              controlSize: control,
+              iconSize: icon,
+              icon: rtl
+                  ? Icons.chevron_right_rounded
+                  : Icons.chevron_left_rounded,
             ),
-            PositionedDirectional(
-              end: endInset,
-              top: 0,
-              bottom: 0,
-              child: Center(
-                child: _HeroGalleryArrow(
-                  controlSize: control,
-                  iconSize: icon,
-                  icon: rtl
-                      ? Icons.chevron_left_rounded
-                      : Icons.chevron_right_rounded,
-                ),
-              ),
+          ),
+        ),
+        Positioned(
+          right: inset,
+          top: 0,
+          bottom: 0,
+          child: Center(
+            child: _HeroGalleryArrow(
+              controlSize: control,
+              iconSize: icon,
+              icon: rtl
+                  ? Icons.chevron_left_rounded
+                  : Icons.chevron_right_rounded,
             ),
-          ],
-        );
-      },
+          ),
+        ),
+      ],
     );
   }
 }
