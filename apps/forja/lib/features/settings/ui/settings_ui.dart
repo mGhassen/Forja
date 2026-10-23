@@ -90,7 +90,7 @@ Widget settingsTitleText(
 ///
 /// Selected keeps white label ink; hover / focus turns label + icon green.
 /// Left rail bar stays on [FocusableControl] (`forceRailActive` + `showFocusRail`).
-/// Desktop does not auto-select on focus (leanback does).
+/// D-pad focus never selects — only [onTap] / OK / click changes the category.
 class SettingsCategoryTile extends StatefulWidget {
   const SettingsCategoryTile({
     super.key,
@@ -100,7 +100,6 @@ class SettingsCategoryTile extends StatefulWidget {
     required this.selected,
     required this.onTap,
     this.adminOnly = false,
-    this.onFocusSelect,
     this.focusNode,
     this.listIndex,
     this.tvRowId,
@@ -123,9 +122,6 @@ class SettingsCategoryTile extends StatefulWidget {
   final VoidCallback onTap;
   final bool adminOnly;
 
-  /// TV split: focus lands on a tile → select only (do not enter detail).
-  /// When null, [onTap] is used (compact list / non-TV).
-  final VoidCallback? onFocusSelect;
   final FocusNode? focusNode;
 
   /// Hub list index — compact list: `0` sends Left D-pad to the nav rail.
@@ -288,20 +284,6 @@ class _SettingsCategoryTileState extends State<SettingsCategoryTile> {
       onFocusChange: (focused) {
         if (_focused != focused) {
           setState(() => _focused = focused);
-        }
-        // Auto-select on focus is leanback-only. Desktop also has
-        // useFocusableMoodChips (hybrid D-pad), but resume/rebuild can dump
-        // focus onto the first category tile (Profile) and was calling
-        // onSelect(profile) — yanking the hub every background→foreground.
-        final leanback = ShellScope.inputPolicyOf(context).leanbackOnly;
-        if (leanback && focused && !widget.selected) {
-          // Defer — sync onSelect rebuilds the rail and rebinds
-          // [firstTileFocusNode] onto the new tile, disposing the owned node
-          // that just received D-pad focus (↓ looked dead on Playback → Sources).
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            if (!context.mounted) return;
-            (widget.onFocusSelect ?? widget.onTap)();
-          });
         }
       },
       child: ListenableBuilder(

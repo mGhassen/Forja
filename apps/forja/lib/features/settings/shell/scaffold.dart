@@ -50,8 +50,9 @@ class _SettingsHubScaffoldState extends ConsumerState<SettingsHubScaffold> {
   static const _categoryRowId = 'settings-categories';
 
   SettingsVisibility? _visibility;
-  final FocusScopeNode _detailScope =
-      FocusScopeNode(debugLabel: 'settings-detail');
+  final FocusScopeNode _detailScope = FocusScopeNode(
+    debugLabel: 'settings-detail',
+  );
   int _detailEnterToken = 0;
 
   /// Last detail control before Back to the category rail — restored on re-enter.
@@ -64,10 +65,7 @@ class _SettingsHubScaffoldState extends ConsumerState<SettingsHubScaffold> {
     // Merge pageBack onto SettingsScreen's enter/restore bind — do not unbind
     // (that wiped OK/→ from the Settings rail). Empty dispose must not unbind
     // either (it runs after this initState).
-    TvHeroActions.bind(
-      'settings',
-      pageBack: _handlePageBack,
-    );
+    TvHeroActions.bind('settings', pageBack: _handlePageBack);
     // ← on detail TvKitRows (Addons / Packs / Features) exits like Back.
     ShellTvFocusCoordinator.setPageBackOnRowLeftEdge('settings', true);
   }
@@ -326,167 +324,166 @@ class _SettingsHubScaffoldState extends ConsumerState<SettingsHubScaffold> {
     if (split) {
       return _settingsDirection(
         TvFocusGraph(
-        tabId: 'settings',
-        child: SafeArea(
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              SizedBox(
-                width: SettingsTokens.sidebarWidthOf(context),
-                child: FocusTraversalGroup(
-                  policy: ReadingOrderTraversalPolicy(),
-                  child: TvKitRow(
-                    rowId: _categoryRowId,
-                    sortOrder: 0,
-                    itemCount: tv ? categories.length : 0,
-                    orientation: ShellTvRowOrientation.vertical,
-                    child: _CategorySidebar(
-                      categories: categories,
-                      selectedId: widget.selectedId,
-                      onSelect: (id) {
-                        if (id != SettingsCategoryId.sources) {
-                          SettingsAddonDrill.clearReturnFocus();
-                          SettingsAddonDrill.close();
-                        }
-                        if (id != SettingsCategoryId.forjaPacks &&
-                            SettingsPackPromptDrill.isOpen &&
-                            !SettingsPackPromptDrill.isApplying) {
-                          SettingsPackPromptDrill.clearReturnFocus();
-                          unawaited(
-                            SettingsPackPromptDrill.dismissWithoutApply(),
-                          );
-                        }
-                        widget.onSelect(id);
-                      },
-                      firstTileFocusNode: widget.firstTileFocusNode,
-                      categoryRowId: tv ? _categoryRowId : null,
-                      onEnterDetail: tv ? _enterDetail : null,
+          tabId: 'settings',
+          child: SafeArea(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                SizedBox(
+                  width: SettingsTokens.sidebarWidthOf(context),
+                  child: FocusTraversalGroup(
+                    policy: ReadingOrderTraversalPolicy(),
+                    child: TvKitRow(
+                      rowId: _categoryRowId,
+                      sortOrder: 0,
+                      itemCount: tv ? categories.length : 0,
+                      orientation: ShellTvRowOrientation.vertical,
+                      child: _CategorySidebar(
+                        categories: categories,
+                        selectedId: widget.selectedId,
+                        onSelect: (id) {
+                          if (id != SettingsCategoryId.sources) {
+                            SettingsAddonDrill.clearReturnFocus();
+                            SettingsAddonDrill.close();
+                          }
+                          if (id != SettingsCategoryId.forjaPacks &&
+                              SettingsPackPromptDrill.isOpen &&
+                              !SettingsPackPromptDrill.isApplying) {
+                            SettingsPackPromptDrill.clearReturnFocus();
+                            unawaited(
+                              SettingsPackPromptDrill.dismissWithoutApply(),
+                            );
+                          }
+                          widget.onSelect(id);
+                        },
+                        firstTileFocusNode: widget.firstTileFocusNode,
+                        categoryRowId: tv ? _categoryRowId : null,
+                        onEnterDetail: tv ? _enterDetail : null,
+                      ),
                     ),
                   ),
                 ),
-              ),
-              Container(
-                width: 1,
-                color: ForjaShellColors.borderSubtle,
-              ),
-              Expanded(
-                child: tv
-                    ? FocusScope(
-                        node: _detailScope,
-                        // D-pad stays in the detail pane. ← on any control /
-                        // Back (_handlePageBack) → category rail (same as
-                        // Addons TvKitRow column-0).
-                        child: SettingsDetailEnter(
-                          enterToken: _detailEnterToken,
-                          child: ShellTvContainDpad(
-                            // Spatial 2D inside the page. ← exits to the
-                            // category rail (Back same ladder). ↑ never exits.
-                            child: ShellTvLinearFocusEdges(
-                              onBackwardEdge: () => _handlePageBack(),
-                              child: FocusTraversalGroup(
-                                policy: ReadingOrderTraversalPolicy(),
-                                child: SettingsAddonsAwareScaffold(
-                                  categoryTitle:
-                                      selectedMeta?.title ?? 'Settings',
-                                  categoryId: widget.selectedId,
-                                  categoryAdminOnly:
-                                      selectedMeta?.adminOnly ?? false,
-                                  scrollable: !(selectedMeta?.fillViewport ??
-                                      false),
-                                  child: buildSettingsCategoryBody(
-                                    widget.selectedId,
-                                    visibility,
+                Container(width: 1, color: ForjaShellColors.borderSubtle),
+                Expanded(
+                  child: tv
+                      ? FocusScope(
+                          node: _detailScope,
+                          // D-pad stays in the detail pane. ← on any control /
+                          // Back (_handlePageBack) → category rail (same as
+                          // Addons TvKitRow column-0).
+                          child: SettingsDetailEnter(
+                            enterToken: _detailEnterToken,
+                            child: ShellTvContainDpad(
+                              // Spatial 2D inside the page. ← exits to the
+                              // category rail (Back same ladder). ↑ never exits.
+                              child: ShellTvLinearFocusEdges(
+                                onBackwardEdge: () => _handlePageBack(),
+                                child: FocusTraversalGroup(
+                                  policy: ReadingOrderTraversalPolicy(),
+                                  child: SettingsAddonsAwareScaffold(
+                                    categoryTitle:
+                                        selectedMeta?.title ?? 'Settings',
+                                    categoryId: widget.selectedId,
+                                    categoryAdminOnly:
+                                        selectedMeta?.adminOnly ?? false,
+                                    scrollable:
+                                        !(selectedMeta?.fillViewport ?? false),
+                                    child: buildSettingsCategoryBody(
+                                      widget.selectedId,
+                                      visibility,
+                                    ),
                                   ),
                                 ),
                               ),
                             ),
                           ),
+                        )
+                      : SettingsAddonsAwareScaffold(
+                          categoryTitle: selectedMeta?.title ?? 'Settings',
+                          categoryId: widget.selectedId,
+                          categoryAdminOnly: selectedMeta?.adminOnly ?? false,
+                          scrollable: !(selectedMeta?.fillViewport ?? false),
+                          child: buildSettingsCategoryBody(
+                            widget.selectedId,
+                            visibility,
+                          ),
                         ),
-                      )
-                    : SettingsAddonsAwareScaffold(
-                        categoryTitle: selectedMeta?.title ?? 'Settings',
-                        categoryId: widget.selectedId,
-                        categoryAdminOnly: selectedMeta?.adminOnly ?? false,
-                        scrollable: !(selectedMeta?.fillViewport ?? false),
-                        child: buildSettingsCategoryBody(
-                          widget.selectedId,
-                          visibility,
-                        ),
-                      ),
-              ),
-            ],
+                ),
+              ],
+            ),
           ),
         ),
-      ),
       );
     }
 
     return _settingsDirection(
       SafeArea(
-      child: _wrapCompactTvFocus(
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Padding(
-              padding: EdgeInsetsDirectional.fromSTEB(
-                ShellTokens.usesCompactNavDrawer(context)
-                    ? ShellTokens.compactChromeLeadingInset(context)
-                    : SettingsTokens.pagePaddingOf(context),
-                tv ? 28 : 8,
-                SettingsTokens.pagePaddingOf(context),
-                4,
+        child: _wrapCompactTvFocus(
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Padding(
+                padding: EdgeInsetsDirectional.fromSTEB(
+                  ShellTokens.usesCompactNavDrawer(context)
+                      ? ShellTokens.compactChromeLeadingInset(context)
+                      : SettingsTokens.pagePaddingOf(context),
+                  tv ? 28 : 8,
+                  SettingsTokens.pagePaddingOf(context),
+                  4,
+                ),
+                child: ShellTabHeader(
+                  title: 'Settings',
+                  padding: EdgeInsets.zero,
+                  fontSize: SettingsTokens.hubTitleSizeOf(context),
+                ),
               ),
-              child: ShellTabHeader(
-                title: 'Settings',
-                padding: EdgeInsets.zero,
-                fontSize: SettingsTokens.hubTitleSizeOf(context),
+              Expanded(
+                child: ValueListenableBuilder<int>(
+                  valueListenable:
+                      PluginInstallCoordinator.instance.pendingUpdateCount,
+                  builder: (context, _, child) {
+                    return ListView.builder(
+                      padding: EdgeInsets.fromLTRB(
+                        SettingsTokens.pagePaddingOf(context),
+                        8,
+                        SettingsTokens.pagePaddingOf(context),
+                        48,
+                      ),
+                      itemCount: categories.length,
+                      itemBuilder: (context, index) {
+                        final c = categories[index];
+                        final packUpdates =
+                            c.id == SettingsCategoryId.forjaPacks
+                            ? _packUpdateCount()
+                            : 0;
+                        return SettingsCategoryTile(
+                          icon: c.icon,
+                          leading: packUpdates > 0
+                              ? const PackUpdateAlertIcon(
+                                  size: ShellTokens.packUpdateSettingsIconSize,
+                                )
+                              : null,
+                          trailing: packUpdates > 0
+                              ? const PackUpdateMenuBadge()
+                              : null,
+                          title: c.title,
+                          subtitle: c.subtitle,
+                          selected: false,
+                          adminOnly: c.adminOnly,
+                          listIndex: index,
+                          focusNode: index == 0
+                              ? widget.firstTileFocusNode
+                              : null,
+                          onTap: () => widget.onSelect(c.id),
+                        );
+                      },
+                    );
+                  },
+                ),
               ),
-            ),
-            Expanded(
-              child: ValueListenableBuilder<int>(
-                valueListenable:
-                    PluginInstallCoordinator.instance.pendingUpdateCount,
-                builder: (context, _, child) {
-                  return ListView.builder(
-                    padding: EdgeInsets.fromLTRB(
-                      SettingsTokens.pagePaddingOf(context),
-                      8,
-                      SettingsTokens.pagePaddingOf(context),
-                      48,
-                    ),
-                    itemCount: categories.length,
-                    itemBuilder: (context, index) {
-                      final c = categories[index];
-                      final packUpdates = c.id == SettingsCategoryId.forjaPacks
-                          ? _packUpdateCount()
-                          : 0;
-                      return SettingsCategoryTile(
-                        icon: c.icon,
-                        leading: packUpdates > 0
-                            ? const PackUpdateAlertIcon(
-                                size: ShellTokens.packUpdateSettingsIconSize,
-                              )
-                            : null,
-                        trailing: packUpdates > 0
-                            ? const PackUpdateMenuBadge()
-                            : null,
-                        title: c.title,
-                        subtitle: c.subtitle,
-                        selected: false,
-                        adminOnly: c.adminOnly,
-                        listIndex: index,
-                        focusNode:
-                            index == 0 ? widget.firstTileFocusNode : null,
-                        onTap: () => widget.onSelect(c.id),
-                      );
-                    },
-                  );
-                },
-              ),
-            ),
-          ],
+            ],
+          ),
         ),
-      ),
       ),
     );
   }
@@ -556,7 +553,8 @@ class _CategorySidebar extends ConsumerWidget {
                 itemCount: categories.length,
                 itemBuilder: (context, index) {
                   final c = categories[index];
-                  final showPackAlert = c.id == SettingsCategoryId.forjaPacks &&
+                  final showPackAlert =
+                      c.id == SettingsCategoryId.forjaPacks &&
                       packUpdateCount > 0;
                   return SettingsCategoryTile(
                     icon: c.icon,
@@ -574,17 +572,14 @@ class _CategorySidebar extends ConsumerWidget {
                     adminOnly: c.adminOnly,
                     listIndex: index,
                     // Pin default/restore focus on the *selected* tile — never
-                    // index 0 (Profile). Resume focus dump onto hub-0 was
-                    // selecting Profile via onFocusSelect.
+                    // index 0 (Profile).
                     focusNode: c.id == selectedId ? firstTileFocusNode : null,
                     tvRowId: categoryRowId,
                     tvItemIndex: categoryRowId != null ? index : null,
                     onRightEdge: onEnterDetail == null
                         ? null
                         : () => onEnterDetail!(c.id),
-                    // ↑/↓ selects only; OK / Right enters the independent detail pane.
-                    onFocusSelect:
-                        onEnterDetail == null ? null : () => onSelect(c.id),
+                    // ↑/↓ moves focus only. OK / click / Right selects + enters detail.
                     onTap: () {
                       if (onEnterDetail != null) {
                         onEnterDetail!(c.id);
