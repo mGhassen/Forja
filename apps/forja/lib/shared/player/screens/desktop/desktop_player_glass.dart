@@ -23,7 +23,12 @@ extension _HwDecModeX on _HwDecMode {
   };
 
   /// media_kit TextureHW vs TextureSW — SW must flip this, not only `hwdec`.
-  bool get enableHardwareAcceleration => this != _HwDecMode.software;
+  /// macOS TextureHW (TextureGL) mis-maps chroma on some streams → pink/green;
+  /// same soft display as desktop PiP.
+  bool get enableHardwareAcceleration {
+    if (Platform.isMacOS) return false;
+    return this != _HwDecMode.software;
+  }
 
   bool get softTexture => !enableHardwareAcceleration;
 
@@ -39,9 +44,15 @@ extension _HwDecModeX on _HwDecMode {
     _HwDecMode.software => 'Software decode + soft display (CPU)',
   };
 
+  /// With soft TextureSW, `auto-safe` zero-copy is useless — use copy-back.
+  String get effectiveHwdec {
+    if (softTexture && this == _HwDecMode.autoSafe) return 'auto-copy';
+    return mpvValue;
+  }
+
   VideoControllerConfiguration get videoControllerConfiguration =>
       VideoControllerConfiguration(
         enableHardwareAcceleration: enableHardwareAcceleration,
-        hwdec: mpvValue,
+        hwdec: effectiveHwdec,
       );
 }

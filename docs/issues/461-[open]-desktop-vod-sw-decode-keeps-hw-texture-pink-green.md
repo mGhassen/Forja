@@ -10,7 +10,7 @@
 
 | | |
 |--|--|
-| **Progress** | **2 / 3** fix · **0 / 2** acceptance |
+| **Progress** | **5 / 6** fix · **0 / 2** acceptance |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -30,14 +30,17 @@ Desktop always created `VideoController` with `enableHardwareAcceleration: true`
 |--:|----|-------------|--------|
 | 1 | I461-T01 | SW → `enableHardwareAcceleration: false` + `hwdec=no` on create / PiP restore | ✅ |
 | 2 | I461-T02 | Live Video decode switch recreates VideoController when soft-texture boundary flips | ✅ |
-| 3 | I461-T03 | If SW soft texture still pink/green: file follow-up for TextureHW/chroma root (media_kit) | ⬜ |
+| 3 | I461-T03 | macOS desktop: force soft TextureSW always + default Video decode SW (match PiP) | ✅ |
+| 4 | I461-T04 | Native VideoOutput.swift force TextureSW on macOS (pub-cache AimesSoft media-kit) | ✅ |
+| 5 | I461-T05 | Desktop mpv HDR→SDR tone-map (tone-mapping/target-prim/trc) for 4K green/magenta | ✅ |
+| 6 | I461-T06 | Root: upstream TextureHW chroma + lasting fork patch (pub-cache wipe risk) | ⬜ |
 
 ## Acceptance
 
 | # | ID | Description | Status |
 |--:|----|-------------|--------|
-| 1 | I461-A01 | Hot-reload / restart → Settings → Video decode **SW** → colors normal on the failing title | ⬜ |
-| 2 | I461-A02 | Log / behavior: SW uses soft texture; HW+/COPY keep TextureHW | ⬜ |
+| 1 | I461-A01 | Full restart → Carrie (or failing title) shows normal colors; log `VideoOutput: enableHardwareAcceleration: false` + `TextureSW: resize` | ⬜ |
+| 2 | I461-A02 | UI chrome stays correct; picture is not pink/green | ⬜ |
 
 ## Links
 

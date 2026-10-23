@@ -449,7 +449,10 @@ abstract final class ShellTokens {
   static const double heroStepIndicatorPauseSize = 14;
 
   /// ←/→ chevrons when the hero gallery (backdrop strip) holds focus.
-  static const double heroGalleryArrowOffset = 20;
+  /// Fractions of the backdrop strip width — arrows sit over the photo, not
+  /// on the strip edges (← near horizontal center, → inset onto the subject).
+  static const double heroGalleryArrowStartFraction = 0.40;
+  static const double heroGalleryArrowEndFraction = 0.30;
   static const double heroGalleryArrowControlSize = 48;
   static const double heroGalleryArrowControlSizeTv =
       heroGalleryArrowControlSize * tvChromeScale;

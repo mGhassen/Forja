@@ -1844,13 +1844,20 @@ mixin _DesktopPlayerPlayback
     // ── Decoding ─────────────────────────────────────────────────────────
     // auto-safe: tries whitelisted GPU decoders, falls back gracefully.
     // This is the officially recommended hwdec mode by mpv developers.
-    await safeSet('hwdec', _s._hwDecMode.mpvValue);
+    await safeSet('hwdec', _s._hwDecMode.effectiveHwdec);
 
     // Zero-copy DR only with HW texture; soft TextureSW uses CPU blit.
     await safeSet('vd-lavc-dr', _s._hwDecMode.softTexture ? 'no' : 'yes');
 
     // Let mpv pick the optimal thread count automatically (0 = auto).
     await safeSet('vd-lavc-threads', '0');
+
+    // Flutter textures are SDR-only. 4K HDR without tone-map → green/magenta.
+    await safeSet('tone-mapping', 'auto');
+    await safeSet('gamut-mapping-mode', 'auto');
+    await safeSet('hdr-compute-peak', 'yes');
+    await safeSet('target-prim', 'bt.709');
+    await safeSet('target-trc', 'bt.1886');
 
     // ── Audio Codec Fallback ──────────────────────────────────────────────
     // Continue playback even if audio codec is unsupported (e.g., TrueHD).

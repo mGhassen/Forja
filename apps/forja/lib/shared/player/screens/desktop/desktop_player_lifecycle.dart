@@ -185,10 +185,12 @@ mixin _DesktopPlayerLifecycle
       ),
     );
 
-    _s._controller = VideoController(
-      _s._player,
-      configuration: _s._hwDecMode.videoControllerConfiguration,
+    final vc = _s._hwDecMode.videoControllerConfiguration;
+    debugPrint(
+      '[DesktopPlayer] VideoController soft=${!vc.enableHardwareAcceleration} '
+      'hwdec=${vc.hwdec} mode=${_s._hwDecMode.label}',
     );
+    _s._controller = VideoController(_s._player, configuration: vc);
 
     if (!mounted || _s._disposed) {
       MpvExclusiveSession.instance.untrackPlayer(_s._player);
@@ -819,7 +821,7 @@ mixin _DesktopPlayerLifecycle
     setState(() => _s._hwDecMode = mode);
     if (_s._player.platform is NativePlayer) {
       final mpv = _s._player.platform as NativePlayer;
-      unawaited(mpv.setProperty('hwdec', mode.mpvValue));
+      unawaited(mpv.setProperty('hwdec', mode.effectiveHwdec));
       unawaited(mpv.setProperty('vd-lavc-dr', mode.softTexture ? 'no' : 'yes'));
     }
     if (!softChanged || !_s._playerReady) return;

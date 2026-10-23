@@ -1786,15 +1786,17 @@ abstract final class ShellTvFocusCoordinator {
     }
     if (nextCol < 0 || nextCol >= columns) return false;
     final maxRow = (handle.itemCount - 1) ~/ columns;
-    // Accel overshoot: clamp inside the grid (first-row exit uses onFocusUp).
+    // Accel overshoot: clamp inside the grid (edge exit uses onFocusUp/Down).
     if (rowDelta.abs() > 1) {
       if (nextRow < 0) nextRow = 0;
       if (nextRow > maxRow) nextRow = maxRow;
     } else {
-      // First-row up / last-row down: trap — panels hop via ←/→ only.
+      // First-row ↑ / last-row ↓: explicit edge callback, else walk the tab
+      // graph like horizontal rows (details episode chips ↔ seasons / cast).
+      // When nothing is registered above/below, moveVerticalInTab still
+      // returns handled (trap) — no Flutter spatial wrap to a neighbor rail.
       if (nextRow < 0) {
         if (handle.onFocusUp != null) {
-          // Grid → row above: land on the column under the departing tile.
           _withColumnMemory(
             tabId,
             _departingColumnX(handle, currentIndex),
@@ -1802,9 +1804,29 @@ abstract final class ShellTvFocusCoordinator {
           );
           return true;
         }
-        return true;
+        return moveVerticalInTab(
+          tabId: tabId,
+          rowId: rowId,
+          currentIndex: currentIndex,
+          down: false,
+        );
       }
-      if (nextRow > maxRow) return true;
+      if (nextRow > maxRow) {
+        if (handle.onFocusDown != null) {
+          _withColumnMemory(
+            tabId,
+            _departingColumnX(handle, currentIndex),
+            () => handle.onFocusDown!(),
+          );
+          return true;
+        }
+        return moveVerticalInTab(
+          tabId: tabId,
+          rowId: rowId,
+          currentIndex: currentIndex,
+          down: true,
+        );
+      }
     }
     var nextIndex = nextRow * columns + nextCol;
     if (nextIndex < 0) return false;

@@ -782,10 +782,12 @@ class CinematicHeroState extends State<CinematicHero>
             ),
           if (widget.galleryOverlayBuilder != null && slides.length >= 2)
             PositionedDirectional(
+              // Backdrop strip only — exclude the Featured bleed so arrows
+              // center on the photo / CTA band, not the full hero height.
               start: solidLeftWidth,
               top: 0,
               end: 0,
-              bottom: 0,
+              bottom: pageBleed ? textBottomInset : 0,
               child: IgnorePointer(
                 child: AnimatedOpacity(
                   opacity: widget.galleryNavHintsVisible ? 1 : 0,
@@ -1802,40 +1804,46 @@ class _HeroGalleryNavHints extends StatelessWidget {
     final icon = tv
         ? ShellTokens.heroGalleryArrowIconSizeTv
         : ShellTokens.heroGalleryArrowIconSize;
-    final offset = ShellTokens.heroGalleryArrowOffset;
     final rtl = Directionality.of(context) == TextDirection.rtl;
-    return Stack(
-      fit: StackFit.expand,
-      children: [
-        PositionedDirectional(
-          start: offset,
-          top: 0,
-          bottom: 0,
-          child: Center(
-            child: _HeroGalleryArrow(
-              controlSize: control,
-              iconSize: icon,
-              icon: rtl
-                  ? Icons.chevron_right_rounded
-                  : Icons.chevron_left_rounded,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final stripW = constraints.maxWidth.clamp(1.0, double.infinity);
+        final startInset = stripW * ShellTokens.heroGalleryArrowStartFraction;
+        final endInset = stripW * ShellTokens.heroGalleryArrowEndFraction;
+        return Stack(
+          fit: StackFit.expand,
+          children: [
+            PositionedDirectional(
+              start: startInset,
+              top: 0,
+              bottom: 0,
+              child: Center(
+                child: _HeroGalleryArrow(
+                  controlSize: control,
+                  iconSize: icon,
+                  icon: rtl
+                      ? Icons.chevron_right_rounded
+                      : Icons.chevron_left_rounded,
+                ),
+              ),
             ),
-          ),
-        ),
-        PositionedDirectional(
-          end: offset,
-          top: 0,
-          bottom: 0,
-          child: Center(
-            child: _HeroGalleryArrow(
-              controlSize: control,
-              iconSize: icon,
-              icon: rtl
-                  ? Icons.chevron_left_rounded
-                  : Icons.chevron_right_rounded,
+            PositionedDirectional(
+              end: endInset,
+              top: 0,
+              bottom: 0,
+              child: Center(
+                child: _HeroGalleryArrow(
+                  controlSize: control,
+                  iconSize: icon,
+                  icon: rtl
+                      ? Icons.chevron_left_rounded
+                      : Icons.chevron_right_rounded,
+                ),
+              ),
             ),
-          ),
-        ),
-      ],
+          ],
+        );
+      },
     );
   }
 }

@@ -312,7 +312,7 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [321-[fixed]-…](fixed/321-[fixed]-live-sports-stremio-rfc113-cushion-stutter.md) | Live Sports player separated from IPTV (v1.5.36 stack) | P0 | High | fixed | Complete · 8/8 · A 0/2 | [RFC-113](../rfc/113-[open]-iptv-mediakit-direct-reconnect.md) · [295](fixed/295-[fixed]-mediakit-live-vt-hold-no-golive.md) |
 | [322-[fixed]-…](fixed/322-[fixed]-iptv-hub-open-channel-category-flash.md) | IPTV hub open first-category → selected flash | P1 | High | fixed | Complete · 7/7 · A 0/1 | [301](301-[open]-iptv-dpad-focus-hover-chrome.md) · [290](290-[open]-iptv-catalog-page-host-shelf.md) |
 | [323-[fixed]-…](fixed/323-[fixed]-supabase-auth-retryable-dns-blip.md) | Supabase AuthRetryableFetchException on cold-start DNS blip | P2 | Medium | fixed | Complete · 3/3 · A 0/1 | [109](109-[open]-android-tv-boot-jwt-expired-discard-race.md) |
-| [314-[open]-…](314-[open]-details-episodes-chips-range-dpad.md) | Details episodes range pad, chips view, D-pad grid | P2 | Medium | open | 6/6 · A 0/5 | — |
+| [314-[open]-…](314-[open]-details-episodes-chips-range-dpad.md) | Details episodes range pad, chips view, D-pad grid | P2 | Medium | open | 8/8 · A 0/7 | — |
 | [308-[fixed]-…](fixed/308-[fixed]-iptv-pack-add-never-syncs-web.md) | IPTV pack Add never syncs portals to web | P0 | Critical | fixed | Complete · 4/4 · A 0/2 | [307](307-[open]-web-addons-pack-settings-parity.md) |
 | [309-[fixed]-…](fixed/309-[fixed]-android-tv-home-dpad-dies-on-popular.md) | Android TV Home D-pad ↓ dies on Popular | P0 | High | fixed | Complete · 7/7 · A 1/3 | — |
 | [310-[fixed]-…](fixed/310-[fixed]-cinematic-hero-slide-drops-cta-focus.md) | Cinematic hero slide drops CTA focus | P1 | High | fixed | Complete · 2/2 · A 0/2 | — |
@@ -497,7 +497,8 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [223-[fixed]-…](fixed/223-[fixed]-live-streamic-raw-embed-format-fail.md) | Live Providers raw embed → format fail loop | P1 | High | fixed | Complete · 6/6 · A 3/3 | — |
 | [459-[fixed]-…](fixed/459-[fixed]-packs-onboarding-ignores-cloud-onboarded.md) | Packs onboarding ignores cloud onboarded on new device | P1 | High | fixed | Complete · 3/3 · A 0/2 | [RFC-080](../rfc/fixed/080-[fixed]-post-login-packs-onboarding.md) |
 | [460-[fixed]-…](fixed/460-[fixed]-android-tv-iptv-nav-enter-shelf-while-loading.md) | Android TV IPTV nav enter stuck on rail while portal loading | P1 | High | fixed | Complete · 3/3 · A 0/1 | [301](301-[open]-iptv-dpad-focus-hover-chrome.md) |
-| [461-[open]-…](461-[open]-desktop-vod-sw-decode-keeps-hw-texture-pink-green.md) | Desktop VOD SW decode kept HW texture (pink/green) | P1 | High | open | 2/3 · A 0/2 | — |
+| [461-[open]-…](461-[open]-desktop-vod-sw-decode-keeps-hw-texture-pink-green.md) | Desktop VOD SW decode kept HW texture (pink/green) | P1 | High | open | 5/6 · A 0/2 | — |
+| [462-[fixed]-…](fixed/462-[fixed]-details-hero-sub-dub-dpad.md) | Details hero SUB/DUB D-pad + language dropdown | P1 | High | fixed | Complete · 2/2 · A 0/2 | [425](425-[open]-home-stream-language-filter.md) |
 
 **Migration parity (draft):** [018](018-[draft]-migration-playback-parity-unverified.md) → [019](019-[draft]-webstreamr-enginejobs-e2e-test-gap.md)–[022](022-[draft]-playback-widget-integration-tests.md).
 

@@ -54,5 +54,6 @@ Home needs a Sub/Dub-style language filter like Anime, but as a **multiselect wi
 
 - Anime `filters.play` SUB/DUB (`hubs/anime`)
 - [441](fixed/441-[fixed]-anime-dub-language-dropdown.md) — Anime dub-only language dropdown (same Settings field)
+- [462](fixed/462-[fixed]-details-hero-sub-dub-dpad.md) — ATV D-pad on SUB/DUB + language overlay
 - Pack settings multiSelect (RFC-089)
 - Green Play (RFC-118)

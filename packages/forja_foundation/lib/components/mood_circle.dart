@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:forja_foundation/tokens/focus_chrome_tokens.dart';
 import 'package:forja_foundation/tokens/forja_motion_theme.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 import 'package:forja_foundation/tokens/forja_theme_extension.dart';
@@ -82,7 +81,6 @@ class MoodCircle extends StatelessWidget {
     this.layout,
     this.active = false,
     this.scaleOnActive = true,
-    this.focusRing = false,
   });
 
   final String label;
@@ -100,10 +98,6 @@ class MoodCircle extends StatelessWidget {
   final bool active;
   final bool scaleOnActive;
 
-  /// Leanback D-pad focus: paint the shared [FocusChromeTokens] ring + glow
-  /// on the circle while [active]. Desktop hover keeps the accent glow.
-  final bool focusRing;
-
   @override
   Widget build(BuildContext context) {
     if (layout != null && icon != null && accent != null) {
@@ -116,7 +110,6 @@ class MoodCircle extends StatelessWidget {
         // Hover/focus only — selected paints via [selected] (category accent).
         active: active,
         scaleOnActive: scaleOnActive,
-        focusRing: focusRing,
         onTap: onTap,
         focusNode: focusNode,
       );
@@ -124,12 +117,11 @@ class MoodCircle extends StatelessWidget {
 
     final theme = ForjaThemeExtension.of(context);
     final tv = ShellPaintScope.usesTvDensityOf(context);
-    final labelFontSize =
-        layout?.labelFontSize ?? (tv ? ShellTokens.tvMetaFontSize : 12.0);
+    final labelFontSize = layout?.labelFontSize ??
+        (tv ? ShellTokens.tvMetaFontSize : 12.0);
     final border = selected ? theme.brandGreen : theme.borderSubtle;
-    final bg = selected
-        ? ForjaShellColors.chipSelectedBg
-        : theme.surfaceElevated;
+    final bg =
+        selected ? ForjaShellColors.chipSelectedBg : theme.surfaceElevated;
     final url = paintableNetworkImageUrl(imageUrl?.trim() ?? '');
 
     Widget content;
@@ -142,8 +134,11 @@ class MoodCircle extends StatelessWidget {
         fit: BoxFit.cover,
         width: size,
         height: size,
-        errorBuilder: (_, _, _) =>
-            Icon(Icons.mood, color: theme.textSecondary, size: size * 0.4),
+        errorBuilder: (_, _, _) => Icon(
+          Icons.mood,
+          color: theme.textSecondary,
+          size: size * 0.4,
+        ),
       );
     } else if (url.isNotEmpty) {
       content = Icon(Icons.mood, color: theme.textSecondary, size: size * 0.4);
@@ -210,7 +205,6 @@ class _AccentMoodCircle extends StatelessWidget {
     required this.selected,
     required this.active,
     required this.scaleOnActive,
-    required this.focusRing,
     this.onTap,
     this.focusNode,
   });
@@ -222,7 +216,6 @@ class _AccentMoodCircle extends StatelessWidget {
   final bool selected;
   final bool active;
   final bool scaleOnActive;
-  final bool focusRing;
   final VoidCallback? onTap;
   final FocusNode? focusNode;
 
@@ -230,32 +223,25 @@ class _AccentMoodCircle extends StatelessWidget {
   Widget build(BuildContext context) {
     final lit = selected || active;
     final tv = ShellPaintScope.usesTvDensityOf(context);
-    // Leanback D-pad focus: shared accent ring + glow on the circle.
-    final ring = focusRing && active;
     final bgAlpha = selected ? 0.62 : (active ? 0.42 : 0.22);
-    final borderColor = ring
-        ? FocusChromeTokens.ringColor
-        : selected
+    final borderColor = selected
         ? accent
         : active
-        ? accent.withValues(alpha: 0.95)
-        : accent.withValues(alpha: 0.35);
-    final borderWidth = ring
-        ? FocusChromeTokens.ringWidth
-        : selected
+            ? accent.withValues(alpha: 0.95)
+            : accent.withValues(alpha: 0.35);
+    final borderWidth = selected
         ? (tv
-              ? ShellTokens.moodCircleBorderWidthSelectedTv
-              : ShellTokens.moodCircleBorderWidthSelected)
+            ? ShellTokens.moodCircleBorderWidthSelectedTv
+            : ShellTokens.moodCircleBorderWidthSelected)
         : (tv
-              ? ShellTokens.moodCircleBorderWidthTv
-              : ShellTokens.moodCircleBorderWidth);
+            ? ShellTokens.moodCircleBorderWidthTv
+            : ShellTokens.moodCircleBorderWidth);
     final iconSize = lit ? layout.iconSizeActive : layout.iconSize;
     final iconWidget = Icon(icon, size: iconSize, color: Colors.white);
     final chip = ForjaMotionTheme.of(context).chipLift;
 
     final circle = AnimatedContainer(
-      // Leanback focus ring snaps like chips / FocusableControl.
-      duration: focusRing ? FocusChromeTokens.leanbackTween : chip.duration,
+      duration: chip.duration,
       curve: chip.resolvedCurve,
       width: layout.circleSize,
       height: layout.circleSize,
@@ -263,10 +249,11 @@ class _AccentMoodCircle extends StatelessWidget {
       decoration: BoxDecoration(
         shape: BoxShape.circle,
         color: accent.withValues(alpha: bgAlpha),
-        border: Border.all(color: borderColor, width: borderWidth),
-        boxShadow: ring
-            ? FocusChromeTokens.glow()
-            : lit && scaleOnActive
+        border: Border.all(
+          color: borderColor,
+          width: borderWidth,
+        ),
+        boxShadow: lit && scaleOnActive
             ? [
                 BoxShadow(
                   color: accent.withValues(alpha: 0.4),
@@ -305,8 +292,8 @@ class _AccentMoodCircle extends StatelessWidget {
               color: active
                   ? ForjaShellColors.brandGreen
                   : selected
-                  ? accent
-                  : Colors.white.withValues(alpha: 0.72),
+                      ? accent
+                      : Colors.white.withValues(alpha: 0.72),
               fontSize: layout.labelFontSize,
               fontWeight: active || selected
                   ? FontWeight.w700

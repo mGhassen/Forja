@@ -10,7 +10,7 @@
 
 | | |
 |--|--|
-| **Progress** | **7 / 7** fix · **0 / 6** acceptance |
+| **Progress** | **8 / 8** fix · **0 / 7** acceptance |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -27,6 +27,7 @@
 | 5 | I314-T05 | Feature docs + changelog | ✅ |
 | 6 | I314-T06 | Anime / Asian Drama / IPTV pack `episodeView` (same Cards / Number chips) | ✅ |
 | 7 | I314-T07 | Details Episodes title row ViewButtonGroup (cards/chips) persists pack `episodeView` | ✅ |
+| 8 | I314-T08 | Chips grid first-row ↑ / last-row ↓ walk the tab graph (seasons / Cast), not trap | ✅ |
 
 ---
 
@@ -40,6 +41,7 @@
 | 4 | I314-A04 | Chips mode: D-pad ←/→/↑/↓ moves across the grid (not only one horizontal line) | ⬜ |
 | 5 | I314-A05 | Anime / Asian Drama / IPTV series details honor that pack’s Episode list setting | ⬜ |
 | 6 | I314-A06 | Details Episodes view toggle switches cards/chips and matches Settings Episode list | ⬜ |
+| 7 | I314-A07 | Chips mode: ↑ from a chip reaches seasons (or chrome); ↓ reaches Cast | ⬜ |
 
 ---
 

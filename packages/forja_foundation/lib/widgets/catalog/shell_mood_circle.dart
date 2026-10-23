@@ -73,31 +73,29 @@ class _ShellMoodCircleItemState extends State<ShellMoodCircleItem> {
 
   /// Hover / D-pad focus only — selection is [MoodCircle.selected].
   bool _hoveredOrFocused(BuildContext context, bool hovered) {
-    return hovered || ShellPaintScope.focusStyledOf(context, focused: _focused);
+    return hovered ||
+        ShellPaintScope.focusStyledOf(context, focused: _focused);
   }
 
   @override
   Widget build(BuildContext context) {
     final useTv = ShellPaintScope.useTvFocusOf(context);
     final scaleOnHover = ShellPaintScope.scaleOnHoverOf(context);
-    // Leanback remote (not desktop hybrid): shared ring + glow + chip lift.
-    final leanback = useTv && !scaleOnHover;
     // Prefer live density over a desktop layout prop (kit mount / stale hosts).
     final layout = ShellPaintScope.usesTvDensityOf(context)
         ? MoodCircleLayout.tvScrollable
         : widget.layout;
 
     Widget paint(bool hovered) => MoodCircle(
-      label: widget.label,
-      icon: widget.icon,
-      accent: widget.accent,
-      layout: layout,
-      selected: widget.selected,
-      active: _hoveredOrFocused(context, hovered),
-      scaleOnActive: scaleOnHover,
-      focusRing: leanback,
-      size: layout.circleSize,
-    );
+          label: widget.label,
+          icon: widget.icon,
+          accent: widget.accent,
+          layout: layout,
+          selected: widget.selected,
+          active: _hoveredOrFocused(context, hovered),
+          scaleOnActive: scaleOnHover,
+          size: layout.circleSize,
+        );
 
     final painted = ListenableBuilder(
       listenable: _hoveredN,
@@ -111,9 +109,7 @@ class _ShellMoodCircleItemState extends State<ShellMoodCircleItem> {
         context: context,
         onTap: widget.onTap,
         borderRadius: layout.circleSize / 2,
-        motion: leanback
-            ? ForjaMotionPreset.chipLift
-            : ForjaMotionPreset.fillOnly,
+        motion: ForjaMotionPreset.fillOnly,
         showFocusFill: false,
         suppressInkHover: true,
         onFocusChange: (focused) => setState(() => _focused = focused),

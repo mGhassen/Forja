@@ -9,8 +9,8 @@
 
 | | |
 |--|--|
-| **Progress** | **13 / 13** components · **9 / 11** acceptance (leanback slice) |
-| **Current slice** | All 13 components landed on branch `feat/tv-remote-ux` with unit tests; acceptance checked on the Android TV emulator (API 34) except A06 Live Sports and A09 security on-device rows; physical-device pass still owed |
+| **Progress** | **14 / 14** components · **10 / 12** acceptance (leanback slice) |
+| **Current slice** | T06 green unified focus chrome reverted (C14) — per-zone chrome restored; other C01–C13 work stays; A06 Live Sports and A09 security still owed on-device |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -33,6 +33,7 @@
 | 11 | R122-C11 | T11 — Long-press OK on a poster opens a quick menu (Play / Details / My List); MENU key opens the same | ✅ |
 | 12 | R122-C12 | T12 — Security review of the branch diff plus the deep-link install and stream URL paths | ✅ |
 | 13 | R122-C13 | T13 — Keep the next verified sources as fallbacks after the first probe win (no "Playback failed" dead end when the first source dies); provider hop after fallbacks are exhausted | ✅ |
+| 14 | R122-C14 | Revert T06 green unified focus chrome — restore white card ring, label-only nav (no rail pill), pre-T06 chip / top-menu / mood chrome | ✅ |
 
 ---
 
@@ -51,6 +52,7 @@
 | 9 | R122-A09 | Security review of the branch diff, deep-link install path, and stream URL path recorded in this RFC with findings fixed or filed as issues (T12) | ⬜ |
 | 10 | R122-A10 | Unit / widget tests for each coordinator change (details Back, player Back gate, row column hold, horizontal hold accel, column memory) | ✅ |
 | 11 | R122-A11 | Profile-build timing before / after (resolve → first frame) recorded in this RFC | ✅ |
+| 12 | R122-A12 | Leanback focus chrome matches pre-T06: white ring on posters, no green plate behind nav icons, chips / top menu / mood circles without the shared green ring + glow (C14) | ✅ |
 
 ---
 

@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 import 'package:flutter/services.dart';
 import 'package:forja_foundation/widgets/feedback/loading_dots.dart';
-import 'package:forja_foundation/tokens/focus_chrome_tokens.dart';
 import 'package:forja_foundation/tokens/forja_motion_theme.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
@@ -14,16 +13,8 @@ import 'package:google_fonts/google_fonts.dart';
 BoxDecoration shellChipDecoration({
   required bool selected,
   bool accentHover = false,
-  bool leanbackFocus = false,
   double radius = ShellTokens.shellChipRadiusPill,
 }) {
-  if (leanbackFocus) {
-    // D-pad focus: the shared signature — accent ring + glow + backplate.
-    return FocusChromeTokens.ring(
-      borderRadius: BorderRadius.circular(radius),
-      fill: FocusChromeTokens.backplateFill(),
-    );
-  }
   final Color fill;
   final Color border;
   if (accentHover) {
@@ -350,8 +341,6 @@ class _ForjaShellChipState extends State<ForjaShellChip> {
     // opt into desktop accent hover (Open with hub chips, filter chips).
     final accent =
         (widget.accentHover && (hovered || focusStyled)) || (tv && focusStyled);
-    // Leanback only — desktop hover / keyboard focus keep the accent pill.
-    final leanbackFocus = tv && !scaleOnHover && focusStyled;
     final showReload =
         widget.onReload != null && (!scaleOnHover || hovered || focusStyled);
     final cinematic = ForjaShellColors.cinematic;
@@ -403,7 +392,6 @@ class _ForjaShellChipState extends State<ForjaShellChip> {
       decoration: shellChipDecoration(
         selected: selected,
         accentHover: accent,
-        leanbackFocus: leanbackFocus,
         radius: radius,
       ),
       padding: padding,
@@ -509,10 +497,7 @@ class _ForjaShellChipState extends State<ForjaShellChip> {
         onTap: leanback && widget.onLongPress != null ? null : _onTap,
         focusNode: widget.focusNode,
         borderRadius: widget.radius,
-        // Leanback: chip lift (shared focus signature); desktop: fill only.
-        motion: leanback
-            ? ForjaMotionPreset.chipLift
-            : ForjaMotionPreset.fillOnly,
+        motion: ForjaMotionPreset.fillOnly,
         showFocusBorder: false,
         showFocusFill: false,
         listIndex: widget.listIndex,
@@ -538,8 +523,7 @@ class _ForjaShellChipState extends State<ForjaShellChip> {
         child: Material(
           color: Colors.transparent,
           borderRadius: borderRadius,
-          // Leanback: the focus glow paints outside the pill — do not clip.
-          clipBehavior: leanback ? Clip.none : Clip.antiAlias,
+          clipBehavior: Clip.antiAlias,
           child: face,
         ),
       );

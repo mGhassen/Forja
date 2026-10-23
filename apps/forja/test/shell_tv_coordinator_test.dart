@@ -2524,6 +2524,70 @@ void main() {
       }
     });
 
+    testWidgets(
+      'grid first-row ↑ / last-row ↓ walk the tab graph (episode chips)',
+      (tester) async {
+        // seasons (row) → episodes (1×N grid) → cast (row). Single-row grids
+        // used to trap ↑/↓; details number chips need to leave like cards.
+        final seasons = nodesNamed('s', 2);
+        final episodes = nodesNamed('e', 4);
+        final cast = nodesNamed('c', 3);
+        register('seasons', 0, seasons);
+        register('episodes', 1, episodes);
+        register('cast', 2, cast);
+        ShellTvFocusCoordinator.markRowGrid(tab, 'episodes');
+
+        await tester.pumpWidget(
+          _wrapTv(
+            Column(
+              children: [
+                rowOf(seasons, 80),
+                rowOf(episodes, 60),
+                rowOf(cast, 70),
+              ],
+            ),
+          ),
+        );
+        await tester.pump();
+        episodes[1].requestFocus();
+        await tester.pump();
+
+        expect(
+          ShellTvFocusCoordinator.moveInGrid(
+            tabId: tab,
+            rowId: 'episodes',
+            currentIndex: 1,
+            columns: 4,
+            rowDelta: -1,
+            colDelta: 0,
+          ),
+          isTrue,
+        );
+        await tester.pump();
+        expect(seasons.any((n) => n.hasFocus), isTrue);
+
+        episodes[1].requestFocus();
+        await tester.pump();
+        expect(
+          ShellTvFocusCoordinator.moveInGrid(
+            tabId: tab,
+            rowId: 'episodes',
+            currentIndex: 1,
+            columns: 4,
+            rowDelta: 1,
+            colDelta: 0,
+          ),
+          isTrue,
+        );
+        await tester.pump();
+        expect(cast.any((n) => n.hasFocus), isTrue);
+
+        for (final n in [...seasons, ...episodes, ...cast]) {
+          n.dispose();
+        }
+      },
+    );
+
     testWidgets('landed card keeps its visual column — no focus-column scroll', (
       tester,
     ) async {

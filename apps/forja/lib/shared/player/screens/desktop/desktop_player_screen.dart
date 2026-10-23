@@ -701,7 +701,10 @@ class _DesktopPlayerScreenState extends ConsumerState<DesktopPlayerScreen>
   }
 
   // ── Feature State ────────────────────────────────────────────────────────
-  _HwDecMode _hwDecMode = _HwDecMode.autoSafe;
+  // macOS: soft texture by default (TextureHW pink/green — issue 461).
+  _HwDecMode _hwDecMode = Platform.isMacOS
+      ? _HwDecMode.software
+      : _HwDecMode.autoSafe;
   bool _loopEnabled = false;
   double _subtitleDelay = 0.0;
   double _subtitleSize = 44.0;

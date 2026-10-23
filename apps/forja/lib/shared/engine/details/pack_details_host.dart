@@ -75,12 +75,12 @@ Future<T?> openKitDetails<T>(
   // Prefer the content hub that owns the title (Anime / Asian Drama / Home),
   // not the browse tab you opened from (e.g. My List). Switch the rail to match.
   // Sync when pack mem is warm — never block the route on prefs/repair.
-  final contentTab =
-      await resolveDetailsShellTabId(pluginId: pluginId, item: item);
+  final contentTab = await resolveDetailsShellTabId(
+    pluginId: pluginId,
+    item: item,
+  );
   final tab = contentTab ?? shellTabId ?? ShellBus.activeShellTabId;
-  if (tab != null &&
-      tab.isNotEmpty &&
-      ShellBus.activeShellTabId != tab) {
+  if (tab != null && tab.isNotEmpty && ShellBus.activeShellTabId != tab) {
     ShellBus.requestTab.value = tab;
   }
   if (!context.mounted) return null;
@@ -199,9 +199,9 @@ class _PackDetailsHostState extends ConsumerState<PackDetailsHost> {
       PackFiltersRegistry.playFiltersFor(widget.pluginId);
 
   Map<String, dynamic> get _playFilterExtras => catalogPlayFilterValues(
-        pluginId: widget.pluginId,
-        selections: _playFilterSelections,
-      );
+    pluginId: widget.pluginId,
+    selections: _playFilterSelections,
+  );
 
   void _onPackFiltersChanged() {
     if (!mounted) return;
@@ -221,15 +221,17 @@ class _PackDetailsHostState extends ConsumerState<PackDetailsHost> {
       'episodeView',
       defaultValue: kEpisodeViewCards,
     );
-    final next =
-        episodeViewIsChips(raw) ? kEpisodeViewChips : kEpisodeViewCards;
+    final next = episodeViewIsChips(raw)
+        ? kEpisodeViewChips
+        : kEpisodeViewCards;
     if (!mounted || next == _episodeView) return;
     setState(() => _episodeView = next);
   }
 
   Future<void> _setEpisodeView(String raw) async {
-    final next =
-        episodeViewIsChips(raw) ? kEpisodeViewChips : kEpisodeViewCards;
+    final next = episodeViewIsChips(raw)
+        ? kEpisodeViewChips
+        : kEpisodeViewCards;
     if (next == _episodeView) return;
     setState(() => _episodeView = next);
     // No hub remount — details chrome only; prefs + revision still sync Settings.
@@ -242,9 +244,8 @@ class _PackDetailsHostState extends ConsumerState<PackDetailsHost> {
     PackSettingsStore.onNonSecretUserWrite?.call();
   }
 
-  bool get _hasStreamLanguageFilter => _playFilters.any(
-        (f) => f.isMultiselect && f.isPluginLanguagesSource,
-      );
+  bool get _hasStreamLanguageFilter =>
+      _playFilters.any((f) => f.isMultiselect && f.isPluginLanguagesSource);
 
   PlayFilterSpec? get _streamLanguageFilterSpec {
     for (final f in _playFilters) {
@@ -515,11 +516,7 @@ class _PackDetailsHostState extends ConsumerState<PackDetailsHost> {
         // Seed-only hub rows (pos 0) must not hide real Home resume progress.
         final hubUpNext = hit != null && hit['upNext'] == true;
         if (hit == null ||
-            !isContinueWatchingEligible(
-              hubPos,
-              hubDur,
-              upNext: hubUpNext,
-            )) {
+            !isContinueWatchingEligible(hubPos, hubDur, upNext: hubUpNext)) {
           final home = await _homeWatchHistoryProgress();
           if (home != null) hit = home;
         }
@@ -554,7 +551,8 @@ class _PackDetailsHostState extends ConsumerState<PackDetailsHost> {
     final tmdbId = _show.numericId('tmdb');
     if (tmdbId == null) return null;
     final history = await WatchHistoryService().getHistory();
-    final item = latestInProgressForShow(tmdbId, history) ??
+    final item =
+        latestInProgressForShow(tmdbId, history) ??
         latestHistoryForShow(tmdbId, history);
     if (item == null) return null;
     return {
@@ -585,8 +583,9 @@ class _PackDetailsHostState extends ConsumerState<PackDetailsHost> {
     final posMs = (progress['positionMs'] as num?)?.toInt() ?? 0;
     final durMs = (progress['durationMs'] as num?)?.toInt() ?? 0;
     if (posMs <= 5000 || !canResumeFromSavedProgress(posMs, durMs)) return null;
-    final clamped =
-        (durMs > 0 && posMs > durMs - 30000) ? (durMs - 30000) : posMs;
+    final clamped = (durMs > 0 && posMs > durMs - 30000)
+        ? (durMs - 30000)
+        : posMs;
     return Duration(milliseconds: (clamped - 3000).clamp(0, 1 << 31));
   }
 
@@ -687,9 +686,9 @@ class _PackDetailsHostState extends ConsumerState<PackDetailsHost> {
     firstEp = seasonVideos.isEmpty
         ? (widget.initialEpisode ?? 1)
         : (widget.initialEpisode != null &&
-                seasonVideos.any((v) => v.episode == widget.initialEpisode)
-            ? widget.initialEpisode!
-            : (seasonVideos.first.episode ?? 1));
+                  seasonVideos.any((v) => v.episode == widget.initialEpisode)
+              ? widget.initialEpisode!
+              : (seasonVideos.first.episode ?? 1));
     setState(() {
       _detail = meta;
       _packRails = rails;
@@ -750,7 +749,7 @@ class _PackDetailsHostState extends ConsumerState<PackDetailsHost> {
       action: 'details',
       params: hubMetaIsIptv(widget.item)
           ? (KitStreamPlayHooks.hubDetailsParams?.call(widget.item) ??
-              hubDetailsParams(widget.item))
+                hubDetailsParams(widget.item))
           : hubDetailsParams(widget.item),
       onUpdated: (next) {
         if (!mounted) return;
@@ -767,13 +766,12 @@ class _PackDetailsHostState extends ConsumerState<PackDetailsHost> {
     );
     if (!mounted) return;
     if (!env.ok) {
-      final notReady =
-          await PluginInstallCoordinator.instance.pluginNotReadyMessage(
-        widget.pluginId,
-      );
+      final notReady = await PluginInstallCoordinator.instance
+          .pluginNotReadyMessage(widget.pluginId);
       setState(() {
         _loading = false;
-        _error = notReady ??
+        _error =
+            notReady ??
             userFacingCatalogError(
               env.error,
               fallback: 'Couldn’t load details. Try again.',
@@ -791,12 +789,7 @@ class _PackDetailsHostState extends ConsumerState<PackDetailsHost> {
     final layout = parseKitDetailsLayout(env.data);
     final backdrops = hubHeroBackdropUrls(meta);
     if (!mounted) return;
-    _paintLoaded(
-      meta,
-      rails: packRails,
-      layout: layout,
-      backdrops: backdrops,
-    );
+    _paintLoaded(meta, rails: packRails, layout: layout, backdrops: backdrops);
     unawaited(_loadWatchProgress());
     unawaited(_loadWatchedEpisodes());
     if (widget.autoPlay) {
@@ -847,7 +840,8 @@ class _PackDetailsHostState extends ConsumerState<PackDetailsHost> {
     final tab = MediaDetailsTv.tabId;
     final handle = ShellTvFocusCoordinator.rowHandle(tab, 'episodes');
     final idx = handle?.lastFocusedIndex ?? 0;
-    final landed = ShellTvFocusCoordinator.focusRowItem(tab, 'episodes', idx) ||
+    final landed =
+        ShellTvFocusCoordinator.focusRowItem(tab, 'episodes', idx) ||
         ShellTvFocusCoordinator.focusRowItem(tab, 'seasons', 0) ||
         ShellTvFocusCoordinator.focusRowItem(tab, 'episode-range', 0);
     if (!landed && _heroPlayFocus.canRequestFocus) {
@@ -876,10 +870,10 @@ class _PackDetailsHostState extends ConsumerState<PackDetailsHost> {
   }
 
   Future<void> _afterPlayClosed() => hubDetailsAfterPlayClosed(
-        scrollController: _scrollController,
-        heroPlayFocus: _heroPlayFocus,
-        isMounted: () => mounted,
-      );
+    scrollController: _scrollController,
+    heroPlayFocus: _heroPlayFocus,
+    isMounted: () => mounted,
+  );
 
   Future<void> _playEpisode(MetaVideo? episode) async {
     if (!mounted) return;
@@ -1001,39 +995,33 @@ class _PackDetailsHostState extends ConsumerState<PackDetailsHost> {
       valueListenable: ShellBus.hubLayoutRtlFor(tab),
       builder: (context, rtl, child) {
         if (!rtl) return child!;
-        return Directionality(
-          textDirection: TextDirection.rtl,
-          child: child!,
-        );
+        return Directionality(textDirection: TextDirection.rtl, child: child!);
       },
       child: PlayerSurfaceChromeStub(
-      builder: (context) => ValueListenableBuilder<AppThemePreset>(
-        valueListenable: AppTheme.themeNotifier,
-        builder: (context, _, _) {
-          return DetailsScreen(
-            backgroundColor: AppTheme.bgDark,
-            loading: _loading,
-            errorMessage: _error,
-            onRetry: _load,
-            // Centered indicator at shell scale with the item name while
-            // metadata loads. Non-focusable: Play claims D-pad focus once
-            // the hero mounts, same as before.
-            loadingChild: ForjaLoadingState(
+        builder: (context) => ValueListenableBuilder<AppThemePreset>(
+          valueListenable: AppTheme.themeNotifier,
+          builder: (context, _, _) {
+            return DetailsScreen(
               backgroundColor: AppTheme.bgDark,
-              title: widget.item.name,
-            ),
-            errorChild: _error == null
-                ? null
-                : ShellErrorRetryPanel(
-                    message: _error!,
-                    onRetry: _load,
-                  ),
-            body: (_loading || _error != null) ? null : _buildScrollLayout(),
-            overlay: MediaDetailsBackButton(focusNode: _backFocus),
-          );
-        },
+              loading: _loading,
+              errorMessage: _error,
+              onRetry: _load,
+              // Centered indicator at shell scale with the item name while
+              // metadata loads. Non-focusable: Play claims D-pad focus once
+              // the hero mounts, same as before.
+              loadingChild: ForjaLoadingState(
+                backgroundColor: AppTheme.bgDark,
+                title: widget.item.name,
+              ),
+              errorChild: _error == null
+                  ? null
+                  : ShellErrorRetryPanel(message: _error!, onRetry: _load),
+              body: (_loading || _error != null) ? null : _buildScrollLayout(),
+              overlay: MediaDetailsBackButton(focusNode: _backFocus),
+            );
+          },
+        ),
       ),
-    ),
     );
   }
 
@@ -1053,8 +1041,8 @@ class _PackDetailsHostState extends ConsumerState<PackDetailsHost> {
     final tvFocus = policy.useFocusableMoodChips;
     final playbackFlags = KitPanelSourceFlagsHooks.watch?.call(ref);
     final isIptv = hubMetaIsIptv(_show);
-    final showCatalogSources = _offlineLibrary ||
-        (!isIptv && kitHasPanelSources(playbackFlags));
+    final showCatalogSources =
+        _offlineLibrary || (!isIptv && kitHasPanelSources(playbackFlags));
     final hasEpisodes = videos.isNotEmpty && !_isMovie;
 
     if (policy.heroPlayAutoFocus &&
@@ -1083,8 +1071,9 @@ class _PackDetailsHostState extends ConsumerState<PackDetailsHost> {
     final isUpcoming = hubMetaIsUpcoming(show, videos: videos);
     final premiereLabel = hubMetaPremiereDateLabel(show, videos: videos);
     final selectedVideo = _selectedVideo();
-    final selectedAir =
-        selectedVideo == null ? null : hubVideoAirDateInfo(selectedVideo);
+    final selectedAir = selectedVideo == null
+        ? null
+        : hubVideoAirDateInfo(selectedVideo);
     final selectedUnaired = selectedAir?.notShippedYet == true;
     // Same as a not-yet-started title: message, no green Play / white Sources.
     final blockPlay = isUpcoming || selectedUnaired;
@@ -1094,8 +1083,7 @@ class _PackDetailsHostState extends ConsumerState<PackDetailsHost> {
         : premiereLabel;
     var tvIndex = 0;
     final playIndex = blockPlay ? 0 : tvIndex++;
-    final sourcesIndex =
-        !blockPlay && showCatalogSources ? tvIndex++ : null;
+    final sourcesIndex = !blockPlay && showCatalogSources ? tvIndex++ : null;
     final clearIndex = hasClearableProgress ? tvIndex++ : null;
     final trailerIndex = hasTrailers ? tvIndex++ : null;
     final listIndex = listTarget != null ? tvIndex++ : null;
@@ -1104,57 +1092,62 @@ class _PackDetailsHostState extends ConsumerState<PackDetailsHost> {
         .toList();
     final showPlayFilters = !blockPlay && playFilters.isNotEmpty;
     final showLangFilter =
-        !blockPlay && _hasStreamLanguageFilter && _streamLanguageOptions.isNotEmpty;
+        !blockPlay &&
+        _hasStreamLanguageFilter &&
+        _streamLanguageOptions.isNotEmpty;
     final playFilterIndex = showPlayFilters ? tvIndex : null;
     if (showPlayFilters) {
       for (final f in playFilters) {
         tvIndex += f.options.length;
       }
     }
-    final langFilterIndex = showLangFilter ? tvIndex++ : null;
+    // SUB + DUB are separate hero focus slots — must match
+    // KitMultiselectPlayFilter.focusSlotCount (was tvIndex++ → DUB unreachable).
+    final langFilterIndex = showLangFilter ? tvIndex : null;
+    if (showLangFilter) {
+      tvIndex += KitMultiselectPlayFilter.focusSlotCount(
+        _streamLanguageOptions,
+      );
+    }
     final heroActionCount = tvIndex;
 
     Widget? episodePicker;
     if (hasEpisodes) {
       final picker = TvSeasonEpisodePicker(
-            tmdbId: _watchedMediaId ?? 0,
-            seasonCount: seasons.length,
-            selectedSeason: _selectedSeason,
-            selectedEpisode: _selectedEpisode,
-            isLoadingSeason: false,
-            seasonData: null,
-            fallbackPosterPath: show.poster,
-            customEpisodesBySeason: hubEpisodeMaps(videos),
-            watchedEpisodes: _watchedEpisodes,
-            watchedCatalog: _watchedCatalog,
-            watchedSeasonForKeys: _watchedSeasonForKeys,
-            onToggleWatched: _toggleEpisodeWatched,
-            onSeasonToggleWatched: _watchedMediaId == null
-                ? null
-                : _toggleSeasonWatched,
-            onSeasonSelected: (season) {
-              final eps = hubVideosForSeason(videos, season);
-              setState(() {
-                _selectedSeason = season;
-                _selectedEpisode =
-                    eps.isEmpty ? 1 : (eps.first.episode ?? 1);
-              });
-            },
-            onEpisodeSelected: (ep) => setState(() => _selectedEpisode = ep),
-            onEpisodePlay: (ep) {
-              setState(() => _selectedEpisode = ep);
-              _playSelected();
-            },
-            tvRowOrderBase: 0,
-            tvFocusUp: heroFocusUp,
-            episodeView: _episodeView,
-            onEpisodeViewChanged: _setEpisodeView,
-          );
+        tmdbId: _watchedMediaId ?? 0,
+        seasonCount: seasons.length,
+        selectedSeason: _selectedSeason,
+        selectedEpisode: _selectedEpisode,
+        isLoadingSeason: false,
+        seasonData: null,
+        fallbackPosterPath: show.poster,
+        customEpisodesBySeason: hubEpisodeMaps(videos),
+        watchedEpisodes: _watchedEpisodes,
+        watchedCatalog: _watchedCatalog,
+        watchedSeasonForKeys: _watchedSeasonForKeys,
+        onToggleWatched: _toggleEpisodeWatched,
+        onSeasonToggleWatched: _watchedMediaId == null
+            ? null
+            : _toggleSeasonWatched,
+        onSeasonSelected: (season) {
+          final eps = hubVideosForSeason(videos, season);
+          setState(() {
+            _selectedSeason = season;
+            _selectedEpisode = eps.isEmpty ? 1 : (eps.first.episode ?? 1);
+          });
+        },
+        onEpisodeSelected: (ep) => setState(() => _selectedEpisode = ep),
+        onEpisodePlay: (ep) {
+          setState(() => _selectedEpisode = ep);
+          _playSelected();
+        },
+        tvRowOrderBase: 0,
+        tvFocusUp: heroFocusUp,
+        episodeView: _episodeView,
+        onEpisodeViewChanged: _setEpisodeView,
+      );
       episodePicker = tvFocus
-          ? ShellPaintTvTabScope(
-              tabId: MediaDetailsTv.tabId,
-              child: picker,
-            )
+          ? ShellPaintTvTabScope(tabId: MediaDetailsTv.tabId, child: picker)
           : picker;
     }
 
@@ -1163,10 +1156,10 @@ class _PackDetailsHostState extends ConsumerState<PackDetailsHost> {
     final playLabel = _isMovie
         ? (canResume ? 'Resume' : 'Play')
         : (videos.isEmpty
-            ? (canResume ? 'Resume' : 'Play')
-            : (canResume
-                ? 'Resume Ep $_selectedEpisode'
-                : 'Play Ep $_selectedEpisode'));
+              ? (canResume ? 'Resume' : 'Play')
+              : (canResume
+                    ? 'Resume Ep $_selectedEpisode'
+                    : 'Play Ep $_selectedEpisode'));
     final heroPosMs = canResume
         ? (progress?['positionMs'] as num?)?.toInt()
         : null;
@@ -1178,8 +1171,8 @@ class _PackDetailsHostState extends ConsumerState<PackDetailsHost> {
     final firstMetaFocusUp = !tvFocus
         ? null
         : (hasEpisodes
-            ? _focusDetailsEpisodesFromMeta
-            : _revealedDetailsHeroPlayFocus);
+              ? _focusDetailsEpisodesFromMeta
+              : _revealedDetailsHeroPlayFocus);
 
     // Episodes own view chrome / seasons / episode rows. Then protocol cast /
     // crew / trailers, then pack rails (Related / More Like This / …).
@@ -1254,8 +1247,9 @@ class _PackDetailsHostState extends ConsumerState<PackDetailsHost> {
       rails: packOther,
       tvFocus: tvFocus,
       tvRowOrderBase: packMidBase,
-      firstMetaFocusUp:
-          !hasCast && !hasCrew && !hasBodyTrailers ? firstMetaFocusUp : null,
+      firstMetaFocusUp: !hasCast && !hasCrew && !hasBodyTrailers
+          ? firstMetaFocusUp
+          : null,
     );
     final recOrderBase = packMidBase + packMidSections.length;
     final packRecSections = hasPackRecs
@@ -1265,7 +1259,8 @@ class _PackDetailsHostState extends ConsumerState<PackDetailsHost> {
             rails: packRecs,
             tvFocus: tvFocus,
             tvRowOrderBase: recOrderBase,
-            firstMetaFocusUp: !hasCast &&
+            firstMetaFocusUp:
+                !hasCast &&
                     !hasCrew &&
                     !hasBodyTrailers &&
                     packMidSections.isEmpty
@@ -1320,12 +1315,10 @@ class _PackDetailsHostState extends ConsumerState<PackDetailsHost> {
         height: heroH,
         bodyOverlap: firstRowOverlap,
         progressBar: heroPosMs != null && heroDurMs != null
-            ? WatchProgressBar(
-                positionMs: heroPosMs,
-                durationMs: heroDurMs,
-              )
+            ? WatchProgressBar(positionMs: heroPosMs, durationMs: heroDurMs)
             : null,
-        seriesProgress: !_isMovie &&
+        seriesProgress:
+            !_isMovie &&
                 _watchedEpisodes.isNotEmpty &&
                 _watchedTotalEpisodes > 0
             ? WatchSeriesProgress(
@@ -1345,18 +1338,15 @@ class _PackDetailsHostState extends ConsumerState<PackDetailsHost> {
           child: Row(
             children: [
               if (blockPlay)
-                KitDetailsUpcomingNotice(
-                  releaseDateLabel: noticeLabel,
-                )
+                KitDetailsUpcomingNotice(releaseDateLabel: noticeLabel)
               else
                 KitDetailsPlayRow(
                   label: playLabel,
                   enabled: _isMovie || videos.isNotEmpty || show.open != null,
                   onPlay: _playSelected,
-                  onOpenSources: showCatalogSources &&
-                          (_isMovie ||
-                              videos.isNotEmpty ||
-                              show.open != null)
+                  onOpenSources:
+                      showCatalogSources &&
+                          (_isMovie || videos.isNotEmpty || show.open != null)
                       ? _openCatalogSources
                       : null,
                   secondaryIcon: _offlineLibrary
@@ -1415,11 +1405,11 @@ class _PackDetailsHostState extends ConsumerState<PackDetailsHost> {
                     spec: playFilters[i],
                     selected: _playFilterValue(playFilters[i]),
                     onSelected: (value) => setState(
-                      () =>
-                          _playFilterSelections[playFilters[i].field] = value,
+                      () => _playFilterSelections[playFilters[i].field] = value,
                     ),
                     tvTabId: tvFocus ? MediaDetailsTv.tabId : null,
-                    tvItemIndexStart: playFilterIndex! +
+                    tvItemIndexStart:
+                        playFilterIndex! +
                         playFilters
                             .take(i)
                             .fold<int>(0, (n, f) => n + f.options.length),

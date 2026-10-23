@@ -28,7 +28,6 @@ Composers take **props + callbacks only** (RFC-095). No `features/**` imports, g
 ## Visual language
 
 - **Flat cinematic shell** — no `BackdropFilter`, frosted glass, or ambient glows on shell nav, home chrome, or player control bars.
-- A focus glow on the single focused control (`FocusChromeTokens`, leanback D-pad focus) is not ambient glow — it is the one shared focus signature.
 - **Exception — sliding side panels:** media-details Sources uses `ForjaFrostedPanel` with `BackdropFilter`. Player overlays (Episodes, torrent files) pass a video screenshot as `frozenFrame` and blur that with `ImageFiltered` — do **not** put `BackdropFilter` over live video (freezes macOS). Do not scatter ad-hoc blur elsewhere.
 - **Hero overlays** use `ForjaShellColors.cinematic` (fixed light-on-imagery), not `AppTheme.primaryColor`.
 - **Spacing and breakpoints** come from `ShellTokens` / `DetailsTokens` / `EventCardTokens` — do not hardcode magic numbers that belong in tokens ([no-hardcode](./forja-foundation-no-hardcode.mdc)).

@@ -88,9 +88,9 @@ Widget settingsTitleText(
 
 /// Category row in the Settings hub list / sidebar.
 ///
-/// Selected / hover / focus chrome is the green left bar + ink on
-/// [FocusableControl] (`forceRailActive` + `showFocusRail`) — one layer so
-/// the bars stay aligned. Desktop does not auto-select on focus (leanback does).
+/// Selected keeps white label ink; hover / focus turns label + icon green.
+/// Left rail bar stays on [FocusableControl] (`forceRailActive` + `showFocusRail`).
+/// Desktop does not auto-select on focus (leanback does).
 class SettingsCategoryTile extends StatefulWidget {
   const SettingsCategoryTile({
     super.key,
@@ -111,8 +111,10 @@ class SettingsCategoryTile extends StatefulWidget {
   });
 
   final IconData icon;
+
   /// When set, replaces the default [Icon] (e.g. pack-update alert).
   final Widget? leading;
+
   /// Optional chip under the title column (e.g. pack-update badge).
   final Widget? trailing;
   final String title;
@@ -143,6 +145,7 @@ class SettingsCategoryTile extends StatefulWidget {
 
 class _SettingsCategoryTileState extends State<SettingsCategoryTile> {
   bool _focused = false;
+
   /// Never setState on hover — FocusableControl MouseRegion must stay put.
   final ValueNotifier<bool> _hoveredN = ValueNotifier(false);
 
@@ -158,22 +161,28 @@ class _SettingsCategoryTileState extends State<SettingsCategoryTile> {
     final rail = widget.tvRowId != null;
 
     Widget paintChild({required bool hovered}) {
-      // Desktop: green ink only for hover / keyboard chrome — not mouse-retained focus.
-      final chromeActive = widget.selected ||
-          ShellInputPolicy.interactiveActive(
-            policy,
-            hovered: hovered,
-            focused: _focused,
-            context: context,
-          );
-      final ink = chromeActive
+      // Hover/focus → green. Selected (idle) → white. Never green for selected alone.
+      final interactive = ShellInputPolicy.interactiveActive(
+        policy,
+        hovered: hovered,
+        focused: _focused,
+        context: context,
+      );
+      final chromeActive = widget.selected || interactive;
+      final ink = interactive
           ? ForjaShellColors.brandGreen
+          : widget.selected
+          ? ForjaShellColors.textPrimary
           : ForjaShellColors.iconMuted;
-      final titleColor = chromeActive
+      final titleColor = interactive
           ? ForjaShellColors.brandGreen
+          : widget.selected
+          ? ForjaShellColors.textPrimary
           : ForjaShellColors.textSecondary;
-      final subtitleColor = chromeActive
+      final subtitleColor = interactive
           ? ForjaShellColors.brandGreen.withValues(alpha: 0.85)
+          : widget.selected
+          ? ForjaShellColors.textPrimary.withValues(alpha: 0.85)
           : ForjaShellColors.textSecondary;
 
       // Rail chrome (selected + hover/focus) lives only on FocusableControl —
@@ -183,7 +192,11 @@ class _SettingsCategoryTileState extends State<SettingsCategoryTile> {
         child: Row(
           children: [
             widget.leading ??
-                Icon(widget.icon, size: SettingsTokens.categoryIconSizeOf(context), color: ink),
+                Icon(
+                  widget.icon,
+                  size: SettingsTokens.categoryIconSizeOf(context),
+                  color: ink,
+                ),
             const SizedBox(width: 14),
             Expanded(
               child: Column(
@@ -194,8 +207,9 @@ class _SettingsCategoryTileState extends State<SettingsCategoryTile> {
                     TextStyle(
                       color: titleColor,
                       fontSize: SettingsTokens.categoryTitleSizeOf(context),
-                      fontWeight:
-                          chromeActive ? FontWeight.w700 : FontWeight.w500,
+                      fontWeight: chromeActive
+                          ? FontWeight.w700
+                          : FontWeight.w500,
                     ),
                     adminOnly: widget.adminOnly,
                     sparkSize: 13,
@@ -208,7 +222,9 @@ class _SettingsCategoryTileState extends State<SettingsCategoryTile> {
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
                         color: subtitleColor,
-                        fontSize: SettingsTokens.categorySubtitleSizeOf(context),
+                        fontSize: SettingsTokens.categorySubtitleSizeOf(
+                          context,
+                        ),
                       ),
                     ),
                   ],
@@ -338,10 +354,7 @@ Widget settingsExpansionSideActions({
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
       Expanded(child: tile),
-      Padding(
-        padding: const EdgeInsets.only(top: 6),
-        child: trailing,
-      ),
+      Padding(padding: const EdgeInsets.only(top: 6), child: trailing),
     ],
   );
 }
@@ -442,10 +455,12 @@ class _SettingsTvExpandableSideRowState
   bool _expanded = false;
   bool _headerFocused = false;
   final ValueNotifier<bool> _headerHoveredN = ValueNotifier(false);
-  late final FocusNode _headerFocus =
-      FocusNode(debugLabel: 'settings-pack-header');
-  late final FocusNode _detailsFocus =
-      FocusNode(debugLabel: 'settings-pack-details');
+  late final FocusNode _headerFocus = FocusNode(
+    debugLabel: 'settings-pack-header',
+  );
+  late final FocusNode _detailsFocus = FocusNode(
+    debugLabel: 'settings-pack-details',
+  );
   final GlobalKey _trailingKey = GlobalKey();
 
   @override
@@ -639,8 +654,8 @@ class _SettingsTvExpandableSideRowState
                             _detailsFocus.requestFocus();
                           }
                         : hasTrailing
-                            ? _focusFirstTrailing
-                            : null,
+                        ? _focusFirstTrailing
+                        : null,
                     child: header,
                   ),
                 ),
@@ -690,8 +705,8 @@ class SettingsExpandHeaderFocus extends InheritedWidget {
       ?.focusHeader;
 
   static VoidCallback? maybeFocusBeforeActionsOf(BuildContext context) {
-    final w =
-        context.getInheritedWidgetOfExactType<SettingsExpandHeaderFocus>();
+    final w = context
+        .getInheritedWidgetOfExactType<SettingsExpandHeaderFocus>();
     return w?.focusBeforeActions ?? w?.focusHeader;
   }
 
@@ -862,8 +877,7 @@ class SettingsPageScaffold extends StatefulWidget {
 class _SettingsPageScaffoldState extends State<SettingsPageScaffold>
     with WidgetsBindingObserver {
   final ScrollController _scrollController = ScrollController();
-  late final FocusNode _backFocus =
-      FocusNode(debugLabel: 'settings-page-back');
+  late final FocusNode _backFocus = FocusNode(debugLabel: 'settings-page-back');
   int _handledEnterToken = 0;
   int _focusAttempts = 0;
   bool _showBack = false;
@@ -1108,7 +1122,7 @@ class _SettingsPageScaffoldState extends State<SettingsPageScaffold>
     // can lift the last row without running out of maxScrollExtent.
     final tvBottomSlack = tv && widget.scrollable
         ? MediaQuery.sizeOf(context).height *
-            ShellTokens.tvSettingsFocusBottomInsetFraction
+              ShellTokens.tvSettingsFocusBottomInsetFraction
         : 0.0;
     return SafeArea(
       child: widget.scrollable
@@ -1117,30 +1131,30 @@ class _SettingsPageScaffoldState extends State<SettingsPageScaffold>
               child: forjaSuppressAutoScrollbar(
                 context: context,
                 child: SingleChildScrollView(
-                controller: _scrollController,
-                padding: EdgeInsets.fromLTRB(
-                  SettingsTokens.pagePaddingOf(context),
-                  titleTop,
-                  SettingsTokens.pagePaddingOf(context),
-                  48 + _imeScrollPad + tvBottomSlack,
-                ),
-                child: Align(
-                  alignment: AlignmentDirectional.topStart,
-                  child: ConstrainedBox(
-                    constraints: BoxConstraints(
-                      maxWidth: SettingsTokens.detailMaxWidthOf(context),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.stretch,
-                      children: [
-                        _titleRow(includeBack: widget.showBack),
-                        const SizedBox(height: 12),
-                        widget.child,
-                      ],
+                  controller: _scrollController,
+                  padding: EdgeInsets.fromLTRB(
+                    SettingsTokens.pagePaddingOf(context),
+                    titleTop,
+                    SettingsTokens.pagePaddingOf(context),
+                    48 + _imeScrollPad + tvBottomSlack,
+                  ),
+                  child: Align(
+                    alignment: AlignmentDirectional.topStart,
+                    child: ConstrainedBox(
+                      constraints: BoxConstraints(
+                        maxWidth: SettingsTokens.detailMaxWidthOf(context),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          _titleRow(includeBack: widget.showBack),
+                          const SizedBox(height: 12),
+                          widget.child,
+                        ],
+                      ),
                     ),
                   ),
                 ),
-              ),
               ),
             )
           : Column(
@@ -1166,7 +1180,10 @@ class _SettingsPageScaffoldState extends State<SettingsPageScaffold>
                     child: LayoutBuilder(
                       builder: (context, constraints) {
                         final width = constraints.maxWidth
-                            .clamp(0.0, SettingsTokens.detailMaxWidthOf(context))
+                            .clamp(
+                              0.0,
+                              SettingsTokens.detailMaxWidthOf(context),
+                            )
                             .toDouble();
                         return Align(
                           alignment: AlignmentDirectional.topStart,
@@ -1270,7 +1287,9 @@ class _SettingsToggleRowState extends State<SettingsToggleRow> {
                         adminOnly: widget.adminOnly,
                         sparkSize: 13,
                       ),
-                      SizedBox(height: SettingsTokens.rowTitleSubtitleGapOf(context)),
+                      SizedBox(
+                        height: SettingsTokens.rowTitleSubtitleGapOf(context),
+                      ),
                       Text(
                         widget.subtitle,
                         style: TextStyle(
@@ -1295,8 +1314,8 @@ class _SettingsToggleRowState extends State<SettingsToggleRow> {
                           behavior: HitTestBehavior.opaque,
                           onTap: checkEnabled
                               ? () => widget.onLeadingCheckChanged!(
-                                    !widget.leadingCheckValue!,
-                                  )
+                                  !widget.leadingCheckValue!,
+                                )
                               : null,
                           child: Opacity(
                             opacity: checkEnabled ? 1 : 0.45,
@@ -1311,7 +1330,8 @@ class _SettingsToggleRowState extends State<SettingsToggleRow> {
                                     alignment: Alignment.center,
                                     child: SizedBox(
                                       width: SettingsTokens.checkboxSizeCompact,
-                                      height: SettingsTokens.checkboxSizeCompact,
+                                      height:
+                                          SettingsTokens.checkboxSizeCompact,
                                       child: Checkbox(
                                         value: widget.leadingCheckValue,
                                         onChanged: checkEnabled
@@ -1646,7 +1666,10 @@ class _SettingsSelectDialogState extends State<_SettingsSelectDialog> {
       final focused = _focusedIndex == index;
       final emphasize = selected || focused;
       final row = Padding(
-        padding: EdgeInsets.symmetric(horizontal: optionPadH, vertical: optionPadV),
+        padding: EdgeInsets.symmetric(
+          horizontal: optionPadH,
+          vertical: optionPadV,
+        ),
         child: Row(
           children: [
             Expanded(
@@ -1721,13 +1744,13 @@ class _SettingsSelectDialogState extends State<_SettingsSelectDialog> {
           child: forjaSuppressAutoScrollbar(
             context: context,
             child: ListView.separated(
-            controller: _scrollController,
-            shrinkWrap: true,
-            padding: const EdgeInsets.symmetric(vertical: 4),
-            itemCount: widget.options.length,
-            separatorBuilder: (_, _) => const SizedBox(height: 2),
-            itemBuilder: (_, i) => optionRow(i),
-          ),
+              controller: _scrollController,
+              shrinkWrap: true,
+              padding: const EdgeInsets.symmetric(vertical: 4),
+              itemCount: widget.options.length,
+              separatorBuilder: (_, _) => const SizedBox(height: 2),
+              itemBuilder: (_, i) => optionRow(i),
+            ),
           ),
         ),
       ),
@@ -1896,11 +1919,11 @@ class _SettingsSliderRowState extends State<SettingsSliderRow> {
   }
 
   bool _chromeActiveFor(bool hovered) => ShellInputPolicy.interactiveActive(
-        ShellScope.inputPolicyOf(context),
-        hovered: hovered,
-        focused: _focused,
-        context: context,
-      );
+    ShellScope.inputPolicyOf(context),
+    hovered: hovered,
+    focused: _focused,
+    context: context,
+  );
 
   void _nudge(double delta) {
     final span = widget.max - widget.min;
@@ -1959,7 +1982,9 @@ class _SettingsSliderRowState extends State<SettingsSliderRow> {
                 builder: (context, _) {
                   final chrome = _chromeActiveFor(_hoveredN.value);
                   final thumbR = SettingsTokens.sliderThumbRadiusOf(context);
-                  final overlayR = SettingsTokens.sliderOverlayRadiusOf(context);
+                  final overlayR = SettingsTokens.sliderOverlayRadiusOf(
+                    context,
+                  );
                   final tickR = SettingsTokens.sliderTickRadiusOf(context);
                   return SliderTheme(
                     data: SliderTheme.of(context).copyWith(
@@ -1981,13 +2006,15 @@ class _SettingsSliderRowState extends State<SettingsSliderRow> {
                       overlayColor: Colors.transparent,
                       activeTrackColor: ForjaShellColors.brandGreen,
                       inactiveTrackColor: ForjaShellColors.borderSubtle,
-                      activeTickMarkColor:
-                          ForjaShellColors.textPrimary.withValues(alpha: 0.45),
-                      inactiveTickMarkColor:
-                          ForjaShellColors.textSecondary.withValues(alpha: 0.35),
+                      activeTickMarkColor: ForjaShellColors.textPrimary
+                          .withValues(alpha: 0.45),
+                      inactiveTickMarkColor: ForjaShellColors.textSecondary
+                          .withValues(alpha: 0.35),
                     ),
                     child: Slider(
-                      value: widget.value.clamp(widget.min, widget.max).toDouble(),
+                      value: widget.value
+                          .clamp(widget.min, widget.max)
+                          .toDouble(),
                       min: widget.min,
                       max: widget.max,
                       divisions: widget.divisions,
@@ -2188,10 +2215,7 @@ class SettingsIconButton extends StatelessWidget {
         ? SizedBox(
             width: iconSize,
             height: iconSize,
-            child: CircularProgressIndicator(
-              strokeWidth: 2,
-              color: color,
-            ),
+            child: CircularProgressIndicator(strokeWidth: 2, color: color),
           )
         : Icon(icon, color: color, size: iconSize);
     final enabled = onPressed != null && !busy;
@@ -2215,7 +2239,11 @@ class SettingsIconButton extends StatelessWidget {
         onUpEdge: onUpEdge,
         onDownEdge: onDownEdge,
         onFocusChange: onFocusChange,
-        child: SizedBox(width: hit, height: hit, child: Center(child: child)),
+        child: SizedBox(
+          width: hit,
+          height: hit,
+          child: Center(child: child),
+        ),
       );
     }
     return IconButton(
@@ -2253,8 +2281,10 @@ class SettingsFilledButton extends StatelessWidget {
   final IconData? icon;
   final bool busy;
   final bool secondary;
+
   /// Brand-green tinted CTA (e.g. pack Update all).
   final bool accent;
+
   /// Alert-red CTA (e.g. P2P “I am aware”).
   final bool destructive;
   final bool expand;
@@ -2270,10 +2300,10 @@ class SettingsFilledButton extends StatelessWidget {
   ButtonVariant get _variant => secondary
       ? ButtonVariant.secondary
       : destructive
-          ? ButtonVariant.destructive
-          : accent
-              ? ButtonVariant.accent
-              : ButtonVariant.primary;
+      ? ButtonVariant.destructive
+      : accent
+      ? ButtonVariant.accent
+      : ButtonVariant.primary;
 
   @override
   Widget build(BuildContext context) {
@@ -2290,7 +2320,8 @@ class SettingsFilledButton extends StatelessWidget {
         // FocusableControl owns the node + IgnorePointer — Button never sees
         // WidgetState.focused. Swap to accent so Install / primary CTAs go
         // brand green on focus instead of the gray flat-menu ring.
-        final variant = focused &&
+        final variant =
+            focused &&
                 (_variant == ButtonVariant.primary ||
                     _variant == ButtonVariant.secondary)
             ? ButtonVariant.accent
@@ -2316,10 +2347,7 @@ class SettingsFilledButton extends StatelessWidget {
       if (!enabled) {
         final child = paint(focused: false);
         if (expand) return child;
-        return Align(
-          alignment: AlignmentDirectional.centerStart,
-          child: child,
-        );
+        return Align(alignment: AlignmentDirectional.centerStart, child: child);
       }
       final tap = _SettingsFilledTvFocus(
         focusNode: focusNode,
@@ -2634,7 +2662,8 @@ class _SettingsTextFieldState extends State<SettingsTextField> {
       return KeyEventResult.ignored;
     }
 
-    final inLinear = ShellTvLinearFocusScope.activeOf(context) &&
+    final inLinear =
+        ShellTvLinearFocusScope.activeOf(context) &&
         !ShellTvDisableLinearFocus.activeOf(context);
     if (inLinear) {
       return shellTvLinearMenuArrows(context: context, event: event);
@@ -2694,9 +2723,9 @@ class _SettingsTextFieldState extends State<SettingsTextField> {
       keyboardType: _browseOnly
           ? TextInputType.none
           : (widget.keyboardType ??
-              (widget.maxLines > 1
-                  ? TextInputType.multiline
-                  : TextInputType.text)),
+                (widget.maxLines > 1
+                    ? TextInputType.multiline
+                    : TextInputType.text)),
       minLines: widget.minLines,
       maxLines: widget.maxLines,
       maxLength: widget.maxLength,
@@ -2720,10 +2749,7 @@ class _SettingsTextFieldState extends State<SettingsTextField> {
         hintText: widget.hint,
         isDense: true,
         counterText: widget.maxLength != null ? '' : null,
-        floatingLabelStyle: TextStyle(
-          color: labelColor,
-          fontSize: titleSize,
-        ),
+        floatingLabelStyle: TextStyle(color: labelColor, fontSize: titleSize),
         labelStyle: TextStyle(
           color: ForjaShellColors.textSecondary,
           fontSize: titleSize,
