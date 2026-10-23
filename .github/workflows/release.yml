@@ -118,6 +118,10 @@ jobs:
               echo "::error::FORJA_WEB_URL must be the public portal URL for release builds, not localhost."
               exit 1
               ;;
+            *dev.forjahq.xyz*)
+              echo "::error::FORJA_WEB_URL must be https://www.forjahq.xyz for release builds, not staging (dev.forjahq.xyz)."
+              exit 1
+              ;;
           esac
 
       - name: Validate platform selection

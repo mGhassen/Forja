@@ -13,15 +13,47 @@ import 'package:url_launcher/url_launcher.dart';
 class DesktopBrowserAuth {
   DesktopBrowserAuth._();
 
-  /// Portal origin for browser login / signup.
+  /// Production portal for end-user QR / device-link / Web login.
+  static const String productionWebUrl = 'https://www.forjahq.xyz';
+
+  static const String _webUrlFromEnvironment = String.fromEnvironment(
+    'FORJA_WEB_URL',
+    defaultValue: 'http://127.0.0.1:3000',
+  );
+
+  /// Portal origin for browser login / signup / TV connect.
   ///
   /// Pass `--dart-define=FORJA_WEB_URL=https://…` (release: GitHub secret).
   /// Local `.env` should set `FORJA_WEB_URL=http://127.0.0.1:3000` (or the
   /// deployed https origin) and load via `--dart-define-from-file`.
-  static const String webUrl = String.fromEnvironment(
-    'FORJA_WEB_URL',
-    defaultValue: 'http://127.0.0.1:3000',
-  );
+  ///
+  /// Release builds never keep staging (`dev.forjahq.xyz`) or localhost even
+  /// if a bad dart-define slipped into CI — they use [productionWebUrl].
+  static String get webUrl =>
+      resolveWebUrl(_webUrlFromEnvironment, release: kReleaseMode);
+
+  /// Resolves the portal origin. Exposed for tests.
+  @visibleForTesting
+  static String resolveWebUrl(String fromEnvironment, {required bool release}) {
+    final raw = fromEnvironment.trim().replaceAll(RegExp(r'/+$'), '');
+    if (!release) {
+      return raw.isEmpty ? 'http://127.0.0.1:3000' : raw;
+    }
+    if (raw.isEmpty || isForbiddenReleasePortal(raw)) {
+      return productionWebUrl;
+    }
+    return raw;
+  }
+
+  /// True when [origin] must not ship in a release binary.
+  @visibleForTesting
+  static bool isForbiddenReleasePortal(String origin) {
+    final host = Uri.tryParse(origin)?.host.toLowerCase() ?? '';
+    if (host.isEmpty) return true;
+    if (host == '127.0.0.1' || host == 'localhost') return true;
+    if (host == 'dev.forjahq.xyz') return true;
+    return false;
+  }
 
   /// How long to keep `/focus` alive after a successful handoff so the portal
   /// can bring Forja forward when the user closes the tab.
@@ -355,13 +387,7 @@ class DesktopBrowserAuth {
 ''');
     } else {
       response.headers.contentType = ContentType.json;
-      response.write(
-        jsonEncode({
-          'ok': ok,
-          'title': title,
-          'body': body,
-        }),
-      );
+      response.write(jsonEncode({'ok': ok, 'title': title, 'body': body}));
     }
     await response.close();
   }

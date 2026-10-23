@@ -91,7 +91,7 @@ Dev secrets live in a **gitignored** repo-root `.env` (see `.env.example`). Rust
 | `SUPABASE_PUBLISHABLE_KEY` | Public Supabase client key (`sb_publishable_…`); never use `service_role` / `sb_secret_…` in the app |
 | `RELEASE_CDN_URL` | Public base URL for release installers on Cloudflare R2 (custom domain or `pub-*.r2.dev`). Built into clients via `--dart-define` / `VITE_RELEASE_CDN_URL`. |
 | `R2_ACCOUNT_ID` / `R2_ACCESS_KEY_ID` / `R2_SECRET_ACCESS_KEY` | **CI only** — Release workflow uploads installers to R2 bucket `forja-releases` and prunes to the newest 3 versions |
-| `FORJA_WEB_URL` | Deployed web portal origin for desktop **Web login** / signup links. Local default `http://127.0.0.1:3000`. **Required** as a GitHub secret for release/build CI (must not be localhost). |
+| `FORJA_WEB_URL` | Deployed web portal origin for desktop **Web login** / signup / TV connect. Local default `http://127.0.0.1:3000`. **Required** as a GitHub secret for release/build CI — must be `https://www.forjahq.xyz` (CI rejects localhost and `dev.forjahq.xyz`). Release binaries also rewrite those forbidden hosts to production at runtime. |
 
 ### Portal URL vs Vercel Deployment Protection
 

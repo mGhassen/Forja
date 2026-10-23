@@ -29,6 +29,44 @@ void main() {
     expect(bad.error, 'nope');
   });
 
+  test(
+    'resolveWebUrl release rewrites staging and localhost to production',
+    () {
+      expect(
+        DesktopBrowserAuth.isForbiddenReleasePortal('https://dev.forjahq.xyz'),
+        isTrue,
+      );
+      expect(
+        DesktopBrowserAuth.resolveWebUrl(
+          'https://dev.forjahq.xyz/',
+          release: true,
+        ),
+        DesktopBrowserAuth.productionWebUrl,
+      );
+      expect(
+        DesktopBrowserAuth.resolveWebUrl(
+          'http://127.0.0.1:3000',
+          release: true,
+        ),
+        DesktopBrowserAuth.productionWebUrl,
+      );
+      expect(
+        DesktopBrowserAuth.resolveWebUrl(
+          'https://www.forjahq.xyz',
+          release: true,
+        ),
+        'https://www.forjahq.xyz',
+      );
+      expect(
+        DesktopBrowserAuth.resolveWebUrl(
+          'https://dev.forjahq.xyz',
+          release: false,
+        ),
+        'https://dev.forjahq.xyz',
+      );
+    },
+  );
+
   test('signIn completes when browser posts tokens to loopback', () async {
     final future = DesktopBrowserAuth.signIn(
       timeout: const Duration(seconds: 8),

@@ -725,10 +725,17 @@ require_build_env() {
   [[ -n "${SUPABASE_URL:-}" ]] || die "SUPABASE_URL missing (set in .env)"
   [[ -n "${SUPABASE_PUBLISHABLE_KEY:-}" ]] || die "SUPABASE_PUBLISHABLE_KEY missing (set in .env)"
   [[ -n "${RELEASE_CDN_URL:-}" ]] || die "RELEASE_CDN_URL missing (set in .env)"
+  assert_public_forja_web_url
+}
+
+assert_public_forja_web_url() {
   [[ -n "${FORJA_WEB_URL:-}" ]] || die "FORJA_WEB_URL missing (set in .env)"
   case "$FORJA_WEB_URL" in
     http://127.0.0.1:*|http://localhost:*|https://127.0.0.1:*|https://localhost:*)
       die "FORJA_WEB_URL must be the public portal URL, not localhost"
+      ;;
+    *dev.forjahq.xyz*)
+      die "FORJA_WEB_URL must be https://www.forjahq.xyz for release, not staging (dev.forjahq.xyz)"
       ;;
   esac
 }
@@ -1224,7 +1231,7 @@ build_android_tv() {
   [[ -n "${SUPABASE_URL:-}" ]] || die "SUPABASE_URL missing (set in .env)"
   [[ -n "${SUPABASE_PUBLISHABLE_KEY:-}" ]] || die "SUPABASE_PUBLISHABLE_KEY missing (set in .env)"
   [[ -n "${RELEASE_CDN_URL:-}" ]] || die "RELEASE_CDN_URL missing (set in .env)"
-  [[ -n "${FORJA_WEB_URL:-}" ]] || die "FORJA_WEB_URL missing (set in .env)"
+  assert_public_forja_web_url
   [[ -n "${FORJA_KEYSTORE_PASSWORD:-}" ]] || die "FORJA_KEYSTORE_PASSWORD missing (set in .env)"
   [[ -n "${FORJA_KEY_PASSWORD:-}" ]] || die "FORJA_KEY_PASSWORD missing (set in .env)"
 
