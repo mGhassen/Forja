@@ -182,9 +182,9 @@ class PosterCard extends StatelessWidget {
                       ),
                     ),
                   ),
-                  if (!compact &&
-                      subtitle != null &&
-                      subtitle!.isNotEmpty) ...[
+                  // Always paint subtitle when present — compact used to hide
+                  // year • type once the poster grid stretched cells under 85px.
+                  if (subtitle != null && subtitle!.isNotEmpty) ...[
                     const SizedBox(height: 4),
                     CrossfadeSwap(
                       child: Text(
@@ -221,10 +221,7 @@ class PosterCard extends StatelessWidget {
       child: Text(
         title,
         textAlign: TextAlign.center,
-        style: TextStyle(
-          fontSize: compact ? 7 : 10,
-          color: Colors.white24,
-        ),
+        style: TextStyle(fontSize: compact ? 7 : 10, color: Colors.white24),
       ),
     );
   }
@@ -254,8 +251,9 @@ class PosterRankMark extends StatelessWidget {
           ..strokeWidth = tv
               ? ShellTokens.posterRankStrokeWidthTv
               : ShellTokens.posterRankStrokeWidth
-          ..color = Colors.white
-              .withValues(alpha: ShellTokens.posterRankStrokeAlpha),
+          ..color = Colors.white.withValues(
+            alpha: ShellTokens.posterRankStrokeAlpha,
+          ),
         height: ShellTokens.posterRankLineHeight,
         letterSpacing: tv
             ? ShellTokens.posterRankLetterSpacingTv
@@ -322,14 +320,18 @@ class RatingBadge extends StatelessWidget {
     final iconSize = tv
         ? ShellTokens.posterRatingIconSizeTv
         : ShellTokens.posterRatingIconSize;
-    final padH =
-        tv ? ShellTokens.posterRatingPadHTv : ShellTokens.posterRatingPadH;
-    final padV =
-        tv ? ShellTokens.posterRatingPadVTv : ShellTokens.posterRatingPadV;
-    final radius =
-        tv ? ShellTokens.posterRatingRadiusTv : ShellTokens.posterRatingRadius;
-    final gap =
-        tv ? ShellTokens.posterRatingGapTv : ShellTokens.posterRatingGap;
+    final padH = tv
+        ? ShellTokens.posterRatingPadHTv
+        : ShellTokens.posterRatingPadH;
+    final padV = tv
+        ? ShellTokens.posterRatingPadVTv
+        : ShellTokens.posterRatingPadV;
+    final radius = tv
+        ? ShellTokens.posterRatingRadiusTv
+        : ShellTokens.posterRatingRadius;
+    final gap = tv
+        ? ShellTokens.posterRatingGapTv
+        : ShellTokens.posterRatingGap;
     return Container(
       padding: EdgeInsets.symmetric(horizontal: padH, vertical: padV),
       decoration: BoxDecoration(
@@ -375,14 +377,18 @@ class RatingBadgeText extends StatelessWidget {
     final iconSize = tv
         ? ShellTokens.posterRatingIconSizeTv
         : ShellTokens.posterRatingIconSize;
-    final padH =
-        tv ? ShellTokens.posterRatingPadHTv : ShellTokens.posterRatingPadH;
-    final padV =
-        tv ? ShellTokens.posterRatingPadVTv : ShellTokens.posterRatingPadV;
-    final radius =
-        tv ? ShellTokens.posterRatingRadiusTv : ShellTokens.posterRatingRadius;
-    final gap =
-        tv ? ShellTokens.posterRatingGapTv : ShellTokens.posterRatingGap;
+    final padH = tv
+        ? ShellTokens.posterRatingPadHTv
+        : ShellTokens.posterRatingPadH;
+    final padV = tv
+        ? ShellTokens.posterRatingPadVTv
+        : ShellTokens.posterRatingPadV;
+    final radius = tv
+        ? ShellTokens.posterRatingRadiusTv
+        : ShellTokens.posterRatingRadius;
+    final gap = tv
+        ? ShellTokens.posterRatingGapTv
+        : ShellTokens.posterRatingGap;
     return Container(
       padding: EdgeInsets.symmetric(horizontal: padH, vertical: padV),
       decoration: BoxDecoration(

@@ -51,6 +51,7 @@ class PortalsPanelView extends ConsumerStatefulWidget {
 class _PortalsPanelViewState extends ConsumerState<PortalsPanelView> {
   bool _busy = false;
   final Set<String> _deletingKeys = {};
+
   /// Survives inventory softReload (unlike [PortalListItem.shelfLoading] alone).
   final Set<String> _shelfLoadingKeys = {};
   late final PortalHealthTracker _health;
@@ -118,8 +119,7 @@ class _PortalsPanelViewState extends ConsumerState<PortalsPanelView> {
   }
 
   Future<String?> _pluginId() async {
-    final inv =
-        ref.read(portalsInventoryProvider(widget.tabId)).asData?.value;
+    final inv = ref.read(portalsInventoryProvider(widget.tabId)).asData?.value;
     return inv?.pluginId.isNotEmpty == true
         ? inv!.pluginId
         : PortalsHost.resolvePluginId(preferTabId: widget.tabId);
@@ -164,12 +164,13 @@ class _PortalsPanelViewState extends ConsumerState<PortalsPanelView> {
 
     final hubPluginId =
         PluginNavRegistry.pluginIdForTabSync(widget.tabId)?.trim() ?? '';
-    final portalScopedHub =
-        hubPluginId.isNotEmpty && hubPluginId == pluginId;
+    final portalScopedHub = hubPluginId.isNotEmpty && hubPluginId == pluginId;
+
+    // Select clears NEW (TV skim does not — only explicit activate).
+    PortalsHost.markPortalSeen(portalKey);
 
     // Instant feedback — selected row (+ empty IPTV grid before Keychain/prefs).
-    final inv =
-        ref.read(portalsInventoryProvider(widget.tabId)).asData?.value;
+    final inv = ref.read(portalsInventoryProvider(widget.tabId)).asData?.value;
     if (inv != null) {
       ref
           .read(portalsInventoryProvider(widget.tabId).notifier)
@@ -193,9 +194,7 @@ class _PortalsPanelViewState extends ConsumerState<PortalsPanelView> {
     if (portalScopedHub) {
       await _warmLiveShelf(portalKey, sportsCapableOnly: false);
       if (!mounted) return;
-      await CategoryBarActionHost.liveListFeedParams(
-        preferTabId: widget.tabId,
-      );
+      await CategoryBarActionHost.liveListFeedParams(preferTabId: widget.tabId);
       if (!mounted) return;
       PackChromeScope.maybeOf(context)?.onBumpRefresh(forceNetwork: false);
     } else {
@@ -206,37 +205,43 @@ class _PortalsPanelViewState extends ConsumerState<PortalsPanelView> {
       unawaited(_warmLiveShelf(portalKey, sportsCapableOnly: true));
     }
 
-    unawaited((() async {
-      try {
-        final env = await PortalsHost.select(
-          pluginId: pluginId,
-          key: portalKey,
-        );
-        if (!mounted) return;
-        if (!env.ok) {
-          ForjaToast.error(env.error?.message ?? 'Could not select portal');
-          if (portalScopedHub) {
-            PackChromeScope.maybeOf(context)?.onBumpRefresh(forceNetwork: false);
+    unawaited(
+      (() async {
+        try {
+          final env = await PortalsHost.select(
+            pluginId: pluginId,
+            key: portalKey,
+          );
+          if (!mounted) return;
+          if (!env.ok) {
+            ForjaToast.error(env.error?.message ?? 'Could not select portal');
+            if (portalScopedHub) {
+              PackChromeScope.maybeOf(
+                context,
+              )?.onBumpRefresh(forceNetwork: false);
+            }
+            return;
           }
-          return;
-        }
-        if (!portalScopedHub) return;
-        // Pack may rewrite active to canonical url|user — re-stamp + soft bump.
-        await CategoryBarActionHost.liveListFeedParams(
-          preferTabId: widget.tabId,
-        );
-        if (!mounted) return;
-        PackLoadedPaint.clearMemosForPlugin(pluginId);
-        PackChromeScope.maybeOf(context)?.onBumpRefresh(forceNetwork: false);
-      } catch (e) {
-        if (mounted) {
-          ForjaToast.error(e.toString());
-          if (portalScopedHub) {
-            PackChromeScope.maybeOf(context)?.onBumpRefresh(forceNetwork: false);
+          if (!portalScopedHub) return;
+          // Pack may rewrite active to canonical url|user — re-stamp + soft bump.
+          await CategoryBarActionHost.liveListFeedParams(
+            preferTabId: widget.tabId,
+          );
+          if (!mounted) return;
+          PackLoadedPaint.clearMemosForPlugin(pluginId);
+          PackChromeScope.maybeOf(context)?.onBumpRefresh(forceNetwork: false);
+        } catch (e) {
+          if (mounted) {
+            ForjaToast.error(e.toString());
+            if (portalScopedHub) {
+              PackChromeScope.maybeOf(
+                context,
+              )?.onBumpRefresh(forceNetwork: false);
+            }
           }
         }
-      }
-    })());
+      })(),
+    );
   }
 
   bool _isShelfLoading(String portalKey) {
@@ -376,13 +381,21 @@ class _PortalsPanelViewState extends ConsumerState<PortalsPanelView> {
     if (!mounted) return;
     if (existing == null &&
         !AccountFeatures.instance.canAddPortal(
-          ref.read(portalsInventoryProvider(widget.tabId)).asData?.value.portals.length ??
+          ref
+                  .read(portalsInventoryProvider(widget.tabId))
+                  .asData
+                  ?.value
+                  .portals
+                  .length ??
               0,
         )) {
-      ForjaToast.warning(AccountFeatures.instance.iptvPortalLimitReachedMessage());
+      ForjaToast.warning(
+        AccountFeatures.instance.iptvPortalLimitReachedMessage(),
+      );
       return;
     }
-    final count = ref
+    final count =
+        ref
             .read(portalsInventoryProvider(widget.tabId))
             .asData
             ?.value
@@ -484,8 +497,7 @@ class _PortalsPanelViewState extends ConsumerState<PortalsPanelView> {
   }
 
   Future<void> _toggleFavorite(String portalKey) async {
-    final inv =
-        ref.read(portalsInventoryProvider(widget.tabId)).asData?.value;
+    final inv = ref.read(portalsInventoryProvider(widget.tabId)).asData?.value;
     var current = false;
     if (inv != null) {
       for (final p in inv.portals) {
@@ -523,9 +535,12 @@ class _PortalsPanelViewState extends ConsumerState<PortalsPanelView> {
   Future<void> _deletePortal(String portalKey) async {
     setState(() => _deletingKeys.add(portalKey));
     try {
-      final inv =
-          ref.read(portalsInventoryProvider(widget.tabId)).asData?.value;
-      final wasActive = inv != null &&
+      final inv = ref
+          .read(portalsInventoryProvider(widget.tabId))
+          .asData
+          ?.value;
+      final wasActive =
+          inv != null &&
           inv.activeKey.isNotEmpty &&
           PortalsHost.samePortalKey(inv.activeKey, portalKey);
       if (wasActive && mounted) {
@@ -556,12 +571,14 @@ class _PortalsPanelViewState extends ConsumerState<PortalsPanelView> {
           p,
           deleting: _deletingKeys.contains(p.id),
           shelfLoading: _isShelfLoading(p.id),
-          selected: p.selected ||
+          selected:
+              p.selected ||
               (activeKey.isNotEmpty &&
                   PortalsHost.samePortalKey(p.id, activeKey)),
         ),
     ];
-    final canDeal = AccountFeatures.instance.isDealPortalEnabled &&
+    final canDeal =
+        AccountFeatures.instance.isDealPortalEnabled &&
         SyncService.instance.isSignedIn;
     final canScrape = AccountFeatures.instance.isIptvScrapeEnabled;
     final credits = AccountFeatures.instance.iptvCredits;
@@ -612,8 +629,8 @@ class _PortalsPanelViewState extends ConsumerState<PortalsPanelView> {
     final statusText = _busy
         ? 'Working…'
         : (asyncInv.isLoading && inv == null)
-            ? 'Loading…'
-            : '';
+        ? 'Loading…'
+        : '';
 
     final currentKeys = {for (final p in items) p.id};
     final activeIdx = activeKey.isEmpty
@@ -643,86 +660,93 @@ class _PortalsPanelViewState extends ConsumerState<PortalsPanelView> {
     Widget panel = ShellPaintTvTabScope(
       tabId: widget.tabId,
       child: PortalListView(
-      width: widget.width,
-      title: (inv?.title.trim().isNotEmpty ?? false) ? inv!.title : 'Portals',
-      items: items,
-      headerActions: headerActions,
-      searchPlaceholder: inv?.searchPlaceholder ?? '',
-      emptyTitle: inv?.emptyTitle ?? '',
-      emptyDescription: inv?.emptyDescription ?? '',
-      statusText: statusText,
-      busy: _busy,
-      leanback: leanback,
-      listScrollController: _tv.listScroll,
-      titleFontSize: inv?.titleFontSize ?? 18,
-      rowHeight: rowExtent,
-      onClose: widget.onClose,
-      onSelect: (item) => unawaited(_selectPortal(item.id)),
-      onFavorite: (item) => unawaited(_toggleFavorite(item.id)),
-      onEdit: (item) => unawaited(_editPortal(item.id)),
-      onDelete: (item) => unawaited(_deletePortal(item.id)),
-      onCopyShareCode: (item) => _shareCodeFor(item.id),
-      onHoverEnter: (item) => _health.schedule(
+        width: widget.width,
+        title: (inv?.title.trim().isNotEmpty ?? false) ? inv!.title : 'Portals',
+        items: items,
+        headerActions: headerActions,
+        searchPlaceholder: inv?.searchPlaceholder ?? '',
+        emptyTitle: inv?.emptyTitle ?? '',
+        emptyDescription: inv?.emptyDescription ?? '',
+        statusText: statusText,
+        busy: _busy,
+        leanback: leanback,
+        listScrollController: _tv.listScroll,
+        titleFontSize: inv?.titleFontSize ?? 18,
+        rowHeight: rowExtent,
+        onClose: widget.onClose,
+        onSelect: (item) => unawaited(_selectPortal(item.id)),
+        onFavorite: (item) => unawaited(_toggleFavorite(item.id)),
+        onEdit: (item) => unawaited(_editPortal(item.id)),
+        onDelete: (item) => unawaited(_deletePortal(item.id)),
+        onCopyShareCode: (item) => _shareCodeFor(item.id),
+        onHoverEnter: (item) {
+          // Desktop hover dismisses NEW; leanback skim must not (1.4 parity).
+          if (!leanback && item.isNew) {
+            PortalsHost.markPortalSeen(item.id);
+          }
+          _health.schedule(
             item.id,
             leanback: leanback,
             // Soft refresh like the chip — recheck even when TTL is fresh.
             force: true,
-          ),
-      onHoverExit: (item) => _health.cancel(item.id),
-      healthTickFor: (id) => _health.listenableFor(id),
-      repaintItem: (item) => _health.paint(
-            item,
-            deleting: _deletingKeys.contains(item.id),
-            shelfLoading: _isShelfLoading(item.id),
-            selected: item.selected,
-          ),
-      onHeaderUp: useTv ? _tv.exitUpToChip : null,
-      onHeaderDown: useTv
-          ? () => _tv.focusPortalsFromHeader(
+          );
+        },
+        onHoverExit: (item) => _health.cancel(item.id),
+        healthTickFor: (id) => _health.listenableFor(id),
+        repaintItem: (item) => _health.paint(
+          item,
+          deleting: _deletingKeys.contains(item.id),
+          shelfLoading: _isShelfLoading(item.id),
+          selected: item.selected,
+        ),
+        onHeaderUp: useTv ? _tv.exitUpToChip : null,
+        onHeaderDown: useTv
+            ? () => _tv.focusPortalsFromHeader(
                 filteredLength: items.length,
                 activeIndex: activeIdx,
                 mounted: mounted,
               )
-          : null,
-      onHeaderFocusAt: useTv ? _tv.focusHeaderAt : null,
-      onPortalLeft: useTv ? _tv.onPortalLeft : null,
-      onPortalMove: useTv
-          ? (from, deltaSign) => _tv.onPortalMove(
+            : null,
+        onHeaderFocusAt: useTv ? _tv.focusHeaderAt : null,
+        onPortalLeft: useTv ? _tv.onPortalLeft : null,
+        onPortalMove: useTv
+            ? (from, deltaSign) => _tv.onPortalMove(
                 fromIndex: from,
                 deltaSign: deltaSign,
                 total: items.length,
                 mounted: mounted,
               )
-          : null,
-      onPortalExitUp: useTv
-          ? () => _tv.focusHeaderAdd(headerActionCount: headerActions.length)
-          : null,
-      onPortalExitDown: useTv ? _tv.exitDownToCatalog : null,
-      onPortalTvFocus: useTv ? _tv.markPortalTvFocus : null,
-      onListPointerBrowse: useTv ? _tv.onListPointerBrowse : null,
-      // Desktop/TV: D-pad land highlights the field; OK opens the keyboard.
-      searchFieldBuilder: !shellTvBrowseSearch(context)
-          ? null
-          : (ctx, {
-              required controller,
-              required focusNode,
-              required onChanged,
-              required onEscape,
-              required decoration,
-              required style,
-              required placeholder,
-            }) {
-              return TvBrowseTextField(
-                controller: controller,
-                focusNode: focusNode,
-                onChanged: onChanged,
-                onEscape: onEscape,
-                browsePlaceholder: placeholder,
-                browseHintStyle: decoration.hintStyle,
-                style: style,
-                decoration: decoration,
-              );
-            },
+            : null,
+        onPortalExitUp: useTv
+            ? () => _tv.focusHeaderAdd(headerActionCount: headerActions.length)
+            : null,
+        onPortalExitDown: useTv ? _tv.exitDownToCatalog : null,
+        onPortalTvFocus: useTv ? _tv.markPortalTvFocus : null,
+        onListPointerBrowse: useTv ? _tv.onListPointerBrowse : null,
+        // Desktop/TV: D-pad land highlights the field; OK opens the keyboard.
+        searchFieldBuilder: !shellTvBrowseSearch(context)
+            ? null
+            : (
+                ctx, {
+                required controller,
+                required focusNode,
+                required onChanged,
+                required onEscape,
+                required decoration,
+                required style,
+                required placeholder,
+              }) {
+                return TvBrowseTextField(
+                  controller: controller,
+                  focusNode: focusNode,
+                  onChanged: onChanged,
+                  onEscape: onEscape,
+                  browsePlaceholder: placeholder,
+                  browseHintStyle: decoration.hintStyle,
+                  style: style,
+                  decoration: decoration,
+                );
+              },
       ),
     );
 

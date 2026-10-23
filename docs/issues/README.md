@@ -499,6 +499,8 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [460-[fixed]-…](fixed/460-[fixed]-android-tv-iptv-nav-enter-shelf-while-loading.md) | Android TV IPTV nav enter stuck on rail while portal loading | P1 | High | fixed | Complete · 3/3 · A 0/1 | [301](301-[open]-iptv-dpad-focus-hover-chrome.md) |
 | [461-[open]-…](461-[open]-desktop-vod-sw-decode-keeps-hw-texture-pink-green.md) | Desktop VOD SW decode kept HW texture (pink/green) | P1 | High | open | 5/6 · A 0/2 | — |
 | [462-[fixed]-…](fixed/462-[fixed]-details-hero-sub-dub-dpad.md) | Details hero SUB/DUB D-pad + language dropdown | P1 | High | fixed | Complete · 2/2 · A 0/2 | [425](425-[open]-home-stream-language-filter.md) |
+| [463-[fixed]-…](fixed/463-[fixed]-my-list-tv-poster-subtitle-compact.md) | My List TV posters hide year • type (compact grid) | P1 | High | fixed | Complete · 3/3 · A 1/1 | — |
+| [464-[fixed]-…](fixed/464-[fixed]-iptv-portals-panel-insert-order-new-badge.md) | IPTV Portals panel insert-date order + NEW badge | P1 | Medium | fixed | Complete · 4/4 · A 0/2 | — |
 
 **Migration parity (draft):** [018](018-[draft]-migration-playback-parity-unverified.md) → [019](019-[draft]-webstreamr-enginejobs-e2e-test-gap.md)–[022](022-[draft]-playback-widget-integration-tests.md).
 

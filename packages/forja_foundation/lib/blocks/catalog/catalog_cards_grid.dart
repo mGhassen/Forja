@@ -105,10 +105,7 @@ Map<String, dynamic> catalogItemProps(Map<String, dynamic> item) {
       'asian_drama' || 'drama' => 'DRAMA',
       _ => null,
     };
-    final parts = <String>[
-      if (year.isNotEmpty) year,
-      ?typeLabel,
-    ];
+    final parts = <String>[if (year.isNotEmpty) year, ?typeLabel];
     if (parts.isNotEmpty) raw['subtitle'] = parts.join(' • ');
   }
   // Flat rows only — when paint.props exists, omit means omit (no meta.badge re-inject).
@@ -135,6 +132,8 @@ class CatalogCardsGrid extends StatelessWidget {
     this.gap,
     this.pad,
     this.cardWidth,
+    this.titleFontSize,
+    this.metaFontSize,
     this.itemAccessory,
     this.itemHealth,
     this.itemHealthListenable,
@@ -182,6 +181,12 @@ class CatalogCardsGrid extends StatelessWidget {
   /// Poster grid min cell width (desktop) — cells stretch to fill the row.
   /// Null → [InteractivePosterCard.cardWidth]. Ignored for channel / event grids.
   final double? cardWidth;
+
+  /// Poster title type. Null → [InteractivePosterCard.defaultTitleFontSize].
+  final double? titleFontSize;
+
+  /// Poster year • type line. Null → TV/desktop meta token.
+  final double? metaFontSize;
 
   /// Optional corner control (e.g. live favorite star). [active] = hover/focus.
   final Widget? Function(
@@ -596,6 +601,8 @@ class CatalogCardsGrid extends StatelessWidget {
                       : PosterAspect.portrait,
                   width: layout.cardW,
                   height: layout.cardH,
+                  titleFontSize: titleFontSize,
+                  metaFontSize: metaFontSize,
                   gridIndex: i,
                   gridColumns: layout.columns,
                   onLeftEdge: _gridOnLeftEdge(i, layout.columns),
@@ -1225,12 +1232,7 @@ class _ChannelLetterJumpGridState extends State<_ChannelLetterJumpGrid> {
     if (list) {
       body = ListView.separated(
         controller: _scroll,
-        padding: EdgeInsets.fromLTRB(
-          leading,
-          _channelListTopPad,
-          trailing,
-          12,
-        ),
+        padding: EdgeInsets.fromLTRB(leading, _channelListTopPad, trailing, 12),
         itemCount: widget.items.length,
         separatorBuilder: (_, _) =>
             const SizedBox(height: _channelListSeparator),

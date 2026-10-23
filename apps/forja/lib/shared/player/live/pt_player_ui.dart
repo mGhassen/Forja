@@ -1895,15 +1895,6 @@ mixin _PtPlayerUi on ConsumerState<PtPlayerScreen> {
                 tv: ShellPaintScope.usesTvDensityOf(context),
               ),
             ),
-            if ((_s._logoUrl ?? '').trim().isNotEmpty) ...[
-              _buildTopChannelLogo(),
-              SizedBox(
-                width: ShellTokens.chromeScale(
-                  10,
-                  tv: ShellPaintScope.usesTvDensityOf(context),
-                ),
-              ),
-            ],
             Expanded(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -1985,31 +1976,6 @@ mixin _PtPlayerUi on ConsumerState<PtPlayerScreen> {
   // ───────────────────────────────────────────────────────────────────────
   //  VOD SEEKBAR - only shown when duration > 0 (Xtream movies / series)
   // ───────────────────────────────────────────────────────────────────────
-  /// Title-row channel mark. A square slot crushes wide logos to a speck.
-  Widget _buildTopChannelLogo() {
-    final url = paintableNetworkImageUrl(_s._logoUrl!.trim());
-    if (!url.startsWith('http://') && !url.startsWith('https://')) {
-      return const SizedBox.shrink();
-    }
-    final tv = ShellPaintScope.usesTvDensityOf(context);
-    final height = tv
-        ? ShellTokens.playerChromeTopBtnSizeTv
-        : ShellTokens.playerChromeTopBtnSize;
-    return Image(
-      key: ValueKey(url),
-      image: CachedNetworkImageProvider(
-        url,
-        cacheManager: ForjaImageCacheManager(),
-      ),
-      height: height,
-      fit: BoxFit.contain,
-      alignment: Alignment.centerLeft,
-      filterQuality: FilterQuality.medium,
-      gaplessPlayback: true,
-      errorBuilder: (_, _, _) => const SizedBox.shrink(),
-    );
-  }
-
   Widget _buildChannelLogo(bool compact) {
     if ((_s._logoUrl ?? '').isEmpty) return const SizedBox.shrink();
     final tv = ShellPaintScope.usesTvDensityOf(context);

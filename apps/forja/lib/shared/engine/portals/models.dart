@@ -161,9 +161,7 @@ abstract final class PortalExpiry {
     }
 
     // `February 16, 2027` / `Feb 16 2027`
-    final eng = RegExp(
-      r'^([A-Za-z]+)\s+(\d{1,2}),?\s+(\d{4})',
-    ).firstMatch(s);
+    final eng = RegExp(r'^([A-Za-z]+)\s+(\d{1,2}),?\s+(\d{4})').firstMatch(s);
     if (eng != null) {
       final month = _monthIndex[eng.group(1)!.toLowerCase()];
       final day = int.tryParse(eng.group(2)!);
@@ -196,7 +194,8 @@ abstract final class StalkerMac {
   static String generate() {
     final octets = List.generate(
       3,
-      (_) => _random.nextInt(256).toRadixString(16).padLeft(2, '0').toUpperCase(),
+      (_) =>
+          _random.nextInt(256).toRadixString(16).padLeft(2, '0').toUpperCase(),
     );
     return '$prefix:${octets.join(':')}';
   }
@@ -215,7 +214,8 @@ enum PortalPlatform {
 
   static const m3uUsernameSentinel = '__m3u__';
 
-  static PortalPlatform fromString(String? raw) => switch (raw?.trim().toLowerCase()) {
+  static PortalPlatform fromString(String? raw) =>
+      switch (raw?.trim().toLowerCase()) {
         'm3u' => m3u,
         'stalker' => stalker,
         _ => xtream,
@@ -239,6 +239,7 @@ class Portal {
   final String password;
   final String source;
   final PortalPlatform platform;
+
   /// Optional User-Agent for M3U fetch / play.
   final String userAgent;
 
@@ -251,8 +252,7 @@ class Portal {
     this.userAgent = '',
   });
 
-  String get key =>
-      '${platform.wire}|$url|$username|$password'.toLowerCase();
+  String get key => '${platform.wire}|$url|$username|$password'.toLowerCase();
 
   /// Identity for duplicate-portal checks.
   /// Xtream / Stalker: ignores URL (same account can live on multiple hosts).
@@ -267,33 +267,37 @@ class Portal {
   }
 
   Map<String, dynamic> toJson() => {
-        'url': url,
-        'username': username,
-        'password': password,
-        'source': source,
-        'platform': platform.wire,
-        if (userAgent.isNotEmpty) 'userAgent': userAgent,
-      };
+    'url': url,
+    'username': username,
+    'password': password,
+    'source': source,
+    'platform': platform.wire,
+    if (userAgent.isNotEmpty) 'userAgent': userAgent,
+  };
 
   factory Portal.fromJson(Map<String, dynamic> j) => Portal(
-        url: j['url'] as String? ?? '',
-        username: j['username'] as String? ?? '',
-        password: j['password'] as String? ?? '',
-        source: j['source'] as String? ?? '',
-        platform: PortalPlatform.fromString(j['platform'] as String?),
-        userAgent: j['userAgent'] as String? ?? j['user_agent'] as String? ?? '',
-      );
+    url: j['url'] as String? ?? '',
+    username: j['username'] as String? ?? '',
+    password: j['password'] as String? ?? '',
+    source: j['source'] as String? ?? '',
+    platform: PortalPlatform.fromString(j['platform'] as String?),
+    userAgent: j['userAgent'] as String? ?? j['user_agent'] as String? ?? '',
+  );
 }
 
 /// Portal that successfully authenticated against /player_api.php.
 class VerifiedPortal {
   final Portal portal;
+
   /// User-chosen display name (optional). Empty falls back via [displayLabel].
   final String label;
   final String name;
   final String expiry;
   final String maxConnections;
   final String activeConnections;
+
+  /// ISO-8601 insert time (vault / cloud). Empty = unknown (sorts oldest).
+  final String addedAt;
 
   const VerifiedPortal({
     required this.portal,
@@ -302,6 +306,7 @@ class VerifiedPortal {
     required this.expiry,
     required this.maxConnections,
     required this.activeConnections,
+    this.addedAt = '',
   });
 
   String get key => portal.key;
@@ -320,24 +325,26 @@ class VerifiedPortal {
   PortalPlatform get platform => portal.platform;
 
   VerifiedPortal withLabel(String label) => VerifiedPortal(
-        portal: portal,
-        label: label.trim(),
-        name: name,
-        expiry: expiry,
-        maxConnections: maxConnections,
-        activeConnections: activeConnections,
-      );
+    portal: portal,
+    label: label.trim(),
+    name: name,
+    expiry: expiry,
+    maxConnections: maxConnections,
+    activeConnections: activeConnections,
+    addedAt: addedAt,
+  );
 
   /// Keep credentials + user [label]; refresh account fields from a login probe.
   /// Stalker/scrape dates are kept (with `*`) when login returns no expiry.
   VerifiedPortal withAccountFrom(VerifiedPortal fresh) => VerifiedPortal(
-        portal: portal,
-        label: label,
-        name: fresh.name,
-        expiry: PortalExpiry.mergeOnProbe(expiry, fresh.expiry),
-        maxConnections: fresh.maxConnections,
-        activeConnections: fresh.activeConnections,
-      );
+    portal: portal,
+    label: label,
+    name: fresh.name,
+    expiry: PortalExpiry.mergeOnProbe(expiry, fresh.expiry),
+    maxConnections: fresh.maxConnections,
+    activeConnections: fresh.activeConnections,
+    addedAt: addedAt.isNotEmpty ? addedAt : fresh.addedAt,
+  );
 
   bool sameAccountFields(VerifiedPortal other) =>
       name == other.name &&
@@ -359,6 +366,7 @@ class VerifiedPortal {
         activeConnections: probe.activeConnections.isNotEmpty
             ? probe.activeConnections
             : '0',
+        addedAt: DateTime.now().toUtc().toIso8601String(),
       );
 }
 
@@ -404,9 +412,11 @@ class PortalServerInfo {
 /// Full result of a portal health/login probe (alive or structured fail).
 class PortalProbeResult {
   final bool alive;
+
   /// Panel `user_info.status` (Active / Banned / Expired / …).
   final String accountStatus;
   final String message;
+
   /// `auth` | `transport` | empty when alive.
   final String errorKind;
   final String accountName;
@@ -454,20 +464,18 @@ abstract final class PortalLiveCatalog {
   static const watchedLimit = 30;
 
   static const favorites = PortalCategory(id: favoritesId, name: 'Favorites');
-  static const watched =
-      PortalCategory(id: watchedId, name: 'Already watched');
+  static const watched = PortalCategory(id: watchedId, name: 'Already watched');
 
-  static bool isSyntheticId(String id) =>
-      id == favoritesId || id == watchedId;
+  static bool isSyntheticId(String id) => id == favoritesId || id == watchedId;
 
   /// Synthetic Favorites / Already watched (not user-pinned API groups).
   static bool isPinnedId(String id) => isSyntheticId(id);
 
   static List<PortalCategory> withPins(List<PortalCategory> apiCategories) => [
-        favorites,
-        watched,
-        ...apiCategories,
-      ];
+    favorites,
+    watched,
+    ...apiCategories,
+  ];
 
   /// First real portal group after Favorites / Already watched — playlist first,
   /// or the category pinned / dragged to the top of the movable rail.
@@ -500,9 +508,7 @@ abstract final class PortalLiveCatalog {
     List<String> userPinnedIds = const [],
     List<String> customOrderIds = const [],
   }) {
-    if (input.length < 2 &&
-        userPinnedIds.isEmpty &&
-        customOrderIds.isEmpty) {
+    if (input.length < 2 && userPinnedIds.isEmpty && customOrderIds.isEmpty) {
       return input;
     }
     final synthetic = <PortalCategory>[];
@@ -615,11 +621,11 @@ class PortalCatalogLoadProgress {
   static const empty = PortalCatalogLoadProgress();
 
   Map<String, dynamic> toStatsJson() => {
-        'categories': categoryCount,
-        'channels': channelCount,
-        'movies': movieCount,
-        'series': seriesCount,
-      };
+    'categories': categoryCount,
+    'channels': channelCount,
+    'movies': movieCount,
+    'series': seriesCount,
+  };
 
   factory PortalCatalogLoadProgress.fromStatsJson(Map<String, dynamic> json) =>
       PortalCatalogLoadProgress(
@@ -644,15 +650,14 @@ class PortalCatalogLoadProgress {
     int? seriesCount,
     double? fraction,
     bool? finished,
-  }) =>
-      PortalCatalogLoadProgress(
-        categoryCount: categoryCount ?? this.categoryCount,
-        channelCount: channelCount ?? this.channelCount,
-        movieCount: movieCount ?? this.movieCount,
-        seriesCount: seriesCount ?? this.seriesCount,
-        fraction: fraction ?? this.fraction,
-        finished: finished ?? this.finished,
-      );
+  }) => PortalCatalogLoadProgress(
+    categoryCount: categoryCount ?? this.categoryCount,
+    channelCount: channelCount ?? this.channelCount,
+    movieCount: movieCount ?? this.movieCount,
+    seriesCount: seriesCount ?? this.seriesCount,
+    fraction: fraction ?? this.fraction,
+    finished: finished ?? this.finished,
+  );
 }
 
 /// Live catalog sort - playlist = API order; nameAsc/nameDesc by display name.
@@ -662,10 +667,10 @@ enum PortalCatalogSort {
   nameDesc;
 
   static PortalCatalogSort fromPrefs(String? raw) => switch (raw) {
-        'nameAsc' => nameAsc,
-        'nameDesc' => nameDesc,
-        _ => playlist,
-      };
+    'nameAsc' => nameAsc,
+    'nameDesc' => nameDesc,
+    _ => playlist,
+  };
 
   String get prefsValue => name;
 }
@@ -689,6 +694,7 @@ class PortalStream {
   final String categoryId;
   final String containerExt;
   final String kind;
+
   /// Numeric ITV / Xtream EPG channel id. Stalker stores `ch_id` here while
   /// [streamId] may be the create_link `cmd`. Empty when the panel has no EPG.
   final String epgChannelId;

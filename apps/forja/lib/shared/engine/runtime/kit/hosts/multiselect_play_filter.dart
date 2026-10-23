@@ -6,6 +6,7 @@ import 'package:forja/shell/tv/media_details_tv_scope.dart';
 import 'package:forja/shell/tv/shell_tv_coordinator.dart';
 import 'package:forja/shell/tv/shell_tv_focus.dart';
 import 'package:forja/shell/tv/tv_focus_graph.dart';
+import 'package:forja_foundation/tokens/forja_motion_theme.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
@@ -517,6 +518,7 @@ class _LanguageMenuRowState extends State<_LanguageMenuRow> {
       onTap: widget.onTap,
       autoFocus: widget.autoFocus,
       borderRadius: 6,
+      motion: ForjaMotionPreset.fillOnly,
       showFocusFill: false,
       showFocusBorder: false,
       suppressInkHover: true,

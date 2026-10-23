@@ -1979,6 +1979,14 @@ class PackPaintTree extends StatelessWidget {
             context,
             spec['cardWidth'],
           );
+          final titleFontSize = PackPaintArtifact.packLength(
+            context,
+            spec['titleFontSize'],
+          );
+          final metaFontSize = PackPaintArtifact.packLength(
+            context,
+            spec['metaFontSize'],
+          );
           final listId = (spec['id'] ?? 'items').toString().trim();
           final kindFilterLive = kindMenu == 'cats';
           final currentKind = kindFilter;
@@ -2171,6 +2179,8 @@ class PackPaintTree extends StatelessWidget {
               gap: gap,
               pad: pad,
               cardWidth: cardWidth,
+              titleFontSize: titleFontSize,
+              metaFontSize: metaFontSize,
               emptyTitle: (spec['emptyTitle'] ?? 'Nothing here yet.')
                   .toString(),
               emptyDescription:
@@ -2312,6 +2322,8 @@ class PackPaintTree extends StatelessWidget {
                                   gap: gap,
                                   pad: pad,
                                   cardWidth: cardWidth,
+                                  titleFontSize: titleFontSize,
+                                  metaFontSize: metaFontSize,
                                   emptyTitle:
                                       (spec['emptyTitle'] ??
                                               'Nothing here yet.')

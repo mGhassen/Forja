@@ -169,8 +169,8 @@ abstract final class PortalVaultInventory {
         final k = _vaultPortalKey(m);
         if (k.isEmpty || !seen.add(k)) continue;
         final storedLabel = _nonEmpty(m['label']);
-        final label = storedLabel != null &&
-                storedLabel.toLowerCase() != k.toLowerCase()
+        final label =
+            storedLabel != null && storedLabel.toLowerCase() != k.toLowerCase()
             ? storedLabel
             : '';
         out.add(
@@ -180,8 +180,9 @@ abstract final class PortalVaultInventory {
             name: (m['name'] ?? portal.username).toString(),
             expiry: (m['expiry'] ?? '').toString(),
             maxConnections: (m['maxConnections'] ?? m['max'] ?? '1').toString(),
-            activeConnections:
-                (m['activeConnections'] ?? m['active'] ?? '0').toString(),
+            activeConnections: (m['activeConnections'] ?? m['active'] ?? '0')
+                .toString(),
+            addedAt: (m['addedAt'] ?? '').toString().trim(),
           ),
         );
       }
@@ -232,6 +233,7 @@ abstract final class PortalVaultInventory {
       'activeConnections': p.activeConnections,
       'maxConnections': p.maxConnections,
       'expiry': p.expiry,
+      if (p.addedAt.trim().isNotEmpty) 'addedAt': p.addedAt.trim(),
     };
   }
 }

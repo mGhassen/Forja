@@ -582,14 +582,16 @@ abstract final class ShellTokens {
   static const double playerChromeStatusFontSize = 13;
   static const double playerChromeStatusFontSizeTv = tvBodyFontSize;
 
-  /// IPTV live top-bar channel mark + progress-row logo.
+  /// Live / IPTV chrome channel mark (guide, Live Sports top bar).
   static const double playerChromeLogoSize = 36;
   static const double playerChromeLogoSizeTv =
       playerChromeLogoSize * tvChromeScale;
-  static const double playerChromeProgressLogoSize = 72;
+
+  /// Progress-row channel logo (IPTV / Live Sports chrome).
+  static const double playerChromeProgressLogoSize = 58;
   static const double playerChromeProgressLogoSizeTv =
       playerChromeProgressLogoSize * tvChromeScale;
-  static const double playerChromeProgressLogoSizeCompact = 56;
+  static const double playerChromeProgressLogoSizeCompact = 45;
   static const double playerChromeProgressLogoSizeCompactTv =
       playerChromeProgressLogoSizeCompact * tvChromeScale;
 

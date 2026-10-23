@@ -28,6 +28,12 @@ abstract final class PortalsHost {
   static DateTime? _lastPortalPanelPullAt;
   static Future<void>? _portalPanelPrepareInflight;
 
+  /// Session-new portals (add / import / deal / cloud assign) — NEW badge only.
+  static final List<String> _newPortalKeys = [];
+
+  /// Bumped when NEW badge set changes so panel softReload can repaint.
+  static final ValueNotifier<int> newBadgeRevision = ValueNotifier(0);
+
   /// Resolve a hub pack that declares `listPortals` (no pack-id allowlist).
   static Future<String?> resolvePluginId({String? preferTabId}) async {
     final tab = (preferTabId ?? '').trim();
@@ -73,24 +79,73 @@ abstract final class PortalsHost {
     );
     if (env.ok && _actionMutatesPortalInventory(action)) {
       await mirrorVaultToStoreAndScheduleSync();
+      final a = action.trim().toLowerCase();
+      if (a == 'addportal' || a == 'importportal') {
+        _registerAddedFromEnvelope(env.data);
+      }
     }
     return env;
   }
 
+  static void _registerAddedFromEnvelope(Map<String, dynamic>? data) {
+    final portal = data?['portal'];
+    if (portal is! Map) return;
+    final m = Map<String, dynamic>.from(portal);
+    final key = (m['key'] ?? vaultPortalKey(m)).toString().trim();
+    if (key.isEmpty || key == '|') return;
+    registerPortalAdded(key);
+  }
+
+  /// Mark a portal as session-new (top + NEW badge until seen).
+  static void registerPortalAdded(String portalKey) {
+    final key = portalKey.trim();
+    if (key.isEmpty) return;
+    _newPortalKeys.removeWhere((k) => samePortalKey(k, key));
+    _newPortalKeys.insert(0, key);
+    newBadgeRevision.value++;
+  }
+
+  /// Register several newly assigned keys (cloud pull / deal).
+  static void registerPortalsAdded(Iterable<String> keys) {
+    var any = false;
+    for (final raw in keys) {
+      final key = raw.trim();
+      if (key.isEmpty) continue;
+      _newPortalKeys.removeWhere((k) => samePortalKey(k, key));
+      _newPortalKeys.insert(0, key);
+      any = true;
+    }
+    if (any) newBadgeRevision.value++;
+  }
+
+  static bool isNewPortal(String portalKey) {
+    final key = portalKey.trim();
+    if (key.isEmpty) return false;
+    return _newPortalKeys.any((k) => samePortalKey(k, key));
+  }
+
+  /// Dismisses NEW only — does not reorder (insert date stays).
+  static void markPortalSeen(String portalKey) {
+    final key = portalKey.trim();
+    if (key.isEmpty) return;
+    final before = _newPortalKeys.length;
+    _newPortalKeys.removeWhere((k) => samePortalKey(k, key));
+    if (_newPortalKeys.length != before) {
+      newBadgeRevision.value++;
+    }
+  }
+
   static bool _actionMutatesPortalInventory(String action) {
     final a = action.trim().toLowerCase();
-    return a == 'addportal' ||
-        a == 'editportal' ||
-        a == 'importportal';
+    return a == 'addportal' || a == 'editportal' || a == 'importportal';
   }
 
   /// Vault → [PortalStore] → [scheduleIptvSyncPush] (issue 308).
   static Future<void> mirrorVaultToStoreAndScheduleSync({
     bool onlyIfStoreEmpty = false,
-  }) =>
-      PortalVaultInventory.mirrorVaultToStoreAndScheduleSync(
-        onlyIfStoreEmpty: onlyIfStoreEmpty,
-      );
+  }) => PortalVaultInventory.mirrorVaultToStoreAndScheduleSync(
+    onlyIfStoreEmpty: onlyIfStoreEmpty,
+  );
 
   /// Top-bar chip label from vault only — never runs pack `listPortals`.
   ///
@@ -122,10 +177,7 @@ abstract final class PortalsHost {
         }
       }
       if (hit == null) {
-        return PortalsChipSummary(
-          label: 'Portals',
-          hasPortal: true,
-        );
+        return PortalsChipSummary(label: 'Portals', hasPortal: true);
       }
       final key = vaultPortalKey(hit);
       final label = portalRowDisplayName(hit, key: key);
@@ -194,16 +246,9 @@ abstract final class PortalsHost {
   static Future<PortalsInventory> list({String? preferTabId}) async {
     final pluginId = await resolvePluginId(preferTabId: preferTabId);
     if (pluginId == null || pluginId.isEmpty) {
-      return const PortalsInventory(
-        portals: [],
-        activeKey: '',
-        pluginId: '',
-      );
+      return const PortalsInventory(portals: [], activeKey: '', pluginId: '');
     }
-    final env = await run(
-      pluginId: pluginId,
-      action: 'listPortals',
-    );
+    final env = await run(pluginId: pluginId, action: 'listPortals');
     if (!env.ok) {
       return PortalsInventory(
         portals: const [],
@@ -219,8 +264,9 @@ abstract final class PortalsHost {
     final rawItems = env.data?['items'];
     final rawPortals = env.data?['portals'];
     final source = <Map<String, dynamic>>[];
-    final preferred =
-        rawItems is List && rawItems.isNotEmpty ? rawItems : rawPortals;
+    final preferred = rawItems is List && rawItems.isNotEmpty
+        ? rawItems
+        : rawPortals;
     if (preferred is List) {
       for (final e in preferred) {
         if (e is! Map) continue;
@@ -244,16 +290,41 @@ abstract final class PortalsHost {
     final portals = await PortalStore.load();
     if (portals.isEmpty) return;
     final favs = await PortalStore.loadFavorites();
-    final vaultActive =
-        (await EngineVault.get(PortalVaultKeys.active) ?? '')
-            .toString()
-            .trim();
+    final vaultActive = (await EngineVault.get(PortalVaultKeys.active) ?? '')
+        .toString()
+        .trim();
     final activePack = packActiveKeyAmong(vaultActive, portals);
     await PortalVaultInventory.mirrorFromStore(
       portals: portals,
       favoriteKeys: favs,
       activeKey: activePack.isNotEmpty ? activePack : null,
     );
+  }
+
+  /// Pack-style `url|user` keys currently in vault / store.
+  static Future<Set<String>> _packInventoryKeys() async {
+    final out = <String>{};
+    try {
+      final vault = await _vaultPortalsExact();
+      for (final v in vault) {
+        out.add(packPortalKey(v.portal));
+      }
+      if (out.isNotEmpty) return out;
+      for (final v in await PortalStore.load()) {
+        out.add(packPortalKey(v.portal));
+      }
+    } catch (_) {}
+    return out;
+  }
+
+  /// NEW badge for portals that appeared after a cloud pull / deal.
+  static Future<void> _registerKeysAddedSince(Set<String> before) async {
+    final after = await _packInventoryKeys();
+    final added = <String>[
+      for (final k in after)
+        if (!before.any((b) => samePortalKey(b, k))) k,
+    ];
+    if (added.isNotEmpty) registerPortalsAdded(added);
   }
 
   /// Open-panel soft prepare — vault stays painted; cloud merge is async.
@@ -278,13 +349,16 @@ abstract final class PortalsHost {
           // Heal vault-only portals into PortalStore before pull/flush.
           await mirrorVaultToStoreAndScheduleSync(onlyIfStoreEmpty: true);
           final now = DateTime.now();
-          final recent = _lastPortalPanelPullAt != null &&
+          final recent =
+              _lastPortalPanelPullAt != null &&
               now.difference(_lastPortalPanelPullAt!) <
                   const Duration(seconds: 3);
           if (!recent) {
             _lastPortalPanelPullAt = now;
+            final before = await _packInventoryKeys();
             await SyncDomainBridge.instance.pullPortalsFromCloud();
             await _mirrorStoreToVault();
+            await _registerKeysAddedSince(before);
           }
         }
         if (!done.isCompleted) done.complete();
@@ -303,9 +377,32 @@ abstract final class PortalsHost {
   static String inventoryFingerprint(PortalsInventory inv) {
     final keys = [
       for (final p in inv.portals)
-        '${p.id}|${p.label}|${p.favorite}|${p.subtitle ?? ''}',
+        '${p.id}|${p.label}|${p.favorite}|${p.isNew}|${p.subtitle ?? ''}',
     ]..sort();
     return '${inv.activeKey}|${keys.join(';')}';
+  }
+
+  /// Favorites first, then newest [addedAt] (insert date). Missing → oldest.
+  @visibleForTesting
+  static int comparePortalListItems(
+    PortalListItem a,
+    PortalListItem b, {
+    required Map<String, int> addedAtMs,
+  }) {
+    if (a.favorite != b.favorite) return a.favorite ? -1 : 1;
+    final am = addedAtMs[a.id] ?? 0;
+    final bm = addedAtMs[b.id] ?? 0;
+    if (am != bm) return bm.compareTo(am);
+    return 0;
+  }
+
+  static int _addedAtMillis(Object? raw) {
+    final s = (raw ?? '').toString().trim();
+    if (s.isEmpty) return 0;
+    final parsed = DateTime.tryParse(s);
+    if (parsed != null) return parsed.toUtc().millisecondsSinceEpoch;
+    final asInt = int.tryParse(s);
+    return asInt ?? 0;
   }
 
   static PortalsInventory _inventoryFromRows({
@@ -317,6 +414,7 @@ abstract final class PortalsHost {
   }) {
     final items = <PortalListItem>[];
     final formValues = <String, Map<String, String>>{};
+    final addedAtMs = <String, int>{};
 
     for (final m in source) {
       final key = (m['key'] ?? m['id'] ?? m['portalKey'] ?? '')
@@ -326,7 +424,8 @@ abstract final class PortalsHost {
       if (resolvedKey.isEmpty || resolvedKey == '|') continue;
       final label = portalRowDisplayName(m, key: resolvedKey);
       final storedRaw = _nonEmpty(m['label']);
-      final storedLabel = storedRaw != null &&
+      final storedLabel =
+          storedRaw != null &&
               storedRaw.toLowerCase() != resolvedKey.toLowerCase()
           ? storedRaw
           : '';
@@ -339,12 +438,15 @@ abstract final class PortalsHost {
       final expiryRaw = m['expiry']?.toString();
       final expiryFmt = PortalExpiry.format(expiryRaw);
       final selectedFlag = m['selected'];
+      final fav = favs.any((f) => samePortalKey(f, resolvedKey));
+      addedAtMs[resolvedKey] = _addedAtMillis(m['addedAt']);
       items.add(
         PortalListItem(
           id: resolvedKey,
           label: label,
           subtitle: url.isEmpty ? null : url,
-          selected: samePortalKey(resolvedKey, active) ||
+          selected:
+              samePortalKey(resolvedKey, active) ||
               selectedFlag == true ||
               selectedFlag == 1 ||
               selectedFlag?.toString().toLowerCase() == 'true',
@@ -352,7 +454,8 @@ abstract final class PortalsHost {
           expiry: PortalExpiry.isUnknown(expiryFmt) ? null : expiryFmt,
           activeConnections: _seatField(activeConn),
           maxConnections: _seatField(maxConn),
-          favorite: favs.contains(resolvedKey),
+          favorite: fav,
+          isNew: isNewPortal(resolvedKey),
         ),
       );
       final fv = m['formValues'];
@@ -370,10 +473,7 @@ abstract final class PortalsHost {
         };
       }
     }
-    items.sort((a, b) {
-      if (a.favorite != b.favorite) return a.favorite ? -1 : 1;
-      return 0;
-    });
+    items.sort((a, b) => comparePortalListItems(a, b, addedAtMs: addedAtMs));
     return PortalsInventory(
       portals: items,
       activeKey: active,
@@ -464,13 +564,16 @@ abstract final class PortalsHost {
       final v = panelMap[key];
       return v is num ? v.toDouble() : null;
     }
+
     return _PortalListChrome(
       title: title,
       actions: actions,
       editForm: editForm,
       emptyTitle: (panelMap['emptyTitle'] ?? '').toString().trim(),
       emptyDescription: (panelMap['emptyDescription'] ?? '').toString().trim(),
-      searchPlaceholder: (panelMap['searchPlaceholder'] ?? '').toString().trim(),
+      searchPlaceholder: (panelMap['searchPlaceholder'] ?? '')
+          .toString()
+          .trim(),
       width: width > 0 ? width : 380.0,
       rowHeight: opt('rowHeight'),
       titleFontSize: opt('titleFontSize'),
@@ -480,12 +583,7 @@ abstract final class PortalsHost {
   static Future<MetaEnvelope> select({
     required String pluginId,
     required String key,
-  }) =>
-      run(
-        pluginId: pluginId,
-        action: 'selectPortal',
-        params: {'key': key},
-      );
+  }) => run(pluginId: pluginId, action: 'selectPortal', params: {'key': key});
 
   /// Instant active portal — vault only, no flutter_js.
   ///
@@ -516,8 +614,9 @@ abstract final class PortalsHost {
     required String pluginId,
     required String key,
   }) async {
-    final before =
-        (await EngineVault.get(PortalVaultKeys.active) ?? '').toString().trim();
+    final before = (await EngineVault.get(PortalVaultKeys.active) ?? '')
+        .toString()
+        .trim();
     final env = await run(
       pluginId: pluginId,
       action: 'removePortal',
@@ -575,8 +674,8 @@ abstract final class PortalsHost {
         final k = vaultPortalKey(m);
         if (k.isEmpty || !seen.add(k)) continue;
         final storedLabel = _nonEmpty(m['label']);
-        final label = storedLabel != null &&
-                storedLabel.toLowerCase() != k.toLowerCase()
+        final label =
+            storedLabel != null && storedLabel.toLowerCase() != k.toLowerCase()
             ? storedLabel
             : '';
         out.add(
@@ -586,8 +685,9 @@ abstract final class PortalsHost {
             name: (m['name'] ?? portal.username).toString(),
             expiry: (m['expiry'] ?? '').toString(),
             maxConnections: (m['maxConnections'] ?? m['max'] ?? '1').toString(),
-            activeConnections:
-                (m['activeConnections'] ?? m['active'] ?? '0').toString(),
+            activeConnections: (m['activeConnections'] ?? m['active'] ?? '0')
+                .toString(),
+            addedAt: (m['addedAt'] ?? '').toString().trim(),
           ),
         );
       }
@@ -614,10 +714,7 @@ abstract final class PortalsHost {
   }
 
   static Future<void> saveFavoriteKeys(Set<String> keys) async {
-    await EngineVault.set(
-      PortalVaultKeys.favorites,
-      jsonEncode(keys.toList()),
-    );
+    await EngineVault.set(PortalVaultKeys.favorites, jsonEncode(keys.toList()));
   }
 
   /// Returns the new favorite state (`true` = starred).
@@ -644,19 +741,14 @@ abstract final class PortalsHost {
   }
 
   /// Panel / chip title: portal name if set, else username — never `url|user`.
-  static String portalRowDisplayName(
-    Map<String, dynamic> m, {
-    String? key,
-  }) {
+  static String portalRowDisplayName(Map<String, dynamic> m, {String? key}) {
     final resolvedKey = (key ?? vaultPortalKey(m)).trim();
     final label = _nonEmpty(m['label']);
-    if (label != null &&
-        label.toLowerCase() != resolvedKey.toLowerCase()) {
+    if (label != null && label.toLowerCase() != resolvedKey.toLowerCase()) {
       return label;
     }
     final name = _nonEmpty(m['name']) ?? _nonEmpty(m['title']);
-    if (name != null &&
-        name.toLowerCase() != resolvedKey.toLowerCase()) {
+    if (name != null && name.toLowerCase() != resolvedKey.toLowerCase()) {
       return name;
     }
     final user = _nonEmpty(m['username']);
@@ -688,6 +780,7 @@ abstract final class PortalsHost {
       if (parts.length >= 2) return '${parts[0]}|${parts[1]}';
       return raw;
     }
+
     final px = packForm(x);
     final py = packForm(y);
     if (px.isEmpty || py.isEmpty || px == '|' || py == '|') return false;
@@ -711,7 +804,8 @@ abstract final class PortalsHost {
     }
     // Already pack-shaped even if portal list drifted.
     final parts = raw.toLowerCase().split('|');
-    if (parts.length == 2 && parts[0].isNotEmpty) return '${parts[0]}|${parts[1]}';
+    if (parts.length == 2 && parts[0].isNotEmpty)
+      return '${parts[0]}|${parts[1]}';
     return '';
   }
 
@@ -753,7 +847,8 @@ abstract final class PortalsHost {
         final key = vaultPortalKey(m);
         if (key.isEmpty || !seen.add(key)) continue;
         final storedLabel = _nonEmpty(m['label']);
-        final label = storedLabel != null &&
+        final label =
+            storedLabel != null &&
                 storedLabel.toLowerCase() != key.toLowerCase()
             ? storedLabel
             : '';
@@ -765,8 +860,9 @@ abstract final class PortalsHost {
             name: name,
             expiry: (m['expiry'] ?? '').toString(),
             maxConnections: (m['maxConnections'] ?? m['max'] ?? '1').toString(),
-            activeConnections:
-                (m['activeConnections'] ?? m['active'] ?? '0').toString(),
+            activeConnections: (m['activeConnections'] ?? m['active'] ?? '0')
+                .toString(),
+            addedAt: (m['addedAt'] ?? '').toString().trim(),
           ),
         );
       }
@@ -826,6 +922,7 @@ abstract final class PortalsHost {
     if (ids.isEmpty) return (ids: ids, synced: true);
 
     // Cloud is ahead of local — do not let the 3s panel throttle skip this.
+    final before = await _packInventoryKeys();
     final ok = await SyncDomainBridge.instance.pullPortalsFromCloud(
       cloudIsSource: true,
     );
@@ -836,6 +933,7 @@ abstract final class PortalsHost {
       return (ids: ids, synced: false);
     }
     await _mirrorStoreToVault();
+    await _registerKeysAddedSince(before);
     _lastPortalPanelPullAt = DateTime.now();
     return (ids: ids, synced: true);
   }
@@ -1049,13 +1147,10 @@ class PortalHealthTracker {
       unawaited(_run(portalKey));
       return;
     }
-    _debounce[portalKey] = Timer(
-      leanback ? tvDelay : hoverDelay,
-      () {
-        _debounce.remove(portalKey);
-        unawaited(_run(portalKey));
-      },
-    );
+    _debounce[portalKey] = Timer(leanback ? tvDelay : hoverDelay, () {
+      _debounce.remove(portalKey);
+      unawaited(_run(portalKey));
+    });
   }
 
   void cancel(String portalKey) {
@@ -1112,12 +1207,12 @@ class PortalHealthTracker {
       if (probe.activeConnections.trim().isNotEmpty) {
         _probeActive[portalKey] =
             PortalsHost._seatField(probe.activeConnections) ??
-                probe.activeConnections.trim();
+            probe.activeConnections.trim();
       }
       if (probe.maxConnections.trim().isNotEmpty) {
         _probeMax[portalKey] =
             PortalsHost._seatField(probe.maxConnections) ??
-                probe.maxConnections.trim();
+            probe.maxConnections.trim();
       }
     } finally {
       _inFlight.remove(portalKey);

@@ -42,10 +42,7 @@ class ParsedPortalCsvRow {
 }
 
 class ParsePortalsCsvResult {
-  const ParsePortalsCsvResult({
-    required this.portals,
-    required this.skipped,
-  });
+  const ParsePortalsCsvResult({required this.portals, required this.skipped});
 
   final List<ParsedPortalCsvRow> portals;
   final int skipped;
@@ -166,8 +163,15 @@ bool? _parseFavorite(String? raw) {
   if (raw == null) return null;
   final v = raw.trim().toLowerCase();
   if (v.isEmpty) return null;
-  if (const {'yes', 'y', 'true', '1', 'fav', 'favorite', 'favourite'}
-      .contains(v)) {
+  if (const {
+    'yes',
+    'y',
+    'true',
+    '1',
+    'fav',
+    'favorite',
+    'favourite',
+  }.contains(v)) {
     return true;
   }
   if (const {'no', 'n', 'false', '0'}.contains(v)) return false;
@@ -197,8 +201,7 @@ ParsePortalsCsvResult parsePortalsCsv(String text) {
     dataStart = 1;
   } else if (headerCells.length >= 3) {
     columnIndex = {
-      for (var i = 0; i < portalCsvHeaders.length; i++)
-        portalCsvHeaders[i]: i,
+      for (var i = 0; i < portalCsvHeaders.length; i++) portalCsvHeaders[i]: i,
     };
     dataStart = 0;
   } else {
@@ -250,8 +253,10 @@ ParsePortalsCsvResult parsePortalsCsv(String text) {
       name: cell(cells, 'name'),
       expiry: cell(cells, 'expiry'),
       maxConnections: cell(cells, 'max').isEmpty ? '1' : cell(cells, 'max'),
-      activeConnections:
-          cell(cells, 'active').isEmpty ? '0' : cell(cells, 'active'),
+      activeConnections: cell(cells, 'active').isEmpty
+          ? '0'
+          : cell(cells, 'active'),
+      addedAt: DateTime.now().toUtc().toIso8601String(),
     );
     portals.add(
       ParsedPortalCsvRow(

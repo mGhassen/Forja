@@ -6,8 +6,9 @@ import 'package:forja/shared/engine/portals/store/storage.dart';
 import 'package:forja_foundation/widgets/chrome/portal_list_panel.dart';
 
 /// Per-hub open state — each tab has its own bool.
-final portalsPanelOpenProvider =
-    StateProvider.family<bool, String>((ref, tabId) => false);
+final portalsPanelOpenProvider = StateProvider.family<bool, String>(
+  (ref, tabId) => false,
+);
 
 /// Vault-backed chip label — shared across hubs (IPTV + Live Sports).
 ///
@@ -15,19 +16,19 @@ final portalsPanelOpenProvider =
 /// IPTV select (issue 433).
 final portalsChipSummaryProvider =
     FutureProvider.autoDispose<PortalsChipSummary>((ref) async {
-  ref.keepAlive();
-  void onStoreRev() => ref.invalidateSelf();
-  PortalStore.listRevision.addListener(onStoreRev);
-  ref.onDispose(() => PortalStore.listRevision.removeListener(onStoreRev));
-  return PortalsHost.chipSummary();
-});
+      ref.keepAlive();
+      void onStoreRev() => ref.invalidateSelf();
+      PortalStore.listRevision.addListener(onStoreRev);
+      ref.onDispose(() => PortalStore.listRevision.removeListener(onStoreRev));
+      return PortalsHost.chipSummary();
+    });
 
 /// Panel inventory — vault-first; [PortalsInventoryNotifier.prepare] soft-syncs
 /// cloud without wiping painted rows (legacy preparePortalPanel contract).
 final portalsInventoryProvider = AsyncNotifierProvider.autoDispose
     .family<PortalsInventoryNotifier, PortalsInventory, String>(
-  PortalsInventoryNotifier.new,
-);
+      PortalsInventoryNotifier.new,
+    );
 
 class PortalsInventoryNotifier
     extends AutoDisposeFamilyAsyncNotifier<PortalsInventory, String> {
@@ -40,8 +41,14 @@ class PortalsInventoryNotifier
       ref.invalidate(portalsChipSummaryProvider);
     }
 
+    void onNewBadge() => unawaited(softReload());
+
     PortalStore.listRevision.addListener(onStoreRev);
-    ref.onDispose(() => PortalStore.listRevision.removeListener(onStoreRev));
+    PortalsHost.newBadgeRevision.addListener(onNewBadge);
+    ref.onDispose(() {
+      PortalStore.listRevision.removeListener(onStoreRev);
+      PortalsHost.newBadgeRevision.removeListener(onNewBadge);
+    });
     return PortalsHost.listFromVault(preferTabId: tabId);
   }
 
@@ -125,7 +132,7 @@ class PortalsInventoryNotifier
           activeConnections: p.activeConnections,
           maxConnections: p.maxConnections,
           favorite: p.favorite,
-          isNew: p.isNew,
+          isNew: PortalsHost.isNewPortal(p.id),
           deleting: p.deleting,
           shelfLoading: p.shelfLoading,
           probeDetail: p.probeDetail,
@@ -238,6 +245,11 @@ class PortalsInventoryNotifier
       );
     }
     if (!changed) return;
+    // Favorites float up; keep relative insert order within each group.
+    portals.sort((a, b) {
+      if (a.favorite != b.favorite) return a.favorite ? -1 : 1;
+      return 0;
+    });
     state = AsyncData(
       PortalsInventory(
         portals: portals,
@@ -262,9 +274,7 @@ class PortalsInventoryNotifier
   Future<void> prepare() async {
     final before = state.asData?.value;
     if (before == null) {
-      state = AsyncData(
-        await PortalsHost.listFromVault(preferTabId: arg),
-      );
+      state = AsyncData(await PortalsHost.listFromVault(preferTabId: arg));
     }
     await PortalsHost.preparePortalPanel();
     await softReload();

@@ -14,17 +14,18 @@ String iptvPortalPasswordMapKey(String url, String username) =>
 
 /// Prefs JSON for one portal - never includes the password.
 Map<String, dynamic> iptvPortalMetadataJson(VerifiedPortal v) => {
-      'url': v.portal.url,
-      'username': v.portal.username,
-      'source': v.portal.source,
-      'platform': v.portal.platform.wire,
-      if (v.portal.userAgent.isNotEmpty) 'userAgent': v.portal.userAgent,
-      'label': v.label,
-      'name': v.name,
-      'expiry': v.expiry,
-      'max': v.maxConnections,
-      'active': v.activeConnections,
-    };
+  'url': v.portal.url,
+  'username': v.portal.username,
+  'source': v.portal.source,
+  'platform': v.portal.platform.wire,
+  if (v.portal.userAgent.isNotEmpty) 'userAgent': v.portal.userAgent,
+  'label': v.label,
+  'name': v.name,
+  'expiry': v.expiry,
+  'max': v.maxConnections,
+  'active': v.activeConnections,
+  if (v.addedAt.trim().isNotEmpty) 'addedAt': v.addedAt.trim(),
+};
 
 /// Verified portal store (port of PortalStore.kt).
 ///
@@ -32,11 +33,14 @@ Map<String, dynamic> iptvPortalMetadataJson(VerifiedPortal v) => {
 /// Keychain/Keystore via [SecureSettings.iptvPortalPasswords]. CSV export still
 /// writes plaintext passwords on purpose (user-owned backup file).
 class PortalStore {
-
-  static String get _key => LocalDataScope.storageKey('pt_iptv_verified_portals');
-  static String get _favKey => LocalDataScope.storageKey('pt_iptv_favorite_portal_keys');
-  static String get _lastPortalKey => LocalDataScope.storageKey('pt_iptv_last_portal_key');
-  static String get _lastSectionKey => LocalDataScope.storageKey('pt_iptv_last_section');
+  static String get _key =>
+      LocalDataScope.storageKey('pt_iptv_verified_portals');
+  static String get _favKey =>
+      LocalDataScope.storageKey('pt_iptv_favorite_portal_keys');
+  static String get _lastPortalKey =>
+      LocalDataScope.storageKey('pt_iptv_last_portal_key');
+  static String get _lastSectionKey =>
+      LocalDataScope.storageKey('pt_iptv_last_section');
   static String get _liveCategorySortKey =>
       LocalDataScope.storageKey('pt_iptv_live_category_sort');
   static String get _liveContentSortKey =>
@@ -143,10 +147,7 @@ class PortalStore {
       if (cleaned.isEmpty) {
         await SecureSettings.delete(_passwordSecureKey);
       } else {
-        await SecureSettings.write(
-          _passwordSecureKey,
-          json.encode(cleaned),
-        );
+        await SecureSettings.write(_passwordSecureKey, json.encode(cleaned));
       }
       return true;
     } catch (e) {
@@ -197,6 +198,7 @@ class PortalStore {
             expiry: o['expiry'] as String? ?? '',
             maxConnections: o['max'] as String? ?? '1',
             activeConnections: o['active'] as String? ?? '0',
+            addedAt: (o['addedAt'] as String? ?? '').trim(),
           ),
         );
       }
@@ -251,9 +253,7 @@ class PortalStore {
       await prefs.setString(_key, json.encode(arr));
     }
     if (scheduleSync) scheduleIptvSyncPush();
-    unawaited(
-      PortalVaultInventory.mirrorFromStore(portals: list),
-    );
+    unawaited(PortalVaultInventory.mirrorFromStore(portals: list));
   }
 
   static Future<Set<String>> loadFavorites() async {
@@ -334,10 +334,14 @@ class PortalStore {
 
   static Future<PortalLiveBrowseLayout> loadLiveBrowseLayout() async {
     final prefs = await SharedPreferences.getInstance();
-    return PortalLiveBrowseLayout.fromPrefs(prefs.getString(_liveBrowseLayoutKey));
+    return PortalLiveBrowseLayout.fromPrefs(
+      prefs.getString(_liveBrowseLayoutKey),
+    );
   }
 
-  static Future<void> saveLiveBrowseLayout(PortalLiveBrowseLayout layout) async {
+  static Future<void> saveLiveBrowseLayout(
+    PortalLiveBrowseLayout layout,
+  ) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_liveBrowseLayoutKey, layout.prefsValue);
   }
@@ -356,7 +360,8 @@ class PortalStore {
   }
 
   /// Cached catalog counts from the last successful Live/Movies/Series load.
-  static Future<Map<String, PortalCatalogLoadProgress>> loadCatalogStats() async {
+  static Future<Map<String, PortalCatalogLoadProgress>>
+  loadCatalogStats() async {
     final prefs = await SharedPreferences.getInstance();
     final raw = prefs.getString(_catalogStatsKey);
     if (raw == null || raw.isEmpty) return {};
@@ -597,8 +602,8 @@ class PortalLiveChannelListsStore {
     if (streamId.isEmpty) return loadWatched(portalKey);
     final prefs = await SharedPreferences.getInstance();
     final next = <String>[streamId];
-    for (final id in prefs.getStringList(_watchedKey(portalKey)) ??
-        const <String>[]) {
+    for (final id
+        in prefs.getStringList(_watchedKey(portalKey)) ?? const <String>[]) {
       if (id != streamId) next.add(id);
       if (next.length >= PortalLiveCatalog.watchedLimit) break;
     }
@@ -663,10 +668,7 @@ class PortalLiveChannelListsStore {
     return id;
   }
 
-  static Future<void> saveLastChannel(
-    String portalKey,
-    String streamId,
-  ) async {
+  static Future<void> saveLastChannel(String portalKey, String streamId) async {
     if (streamId.isEmpty) return;
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_lastChannelKey(portalKey), streamId);

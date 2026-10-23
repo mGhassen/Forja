@@ -27,7 +27,11 @@ class CatalogPosterGridLayout {
   final double topPad;
 
   /// Portrait poster grid — cells stretch to fill the row (same packing as
-  /// [channelCards]; [cardW]/[cardH] are the min / aspect targets).
+  /// [eventCards]; [cardW]/[cardH] are the min / aspect targets).
+  ///
+  /// Column count uses [inner] + [gap] (not raw [maxWidth] ~/ [cardW]). The old
+  /// formula over-packed leanback My List / VOD grids so stretch width fell
+  /// under [PosterCard]'s compact threshold and hid year • type subtitles.
   factory CatalogPosterGridLayout.poster({
     required double maxWidth,
     required double cardW,
@@ -40,14 +44,18 @@ class CatalogPosterGridLayout {
     double chromeTop = 0,
   }) {
     final inner = math.max(0.0, maxWidth - leading - trailing);
-    final columns = (maxWidth ~/ cardW).clamp(minColumns, maxColumns);
-    final stretchW =
-        columns <= 1 ? inner : (inner - (columns - 1) * gap) / columns;
+    final stride = cardW + gap;
+    final columns = math
+        .max(1, ((inner + gap) / (stride > 0 ? stride : cardW)).floor())
+        .clamp(minColumns, maxColumns);
+    final stretchW = columns <= 1
+        ? inner
+        : (inner - (columns - 1) * gap) / columns;
     final stretchH = cardW > 0 ? cardH * (stretchW / cardW) : cardH;
     final topPad =
         chromeTop +
-            stretchH * (ForjaMotionTheme.defaults.cardLift.focusScale - 1) / 2 +
-            4;
+        stretchH * (ForjaMotionTheme.defaults.cardLift.focusScale - 1) / 2 +
+        4;
     return CatalogPosterGridLayout(
       columns: columns,
       cardW: stretchW,
@@ -69,9 +77,12 @@ class CatalogPosterGridLayout {
     double chromeTop = 0,
   }) {
     final inner = math.max(0.0, maxWidth - pad * 2);
-    final columns =
-        math.max(1, ((inner + gap) / (minW + gap)).floor()).clamp(1, 8);
-    final cardW = columns <= 1 ? inner : (inner - (columns - 1) * gap) / columns;
+    final columns = math
+        .max(1, ((inner + gap) / (minW + gap)).floor())
+        .clamp(1, 8);
+    final cardW = columns <= 1
+        ? inner
+        : (inner - (columns - 1) * gap) / columns;
     final cardH = minW > 0 ? minH * (cardW / minW) : minH;
     return CatalogPosterGridLayout(
       columns: columns,
@@ -142,8 +153,9 @@ class CatalogPosterGridLayout {
   }) {
     final inner = math.max(0.0, maxWidth - leading - trailing);
     final columns = (maxWidth ~/ minW).clamp(minColumns, maxColumns);
-    final cardW =
-        columns <= 1 ? inner : (inner - (columns - 1) * gap) / columns;
+    final cardW = columns <= 1
+        ? inner
+        : (inner - (columns - 1) * gap) / columns;
     final cardH = minW > 0 ? minH * (cardW / minW) : minH;
     return CatalogPosterGridLayout(
       columns: columns,
@@ -152,7 +164,8 @@ class CatalogPosterGridLayout {
       gap: gap,
       leading: leading,
       rightPad: trailing,
-      topPad: chromeTop +
+      topPad:
+          chromeTop +
           cardH * (ForjaMotionTheme.defaults.cardLift.focusScale - 1) / 2 +
           4,
     );
@@ -187,7 +200,8 @@ class CatalogPosterGrid extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final grid = CustomScrollView(
-      scrollCacheExtent: ScrollCacheExtent.pixels(720), controller: controller,
+      scrollCacheExtent: ScrollCacheExtent.pixels(720),
+      controller: controller,
       physics: physics,
       slivers: [
         SliverPadding(
