@@ -2,14 +2,15 @@ import 'dart:async';
 import 'dart:io';
 import 'dart:ui' as ui;
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 import 'package:sqflite/sqflite.dart';
 
 /// Disk image cache shared by every network cover.
 ///
-/// A hit is a memory lookup. The SQLite row is not rewritten on each view —
-/// that exclusive write is what locked `libCachedImageData.db` for 10s when a
-/// details page opened a pile of covers at once.
+/// A hit is a memory lookup. Touch-updates and inserts are batched so opening
+/// a details page (cast + trailers + recs) cannot exclusive-lock
+/// `libCachedImageData.db` for seconds and ANR KeyEvents on leanback.
 ///
 /// sqflite ships Android, iOS and macOS plugins only. Windows and Linux use
 /// the JSON index instead (the same choice as the upstream default config);
@@ -120,17 +121,34 @@ bool _isAvif(List<int> head) {
       head[11] == 0x66;
 }
 
+/// Pending SQLite insert coalesced with same-frame peers.
+class _PendingInsert {
+  _PendingInsert(this.object, this.setTouchedToNow, this.completer);
+
+  CacheObject object;
+  final bool setTouchedToNow;
+  final Completer<CacheObject> completer;
+}
+
 class ForjaCacheIndex extends CacheInfoRepository {
   ForjaCacheIndex({required String databaseName})
     : _disk = CacheObjectProvider(databaseName: databaseName);
 
+  static const _table = 'cacheObject';
+
   final CacheObjectProvider _disk;
   final Map<String, CacheObject> _byKey = {};
   final Set<String> _dirty = {};
+  final Map<String, _PendingInsert> _pendingInserts = {};
   Timer? _flushTimer;
   Future<void> _diskTail = Future<void>.value();
   Completer<bool>? _openCompleter;
   var _openCount = 0;
+  var _insertFlushQueued = false;
+
+  /// Test-only — pending insert keys waiting for the batched SQLite flush.
+  @visibleForTesting
+  int get debugPendingInsertCount => _pendingInserts.length;
 
   @override
   Future<bool> open() async {
@@ -172,13 +190,75 @@ class ForjaCacheIndex extends CacheInfoRepository {
     CacheObject cacheObject, {
     bool setTouchedToNow = true,
   }) {
+    final existing = _pendingInserts[cacheObject.key];
+    if (existing != null) {
+      existing.object = cacheObject;
+      _byKey[cacheObject.key] = cacheObject;
+      return existing.completer.future;
+    }
+    final completer = Completer<CacheObject>();
+    _pendingInserts[cacheObject.key] = _PendingInsert(
+      cacheObject,
+      setTouchedToNow,
+      completer,
+    );
+    _byKey[cacheObject.key] = cacheObject;
+    _queueInsertFlush();
+    return completer.future;
+  }
+
+  void _queueInsertFlush() {
+    if (_insertFlushQueued) return;
+    _insertFlushQueued = true;
+    scheduleMicrotask(() {
+      _insertFlushQueued = false;
+      unawaited(_flushPendingInserts());
+    });
+  }
+
+  Future<void> _flushPendingInserts() {
+    if (_pendingInserts.isEmpty) return Future<void>.value();
     return _onDisk(() async {
-      final stored = await _disk.insert(
-        cacheObject,
-        setTouchedToNow: setTouchedToNow,
-      );
-      _byKey[stored.key] = stored;
-      return stored;
+      final batch = Map<String, _PendingInsert>.from(_pendingInserts);
+      _pendingInserts.clear();
+      final db = _disk.db;
+      if (db == null) {
+        for (final pending in batch.values) {
+          if (!pending.completer.isCompleted) {
+            pending.completer.completeError(
+              StateError('image cache db closed'),
+            );
+          }
+        }
+        return;
+      }
+      try {
+        final storedByKey = <String, CacheObject>{};
+        await db.transaction((Transaction txn) async {
+          for (final pending in batch.values) {
+            final id = await txn.insert(
+              _table,
+              pending.object.toMap(setTouchedToNow: pending.setTouchedToNow),
+              conflictAlgorithm: ConflictAlgorithm.replace,
+            );
+            storedByKey[pending.object.key] = pending.object.copyWith(id: id);
+          }
+        });
+        for (final entry in storedByKey.entries) {
+          _byKey[entry.key] = entry.value;
+          final pending = batch[entry.key];
+          if (pending != null && !pending.completer.isCompleted) {
+            pending.completer.complete(entry.value);
+          }
+        }
+      } catch (error, stack) {
+        for (final pending in batch.values) {
+          if (!pending.completer.isCompleted) {
+            pending.completer.completeError(error, stack);
+          }
+        }
+        rethrow;
+      }
     });
   }
 
@@ -302,6 +382,7 @@ class ForjaCacheIndex extends CacheInfoRepository {
     if (_openCount > 0) return false;
     _openCompleter = null;
     _flushTimer?.cancel();
+    await _flushPendingInserts();
     final keys = _dirty.toList(growable: false);
     _dirty.clear();
     if (keys.isNotEmpty) await _onDisk(() => _flush(keys));
@@ -310,6 +391,12 @@ class ForjaCacheIndex extends CacheInfoRepository {
 
   @override
   Future<void> deleteDataFile() async {
+    for (final pending in _pendingInserts.values) {
+      if (!pending.completer.isCompleted) {
+        pending.completer.completeError(StateError('image cache deleted'));
+      }
+    }
+    _pendingInserts.clear();
     _byKey.clear();
     _dirty.clear();
     await _disk.deleteDataFile();

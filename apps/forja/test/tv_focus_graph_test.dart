@@ -32,8 +32,9 @@ void main() {
     ShellTvFocusCoordinator.clearTab('home');
   });
 
-  testWidgets('TvKitRow registers and unregisters with the coordinator',
-      (tester) async {
+  testWidgets('TvKitRow registers and unregisters with the coordinator', (
+    tester,
+  ) async {
     final node0 = FocusNode(debugLabel: 'item-0');
     final node1 = FocusNode(debugLabel: 'item-1');
 
@@ -74,14 +75,8 @@ void main() {
     );
     await tester.pump();
 
-    expect(
-      ShellTvFocusCoordinator.rowHandle('home', 'featured'),
-      isNotNull,
-    );
-    expect(
-      ShellTvFocusCoordinator.rowHandle('home', 'featured')!.itemCount,
-      2,
-    );
+    expect(ShellTvFocusCoordinator.rowHandle('home', 'featured'), isNotNull);
+    expect(ShellTvFocusCoordinator.rowHandle('home', 'featured')!.itemCount, 2);
 
     await tester.pumpWidget(_wrapTv(const SizedBox.shrink()));
     await tester.pump();
@@ -173,7 +168,9 @@ void main() {
     );
 
     await tester.pumpWidget(
-      _wrapTv(Focus(focusNode: play, child: const SizedBox(width: 40, height: 40))),
+      _wrapTv(
+        Focus(focusNode: play, child: const SizedBox(width: 40, height: 40)),
+      ),
     );
     await tester.pump();
 
@@ -223,10 +220,7 @@ void main() {
 
     item.requestFocus();
     await tester.pump();
-    expect(
-      ShellTvFocusCoordinator.focusActiveNavTab(),
-      isTrue,
-    );
+    expect(ShellTvFocusCoordinator.focusActiveNavTab(), isTrue);
     await tester.pump();
     expect(nav.hasFocus, isTrue);
 
@@ -272,10 +266,7 @@ void main() {
     );
     await tester.pump();
 
-    expect(
-      ShellTvFocusCoordinator.rowHandle('search', 'results'),
-      isNotNull,
-    );
+    expect(ShellTvFocusCoordinator.rowHandle('search', 'results'), isNotNull);
     expect(
       ShellTvFocusCoordinator.rowHandle('search', 'results')!.itemCount,
       1,
@@ -284,8 +275,9 @@ void main() {
     node.dispose();
   });
 
-  testWidgets('TvOverlayScope wraps child under TV policy (spatial default)',
-      (tester) async {
+  testWidgets('TvOverlayScope wraps child under TV policy (spatial default)', (
+    tester,
+  ) async {
     var dismissed = false;
     await tester.pumpWidget(
       _wrapTv(
@@ -304,7 +296,9 @@ void main() {
     expect(dismissed, isFalse);
   });
 
-  testWidgets('TvOverlayScope linear:true still marks linear host', (tester) async {
+  testWidgets('TvOverlayScope linear:true still marks linear host', (
+    tester,
+  ) async {
     await tester.pumpWidget(
       _wrapTv(
         const TvOverlayScope(
@@ -322,53 +316,52 @@ void main() {
     );
   });
 
-  testWidgets(
-    'allowNestedFocus: parent onRightEdge can focus nested control',
-    (tester) async {
-      final parent = FocusNode(debugLabel: 'parent');
-      final child = FocusNode(debugLabel: 'child');
+  testWidgets('allowNestedFocus: parent onRightEdge can focus nested control', (
+    tester,
+  ) async {
+    final parent = FocusNode(debugLabel: 'parent');
+    final child = FocusNode(debugLabel: 'child');
 
-      await tester.pumpWidget(
-        MaterialApp(
-          home: MediaQuery(
-            data: const MediaQueryData(size: Size(1920, 1080)),
-            child: ShellScope(
-              profile: ShellProfile.tv,
-              config: shellPlatformConfigFor(ShellProfile.tv),
-              child: ShellInputPolicy.maybeWrapFocusTraversal(
-                enabled: true,
-                child: Scaffold(
-                  body: FocusableControl(
-                    focusNode: parent,
-                    autoFocus: true,
-                    allowNestedFocus: true,
+    await tester.pumpWidget(
+      MaterialApp(
+        home: MediaQuery(
+          data: const MediaQueryData(size: Size(1920, 1080)),
+          child: ShellScope(
+            profile: ShellProfile.tv,
+            config: shellPlatformConfigFor(ShellProfile.tv),
+            child: ShellInputPolicy.maybeWrapFocusTraversal(
+              enabled: true,
+              child: Scaffold(
+                body: FocusableControl(
+                  focusNode: parent,
+                  autoFocus: true,
+                  allowNestedFocus: true,
+                  scaleOnFocus: 1.0,
+                  onTap: () {},
+                  onRightEdge: () => child.requestFocus(),
+                  child: FocusableControl(
+                    focusNode: child,
                     scaleOnFocus: 1.0,
                     onTap: () {},
-                    onRightEdge: () => child.requestFocus(),
-                    child: FocusableControl(
-                      focusNode: child,
-                      scaleOnFocus: 1.0,
-                      onTap: () {},
-                      child: const SizedBox(width: 80, height: 48),
-                    ),
+                    child: const SizedBox(width: 80, height: 48),
                   ),
                 ),
               ),
             ),
           ),
         ),
-      );
-      await tester.pump();
+      ),
+    );
+    await tester.pump();
 
-      expect(parent.hasFocus, isTrue);
-      await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
-      await tester.pump();
-      expect(child.hasFocus, isTrue);
+    expect(parent.hasFocus, isTrue);
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+    await tester.pump();
+    expect(child.hasFocus, isTrue);
 
-      parent.dispose();
-      child.dispose();
-    },
-  );
+    parent.dispose();
+    child.dispose();
+  });
 
   testWidgets(
     'TvOverlayScope spatial: ↓ from top-left reaches bottom-left (not reading next)',
@@ -411,12 +404,7 @@ void main() {
                               cell(topRight),
                             ],
                           ),
-                          Row(
-                            children: [
-                              cell(bottomLeft),
-                              cell(bottomRight),
-                            ],
-                          ),
+                          Row(children: [cell(bottomLeft), cell(bottomRight)]),
                         ],
                       ),
                     ),
@@ -437,7 +425,8 @@ void main() {
       expect(
         bottomLeft.hasFocus,
         isTrue,
-        reason: 'spatial ↓ must land below, not on reading-order next (topRight)',
+        reason:
+            'spatial ↓ must land below, not on reading-order next (topRight)',
       );
       expect(topRight.hasFocus, isFalse);
 
@@ -559,10 +548,7 @@ void main() {
                       child: FocusTraversalGroup(
                         policy: ReadingOrderTraversalPolicy(),
                         child: Column(
-                          children: [
-                            row(a, autoFocus: true),
-                            row(b),
-                          ],
+                          children: [row(a, autoFocus: true), row(b)],
                         ),
                       ),
                     ),
@@ -649,18 +635,18 @@ void main() {
                             autofocus: true,
                             onKeyEvent: (node, event) =>
                                 shellTvSpatialFocusArrows(
-                              node: node,
-                              event: event,
-                            ),
+                                  node: node,
+                                  event: event,
+                                ),
                             child: const SizedBox(width: 120, height: 48),
                           ),
                           Focus(
                             focusNode: right,
                             onKeyEvent: (node, event) =>
                                 shellTvSpatialFocusArrows(
-                              node: node,
-                              event: event,
-                            ),
+                                  node: node,
+                                  event: event,
+                                ),
                             child: const SizedBox(width: 120, height: 48),
                           ),
                         ],
@@ -686,6 +672,19 @@ void main() {
 
       left.dispose();
       right.dispose();
+    },
+  );
+
+  test(
+    'shellTvTryFocusInDirection: detached FocusNode returns false (no bang)',
+    () {
+      final orphan = FocusNode(debugLabel: 'detached');
+      expect(orphan.context, isNull);
+      expect(
+        shellTvTryFocusInDirection(orphan, TraversalDirection.right),
+        isFalse,
+      );
+      orphan.dispose();
     },
   );
 }

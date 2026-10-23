@@ -6,12 +6,13 @@ import 'package:forja/shell/tv/media_details_tv_scope.dart';
 import 'package:forja/shell/tv/shell_tv_coordinator.dart';
 import 'package:forja/shell/tv/shell_tv_focus.dart';
 import 'package:forja/shell/tv/tv_focus_graph.dart';
+import 'package:forja_foundation/tokens/forja_details_tokens.dart';
 import 'package:forja_foundation/tokens/forja_motion_theme.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 import 'package:forja_foundation/widgets/details/hero_pill_surfaces.dart';
-import 'package:forja_foundation/widgets/details/list_status_pin.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 /// SUB | DUB glass group — each segment opens a multiselect language dropdown.
 ///
@@ -20,6 +21,9 @@ import 'package:forja_foundation/widgets/details/list_status_pin.dart';
 ///
 /// TV: floating [Overlay] + [TvOverlayScope] (same pattern as My List) — not
 /// [MenuAnchor], which never joins the leanback focus graph.
+///
+/// Menu position uses [RenderBox.localToGlobal] (not [CompositedTransformFollower])
+/// so the hero action-row [FittedBox] cannot leave a full-size ghost pill.
 class KitMultiselectPlayFilter extends StatelessWidget {
   const KitMultiselectPlayFilter({
     super.key,
@@ -141,7 +145,6 @@ class _KindDropdownSegment extends StatefulWidget {
 }
 
 class _KindDropdownSegmentState extends State<_KindDropdownSegment> {
-  final LayerLink _link = LayerLink();
   OverlayEntry? _entry;
   FocusNode? _returnFocus;
   bool _restoreFocusOnClose = false;
@@ -229,51 +232,98 @@ class _KindDropdownSegmentState extends State<_KindDropdownSegment> {
     widget.onChanged(next);
   }
 
+  Rect? _anchorRectInOverlay(BuildContext overlayContext) {
+    if (!mounted) return null;
+    final renderObject = context.findRenderObject();
+    if (renderObject is! RenderBox || !renderObject.hasSize) return null;
+    final overlayBox =
+        Overlay.of(overlayContext).context.findRenderObject() as RenderBox?;
+    if (overlayBox == null) return null;
+    final offset = renderObject.localToGlobal(
+      Offset.zero,
+      ancestor: overlayBox,
+    );
+    return offset & renderObject.size;
+  }
+
+  Widget _rehostPaint(BuildContext hostContext, Widget child) {
+    final paint = ShellPaintScope.maybeOf(hostContext);
+    if (paint == null) return child;
+    return ShellPaintScope(
+      useTvFocus: paint.useTvFocus,
+      scaleOnHover: paint.scaleOnHover,
+      focusStyled: paint.focusStyled,
+      usesTvDensity: paint.usesTvDensity,
+      focusableTapBuilder: paint.focusableTapBuilder,
+      wrapTvRow: paint.wrapTvRow,
+      wrapTvGrid: paint.wrapTvGrid,
+      wrapHorizontalScroller: paint.wrapHorizontalScroller,
+      absorbHorizontalScroll: paint.absorbHorizontalScroll,
+      isActivateKey: paint.isActivateKey,
+      child: child,
+    );
+  }
+
   void _openMenu() {
     if (_entry != null) return;
     final overlay = Overlay.of(context, rootOverlay: true);
     final policy = ShellScope.inputPolicyOf(context);
+    final tvDensity = ShellPaintScope.usesTvDensityOf(context);
     _returnFocus = FocusManager.instance.primaryFocus;
     _restoreFocusOnClose = !policy.scaleOnHover;
     late OverlayEntry entry;
     entry = OverlayEntry(
-      builder: (ctx) {
+      builder: (overlayCtx) {
+        final anchor = _anchorRectInOverlay(overlayCtx);
+        final gap = DetailsTokens.listStatusMenuGapOf(tvDensity);
+        final screen = MediaQuery.sizeOf(overlayCtx);
+        final menuMaxW = ShellTokens.chromeScale(280, tv: tvDensity);
+        double left = anchor?.left ?? 16;
+        double top = (anchor?.bottom ?? 80) + gap;
+        if (left + menuMaxW > screen.width - 8) {
+          left = (screen.width - menuMaxW - 8).clamp(8.0, screen.width);
+        }
+        if (top > screen.height - 120) {
+          top = ((anchor?.top ?? top) - gap - 8).clamp(8.0, screen.height);
+        }
         return ShellScope.rehost(
           context,
-          TvOverlayScope(
-            enabled: policy.useFocusableMoodChips,
-            linear: true,
-            onDismiss: _close,
-            debugLabel: 'stream-lang-${widget.kind}',
-            child: Stack(
-              children: [
-                Positioned.fill(
-                  child: GestureDetector(
-                    behavior: HitTestBehavior.opaque,
-                    onTap: _close,
-                    child: const ColoredBox(color: Colors.transparent),
-                  ),
-                ),
-                CompositedTransformFollower(
-                  link: _link,
-                  showWhenUnlinked: false,
-                  targetAnchor: listStatusMenuTargetAnchor,
-                  followerAnchor: listStatusMenuFollowerAnchor,
-                  offset: listStatusMenuGapOffset(context),
-                  child: Material(
-                    color: Colors.transparent,
-                    child: _LanguageMenuPanel(
-                      kindLabel: widget.label,
-                      langs: widget.langs,
-                      selected: widget.selected,
-                      kindActive: _kindActive,
-                      tvFocus: policy.leanbackOnly,
-                      onClear: _clearKind,
-                      onToggle: _toggleKey,
+          _rehostPaint(
+            context,
+            TvOverlayScope(
+              enabled: policy.useFocusableMoodChips,
+              linear: true,
+              onDismiss: _close,
+              debugLabel: 'stream-lang-${widget.kind}',
+              child: Stack(
+                children: [
+                  Positioned.fill(
+                    child: GestureDetector(
+                      behavior: HitTestBehavior.opaque,
+                      onTap: _close,
+                      child: const ColoredBox(color: Colors.transparent),
                     ),
                   ),
-                ),
-              ],
+                  if (anchor != null)
+                    Positioned(
+                      left: left,
+                      top: top,
+                      child: Material(
+                        color: Colors.transparent,
+                        child: _LanguageMenuPanel(
+                          kindLabel: widget.label,
+                          langs: widget.langs,
+                          selected: widget.selected,
+                          kindActive: _kindActive,
+                          tvFocus: policy.leanbackOnly,
+                          tvDensity: tvDensity,
+                          onClear: _clearKind,
+                          onToggle: _toggleKey,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
             ),
           ),
         );
@@ -328,27 +378,24 @@ class _KindDropdownSegmentState extends State<_KindDropdownSegment> {
           )
         : null;
 
-    return CompositedTransformTarget(
-      link: _link,
-      child: ForjaInteractive(
-        onTap: _toggle,
-        hoverScale: 1.03,
-        pressScale: 0.97,
-        tvMeta: tvMeta,
-        onKeyEvent: onKey,
-        suppressActive: _open,
-        builder: (hover, pressed) {
-          return HeroPillSegmentSurface(
-            label: chipLabel,
-            icon: widget.icon,
-            selected: active,
-            lit: hover || pressed || _open,
-            pressed: pressed,
-            isFirst: widget.isFirst,
-            isLast: widget.isLast,
-          );
-        },
-      ),
+    return ForjaInteractive(
+      onTap: _toggle,
+      hoverScale: 1.03,
+      pressScale: 0.97,
+      tvMeta: tvMeta,
+      onKeyEvent: onKey,
+      suppressActive: _open,
+      builder: (hover, pressed) {
+        return HeroPillSegmentSurface(
+          label: chipLabel,
+          icon: widget.icon,
+          selected: active,
+          lit: hover || pressed || _open,
+          pressed: pressed,
+          isFirst: widget.isFirst,
+          isLast: widget.isLast,
+        );
+      },
     );
   }
 }
@@ -360,6 +407,7 @@ class _LanguageMenuPanel extends StatelessWidget {
     required this.selected,
     required this.kindActive,
     required this.tvFocus,
+    required this.tvDensity,
     required this.onClear,
     required this.onToggle,
   });
@@ -369,54 +417,67 @@ class _LanguageMenuPanel extends StatelessWidget {
   final Set<String> selected;
   final bool kindActive;
   final bool tvFocus;
+  final bool tvDensity;
   final VoidCallback onClear;
   final void Function(String key, bool checked) onToggle;
 
   @override
   Widget build(BuildContext context) {
     final cinematic = ForjaShellColors.cinematic;
+    final minW = ShellTokens.chromeScale(168, tv: tvDensity);
+    final maxW = ShellTokens.chromeScale(280, tv: tvDensity);
+    final maxH = ShellTokens.chromeScale(420, tv: tvDensity);
+    final radius = ShellTokens.chromeScale(
+      ShellTokens.shellChipRadius,
+      tv: tvDensity,
+    );
+    final padV = ShellTokens.chromeScale(4, tv: tvDensity);
     return ConstrainedBox(
-      constraints: const BoxConstraints(minWidth: 220, maxWidth: 320),
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          color: cinematic.menuSurface,
-          borderRadius: BorderRadius.circular(ShellTokens.shellChipRadius),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.45),
-              blurRadius: 18,
-              offset: const Offset(0, 8),
-            ),
-          ],
-        ),
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxHeight: 420),
-            child: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  _LanguageMenuRow(
-                    label: kindActive ? 'Clear $kindLabel' : 'All $kindLabel',
-                    checked: null,
-                    tvFocus: tvFocus,
-                    autoFocus: tvFocus,
-                    muted: true,
-                    onTap: onClear,
-                  ),
-                  const Divider(height: 12),
-                  for (final lang in langs)
+      constraints: BoxConstraints(minWidth: minW, maxWidth: maxW),
+      child: IntrinsicWidth(
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            color: cinematic.menuSurface,
+            borderRadius: BorderRadius.circular(radius),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.45),
+                blurRadius: 18,
+                offset: const Offset(0, 8),
+              ),
+            ],
+          ),
+          child: Padding(
+            padding: EdgeInsets.symmetric(vertical: padV),
+            child: ConstrainedBox(
+              constraints: BoxConstraints(maxHeight: maxH),
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
                     _LanguageMenuRow(
-                      label: lang.label,
-                      checked: selected.contains(lang.key),
+                      label: kindActive ? 'Clear $kindLabel' : 'All $kindLabel',
+                      checked: null,
                       tvFocus: tvFocus,
-                      onTap: () =>
-                          onToggle(lang.key, !selected.contains(lang.key)),
+                      tvDensity: tvDensity,
+                      autoFocus: tvFocus,
+                      muted: true,
+                      onTap: onClear,
                     ),
-                ],
+                    Divider(height: ShellTokens.chromeScale(12, tv: tvDensity)),
+                    for (final lang in langs)
+                      _LanguageMenuRow(
+                        label: lang.label,
+                        checked: selected.contains(lang.key),
+                        tvFocus: tvFocus,
+                        tvDensity: tvDensity,
+                        onTap: () =>
+                            onToggle(lang.key, !selected.contains(lang.key)),
+                      ),
+                  ],
+                ),
               ),
             ),
           ),
@@ -430,6 +491,7 @@ class _LanguageMenuRow extends StatefulWidget {
   const _LanguageMenuRow({
     required this.label,
     required this.tvFocus,
+    required this.tvDensity,
     required this.onTap,
     this.checked,
     this.autoFocus = false,
@@ -441,6 +503,7 @@ class _LanguageMenuRow extends StatefulWidget {
   /// `null` = plain action row (Clear / All); otherwise checkbox.
   final bool? checked;
   final bool tvFocus;
+  final bool tvDensity;
   final bool autoFocus;
   final bool muted;
   final VoidCallback onTap;
@@ -459,14 +522,21 @@ class _LanguageMenuRowState extends State<_LanguageMenuRow> {
   Widget build(BuildContext context) {
     final cinematic = ForjaShellColors.cinematic;
     final checked = widget.checked;
+    final tv = widget.tvDensity;
+    final labelFontSize = tv ? ShellTokens.tvBodyFontSize : 12.0;
+    final padH = ShellTokens.chromeScale(14, tv: tv);
+    final padV = ShellTokens.chromeScale(8, tv: tv);
+    final iconSize = ShellTokens.chromeScale(16, tv: tv);
+    final gap = ShellTokens.chromeScale(8, tv: tv);
+    final radius = ShellTokens.chromeScale(6, tv: tv);
     final content = AnimatedContainer(
       duration: const Duration(milliseconds: 120),
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+      padding: EdgeInsets.symmetric(horizontal: padH, vertical: padV),
       decoration: BoxDecoration(
         color: _active
             ? ForjaShellColors.brandGreen.withValues(alpha: 0.14)
             : Colors.transparent,
-        borderRadius: BorderRadius.circular(6),
+        borderRadius: BorderRadius.circular(radius),
       ),
       child: Row(
         children: [
@@ -475,24 +545,26 @@ class _LanguageMenuRowState extends State<_LanguageMenuRow> {
               checked
                   ? Icons.check_box_rounded
                   : Icons.check_box_outline_blank_rounded,
-              size: 20,
+              size: iconSize,
               color: checked
                   ? ForjaShellColors.brandGreen
                   : cinematic.textSecondary,
             ),
-            const SizedBox(width: 8),
+            SizedBox(width: gap),
           ],
           Expanded(
             child: Text(
               widget.label,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: TextStyle(
+              style: GoogleFonts.plusJakartaSans(
                 color: widget.muted
                     ? cinematic.textSecondary
                     : cinematic.textPrimary,
-                fontSize: checked == null ? 13 : 14,
-                fontWeight: _active ? FontWeight.w600 : FontWeight.w500,
+                fontSize: labelFontSize,
+                fontWeight: _active || (checked == true)
+                    ? FontWeight.w700
+                    : FontWeight.w500,
               ),
             ),
           ),
@@ -517,7 +589,7 @@ class _LanguageMenuRowState extends State<_LanguageMenuRow> {
       context: context,
       onTap: widget.onTap,
       autoFocus: widget.autoFocus,
-      borderRadius: 6,
+      borderRadius: radius,
       motion: ForjaMotionPreset.fillOnly,
       showFocusFill: false,
       showFocusBorder: false,

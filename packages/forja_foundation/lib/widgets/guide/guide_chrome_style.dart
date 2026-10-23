@@ -26,6 +26,7 @@ abstract final class GuideChromeStyle {
   static Color get textSecondary => cinematic.textSecondary;
   static Color get border => cinematic.borderSubtle;
   static Color get surface => cinematic.menuSurface;
+
   /// Flat translucent dark fill for full-height player guide / search shells.
   static Color get surfaceGlass =>
       cinematic.menuSurface.withValues(alpha: 0.82);
@@ -38,17 +39,14 @@ abstract final class GuideChromeStyle {
   static const double floatingEpgMaxWidth = 540;
 
   /// Compact / phone floating programme card max width.
-  static const double floatingEpgMaxWidthCompact = 440;
+  static const double floatingEpgMaxWidthCompact = 480;
 
   /// Densified floating EPG max width for the active paint scope.
   static double floatingEpgMaxWidthOf(
     BuildContext context, {
     required bool compact,
   }) =>
-      len(
-        context,
-        compact ? floatingEpgMaxWidthCompact : floatingEpgMaxWidth,
-      );
+      len(context, compact ? floatingEpgMaxWidthCompact : floatingEpgMaxWidth);
   static Color get surfaceMuted => Colors.white.withValues(alpha: 0.04);
   static Color get chipSelectedBg => ForjaShellColors.chipSelectedBg;
   static Color get chipSelectedBorder => ForjaShellColors.chipSelectedBorder;
@@ -83,11 +81,14 @@ abstract final class GuideChromeStyle {
     return overlayTitle.copyWith(fontSize: ShellTokens.tvTitleFontSize);
   }
 
-  static BoxDecoration chipDecoration({required bool selected}) => BoxDecoration(
+  static BoxDecoration chipDecoration({required bool selected}) =>
+      BoxDecoration(
         color: selected ? chipSelectedBg : surfaceMuted,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: selected ? chipSelectedBorder : Colors.white.withValues(alpha: 0.12),
+          color: selected
+              ? chipSelectedBorder
+              : Colors.white.withValues(alpha: 0.12),
         ),
       );
 
@@ -95,16 +96,14 @@ abstract final class GuideChromeStyle {
       BoxDecoration(
         color: subtle ? surfaceMuted : chipSelectedBg,
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(
-          color: subtle ? border : chipSelectedBorder,
-        ),
+        border: Border.all(color: subtle ? border : chipSelectedBorder),
       );
 
   static BoxDecoration dialogSurface({bool tv = false}) => BoxDecoration(
-        color: surface,
-        borderRadius: BorderRadius.circular(tv ? 10 : 14),
-        border: Border.all(color: border),
-      );
+    color: surface,
+    borderRadius: BorderRadius.circular(tv ? 10 : 14),
+    border: Border.all(color: border),
+  );
 
   static SliderThemeData sliderTheme(BuildContext context) =>
       SliderTheme.of(context).copyWith(
@@ -125,6 +124,7 @@ class LiveTvScrollbar extends StatelessWidget {
     super.key,
     required this.controller,
     required this.child,
+
     /// When set, overrides [ShellPaintScope.usesTvDensityOf].
     this.enabled,
     this.thumbVisibility,

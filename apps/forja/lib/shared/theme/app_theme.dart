@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart' hide Switch;
 import 'package:flutter/services.dart';
@@ -281,14 +283,22 @@ class _FocusableControlState extends State<FocusableControl>
   DateTime? _lastActivateAt;
   static const _activateCoalesce = Duration(milliseconds: 800);
 
-  FocusNode get _effectiveNode => widget.focusNode ?? _ownedNode!;
+  FocusNode? get _nodeOrNull => widget.focusNode ?? _ownedNode;
+
+  /// Lazily recreate an owned node if a focusNode handoff left both null while
+  /// still mounted — never bang [_ownedNode].
+  FocusNode get _effectiveNode {
+    final existing = _nodeOrNull;
+    if (existing != null) return existing;
+    return _ownedNode = FocusNode(debugLabel: _tvDebugLabel(widget.tvMeta));
+  }
 
   bool get _isHovered => _hoveredN.value;
 
   void _requestHoverFocus() {
     if (!mounted) return;
-    final node = _effectiveNode;
-    if (node.hasFocus || !node.canRequestFocus) return;
+    final node = _nodeOrNull;
+    if (node == null || node.hasFocus || !node.canRequestFocus) return;
     node.requestFocus();
   }
 
@@ -345,8 +355,7 @@ class _FocusableControlState extends State<FocusableControl>
             widget.focusNode!.canRequestFocus) {
           widget.focusNode!.requestFocus();
         }
-        _ownedNode?.dispose();
-        _ownedNode = null;
+        _disposeOwnedNode();
       }
       _registerTvItemNode();
     } else if (oldWidget.tvMeta?.rowId != widget.tvMeta?.rowId ||
@@ -395,19 +404,28 @@ class _FocusableControlState extends State<FocusableControl>
     );
   }
 
+  void _disposeOwnedNode() {
+    final node = _ownedNode;
+    if (node == null) return;
+    _ownedNode = null;
+    // Unfocus + defer dispose: FocusManager notifies in a microtask; sync
+    // dispose while dirty → "FocusNode was used after being disposed".
+    if (node.hasFocus) {
+      try {
+        node.unfocus();
+      } catch (_) {}
+      scheduleMicrotask(node.dispose);
+    } else {
+      node.dispose();
+    }
+  }
+
   @override
   void dispose() {
     if (_hoverOwner == this) _hoverOwner = null;
     ShellHoverFocus.release(_hoverClaim);
-    _unregisterTvItemNode(widget.tvMeta);
-    final owned = _ownedNode;
-    if (owned != null) {
-      try {
-        if (owned.hasFocus) owned.unfocus();
-      } catch (_) {}
-      owned.dispose();
-      _ownedNode = null;
-    }
+    _unregisterTvItemNode(widget.tvMeta, node: _nodeOrNull);
+    _disposeOwnedNode();
     _hoveredN.dispose();
     _controller.dispose();
     super.dispose();
@@ -589,34 +607,13 @@ class _FocusableControlState extends State<FocusableControl>
     // arrow. Settings / overlay controls attach tvMeta (zone) for memory but
     // have no rowId — requiring tvMeta==null skipped focusInDirection and left
     // D-pad dead while DirectionalFocusAction no-ops ←/→ at the app root.
-    if (policy.useFocusableMoodChips && shellTvIsNavigationKey(event)) {
-      final key = event.logicalKey;
-      TraversalDirection? direction;
-      if (key == LogicalKeyboardKey.arrowLeft) {
-        direction = TraversalDirection.left;
-      } else if (key == LogicalKeyboardKey.arrowRight) {
-        direction = TraversalDirection.right;
-      } else if (key == LogicalKeyboardKey.arrowUp) {
-        direction = TraversalDirection.up;
-      } else if (key == LogicalKeyboardKey.arrowDown) {
-        direction = TraversalDirection.down;
-      }
-      // Focused control node — NOT FocusScope.focusInDirection (full-screen
-      // chrome scopes find no neighbors from the scope rect).
-      if (direction != null) {
-        final vertical =
-            direction == TraversalDirection.up ||
-            direction == TraversalDirection.down;
-        final steps = vertical ? ShellTvHoldAccel.lastStep : 1;
-        var node = _effectiveNode;
-        var movedAny = false;
-        for (var i = 0; i < steps; i++) {
-          if (!node.focusInDirection(direction)) break;
-          movedAny = true;
-          node = FocusManager.instance.primaryFocus ?? node;
-        }
-        if (movedAny) return KeyEventResult.handled;
-      }
+    // Uses shellTvSpatialFocusArrows (guards detached FocusNode.context).
+    if (policy.useFocusableMoodChips) {
+      final spatial = shellTvSpatialFocusArrows(
+        node: _effectiveNode,
+        event: event,
+      );
+      if (spatial == KeyEventResult.handled) return spatial;
     }
 
     // Settings detail: ← → category only when no left neighbor (spatial already

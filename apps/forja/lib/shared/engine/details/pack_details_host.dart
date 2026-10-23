@@ -152,6 +152,11 @@ class _PackDetailsHostState extends ConsumerState<PackDetailsHost> {
   StreamSubscription<List<Map<String, dynamic>>>? _homeHistorySub;
   String _episodeView = kEpisodeViewCards;
 
+  /// Cast / trailers / pack rails mount after hero+episodes so cover inserts
+  /// cannot pile into `libCachedImageData.db` during the first leanback KeyEvents.
+  bool _belowFoldReady = false;
+  Timer? _belowFoldTimer;
+
   @override
   void initState() {
     super.initState();
@@ -183,10 +188,19 @@ class _PackDetailsHostState extends ConsumerState<PackDetailsHost> {
     PackFiltersRegistry.revision.removeListener(_onPackFiltersChanged);
     packSettingsRevisionListenable.removeListener(_onPackSettingsChanged);
     unawaited(_homeHistorySub?.cancel());
+    _belowFoldTimer?.cancel();
     _scrollController.dispose();
     _heroPlayFocus.dispose();
     _backFocus.dispose();
     super.dispose();
+  }
+
+  void _armBelowFoldCovers() {
+    _belowFoldTimer?.cancel();
+    _belowFoldTimer = Timer(const Duration(milliseconds: 600), () {
+      if (!mounted || _belowFoldReady) return;
+      setState(() => _belowFoldReady = true);
+    });
   }
 
   MetaItem get _show => _detail ?? widget.item;
@@ -698,9 +712,11 @@ class _PackDetailsHostState extends ConsumerState<PackDetailsHost> {
       _error = null;
       _selectedSeason = firstSeason;
       _selectedEpisode = firstEp;
+      _belowFoldReady = false;
     });
     _noteDownloadPage(meta);
     unawaited(_loadStreamLanguages());
+    _armBelowFoldCovers();
   }
 
   Future<void> _load() async {
@@ -1196,7 +1212,8 @@ class _PackDetailsHostState extends ConsumerState<PackDetailsHost> {
     final hasBodyTrailers = bodyTrailers.isNotEmpty;
 
     var protocolOrder = metaRowBase;
-    final castSection = hasCast
+    final mountBelow = _belowFoldReady;
+    final castSection = hasCast && mountBelow
         ? MediaDetailsCastSection(
             cast: castMaps,
             title: isAnime ? 'Characters' : 'Cast',
@@ -1207,7 +1224,7 @@ class _PackDetailsHostState extends ConsumerState<PackDetailsHost> {
           )
         : null;
     if (hasCast) protocolOrder++;
-    final crewSection = hasCrew
+    final crewSection = hasCrew && mountBelow
         ? MediaDetailsCastSection(
             cast: crewMaps,
             title: 'Crew',
@@ -1219,7 +1236,7 @@ class _PackDetailsHostState extends ConsumerState<PackDetailsHost> {
           )
         : null;
     if (hasCrew) protocolOrder++;
-    final trailersSection = hasBodyTrailers
+    final trailersSection = hasBodyTrailers && mountBelow
         ? MediaDetailsTrailersSection(
             trailers: bodyTrailers,
             movie: metaItemToMovie(show),
@@ -1232,12 +1249,16 @@ class _PackDetailsHostState extends ConsumerState<PackDetailsHost> {
         : null;
     if (hasBodyTrailers) protocolOrder++;
 
-    final packRecs = _packRails
-        .where((r) => r.id == 'recommendations' && r.items.isNotEmpty)
-        .toList();
-    final packOther = _packRails
-        .where((r) => r.id != 'recommendations' && r.items.isNotEmpty)
-        .toList();
+    final packRecs = mountBelow
+        ? _packRails
+              .where((r) => r.id == 'recommendations' && r.items.isNotEmpty)
+              .toList()
+        : const <KitDetailRailSection>[];
+    final packOther = mountBelow
+        ? _packRails
+              .where((r) => r.id != 'recommendations' && r.items.isNotEmpty)
+              .toList()
+        : const <KitDetailRailSection>[];
     final hasPackRecs = packRecs.isNotEmpty;
 
     final packMidBase = protocolOrder;

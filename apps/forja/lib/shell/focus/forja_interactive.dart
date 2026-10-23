@@ -385,7 +385,8 @@ class _ForjaInteractiveState extends State<ForjaInteractive> {
           } else if (key == LogicalKeyboardKey.arrowDown) {
             direction = TraversalDirection.down;
           }
-          if (direction != null && _effectiveNode.focusInDirection(direction)) {
+          if (direction != null &&
+              shellTvTryFocusInDirection(_effectiveNode, direction)) {
             return KeyEventResult.handled;
           }
         }

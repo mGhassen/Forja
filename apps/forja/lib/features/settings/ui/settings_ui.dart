@@ -2075,7 +2075,7 @@ class _SettingsSliderRowState extends State<SettingsSliderRow> {
           var n = node;
           var moved = false;
           for (var i = 0; i < steps; i++) {
-            if (!n.focusInDirection(direction)) break;
+            if (!shellTvTryFocusInDirection(n, direction)) break;
             moved = true;
             n = FocusManager.instance.primaryFocus ?? n;
           }
@@ -2690,7 +2690,7 @@ class _SettingsTextFieldState extends State<SettingsTextField> {
       var n = FocusManager.instance.primaryFocus ?? node;
       var moved = false;
       for (var i = 0; i < steps; i++) {
-        if (!n.focusInDirection(direction)) break;
+        if (!shellTvTryFocusInDirection(n, direction)) break;
         moved = true;
         n = FocusManager.instance.primaryFocus ?? n;
       }

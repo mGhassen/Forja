@@ -501,6 +501,8 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [462-[fixed]-…](fixed/462-[fixed]-details-hero-sub-dub-dpad.md) | Details hero SUB/DUB D-pad + language dropdown | P1 | High | fixed | Complete · 2/2 · A 0/2 | [425](425-[open]-home-stream-language-filter.md) |
 | [463-[fixed]-…](fixed/463-[fixed]-my-list-tv-poster-subtitle-compact.md) | My List TV posters hide year • type (compact grid) | P1 | High | fixed | Complete · 3/3 · A 1/1 | — |
 | [464-[fixed]-…](fixed/464-[fixed]-iptv-portals-panel-insert-order-new-badge.md) | IPTV Portals panel insert-date order + NEW badge | P1 | Medium | fixed | Complete · 4/4 · A 0/2 | — |
+| [465-[fixed]-…](fixed/465-[fixed]-android-tv-details-image-cache-anr.md) | Android TV details image-cache ANR | P1 | High | fixed | Complete · 3/3 · A 0/2 | — |
+| [466-[fixed]-…](fixed/466-[fixed]-details-sub-dub-overlay-ghost-pill.md) | Details SUB/DUB menu ghost pill + oversized TV text | P1 | High | fixed | Complete · 2/2 · A 0/2 | [462](fixed/462-[fixed]-details-hero-sub-dub-dpad.md) |
 
 **Migration parity (draft):** [018](018-[draft]-migration-playback-parity-unverified.md) → [019](019-[draft]-webstreamr-enginejobs-e2e-test-gap.md)–[022](022-[draft]-playback-widget-integration-tests.md).
 

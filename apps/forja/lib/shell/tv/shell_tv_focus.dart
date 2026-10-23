@@ -505,6 +505,13 @@ KeyEventResult shellTvHandleRowArrows({
   return KeyEventResult.ignored;
 }
 
+/// [FocusNode.focusInDirection] does `context!` — a detached node (rebuild /
+/// scroll / hold-accel mid-step) throws. Return false instead.
+bool shellTvTryFocusInDirection(FocusNode node, TraversalDirection direction) {
+  if (node.context == null) return false;
+  return node.focusInDirection(direction);
+}
+
 /// Spatial ←/→/↑/↓ for foundation [Button] / Material focus nodes.
 ///
 /// App-root [DirectionalFocusAction] no-ops ←/→ so catalog rows own horizontal
@@ -539,7 +546,7 @@ KeyEventResult shellTvSpatialFocusArrows({
   var n = FocusManager.instance.primaryFocus ?? node;
   var moved = false;
   for (var i = 0; i < steps; i++) {
-    if (!n.focusInDirection(direction)) break;
+    if (!shellTvTryFocusInDirection(n, direction)) break;
     moved = true;
     n = FocusManager.instance.primaryFocus ?? n;
   }
