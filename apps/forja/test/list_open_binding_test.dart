@@ -47,6 +47,51 @@ void main() {
     });
   });
 
+  group('resolveStored', () {
+    test('tmdb open alone is not a stored hub bind', () async {
+      final item = {
+        'mediaType': 'movie',
+        'tmdbId': 603,
+        'open': {
+          'surface': 'tmdb',
+          'id': '603',
+          'extract': {
+            'resolveType': 'movie',
+            'panelCategory': 'movie',
+            'ctx': {'tmdbId': 603},
+          },
+        },
+      };
+      final meta = metaItemFromLegacyListItem(item);
+      expect(
+        await ListOpenBinding.resolveStored(item: item, meta: meta),
+        isNull,
+      );
+    });
+
+    test('empty pluginId does not count as stored', () async {
+      final item = {
+        'pluginId': '  ',
+        'mediaType': 'movie',
+        'tmdbId': 603,
+        'open': {
+          'surface': 'tmdb',
+          'id': '603',
+          'extract': {
+            'resolveType': 'movie',
+            'panelCategory': 'movie',
+            'ctx': {'tmdbId': 603},
+          },
+        },
+      };
+      final meta = metaItemFromLegacyListItem(item);
+      expect(
+        await ListOpenBinding.resolveStored(item: item, meta: meta),
+        isNull,
+      );
+    });
+  });
+
   group('metaOpenForCandidate', () {
     test('keeps drama open for drama hub types', () {
       final item = {
@@ -63,27 +108,19 @@ void main() {
         },
       };
       final meta = metaItemFromLegacyListItem(item);
-      final open = ListOpenBinding.metaOpenForCandidate(
-        item,
-        meta,
-        const ['drama'],
-      );
+      final open = ListOpenBinding.metaOpenForCandidate(item, meta, const [
+        'drama',
+      ]);
       expect(open?.surface, 'drama');
       expect(open?.id, '18842');
     });
 
     test('builds tmdb open for movie hub', () {
-      final item = {
-        'mediaType': 'movie',
-        'tmdbId': 603,
-        'title': 'Matrix',
-      };
+      final item = {'mediaType': 'movie', 'tmdbId': 603, 'title': 'Matrix'};
       final meta = metaItemFromLegacyListItem(item);
-      final open = ListOpenBinding.metaOpenForCandidate(
-        item,
-        meta,
-        const ['movie'],
-      );
+      final open = ListOpenBinding.metaOpenForCandidate(item, meta, const [
+        'movie',
+      ]);
       expect(open?.surface, 'tmdb');
       expect(open?.id, '603');
     });
@@ -165,10 +202,7 @@ void main() {
       );
 
       expect(item['listStatus'], 'watching');
-      expect(
-        BookmarkStore().items.single['listStatus'],
-        'watching',
-      );
+      expect(BookmarkStore().items.single['listStatus'], 'watching');
     });
   });
 
@@ -203,10 +237,7 @@ void main() {
           'name': 'Fight Club',
           'poster': 'https://example/p.jpg',
           'type': 'movie',
-          'open': {
-            'surface': 'tmdb',
-            'id': '550',
-          },
+          'open': {'surface': 'tmdb', 'id': '550'},
         },
       });
       expect(row['open'], isA<Map>());

@@ -22,6 +22,7 @@ class ListOpenCandidate {
   final String pluginId;
   final String label;
   final List<String> types;
+
   /// Row already has identity keys this hub can use without search.
   final bool compatible;
   final bool hasSearch;
@@ -31,10 +32,7 @@ class ListOpenCandidate {
 
 /// Engine-type tokens implied by a list row (opaque open / mediaType only).
 @visibleForTesting
-Set<String> listOpenIdentityTokens(
-  Map<String, dynamic> item,
-  MetaItem meta,
-) {
+Set<String> listOpenIdentityTokens(Map<String, dynamic> item, MetaItem meta) {
   final tokens = <String>{};
 
   final open = meta.open;
@@ -77,7 +75,8 @@ abstract final class ListOpenBinding {
     final want = pluginId.trim();
     if (want.isEmpty) return null;
     try {
-      final plugins = PluginNavRegistry.peekKitPlugins() ??
+      final plugins =
+          PluginNavRegistry.peekKitPlugins() ??
           await PluginNavRegistry.listKitPlugins();
       for (final pl in plugins) {
         if (pl.id == want) return PackHubSelectOptions.labelFor(pl);
@@ -95,8 +94,7 @@ abstract final class ListOpenBinding {
     final out = <ListOpenCandidate>[];
     for (final pl in await PluginNavRegistry.listKitPlugins()) {
       if (!PackHubSelectOptions.isBrowseHub(pl)) continue;
-      final compatible =
-          tokens.isNotEmpty && _typesIntersect(pl.types, tokens);
+      final compatible = tokens.isNotEmpty && _typesIntersect(pl.types, tokens);
       if (!allDetailsHubs && tokens.isNotEmpty && !compatible) continue;
       out.add(
         ListOpenCandidate(
@@ -109,11 +107,7 @@ abstract final class ListOpenBinding {
       );
     }
     if (out.isEmpty && !allDetailsHubs) {
-      return candidatesFor(
-        item: item,
-        meta: meta,
-        allDetailsHubs: true,
-      );
+      return candidatesFor(item: item, meta: meta, allDetailsHubs: true);
     }
     out.sort((a, b) {
       if (a.compatible != b.compatible) return a.compatible ? -1 : 1;
@@ -122,7 +116,7 @@ abstract final class ListOpenBinding {
     return out;
   }
 
-  /// When stored open+pluginId still works — no picker.
+  /// Per-title hub bind on the row (`pluginId` + open id) — not type Auto.
   static Future<({String pluginId, MetaItem meta})?> resolveStored({
     required Map<String, dynamic> item,
     required MetaItem meta,
@@ -136,28 +130,10 @@ abstract final class ListOpenBinding {
         await PluginNavRegistry.pluginHasDetails(fromRow)) {
       return (pluginId: fromRow, meta: meta);
     }
-    final surface = open.surface.trim();
-    if (surface == 'tmdb') {
-      final resolved = await PluginNavRegistry.pluginIdForEngineType(
-        tmdbCatalogTypeToken(meta),
-      );
-      if (resolved != null &&
-          resolved.isNotEmpty &&
-          await PluginNavRegistry.pluginHasDetails(resolved)) {
-        return (pluginId: resolved, meta: meta);
-      }
-    } else if (surface.isNotEmpty) {
-      final resolved = await PluginNavRegistry.pluginIdForEngineType(surface);
-      if (resolved != null &&
-          resolved.isNotEmpty &&
-          await PluginNavRegistry.pluginHasDetails(resolved)) {
-        return (pluginId: resolved, meta: meta);
-      }
-    }
     return null;
   }
 
-  /// Settings default when row has compatible ids and no usable stored binding.
+  /// Settings default when row has compatible ids and no per-title hub bind.
   static Future<({String pluginId, MetaItem meta})?> resolveDefault({
     required Map<String, dynamic> item,
     required MetaItem meta,
@@ -178,12 +154,36 @@ abstract final class ListOpenBinding {
       if (pl == null || !_typesIntersect(pl.types, tokens)) continue;
       final open = metaOpenForCandidate(item, meta, pl.types);
       if (open == null || open.id.trim().isEmpty) continue;
-      return (
-        pluginId: preferred,
-        meta: meta.copyWith(open: open),
-      );
+      return (pluginId: preferred, meta: meta.copyWith(open: open));
     }
     return null;
+  }
+
+  /// First details hub for the row's engine type (settings Auto).
+  static Future<({String pluginId, MetaItem meta})?> resolveEngineFallback({
+    required Map<String, dynamic> item,
+    required MetaItem meta,
+  }) async {
+    final open = meta.open;
+    if (open == null) return null;
+    if (open.id.trim().isEmpty) return null;
+    final surface = open.surface.trim();
+    final String typeToken;
+    if (surface == 'tmdb') {
+      typeToken = tmdbCatalogTypeToken(meta);
+    } else if (surface.isNotEmpty) {
+      typeToken = surface;
+    } else {
+      return null;
+    }
+    if (typeToken.isEmpty) return null;
+    final resolved = await PluginNavRegistry.pluginIdForEngineType(typeToken);
+    if (resolved == null ||
+        resolved.isEmpty ||
+        !await PluginNavRegistry.pluginHasDetails(resolved)) {
+      return null;
+    }
+    return (pluginId: resolved, meta: meta);
   }
 
   /// Build pack [MetaOpen] for a chosen hub from row identity (no search).
@@ -236,14 +236,14 @@ abstract final class ListOpenBinding {
     final newUid = BookmarkStore.catalogEntryId(pluginId, open.id);
     final oldUid = item['uniqueId']?.toString();
     final tmdb = legacyListTmdbId(item) ?? meta.numericId('tmdb');
-    final tmdbMt = meta.tmdbMediaType ??
+    final tmdbMt =
+        meta.tmdbMediaType ??
         item['tmdbMediaType']?.toString() ??
-        (open.surface == 'tmdb'
-            ? open.effectiveExtract.resolveType
-            : null);
+        (open.surface == 'tmdb' ? open.effectiveExtract.resolveType : null);
     // Hub bind must not reset list status. Prefer an existing bookmark
     // (tmdb_* or catalog_*), then the row's status (Simkl tab), then default.
-    final resolveMt = BookmarkStore.normalizeTmdbMediaType(
+    final resolveMt =
+        BookmarkStore.normalizeTmdbMediaType(
           tmdbMt ?? item['mediaType']?.toString(),
         ) ??
         item['mediaType']?.toString();
@@ -253,7 +253,8 @@ abstract final class ListOpenBinding {
       mediaType: resolveMt,
     );
     final rowStatus = item['listStatus']?.toString().trim();
-    final status = existingStatus ??
+    final status =
+        existingStatus ??
         (rowStatus != null && rowStatus.isNotEmpty
             ? rowStatus
             : BookmarkStore.defaultStatus);
@@ -264,7 +265,8 @@ abstract final class ListOpenBinding {
       pluginId: pluginId,
       open: open.toJson(),
       uniqueId: newUid,
-      mediaType: item['mediaType']?.toString() ??
+      mediaType:
+          item['mediaType']?.toString() ??
           (meta.type.isNotEmpty
               ? meta.type
               : open.effectiveExtract.panelCategory),

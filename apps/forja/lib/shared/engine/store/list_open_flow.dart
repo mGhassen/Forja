@@ -106,6 +106,7 @@ Future<void> openListItemWithBinding(
   var meta = metaItemFromLegacyListItem(row);
 
   if (!forcePick) {
+    // Order: per-title bind → type default (settings) → first hub (Auto).
     final stored = await ListOpenBinding.resolveStored(item: row, meta: meta);
     if (stored != null) {
       if (!context.mounted) return;
@@ -118,8 +119,10 @@ Future<void> openListItemWithBinding(
       return;
     }
 
-    final preferred =
-        await ListOpenBinding.resolveDefault(item: row, meta: meta);
+    final preferred = await ListOpenBinding.resolveDefault(
+      item: row,
+      meta: meta,
+    );
     if (preferred != null) {
       await ListOpenBinding.persistBinding(
         item: row,
@@ -136,6 +139,21 @@ Future<void> openListItemWithBinding(
       );
       return;
     }
+
+    final engine = await ListOpenBinding.resolveEngineFallback(
+      item: row,
+      meta: meta,
+    );
+    if (engine != null) {
+      if (!context.mounted) return;
+      await openMetaItem(
+        context,
+        pluginId: engine.pluginId,
+        item: engine.meta,
+        shellTabId: shellTabId,
+      );
+      return;
+    }
   }
 
   final candidates = await ListOpenBinding.candidatesFor(
@@ -146,7 +164,8 @@ Future<void> openListItemWithBinding(
 
   if (!forcePick && candidates.length == 1 && candidates.first.compatible) {
     final only = candidates.first;
-    final open = ListOpenBinding.metaOpenForCandidate(row, meta, only.types) ??
+    final open =
+        ListOpenBinding.metaOpenForCandidate(row, meta, only.types) ??
         meta.open;
     if (open != null && open.id.trim().isNotEmpty) {
       final next = meta.copyWith(open: open);
@@ -267,8 +286,9 @@ Future<MetaItem?> persistListOpenBinding({
     next = hit.copyWith(
       name: hit.name.trim().isNotEmpty ? hit.name : meta.name,
       poster: hit.poster.trim().isNotEmpty ? hit.poster : meta.poster,
-      background:
-          hit.background.trim().isNotEmpty ? hit.background : meta.background,
+      background: hit.background.trim().isNotEmpty
+          ? hit.background
+          : meta.background,
     );
     final surface = open.surface.trim();
     if (surface.isNotEmpty && surface != 'tmdb') {
@@ -276,7 +296,8 @@ Future<MetaItem?> persistListOpenBinding({
       row['mediaType'] = panel.isNotEmpty ? panel : surface;
     }
   } else {
-    open = ListOpenBinding.metaOpenForCandidate(row, meta, candidate.types) ??
+    open =
+        ListOpenBinding.metaOpenForCandidate(row, meta, candidate.types) ??
         meta.open;
     if (open == null || open.id.trim().isEmpty) {
       ForjaToast.info('No open handoff for ${candidate.label}');

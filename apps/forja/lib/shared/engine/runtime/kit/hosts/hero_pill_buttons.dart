@@ -56,10 +56,9 @@ class HeroPillPlayButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final policy = ShellScope.inputPolicyOf(context);
     final style = HeroPillStyle.forTone(_tone);
-    final leading = iconWidget ??
-        (icon != null
-            ? Icon(icon, size: heroPillIconSizeOf(context))
-            : null);
+    final leading =
+        iconWidget ??
+        (icon != null ? Icon(icon, size: heroPillIconSizeOf(context)) : null);
     final useTvCompact = policy.useFocusableMoodChips;
     final tvMeta = tvTabId != null && useTvCompact
         ? ShellTvFocusMeta(
@@ -73,7 +72,8 @@ class HeroPillPlayButton extends StatelessWidget {
         : null;
     // Miss-aware kit edges — always-handled ↓ swallowed Featured when the bleed
     // row remounted after Films / Categories (kitFocusEdge miss must fall through).
-    final effectiveOnKey = onUpEdge != null ||
+    final effectiveOnKey =
+        onUpEdge != null ||
             onDownEdge != null ||
             onLeftEdge != null ||
             onRightEdge != null ||
@@ -150,10 +150,7 @@ class HeroPillActionRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final row = Row(
-      mainAxisSize: MainAxisSize.min,
-      children: children,
-    );
+    final row = Row(mainAxisSize: MainAxisSize.min, children: children);
     if (!ShellScope.inputPolicyOf(context).useFocusableMoodChips) {
       return row;
     }
@@ -164,8 +161,8 @@ class HeroPillActionRow extends StatelessWidget {
   }
 }
 
-/// Secondary hero actions in one sliced glass pill. On pointer shells hover / focus expands the
-/// slot with its label; on leanback every slot keeps its label so the row never shifts.
+/// Secondary hero actions in one sliced glass pill — hover / focus expands the
+/// slot with its label (same on leanback; idle stays icon-only).
 class HeroPillIconGroup extends StatelessWidget {
   const HeroPillIconGroup({
     super.key,
@@ -190,6 +187,7 @@ class HeroPillIconGroup extends StatelessWidget {
   final VoidCallback? onRightEdge;
   final String? tvRowId;
   final int? tvItemIndexStart;
+
   /// Optional focus node for the first slot (hub View details ↔ pin).
   final FocusNode? focusNode;
 
@@ -197,12 +195,9 @@ class HeroPillIconGroup extends StatelessWidget {
   Widget build(BuildContext context) {
     if (slots.isEmpty) return const SizedBox.shrink();
 
-    final policy = ShellScope.inputPolicyOf(context);
-    final useTvCompact = policy.useFocusableMoodChips;
-    // Remote-only shells: labels stay painted so the hero button row keeps one
-    // width as focus moves (collapse-on-blur shifted View details sideways).
-    // Pointer shells keep icon-only slots that expand on hover / focus.
-    final alwaysShowLabel = policy.leanbackOnly;
+    final useTvCompact = ShellScope.inputPolicyOf(
+      context,
+    ).useFocusableMoodChips;
 
     return HeroPillGlassShell(
       children: [
@@ -217,7 +212,6 @@ class HeroPillIconGroup extends StatelessWidget {
             isFirst: i == 0,
             isLast: i == slots.length - 1,
             useTvCompact: useTvCompact,
-            alwaysShowLabel: alwaysShowLabel,
             tvTabId: tvTabId,
             onUpEdge: onUpEdge,
             onDownEdge: onDownEdge,
@@ -279,7 +273,9 @@ class HeroPillSegmentedChoice<T> extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (segments.isEmpty) return const SizedBox.shrink();
-    final useTvCompact = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
+    final useTvCompact = ShellScope.inputPolicyOf(
+      context,
+    ).useFocusableMoodChips;
 
     return HeroPillGlassShell(
       children: [
@@ -388,7 +384,6 @@ class _HeroPillGroupedSlot extends StatelessWidget {
     required this.isFirst,
     required this.isLast,
     required this.useTvCompact,
-    this.alwaysShowLabel = false,
     this.icon,
     this.iconWidget,
     this.onTap,
@@ -412,7 +407,6 @@ class _HeroPillGroupedSlot extends StatelessWidget {
   final bool isFirst;
   final bool isLast;
   final bool useTvCompact;
-  final bool alwaysShowLabel;
   final FocusOrder? focusOrder;
   final String? tvTabId;
   final VoidCallback? onUpEdge;
@@ -441,7 +435,8 @@ class _HeroPillGroupedSlot extends StatelessWidget {
             itemIndex: tvItemIndex,
           )
         : null;
-    final effectiveOnKey = onUpEdge != null ||
+    final effectiveOnKey =
+        onUpEdge != null ||
             onDownEdge != null ||
             onLeftEdge != null ||
             onRightEdge != null
@@ -473,7 +468,7 @@ class _HeroPillGroupedSlot extends StatelessWidget {
             iconWidget: iconWidget,
             active: active,
             pressed: pressed,
-            compact: !active && !alwaysShowLabel,
+            compact: !active,
             isFirst: isFirst,
             isLast: isLast,
           );

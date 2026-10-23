@@ -109,3 +109,4 @@ My List must open titles into the right installed catalog hub without the pack i
 - [RFC-097](097-[fixed]-my-list-explode-host-to-packs.md) — My List pack feed
 - [my-list feature](../features/movies-tv/my-list.md)
 - [issue 260](../issues/260-[open]-host-hardcodes-specific-plugins.md) — no pack-id allowlists
+- [issue 468](../issues/fixed/468-[fixed]-my-list-open-default-hub-ignored.md) — type defaults ignored vs first-hub short-circuit
