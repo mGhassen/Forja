@@ -503,6 +503,7 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [464-[fixed]-…](fixed/464-[fixed]-iptv-portals-panel-insert-order-new-badge.md) | IPTV Portals panel insert-date order + NEW badge | P1 | Medium | fixed | Complete · 4/4 · A 0/2 | — |
 | [465-[fixed]-…](fixed/465-[fixed]-android-tv-details-image-cache-anr.md) | Android TV details image-cache ANR | P1 | High | fixed | Complete · 3/3 · A 0/2 | — |
 | [466-[fixed]-…](fixed/466-[fixed]-details-sub-dub-overlay-ghost-pill.md) | Details SUB/DUB menu ghost pill + oversized TV text | P1 | High | fixed | Complete · 6/6 · A 0/2 | [462](fixed/462-[fixed]-details-hero-sub-dub-dpad.md) |
+| [467-[open]-…](467-[open]-cross-account-simkl-connected-secrets-isolation.md) | Cross-account Simkl / connected secrets isolation | P1 | High | open | 6/6 · A 0/3 | — |
 
 **Migration parity (draft):** [018](018-[draft]-migration-playback-parity-unverified.md) → [019](019-[draft]-webstreamr-enginejobs-e2e-test-gap.md)–[022](022-[draft]-playback-widget-integration-tests.md).
 

@@ -11,22 +11,32 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
   const pluginId = 'test-provider-a';
+
+  setUp(() {
+    LocalDataScope.resetForTest();
+  });
+
   // On the test host the secure store is the prefs vault, so a value seeded
   // there is exactly what an unguarded read would surface.
-  final vaultKey = ForjaPlatformSecureStore.prefsKey(
-    PackSettingsStore.secretKey(pluginId, 'jwt'),
+  String vaultKeyFor(String fieldId) => ForjaPlatformSecureStore.prefsKey(
+    PackSettingsStore.secretKey(pluginId, fieldId),
   );
 
+  String secretIdsKey() =>
+      LocalDataScope.storageKey('pack_auth_secret_ids_v1_$pluginId');
+
   test('no session → empty overlay without reading secrets', () async {
-    SharedPreferences.setMockInitialValues({vaultKey: 'leftover-token'});
+    SharedPreferences.setMockInitialValues({
+      vaultKeyFor('jwt'): 'leftover-token',
+    });
     expect(await PackConnectedAuthStore.hasSession(pluginId), isFalse);
     expect(await PackConnectedAuthStore.configOverlay(pluginId), isEmpty);
   });
 
   test('tracked session → secrets are read', () async {
     SharedPreferences.setMockInitialValues({
-      vaultKey: 'tok',
-      'pack_auth_secret_ids_v1_$pluginId': <String>['jwt'],
+      vaultKeyFor('jwt'): 'tok',
+      secretIdsKey(): <String>['jwt'],
     });
     expect(await PackConnectedAuthStore.hasSession(pluginId), isTrue);
     final overlay = await PackConnectedAuthStore.configOverlay(pluginId);
@@ -35,8 +45,8 @@ void main() {
 
   test('clearSession removes the marker so later reads stay cheap', () async {
     SharedPreferences.setMockInitialValues({
-      vaultKey: 'tok',
-      'pack_auth_secret_ids_v1_$pluginId': <String>['jwt'],
+      vaultKeyFor('jwt'): 'tok',
+      secretIdsKey(): <String>['jwt'],
     });
     await PackConnectedAuthStore.clearSession(pluginId);
     expect(await PackConnectedAuthStore.hasSession(pluginId), isFalse);
@@ -45,7 +55,7 @@ void main() {
 
   test('default secret ids are still tracked for an active session', () async {
     SharedPreferences.setMockInitialValues({
-      'pack_auth_secret_ids_v1_$pluginId': <String>['custom'],
+      secretIdsKey(): <String>['custom'],
     });
     final ids = await PackConnectedAuthStore.trackedSecretIds(pluginId);
     expect(ids, containsAll(PackConnectedAuthStore.defaultSecretIds));

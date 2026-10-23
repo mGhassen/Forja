@@ -38,6 +38,9 @@ abstract final class LocalDataScope {
   /// True when [key] belongs to the active identity (`…@account:profile`).
   static bool ownsKey(String key) => key.endsWith('@$id');
 
+  /// Bumped when identity changes — UI / Riverpod can rebuild without wiping disk.
+  static final ValueNotifier<int> changeNotifier = ValueNotifier(0);
+
   static void addListener(Future<void> Function() listener) {
     _listeners.add(listener);
   }
@@ -52,6 +55,7 @@ abstract final class LocalDataScope {
     _accountId = guestAccountId;
     _profileId = guestProfileId;
     _generation = 0;
+    changeNotifier.value = 0;
     _listeners.clear();
   }
 
@@ -69,12 +73,37 @@ abstract final class LocalDataScope {
     await _migrateLegacyKeysIfNeeded();
     if (!changed) return;
     _generation++;
+    changeNotifier.value = _generation;
     for (final listener in List<Future<void> Function()>.from(_listeners)) {
       try {
         await listener();
       } catch (e) {
         debugPrint('[LocalDataScope] listener failed: $e');
       }
+    }
+  }
+
+  /// Lazy bare → active-scope copy for Keystore / secure prefs (Simkl, MDBList…).
+  ///
+  /// Skips while [isGuest] so a signed-out shell never parks another account’s
+  /// OAuth into `local:default`. Other identities’ scoped rows stay on disk.
+  static Future<void> migrateSecureBareIfNeeded(
+    String base, {
+    required Future<String?> Function(String key) read,
+    required Future<void> Function(String key, String value) write,
+    required Future<void> Function(String key) delete,
+  }) async {
+    if (isGuest) return;
+    final scoped = storageKey(base);
+    try {
+      final existing = await read(scoped);
+      if (existing != null && existing.isNotEmpty) return;
+      final bare = await read(base);
+      if (bare == null || bare.isEmpty) return;
+      await write(scoped, bare);
+      await delete(base);
+    } catch (e) {
+      debugPrint('[LocalDataScope] migrateSecureBareIfNeeded($base): $e');
     }
   }
 
@@ -115,7 +144,8 @@ abstract final class LocalDataScope {
     // IPTV alive / liveonly / channel-scan prefs
     for (final key in prefs.getKeys().toList()) {
       if (key.contains('@')) continue;
-      final isAlive = key.startsWith('pt_iptv_alive_') ||
+      final isAlive =
+          key.startsWith('pt_iptv_alive_') ||
           key.startsWith('pt_iptv_liveonly_') ||
           key.startsWith('pt_iptv_ch_');
       if (!isAlive) continue;
@@ -127,10 +157,7 @@ abstract final class LocalDataScope {
 
   /// Copy bare [base] into the active scope, preserving string / list / bool.
   /// Typed getters (`getString`) throw if the stored type differs — use [get].
-  static Future<void> _migratePref(
-    SharedPreferences prefs,
-    String base,
-  ) async {
+  static Future<void> _migratePref(SharedPreferences prefs, String base) async {
     if (!prefs.containsKey(base)) return;
     final scoped = storageKey(base);
     if (!prefs.containsKey(scoped)) {
@@ -158,7 +185,7 @@ abstract final class LocalDataScope {
     required String base,
     required Future<List<Map<String, dynamic>>> Function(String key) readList,
     required Future<void> Function(String key, List<Map<String, dynamic>> list)
-        writeList,
+    writeList,
     required Future<void> Function(String key) clearKey,
   }) async {
     final scoped = storageKey(base);

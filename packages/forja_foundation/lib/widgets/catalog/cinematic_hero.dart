@@ -1804,13 +1804,12 @@ class _HeroGalleryNavHints extends StatelessWidget {
     final icon = tv
         ? ShellTokens.heroGalleryArrowIconSizeTv
         : ShellTokens.heroGalleryArrowIconSize;
-    final inset = ShellTokens.heroGalleryArrowEdgeInset;
     final rtl = Directionality.of(context) == TextDirection.rtl;
     return Stack(
       fit: StackFit.expand,
       children: [
         Positioned(
-          left: inset,
+          left: ShellTokens.heroGalleryArrowLeftInset,
           top: 0,
           bottom: 0,
           child: Center(
@@ -1824,7 +1823,7 @@ class _HeroGalleryNavHints extends StatelessWidget {
           ),
         ),
         Positioned(
-          right: inset,
+          right: ShellTokens.heroGalleryArrowRightInset,
           top: 0,
           bottom: 0,
           child: Center(

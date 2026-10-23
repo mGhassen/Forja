@@ -450,7 +450,8 @@ abstract final class ShellTokens {
 
   /// ←/→ chevrons when the hero gallery (backdrop strip) holds focus.
   /// Inset from the hero's physical left/right edges.
-  static const double heroGalleryArrowEdgeInset = 12;
+  static const double heroGalleryArrowLeftInset = 0;
+  static const double heroGalleryArrowRightInset = 12;
   static const double heroGalleryArrowControlSize = 48;
   static const double heroGalleryArrowControlSizeTv =
       heroGalleryArrowControlSize * tvChromeScale;

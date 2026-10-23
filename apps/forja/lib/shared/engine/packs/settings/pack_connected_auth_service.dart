@@ -5,6 +5,7 @@ import 'package:forja_foundation/protocol/protocol.dart';
 import 'package:forja/shared/engine/runtime/meta/plugin_actions.dart';
 import 'package:forja/shared/engine/packs/settings/pack_connected_auth_spec.dart';
 import 'package:forja/shared/engine/packs/settings/pack_settings_store.dart';
+import 'package:rust/rust.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// Session secrets + profile label for pack Connected Services auth (RFC-102).
@@ -23,14 +24,42 @@ abstract final class PackConnectedAuthStore {
     'phone',
   ];
 
-  static String _labelKey(String pluginId) => '$_labelPrefix${pluginId.trim()}';
+  static String _bareLabelKey(String pluginId) =>
+      '$_labelPrefix${pluginId.trim()}';
+
+  static String _bareSecretIdsKey(String pluginId) =>
+      '$_secretIdsKeyPrefix${pluginId.trim()}';
+
+  static String _labelKey(String pluginId) =>
+      LocalDataScope.storageKey(_bareLabelKey(pluginId));
 
   static String _secretIdsKey(String pluginId) =>
-      '$_secretIdsKeyPrefix${pluginId.trim()}';
+      LocalDataScope.storageKey(_bareSecretIdsKey(pluginId));
+
+  static Future<void> _migrateAuthPrefIfNeeded(
+    SharedPreferences prefs,
+    String bare,
+  ) async {
+    if (LocalDataScope.isGuest) return;
+    final scoped = LocalDataScope.storageKey(bare);
+    if (prefs.containsKey(scoped) || !prefs.containsKey(bare)) return;
+    final value = prefs.get(bare);
+    if (value is String) {
+      await prefs.setString(scoped, value);
+    } else if (value is List) {
+      await prefs.setStringList(
+        scoped,
+        value.map((e) => e?.toString() ?? '').toList(),
+      );
+    }
+    await prefs.remove(bare);
+  }
 
   static Future<String?> profileLabel(String pluginId) async {
     final prefs = await SharedPreferences.getInstance();
-    final v = prefs.getString(_labelKey(pluginId))?.trim() ?? '';
+    final bare = _bareLabelKey(pluginId);
+    await _migrateAuthPrefIfNeeded(prefs, bare);
+    final v = prefs.getString(LocalDataScope.storageKey(bare))?.trim() ?? '';
     return v.isEmpty ? null : v;
   }
 
@@ -47,7 +76,10 @@ abstract final class PackConnectedAuthStore {
 
   static Future<List<String>> trackedSecretIds(String pluginId) async {
     final prefs = await SharedPreferences.getInstance();
-    final raw = prefs.getStringList(_secretIdsKey(pluginId)) ?? const [];
+    final bare = _bareSecretIdsKey(pluginId);
+    await _migrateAuthPrefIfNeeded(prefs, bare);
+    final raw =
+        prefs.getStringList(LocalDataScope.storageKey(bare)) ?? const [];
     final out = <String>{...defaultSecretIds, ...raw};
     return out.toList();
   }
@@ -124,7 +156,9 @@ abstract final class PackConnectedAuthStore {
   /// [clearSession]. A cheap prefs lookup — never touches the Keystore.
   static Future<bool> hasSession(String pluginId) async {
     final prefs = await SharedPreferences.getInstance();
-    return prefs.containsKey(_secretIdsKey(pluginId));
+    final bare = _bareSecretIdsKey(pluginId);
+    await _migrateAuthPrefIfNeeded(prefs, bare);
+    return prefs.containsKey(LocalDataScope.storageKey(bare));
   }
 
   static Future<Map<String, dynamic>> configOverlay(String pluginId) async {

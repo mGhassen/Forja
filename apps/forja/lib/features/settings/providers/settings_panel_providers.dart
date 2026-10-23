@@ -266,8 +266,8 @@ class SettingsPlaybackNotifier extends AsyncNotifier<SettingsPlaybackSnapshot> {
           : 'None',
       preferredSubtitleLang:
           kTrackLanguageDisplayNames.contains(preferredSubtitle)
-              ? preferredSubtitle
-              : 'English',
+          ? preferredSubtitle
+          : 'English',
       avoidUnsupportedAudio: await s.getAvoidUnsupportedAudio(),
       autoNextEpisode: await s.getAutoNextEpisode(),
       autoSkipIntro: await s.getAutoSkipIntro(),
@@ -649,6 +649,7 @@ class EnginePackUpdatesState {
   });
 
   final Map<String, EnginePackUpdateInfo> updates;
+
   /// Manifest URLs that returned 404/410 (or local file missing).
   final Set<String> deprecatedUrls;
   final bool checking;
@@ -837,9 +838,19 @@ class TrackerAccountStatus {
   final String? apiKey;
 }
 
+/// Rebuild Connected-services status when account/profile scope switches.
+final localDataScopeTickProvider = Provider<int>((ref) {
+  final n = LocalDataScope.changeNotifier;
+  void listener() => ref.invalidateSelf();
+  n.addListener(listener);
+  ref.onDispose(() => n.removeListener(listener));
+  return n.value;
+});
+
 final simklStatusProvider = FutureProvider.autoDispose<TrackerAccountStatus>((
   ref,
 ) async {
+  ref.watch(localDataScopeTickProvider);
   final simkl = SimklService();
   final loggedIn = await simkl.isLoggedIn();
   if (!loggedIn) return const TrackerAccountStatus(loggedIn: false);
@@ -852,6 +863,7 @@ final simklStatusProvider = FutureProvider.autoDispose<TrackerAccountStatus>((
 final mdblistStatusProvider = FutureProvider.autoDispose<TrackerAccountStatus>((
   ref,
 ) async {
+  ref.watch(localDataScopeTickProvider);
   final mdblist = MdblistService();
   final configured = await mdblist.isConfigured();
   if (!configured) return const TrackerAccountStatus(loggedIn: false);

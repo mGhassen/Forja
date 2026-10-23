@@ -37,17 +37,62 @@ abstract final class PackSettingsStore {
 
   static const _prefix = 'pack_setting_v1_';
   static const _secretPrefix = 'pack_secret_v1_';
+  static bool _scopeListenerArmed = false;
 
-  static String key(String pluginId, String fieldId) {
+  static void _ensureScopeListener() {
+    if (_scopeListenerArmed) return;
+    _scopeListenerArmed = true;
+    LocalDataScope.addListener(() async {
+      revision.value++;
+    });
+  }
+
+  /// Bare base (pre-scope) — used for lazy migrate + export labels.
+  static String bareKey(String pluginId, String fieldId) {
     final p = pluginId.trim();
     final f = fieldId.trim();
     return '$_prefix${p}_$f';
   }
 
-  static String secretKey(String pluginId, String fieldId) {
+  static String bareSecretKey(String pluginId, String fieldId) {
     final p = pluginId.trim();
     final f = fieldId.trim();
     return '$_secretPrefix${p}_$f';
+  }
+
+  static String key(String pluginId, String fieldId) {
+    _ensureScopeListener();
+    return LocalDataScope.storageKey(bareKey(pluginId, fieldId));
+  }
+
+  static String secretKey(String pluginId, String fieldId) {
+    _ensureScopeListener();
+    return LocalDataScope.storageKey(bareSecretKey(pluginId, fieldId));
+  }
+
+  static Future<void> _migratePrefBareIfNeeded(
+    SharedPreferences prefs,
+    String bare,
+  ) async {
+    if (LocalDataScope.isGuest) return;
+    final scoped = LocalDataScope.storageKey(bare);
+    if (prefs.containsKey(scoped) || !prefs.containsKey(bare)) return;
+    final value = prefs.get(bare);
+    if (value is String) {
+      await prefs.setString(scoped, value);
+    } else if (value is bool) {
+      await prefs.setBool(scoped, value);
+    } else if (value is int) {
+      await prefs.setInt(scoped, value);
+    } else if (value is double) {
+      await prefs.setDouble(scoped, value);
+    } else if (value is List) {
+      await prefs.setStringList(
+        scoped,
+        value.map((e) => e?.toString() ?? '').toList(),
+      );
+    }
+    await prefs.remove(bare);
   }
 
   static Future<bool> getBool(
@@ -56,7 +101,9 @@ abstract final class PackSettingsStore {
     required bool defaultValue,
   }) async {
     final prefs = await SharedPreferences.getInstance();
-    final k = key(pluginId, fieldId);
+    final bare = bareKey(pluginId, fieldId);
+    await _migratePrefBareIfNeeded(prefs, bare);
+    final k = LocalDataScope.storageKey(bare);
     if (!prefs.containsKey(k)) return defaultValue;
     return prefs.getBool(k) ?? defaultValue;
   }
@@ -82,7 +129,9 @@ abstract final class PackSettingsStore {
     required String defaultValue,
   }) async {
     final prefs = await SharedPreferences.getInstance();
-    final k = key(pluginId, fieldId);
+    final bare = bareKey(pluginId, fieldId);
+    await _migratePrefBareIfNeeded(prefs, bare);
+    final k = LocalDataScope.storageKey(bare);
     if (!prefs.containsKey(k)) return defaultValue;
     return prefs.getString(k) ?? defaultValue;
   }
@@ -107,7 +156,14 @@ abstract final class PackSettingsStore {
     String fieldId, {
     String defaultValue = '',
   }) async {
-    final raw = await SecureSettings.read(secretKey(pluginId, fieldId));
+    final bare = bareSecretKey(pluginId, fieldId);
+    await LocalDataScope.migrateSecureBareIfNeeded(
+      bare,
+      read: SecureSettings.read,
+      write: SecureSettings.write,
+      delete: SecureSettings.delete,
+    );
+    final raw = await SecureSettings.read(LocalDataScope.storageKey(bare));
     if (raw == null || raw.isEmpty) return defaultValue;
     return raw;
   }
@@ -135,7 +191,9 @@ abstract final class PackSettingsStore {
     required List<String> defaultValue,
   }) async {
     final prefs = await SharedPreferences.getInstance();
-    final k = key(pluginId, fieldId);
+    final bare = bareKey(pluginId, fieldId);
+    await _migratePrefBareIfNeeded(prefs, bare);
+    final k = LocalDataScope.storageKey(bare);
     // Absent key → defaults. Present empty string → intentional empty selection.
     if (!prefs.containsKey(k)) return List<String>.from(defaultValue);
     final raw = prefs.getString(k) ?? '';
@@ -152,18 +210,15 @@ abstract final class PackSettingsStore {
     List<String> value, {
     bool reloadHub = true,
   }) async {
-    await setString(
-      pluginId,
-      fieldId,
-      value.join(','),
-      reloadHub: reloadHub,
-    );
+    await setString(pluginId, fieldId, value.join(','), reloadHub: reloadHub);
   }
 
   /// True when the pack setting key already exists (no default fallback needed).
   static Future<bool> has(String pluginId, String fieldId) async {
     final prefs = await SharedPreferences.getInstance();
-    return prefs.containsKey(key(pluginId, fieldId));
+    final bare = bareKey(pluginId, fieldId);
+    await _migratePrefBareIfNeeded(prefs, bare);
+    return prefs.containsKey(LocalDataScope.storageKey(bare));
   }
 
   /// One-shot: copy [legacyValue] into the pack key when unset.
@@ -201,7 +256,16 @@ abstract final class PackSettingsStore {
   /// Merge all declared settings (+ secrets) for [pluginId] into a config map.
   static Future<Map<String, dynamic>> configOverlayForPlugin({
     required String pluginId,
-    required List<({String id, String type, String defaultString, bool defaultBool, List<String> defaultStringList})> fields,
+    required List<
+      ({
+        String id,
+        String type,
+        String defaultString,
+        bool defaultBool,
+        List<String> defaultStringList,
+      })
+    >
+    fields,
   }) async {
     final out = <String, dynamic>{};
     for (final field in fields) {
@@ -215,7 +279,9 @@ abstract final class PackSettingsStore {
       } else if (type == 'password' || type == 'secret') {
         final v = await getSecret(pluginId, field.id);
         if (v.isNotEmpty) out[field.id] = v;
-      } else if (type == 'multi_select' || type == 'multiselect' || type == 'chips') {
+      } else if (type == 'multi_select' ||
+          type == 'multiselect' ||
+          type == 'chips') {
         out[field.id] = await getStringList(
           pluginId,
           field.id,

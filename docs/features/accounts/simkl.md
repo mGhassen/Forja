@@ -4,7 +4,7 @@
 
 ## What it is
 
-Simkl is the tracker everyone can connect. Log in via PIN and sync what you watch between Forja and your Simkl account.
+Simkl is the tracker everyone can connect. Log in via PIN and sync what you watch between Forja and your Simkl account. Each Forja account and profile on this device keeps its own Simkl connection.
 
 ## How to open it
 

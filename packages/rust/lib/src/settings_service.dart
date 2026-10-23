@@ -7,6 +7,7 @@ import 'built_in_player_engine.dart';
 import 'catalog/stremio_addon_features.dart';
 import 'facade.dart';
 import 'kv.dart';
+import 'local_data_scope.dart';
 import 'platform_defaults.dart';
 import 'platform_profile.dart';
 import 'secure_settings.dart';
@@ -41,18 +42,22 @@ class SettingsService {
   static const String _playSourceStremioKey = 'play_source_stremio_enabled';
   static const String _playSourceNuvioKey = 'play_source_nuvio_enabled';
   static const String _playSourceEngineKey = 'play_source_engine_enabled';
+
   /// Green Play races enabled Forja plugins when Webstreaming is off.
   static const String _playSourceEngineAutoStartKey =
       'play_source_engine_auto_start';
   static const String _playSourceWebstreamingKey =
       'play_source_webstreaming_enabled';
+
   /// Device-local: first-time P2P disclaimer (torrent / Stremio / Nuvio).
   static const String _p2pStreamingAcknowledgedKey =
       'p2p_streaming_acknowledged';
+
   /// One-shot: ATV used to seed torrent/Stremio/Nuvio off; turn them on.
   static const String _atvCatalogPlaySourcesKey = 'atv_catalog_play_sources_v1';
   static const String _simpleStreamingResolveKey =
       'simple_streaming_resolve_enabled';
+
   /// Live Matches stream resolve: `sniff` (embed WebView) | `engine` (Forja plugins).
   static const String _liveStreamResolveKey = 'live_stream_resolve';
   static const String liveStreamResolveSniff = 'sniff';
@@ -64,8 +69,7 @@ class SettingsService {
     liveStreamResolveEngineLabel: liveStreamResolveEngine,
   };
   static const String _crashReportingEnabledKey = 'crash_reporting_enabled';
-  static const String _productAnalyticsEnabledKey =
-      'product_analytics_enabled';
+  static const String _productAnalyticsEnabledKey = 'product_analytics_enabled';
   static const String _sortPreferenceKey = 'sort_preference';
   static const String _useDebridKey = 'use_debrid_for_streams';
   static const String _debridServiceKey = 'debrid_service';
@@ -73,9 +77,11 @@ class SettingsService {
   static const String _stremioAddonsKey = 'stremio_addons';
   static const String _externalPlayerKey = 'external_player';
   static const String _builtInPlayerEngineKey = 'built_in_player_engine';
+
   /// One-shot: flip seeded/legacy VOD+IPTV Exo → MediaKit (superseded by Exo default).
   static const String _builtInEngineMediaKitDefaultKey =
       'built_in_engine_mk_default_v1';
+
   /// One-shot: flip Android MediaKit (or unset) → Exo on VOD / IPTV / Live.
   static const String _builtInEngineExoDefaultKey =
       'built_in_engine_exo_default_v1';
@@ -108,38 +114,52 @@ class SettingsService {
   static const String _legacyAutoNextKey = 'forja_auto_next';
   static const String _autoSkipIntroKey = 'auto_skip_intro';
   static const String _contentWarningsKey = 'content_warnings';
+
   /// Desktop Space / virtual-desktop switch → enter PiP (default off).
   static const String _autoPipOnDesktopSwitchKey = 'auto_pip_on_desktop_switch';
+
   /// Escape demotes to in-Forja mini player (default off). Not OS/window PiP.
   static const String _inAppMiniPlayerKey = 'in_app_mini_player';
+
   /// Keep VOD/IPTV playing when the app leaves the foreground.
   /// Default: on desktop, off phone/Android TV ([PlatformDefaults.playInBackground]).
   static const String _playInBackgroundKey = 'play_in_background';
+
   /// One-shot: stop honoring cloud-polluted `play_in_background` on phone/TV.
   static const String _playInBackgroundDeviceLocalKey =
       'play_in_background_device_local_v1';
+
   /// Android TV D-pad focus / OK system UI sounds (default on). Device-local.
   static const String _tvNavSoundKey = 'tv_nav_sound';
   static const String _iptvEpgEnabledKey = 'iptv_epg_enabled';
+
   /// IPTV live Exo only: 0 = full portal quality (default). Never auto-cap.
   static const String _iptvLiveMaxHeightKey = 'iptv_live_max_height';
+
   /// IPTV live auto-recovery: `auto` | `buffered` | `stall` | `classic`.
   static const String _iptvLiveRecoveryModeKey = 'iptv_live_recovery_mode';
+
   /// One-shot: old defaults (`stall` / unset / `buffered`) → `auto`.
   /// v2 also covers installs that v1 left on `buffered` after marking migrated.
   static const String _iptvLiveRecoveryMigratedToAutoKey =
       'iptv_live_recovery_migrated_auto_v2';
+
   /// Android TV MediaKit: ask the panel for a refresh matching stream fps
   /// (issue 150). Default on; Settings toggle is admin-only.
-  static const String _iptvMatchDisplayRefreshKey = 'iptv_match_display_refresh';
+  static const String _iptvMatchDisplayRefreshKey =
+      'iptv_match_display_refresh';
+
   /// Android TV MediaKit live demuxer cushion (seconds). `0` = Auto by height.
   /// Admin-only; max 30. Pairs with demuxer-max-bytes tiers (issue 150).
   static const String _iptvLiveBufferSecsKey = 'iptv_live_buffer_secs';
+
   /// RFC-086: Addons feature availability (not navbar visibility).
   static const String _addonFeatureIptvKey = 'addon_feature_iptv';
+
   /// Retired (RFC-093) — Live Sports is pack-only; kept for sync key strip.
   // ignore: unused_field
   static const String _addonFeatureLiveSportsKey = 'addon_feature_live_sports';
+
   /// One-shot: set addon feature flags from prior one-bit `navbar_config`.
   static const String _addonFeatureFromNavMigratedKey =
       'addon_feature_from_nav_v1';
@@ -190,7 +210,7 @@ class SettingsService {
   ///
   /// Call only when [normalizeIptvLiveBufferSecs] returned 15 / 20 / 30.
   static ({int cacheSecs, int readaheadSecs, int demuxerMaxBytes, String tier})
-      iptvLiveBufferProfileForSecs(int secs) {
+  iptvLiveBufferProfileForSecs(int secs) {
     switch (normalizeIptvLiveBufferSecs(secs)) {
       case 15:
         return (
@@ -226,8 +246,10 @@ class SettingsService {
   /// Stable without stall reopen — hold while demuxer cushion / paint is alive.
   static const String iptvLiveRecoveryBuffered = 'buffered';
   static const String iptvLiveRecoveryClassic = 'classic';
+
   /// Stable + reopen when buffering/freeze stalls with no playhead (manual).
   static const String iptvLiveRecoveryStall = 'stall';
+
   /// Default — player manages stall reopen per live source kind.
   static const String iptvLiveRecoveryAuto = 'auto';
 
@@ -343,8 +365,9 @@ class SettingsService {
       ValueNotifier<bool>(false);
   static final ValueNotifier<bool> playInBackgroundNotifier =
       ValueNotifier<bool>(false);
-  static final ValueNotifier<bool> tvNavSoundNotifier =
-      ValueNotifier<bool>(true);
+  static final ValueNotifier<bool> tvNavSoundNotifier = ValueNotifier<bool>(
+    true,
+  );
 
   Future<String> getPreferredAudioLanguage() async =>
       await kvGetString(_preferredAudioLangKey) ?? 'None';
@@ -587,8 +610,8 @@ class SettingsService {
 
   /// Android TV MediaKit live demuxer cushion seconds. `0` = Auto by resolution.
   Future<int> getIptvLiveBufferSecs() async => normalizeIptvLiveBufferSecs(
-        await kvGetInt(_iptvLiveBufferSecsKey, fallback: 0),
-      );
+    await kvGetInt(_iptvLiveBufferSecsKey, fallback: 0),
+  );
 
   Future<void> setIptvLiveBufferSecs(int secs) async =>
       kvSetInt(_iptvLiveBufferSecsKey, normalizeIptvLiveBufferSecs(secs));
@@ -648,7 +671,10 @@ class SettingsService {
   static String normalizeStremioAddonBaseUrl(String url) {
     var u = url.trim();
     if (u.isEmpty) return u;
-    u = u.replaceFirst(RegExp(r'^stremio://', caseSensitive: false), 'https://');
+    u = u.replaceFirst(
+      RegExp(r'^stremio://', caseSensitive: false),
+      'https://',
+    );
     u = u.replaceFirst(RegExp(r'/manifest\.json/?$', caseSensitive: false), '');
     while (u.endsWith('/')) {
       u = u.substring(0, u.length - 1);
@@ -658,9 +684,9 @@ class SettingsService {
 
   /// True when a Stremio addon row is Torrentio (host or manifest name).
   static bool isTorrentioStremioAddon(Map<String, dynamic> addon) {
-    final base =
-        normalizeStremioAddonBaseUrl(addon['baseUrl']?.toString() ?? '')
-            .toLowerCase();
+    final base = normalizeStremioAddonBaseUrl(
+      addon['baseUrl']?.toString() ?? '',
+    ).toLowerCase();
     if (base.contains('torrentio')) return true;
     final name = (addon['name'] ?? '').toString().toLowerCase();
     if (name.contains('torrentio')) return true;
@@ -736,8 +762,9 @@ class SettingsService {
       kvSetBool(_streamingModeKey, enabled);
 
   /// Bumped when Direct torrent / Stremio / Nuvio / Webstreaming toggles change.
-  static final ValueNotifier<int> playSourceChangeNotifier =
-      ValueNotifier<int>(0);
+  static final ValueNotifier<int> playSourceChangeNotifier = ValueNotifier<int>(
+    0,
+  );
 
   /// Device-cache value for cloud sync / backup (not platform-gated).
   Future<bool> isPlaySourceTorrentStored() async =>
@@ -745,7 +772,8 @@ class SettingsService {
 
   /// Effective for UI / playback. Android TV magnets still need a paired
   /// desktop at play time — this toggle only shows Sources.
-  Future<bool> isPlaySourceTorrentEnabled() async => isPlaySourceTorrentStored();
+  Future<bool> isPlaySourceTorrentEnabled() async =>
+      isPlaySourceTorrentStored();
 
   Future<void> setPlaySourceTorrentEnabled(bool enabled) async {
     if (await isPlaySourceTorrentStored() == enabled) return;
@@ -795,9 +823,9 @@ class SettingsService {
   }
 
   static String? _addonFeatureKey(String featureId) => switch (featureId) {
-        'iptv' => _addonFeatureIptvKey,
-        _ => null,
-      };
+    'iptv' => _addonFeatureIptvKey,
+    _ => null,
+  };
 
   /// Upgrade from one-bit nav: visible `iptv` ⇒ feature on.
   Future<void> ensureAddonFeaturesMigratedFromNav() async {
@@ -822,7 +850,8 @@ class SettingsService {
 
   /// Effective for UI / playback. ATV HTTP streams play locally; magnets
   /// need a paired desktop at play time.
-  Future<bool> isPlaySourceStremioEnabled() async => isPlaySourceStremioStored();
+  Future<bool> isPlaySourceStremioEnabled() async =>
+      isPlaySourceStremioStored();
 
   Future<void> setPlaySourceStremioEnabled(bool enabled) async {
     if (await isPlaySourceStremioStored() == enabled) return;
@@ -872,10 +901,8 @@ class SettingsService {
 
   /// When Forja is on and Webstreaming is off: green Play races all enabled
   /// Forja HTTP plugins and opens the first stream. Default on.
-  Future<bool> isPlaySourceEngineAutoStartEnabled() async => kvGetBool(
-    _playSourceEngineAutoStartKey,
-    fallback: true,
-  );
+  Future<bool> isPlaySourceEngineAutoStartEnabled() async =>
+      kvGetBool(_playSourceEngineAutoStartKey, fallback: true);
 
   Future<void> setPlaySourceEngineAutoStartEnabled(bool enabled) async {
     if (await isPlaySourceEngineAutoStartEnabled() == enabled) return;
@@ -927,10 +954,8 @@ class SettingsService {
   Future<bool> isLiveStreamResolveEngine() async =>
       (await getLiveStreamResolveMode()) == liveStreamResolveEngine;
 
-  Future<void> setLiveStreamResolveMode(String mode) async => kvSetString(
-    _liveStreamResolveKey,
-    normalizeLiveStreamResolve(mode),
-  );
+  Future<void> setLiveStreamResolveMode(String mode) async =>
+      kvSetString(_liveStreamResolveKey, normalizeLiveStreamResolve(mode));
 
   /// Session mirror — KV readback was stuck at fallback `true` (224).
   static bool? _crashReportingMemory;
@@ -1031,8 +1056,7 @@ class SettingsService {
   Future<void> setStreamProviderOrder(List<String> order) async =>
       kvSetStringList(_streamProviderOrderKey, order);
 
-  static const String _disabledStreamProvidersKey =
-      'disabled_stream_providers';
+  static const String _disabledStreamProvidersKey = 'disabled_stream_providers';
 
   Future<List<String>> getDisabledStreamProviders() async =>
       kvGetStringList(_disabledStreamProvidersKey, fallback: const []);
@@ -1044,7 +1068,10 @@ class SettingsService {
   Future<List<String>> getEnabledStreamProviderOrder() async {
     final order = await getStreamProviderOrder();
     final off = (await getDisabledStreamProviders()).toSet();
-    return [for (final id in order) if (!off.contains(id)) id];
+    return [
+      for (final id in order)
+        if (!off.contains(id)) id,
+    ];
   }
 
   static const String _animeProviderOrderKey = 'anime_provider_order';
@@ -1154,7 +1181,10 @@ class SettingsService {
   Future<List<String>> getEnabledAnimeProviderOrder() async {
     final order = await getAnimeProviderOrder();
     final off = (await getDisabledAnimeProviders()).toSet();
-    return [for (final id in order) if (!off.contains(id)) id];
+    return [
+      for (final id in order)
+        if (!off.contains(id)) id,
+    ];
   }
 
   static const String _asianDramaProviderOrderKey =
@@ -1263,8 +1293,7 @@ class SettingsService {
       (await getMagnetResolvePluginId()).isNotEmpty;
 
   /// Sync — storage is sync under the hood; memoized after first read.
-  bool useDebridForStreamsSync() =>
-      getMagnetResolvePluginIdSync().isNotEmpty;
+  bool useDebridForStreamsSync() => getMagnetResolvePluginIdSync().isNotEmpty;
 
   Future<void> setUseDebridForStreams(bool enabled) async {
     if (!enabled) {
@@ -1295,7 +1324,8 @@ class SettingsService {
   }
 
   Future<void> setDebridService(String service) async {
-    final mapped = _legacyDebridServiceToPluginId(service) ??
+    final mapped =
+        _legacyDebridServiceToPluginId(service) ??
         (service == 'None' || service.trim().isEmpty ? '' : service.trim());
     await setMagnetResolvePluginId(mapped);
   }
@@ -1404,8 +1434,7 @@ class SettingsService {
   Future<void> setBuiltInPlayerEngine(
     BuiltInPlayerEngine engine, {
     BuiltInPlayerContext context = BuiltInPlayerContext.vod,
-  }) async =>
-      kvSetString(context.storageKey, engine.storageKey);
+  }) async => kvSetString(context.storageKey, engine.storageKey);
 
   Future<String?> getJackettBaseUrl() async => kvGetString(_jackettBaseUrlKey);
 
@@ -1582,7 +1611,9 @@ class SettingsService {
 
   static Future<T> _withNavbarExclusive<T>(Future<T> Function() op) {
     final done = Completer<T>();
-    _navbarExclusiveTail = _navbarExclusiveTail.catchError((_) {}).then((_) async {
+    _navbarExclusiveTail = _navbarExclusiveTail.catchError((_) {}).then((
+      _,
+    ) async {
       try {
         done.complete(await op());
       } catch (e, st) {
@@ -1688,10 +1719,7 @@ class SettingsService {
   static final List<String> _extraNavIds = [];
 
   /// Built-in tabs plus any hub `tabId`s registered from catalog plugins (A13).
-  static List<String> get allNavIds => [
-        ..._baseAllNavIds,
-        ..._extraNavIds,
-      ];
+  static List<String> get allNavIds => [..._baseAllNavIds, ..._extraNavIds];
 
   /// Catalog hubs may mint new shell tab ids — keep them in navbar known set.
   static void registerExtraNavIds(Iterable<String> ids) {
@@ -1732,10 +1760,10 @@ class SettingsService {
           known.containsAll(allHubIds)) {
         return;
       }
-      await kvSetStringList(_navbarKnownIdsKey, {
-        ...known,
-        ...allNavIds,
-      }.toList());
+      await kvSetStringList(
+        _navbarKnownIdsKey,
+        {...known, ...allNavIds}.toList(),
+      );
       if (notify && knownChanged) {
         navbarChangeNotifier.value++;
       }
@@ -1754,8 +1782,7 @@ class SettingsService {
   }) async {
     if (activeHubIds.isEmpty) return;
     return _withNavbarExclusive(() async {
-      if (_navbarVisibleMemory == null &&
-          !await kvHasKey(_navbarConfigKey)) {
+      if (_navbarVisibleMemory == null && !await kvHasKey(_navbarConfigKey)) {
         return;
       }
       final visible = await _readNavbarVisibleRaw();
@@ -1789,8 +1816,7 @@ class SettingsService {
     bool allowEmptyActiveStrip = false,
   }) async {
     return _withNavbarExclusive(() async {
-      if (_navbarVisibleMemory == null &&
-          !await kvHasKey(_navbarConfigKey)) {
+      if (_navbarVisibleMemory == null && !await kvHasKey(_navbarConfigKey)) {
         return;
       }
       if (activeHubIds.isEmpty &&
@@ -1860,10 +1886,10 @@ class SettingsService {
     if (!await kvHasKey(_navbarConfigKey)) {
       return const [];
     }
-    return (await kvGetStringList(_navbarConfigKey, fallback: const []))
-        .map((id) => id.trim())
-        .where((id) => id.isNotEmpty)
-        .toList();
+    return (await kvGetStringList(
+      _navbarConfigKey,
+      fallback: const [],
+    )).map((id) => id.trim()).where((id) => id.isNotEmpty).toList();
   }
 
   /// Drop in-memory settings that belong to the previous identity.
@@ -1956,7 +1982,9 @@ class SettingsService {
       try {
         await SecureSettings.delete(key);
       } catch (e) {
-        debugPrint('[SettingsService] webstreamr secure purge skipped ($key): $e');
+        debugPrint(
+          '[SettingsService] webstreamr secure purge skipped ($key): $e',
+        );
       }
     }
     await kvSetString(_webstreamrPurgedKey, '1');
@@ -2029,10 +2057,10 @@ class SettingsService {
         fallback: const [],
       )).toSet();
       if (allNavIds.any((id) => !known.contains(id))) {
-        await kvSetStringList(_navbarKnownIdsKey, {
-          ...known,
-          ...allNavIds,
-        }.toList());
+        await kvSetStringList(
+          _navbarKnownIdsKey,
+          {...known, ...allNavIds}.toList(),
+        );
       }
       // Features list uses tabOrder; rail must follow the same order even when
       // a prior enable appended the id at the end of visible memory.
@@ -2070,10 +2098,10 @@ class SettingsService {
         unknown.add(id);
       }
       if (unknown.isNotEmpty || allNavIds.any((id) => !known.contains(id))) {
-        await kvSetStringList(_navbarKnownIdsKey, {
-          ...known,
-          ...allNavIds,
-        }.toList());
+        await kvSetStringList(
+          _navbarKnownIdsKey,
+          {...known, ...allNavIds}.toList(),
+        );
       }
       return _applyStoredTabOrder(filtered);
     }
@@ -2176,10 +2204,7 @@ class SettingsService {
   Future<List<String>> getNavbarTabOrder() async {
     final visible = await getNavbarConfig();
     final known = _withoutArchivedNavIds(
-      await kvGetStringList(
-        _navbarKnownIdsKey,
-        fallback: const [],
-      ),
+      await kvGetStringList(_navbarKnownIdsKey, fallback: const []),
     ).toSet();
     // Preserve hub ids (anime/home/…) — [allNavIds] alone drops them from
     // cloud `tabOrder` export so Features sort never landed (224).
@@ -2193,10 +2218,7 @@ class SettingsService {
       return [...visible, ...hidden];
     }
     final stored = _withoutArchivedNavIds(
-      await kvGetStringList(
-        _navbarTabOrderKey,
-        fallback: const [],
-      ),
+      await kvGetStringList(_navbarTabOrderKey, fallback: const []),
     );
     return _mergeNavbarTabOrder(stored, catalog);
   }
@@ -2225,10 +2247,7 @@ class SettingsService {
     if (!await kvHasKey(_navbarTabOrderKey)) {
       return visible;
     }
-    final order = await kvGetStringList(
-      _navbarTabOrderKey,
-      fallback: const [],
-    );
+    final order = await kvGetStringList(_navbarTabOrderKey, fallback: const []);
     if (order.isEmpty) return visible;
     return _visibleInTabOrder(visible, order);
   }
@@ -2269,33 +2288,33 @@ class SettingsService {
     List<String>? tabOrder,
     bool notify = true,
   }) async {
-    final raw = _navbarVisibleMemory ??
+    final raw =
+        _navbarVisibleMemory ??
         (await kvHasKey(_navbarConfigKey)
             ? await kvGetStringList(_navbarConfigKey, fallback: const [])
             : null);
     // Keep rail order aligned with Features even when callers append
     // (setNavbarTabVisible / pack activate) without passing tabOrder.
-    final orderForVisible = tabOrder ??
+    final orderForVisible =
+        tabOrder ??
         (await kvHasKey(_navbarTabOrderKey)
             ? await kvGetStringList(_navbarTabOrderKey, fallback: const [])
             : null);
     final visibleClean = _withoutArchivedNavIds(visibleIds);
     final ids = (orderForVisible != null && orderForVisible.isNotEmpty)
-        ? _visibleInTabOrder(visibleClean, _withoutArchivedNavIds(orderForVisible))
+        ? _visibleInTabOrder(
+            visibleClean,
+            _withoutArchivedNavIds(orderForVisible),
+          )
         : List<String>.from(visibleClean);
     final unchanged = raw != null && listEquals(raw, ids);
     if (kDebugMode && !unchanged) {
-      debugPrint(
-        '[Settings] navbar write ${raw ?? const <String>[]} → $ids',
-      );
+      debugPrint('[Settings] navbar write ${raw ?? const <String>[]} → $ids');
     }
     _navbarVisibleMemory = List<String>.from(ids);
     await kvSetStringList(_navbarConfigKey, ids);
     if (kDebugMode && Engine.isReady) {
-      final kvNow = await kvGetStringList(
-        _navbarConfigKey,
-        fallback: const [],
-      );
+      final kvNow = await kvGetStringList(_navbarConfigKey, fallback: const []);
       if (!listEquals(kvNow, ids)) {
         debugPrint(
           '[Settings] navbar KV mismatch after write want=$ids '
@@ -2309,22 +2328,14 @@ class SettingsService {
     )).toSet();
     await kvSetStringList(
       _navbarKnownIdsKey,
-      _withoutArchivedNavIds({
-        ...known,
-        ...allNavIds,
-        ...ids,
-      }),
+      _withoutArchivedNavIds({...known, ...allNavIds, ...ids}),
     );
     if (tabOrder != null) {
       await kvSetStringList(
         _navbarTabOrderKey,
         _mergeNavbarTabOrder(
           _withoutArchivedNavIds(tabOrder),
-          _withoutArchivedNavIds({
-            ...allNavIds,
-            ...tabOrder,
-            ...ids,
-          }),
+          _withoutArchivedNavIds({...allNavIds, ...tabOrder, ...ids}),
         ),
       );
     }
@@ -2352,6 +2363,21 @@ class SettingsService {
     'mdblist_api_key',
   ];
 
+  /// Tracker secrets are identity-scoped (`base@account:profile`). Export /
+  /// import only the **active** scope; map keys stay bare for backup format.
+  static const Set<String> _identityScopedSecureBases = {
+    'trakt_access_token',
+    'trakt_refresh_token',
+    'trakt_expires_at',
+    'simkl_access_token',
+    'mdblist_api_key',
+  };
+
+  static String _secureStoreKey(String base) =>
+      _identityScopedSecureBases.contains(base)
+      ? LocalDataScope.storageKey(base)
+      : base;
+
   Future<Map<String, dynamic>> exportAllSettings() async {
     await ensureCanonicalSettingsMigrated();
     final prefsMap = <String, dynamic>{};
@@ -2360,8 +2386,7 @@ class SettingsService {
       _streamingModeKey,
       fallback: false,
     );
-    prefsMap[_magnetResolvePluginIdKey] =
-        await getMagnetResolvePluginId();
+    prefsMap[_magnetResolvePluginIdKey] = await getMagnetResolvePluginId();
     // Legacy keys kept readable for older backup importers.
     prefsMap[_useDebridKey] =
         (prefsMap[_magnetResolvePluginIdKey] as String).isNotEmpty;
@@ -2373,8 +2398,7 @@ class SettingsService {
         await isPlaySourceEngineAutoStartEnabled();
     prefsMap[_playSourceWebstreamingKey] =
         await isPlaySourceWebstreamingEnabled();
-    prefsMap[_p2pStreamingAcknowledgedKey] =
-        await isP2pStreamingAcknowledged();
+    prefsMap[_p2pStreamingAcknowledgedKey] = await isP2pStreamingAcknowledged();
     prefsMap[_addonFeatureIptvKey] = await isAddonFeatureEnabled('iptv');
     for (final key in [
       _sortPreferenceKey,
@@ -2439,7 +2463,7 @@ class SettingsService {
     final secureMap = <String, String>{};
     for (final key in _secureKeys) {
       try {
-        final v = await SecureSettings.read(key);
+        final v = await SecureSettings.read(_secureStoreKey(key));
         if (v != null && v.isNotEmpty) secureMap[key] = v;
       } catch (e) {
         debugPrint('[SettingsService] export skipped secure key ($key): $e');
@@ -2559,7 +2583,10 @@ class SettingsService {
     final secureMap = data['secure_storage'] as Map<String, dynamic>? ?? {};
     for (final key in _secureKeys) {
       if (secureMap.containsKey(key)) {
-        await SecureSettings.write(key, secureMap[key] as String);
+        await SecureSettings.write(
+          _secureStoreKey(key),
+          secureMap[key] as String,
+        );
       }
     }
     // Legacy exports put Jackett/Prowlarr keys in the non-secure map.

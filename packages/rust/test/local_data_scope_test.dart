@@ -28,8 +28,10 @@ void main() {
     final gen0 = LocalDataScope.generation;
     await LocalDataScope.configure(accountId: 'user-a', profileId: 'prof-1');
     expect(LocalDataScope.id, 'user-a:prof-1');
-    expect(LocalDataScope.storageKey('episodes_watched'),
-        'episodes_watched@user-a:prof-1');
+    expect(
+      LocalDataScope.storageKey('episodes_watched'),
+      'episodes_watched@user-a:prof-1',
+    );
     expect(hits, 1);
     expect(LocalDataScope.generation, gen0 + 1);
 
@@ -50,28 +52,63 @@ void main() {
     expect(LocalDataScope.ownsKey('catalog_cw_x@u1:p2'), isFalse);
   });
 
-  test('migrate copies string and stringList legacy keys without crashing',
-      () async {
-    SharedPreferences.setMockInitialValues({
-      'episodes_watched': '{"a":true}',
-      'pt_iptv_catalog_lru_v1': <String>['portal-1', 'portal-2'],
-      'forja_player_stream_extract_cache_v1': <String>['{"k":1}'],
-      'catalog_cw_hubx': <String>['cw1'],
-    });
-    await LocalDataScope.configure(accountId: null, profileId: null);
-    final prefs = await SharedPreferences.getInstance();
-    expect(prefs.getString('episodes_watched@local:default'), '{"a":true}');
-    expect(
-      prefs.getStringList('pt_iptv_catalog_lru_v1@local:default'),
-      ['portal-1', 'portal-2'],
-    );
-    expect(
-      prefs.getStringList('forja_player_stream_extract_cache_v1@local:default'),
-      ['{"k":1}'],
-    );
-    expect(prefs.getStringList('catalog_cw_hubx@local:default'), ['cw1']);
-    expect(prefs.containsKey('episodes_watched'), isFalse);
-    expect(prefs.containsKey('pt_iptv_catalog_lru_v1'), isFalse);
-    expect(prefs.getBool('local_data_scope_v1_migrated'), isTrue);
-  });
+  test(
+    'migrateSecureBareIfNeeded skips guest and keeps other scopes',
+    () async {
+      final store = <String, String>{'simkl_access_token': 'token-a'};
+
+      await LocalDataScope.configure(accountId: null, profileId: null);
+      await LocalDataScope.migrateSecureBareIfNeeded(
+        'simkl_access_token',
+        read: (k) async => store[k],
+        write: (k, v) async => store[k] = v,
+        delete: (k) async => store.remove(k),
+      );
+      expect(store['simkl_access_token'], 'token-a');
+      expect(store.containsKey('simkl_access_token@local:default'), isFalse);
+
+      await LocalDataScope.configure(accountId: 'user-a', profileId: 'p1');
+      await LocalDataScope.migrateSecureBareIfNeeded(
+        'simkl_access_token',
+        read: (k) async => store[k],
+        write: (k, v) async => store[k] = v,
+        delete: (k) async => store.remove(k),
+      );
+      expect(store['simkl_access_token@user-a:p1'], 'token-a');
+      expect(store.containsKey('simkl_access_token'), isFalse);
+
+      await LocalDataScope.configure(accountId: 'user-b', profileId: 'p1');
+      expect(store['simkl_access_token@user-a:p1'], 'token-a');
+      expect(store['simkl_access_token@user-b:p1'], isNull);
+    },
+  );
+
+  test(
+    'migrate copies string and stringList legacy keys without crashing',
+    () async {
+      SharedPreferences.setMockInitialValues({
+        'episodes_watched': '{"a":true}',
+        'pt_iptv_catalog_lru_v1': <String>['portal-1', 'portal-2'],
+        'forja_player_stream_extract_cache_v1': <String>['{"k":1}'],
+        'catalog_cw_hubx': <String>['cw1'],
+      });
+      await LocalDataScope.configure(accountId: null, profileId: null);
+      final prefs = await SharedPreferences.getInstance();
+      expect(prefs.getString('episodes_watched@local:default'), '{"a":true}');
+      expect(prefs.getStringList('pt_iptv_catalog_lru_v1@local:default'), [
+        'portal-1',
+        'portal-2',
+      ]);
+      expect(
+        prefs.getStringList(
+          'forja_player_stream_extract_cache_v1@local:default',
+        ),
+        ['{"k":1}'],
+      );
+      expect(prefs.getStringList('catalog_cw_hubx@local:default'), ['cw1']);
+      expect(prefs.containsKey('episodes_watched'), isFalse);
+      expect(prefs.containsKey('pt_iptv_catalog_lru_v1'), isFalse);
+      expect(prefs.getBool('local_data_scope_v1_migrated'), isTrue);
+    },
+  );
 }

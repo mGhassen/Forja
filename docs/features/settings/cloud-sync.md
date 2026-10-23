@@ -75,7 +75,7 @@ Not synced — device-specific or sensitive:
 - Torrent cache size, connections, and learned provider scores
 - Debrid and indexer API keys (for now)
 - Cache clears, downloaded updates, WebView data
-- Trakt / Simkl / MDBList account linking
+- Trakt / Simkl / MDBList account linking (per Forja account and profile on the device)
 
 ## What you can do
 

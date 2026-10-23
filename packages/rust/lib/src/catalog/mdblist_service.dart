@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 
 import '../forja_platform_secure_store.dart';
+import '../local_data_scope.dart';
 import '../metadata_http.dart';
 
 /// MDBlist integration — API-key auth, ratings aggregation, list management.
@@ -8,20 +9,35 @@ import '../metadata_http.dart';
 class MdblistService {
   static final MdblistService _instance = MdblistService._internal();
   factory MdblistService() => _instance;
-  MdblistService._internal();
+  MdblistService._internal() {
+    LocalDataScope.addListener(_onScopeChanged);
+  }
 
   static const String _keyApiKey = 'mdblist_api_key';
 
   String? _cachedApiKey;
 
+  String get _scopedKey => LocalDataScope.storageKey(_keyApiKey);
+
+  Future<void> _onScopeChanged() async {
+    _cachedApiKey = null;
+  }
+
   Future<void> setApiKey(String apiKey) async {
-    await ForjaPlatformSecureStore.write(_keyApiKey, apiKey);
+    await ForjaPlatformSecureStore.write(_scopedKey, apiKey);
     _cachedApiKey = apiKey;
     debugPrint('[MDBlist] API key saved.');
   }
 
   Future<String?> getApiKey() async {
-    _cachedApiKey ??= await ForjaPlatformSecureStore.read(_keyApiKey);
+    if (_cachedApiKey != null) return _cachedApiKey;
+    await LocalDataScope.migrateSecureBareIfNeeded(
+      _keyApiKey,
+      read: ForjaPlatformSecureStore.read,
+      write: ForjaPlatformSecureStore.write,
+      delete: ForjaPlatformSecureStore.delete,
+    );
+    _cachedApiKey = await ForjaPlatformSecureStore.read(_scopedKey);
     return _cachedApiKey;
   }
 
@@ -31,7 +47,7 @@ class MdblistService {
   }
 
   Future<void> logout() async {
-    await ForjaPlatformSecureStore.delete(_keyApiKey);
+    await ForjaPlatformSecureStore.delete(_scopedKey);
     _cachedApiKey = null;
     debugPrint('[MDBlist] API key removed.');
   }

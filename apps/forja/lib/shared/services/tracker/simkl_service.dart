@@ -44,22 +44,24 @@ class SimklService {
   // ── Singleton ──────────────────────────────────────────────────────────
   static final SimklService _instance = SimklService._internal();
   factory SimklService() => _instance;
-  SimklService._internal();
+  SimklService._internal() {
+    LocalDataScope.addListener(_onScopeChanged);
+  }
 
   // ── Constants ──────────────────────────────────────────────────────────
   static const String _baseUrl = 'https://api.simkl.com';
 
   // Injected at build time via --dart-define or .env
-  static const String _clientId =
-      String.fromEnvironment('SIMKL_CLIENT_ID');
+  static const String _clientId = String.fromEnvironment('SIMKL_CLIENT_ID');
   // ignore: unused_field
-  static const String _clientSecret =
-      String.fromEnvironment('SIMKL_CLIENT_SECRET');
+  static const String _clientSecret = String.fromEnvironment(
+    'SIMKL_CLIENT_SECRET',
+  );
 
   /// False when this build has no `SIMKL_CLIENT_ID` dart-define.
   static bool get isConfigured => _clientId.trim().isNotEmpty;
 
-  // ── Secure Storage Keys ────────────────────────────────────────────────
+  // ── Secure Storage Keys (base — stored as base@account:profile) ────────
   static const String _keyAccessToken = 'simkl_access_token';
   static const String _keyLastActivity = 'simkl_last_activity';
   static const String _keyLastSyncMs = 'simkl_last_sync_ms';
@@ -71,14 +73,28 @@ class SimklService {
   static const Duration _minSyncInterval = Duration(minutes: 15);
 
   // ── Runtime state ──────────────────────────────────────────────────────
-  Future<String?> _secureRead(String key) =>
-      ForjaPlatformSecureStore.read(key);
+  Future<String?> _secureRead(String baseKey) async {
+    await LocalDataScope.migrateSecureBareIfNeeded(
+      baseKey,
+      read: ForjaPlatformSecureStore.read,
+      write: ForjaPlatformSecureStore.write,
+      delete: ForjaPlatformSecureStore.delete,
+    );
+    return ForjaPlatformSecureStore.read(LocalDataScope.storageKey(baseKey));
+  }
 
-  Future<void> _secureWrite(String key, String value) =>
-      ForjaPlatformSecureStore.write(key, value);
+  Future<void> _secureWrite(String baseKey, String value) =>
+      ForjaPlatformSecureStore.write(LocalDataScope.storageKey(baseKey), value);
 
-  Future<void> _secureDelete(String key) =>
-      ForjaPlatformSecureStore.delete(key);
+  Future<void> _secureDelete(String baseKey) =>
+      ForjaPlatformSecureStore.delete(LocalDataScope.storageKey(baseKey));
+
+  /// Identity switch — drop RAM only; other accounts’ tokens stay on disk.
+  Future<void> _onScopeChanged() async {
+    _initialSyncDone = false;
+    _syncInProgress = null;
+    clearWatchlistCache();
+  }
 
   bool _initialSyncDone = false;
   Future<void>? _syncInProgress;
@@ -95,7 +111,12 @@ class SimklService {
       return null;
     }
     try {
-      final resp = await engineHttp('GET', '$_baseUrl/oauth/pin?client_id=$_clientId&redirect=', headers: _publicHeaders, maxRetries: 0);
+      final resp = await engineHttp(
+        'GET',
+        '$_baseUrl/oauth/pin?client_id=$_clientId&redirect=',
+        headers: _publicHeaders,
+        maxRetries: 0,
+      );
       if (resp.status == 200) {
         return json.decode(resp.body) as Map<String, dynamic>;
       }
@@ -171,7 +192,12 @@ class SimklService {
     if (token == null) return null;
 
     try {
-      final resp = await engineHttp('GET', '$_baseUrl/users/settings', headers: _authHeaders(token), maxRetries: 0);
+      final resp = await engineHttp(
+        'GET',
+        '$_baseUrl/users/settings',
+        headers: _authHeaders(token),
+        maxRetries: 0,
+      );
       if (resp.status == 200) {
         final data = json.decode(resp.body);
         return data['user'] as Map<String, dynamic>?;
@@ -192,7 +218,12 @@ class SimklService {
     if (token == null) return null;
 
     try {
-      final resp = await engineHttp('GET', '$_baseUrl/sync/activities', headers: _authHeaders(token), maxRetries: 0);
+      final resp = await engineHttp(
+        'GET',
+        '$_baseUrl/sync/activities',
+        headers: _authHeaders(token),
+        maxRetries: 0,
+      );
       _handleUnauthorized(resp.status);
       if (resp.status == 200) {
         return json.decode(resp.body) as Map<String, dynamic>;
@@ -224,7 +255,13 @@ class SimklService {
     if (body.isEmpty) return false;
 
     try {
-      final resp = await engineHttp('POST', '$_baseUrl/sync/add-to-list', headers: _authHeaders(token), body: json.encode(body), maxRetries: 0);
+      final resp = await engineHttp(
+        'POST',
+        '$_baseUrl/sync/add-to-list',
+        headers: _authHeaders(token),
+        body: json.encode(body),
+        maxRetries: 0,
+      );
       debugPrint('[Simkl] Add to list: ${resp.status}');
       final ok = resp.status == 200 || resp.status == 201;
       if (ok) clearWatchlistCache();
@@ -251,7 +288,13 @@ class SimklService {
     if (body.isEmpty) return false;
 
     try {
-      final resp = await engineHttp('POST', '$_baseUrl/sync/remove-from-list', headers: _authHeaders(token), body: json.encode(body), maxRetries: 0);
+      final resp = await engineHttp(
+        'POST',
+        '$_baseUrl/sync/remove-from-list',
+        headers: _authHeaders(token),
+        body: json.encode(body),
+        maxRetries: 0,
+      );
       final ok = resp.status == 200;
       if (ok) clearWatchlistCache();
       return ok;
@@ -290,11 +333,13 @@ class SimklService {
   }) async {
     if (mediaType == 'anime') {
       if (anilistId == null) return false;
-      return _removeFromList(anime: [
-        {
-          'ids': {'anilist': anilistId},
-        },
-      ]);
+      return _removeFromList(
+        anime: [
+          {
+            'ids': {'anilist': anilistId},
+          },
+        ],
+      );
     }
 
     if (tmdbId == null && imdbId == null) return false;
@@ -304,8 +349,9 @@ class SimklService {
     if (imdbId != null) ids['imdb'] = imdbId;
 
     final item = {'ids': ids};
-    final type =
-        (mediaType == 'tv' || mediaType == 'series') ? 'shows' : 'movies';
+    final type = (mediaType == 'tv' || mediaType == 'series')
+        ? 'shows'
+        : 'movies';
     return _removeFromList(
       shows: type == 'shows' ? [item] : [],
       movies: type == 'movies' ? [item] : [],
@@ -339,8 +385,9 @@ class SimklService {
 
     final item = {'ids': ids, 'to': to};
     final hist = {'ids': ids};
-    final type =
-        (mediaType == 'tv' || mediaType == 'series') ? 'shows' : 'movies';
+    final type = (mediaType == 'tv' || mediaType == 'series')
+        ? 'shows'
+        : 'movies';
     final ok = await _addToList(
       shows: type == 'shows' ? [item] : [],
       movies: type == 'movies' ? [item] : [],
@@ -368,8 +415,8 @@ class SimklService {
     final type = mediaType == 'anime'
         ? 'anime'
         : (mediaType == 'tv' || mediaType == 'series')
-            ? 'shows'
-            : 'movies';
+        ? 'shows'
+        : 'movies';
     try {
       for (final item in await _allItems(token, type, status: 'all')) {
         final ids = _ids(_media(item));
@@ -400,14 +447,16 @@ class SimklService {
     if (mediaType == 'anime' && anilistId != null) {
       final ids = <String, dynamic>{'anilist': anilistId};
       if (episode != null) {
-        return removeFromHistory(anime: [
-          {
-            'ids': ids,
-            'episodes': [
-              {'number': episode},
-            ],
-          }
-        ]);
+        return removeFromHistory(
+          anime: [
+            {
+              'ids': ids,
+              'episodes': [
+                {'number': episode},
+              ],
+            },
+          ],
+        );
       }
       final hist = {'ids': ids};
       await removeFromHistory(anime: [hist]);
@@ -419,24 +468,27 @@ class SimklService {
     if (imdbId != null && imdbId.isNotEmpty) ids['imdb'] = imdbId;
 
     if (mediaType == 'tv' && season != null && episode != null) {
-      return removeFromHistory(shows: [
-        {
-          'ids': ids,
-          'seasons': [
-            {
-              'number': season,
-              'episodes': [
-                {'number': episode},
-              ],
-            }
-          ],
-        }
-      ]);
+      return removeFromHistory(
+        shows: [
+          {
+            'ids': ids,
+            'seasons': [
+              {
+                'number': season,
+                'episodes': [
+                  {'number': episode},
+                ],
+              },
+            ],
+          },
+        ],
+      );
     }
 
     final hist = {'ids': ids};
-    final type =
-        (mediaType == 'tv' || mediaType == 'series') ? 'shows' : 'movies';
+    final type = (mediaType == 'tv' || mediaType == 'series')
+        ? 'shows'
+        : 'movies';
     final ok = await removeFromHistory(
       shows: type == 'shows' ? [hist] : [],
       movies: type == 'movies' ? [hist] : [],
@@ -470,7 +522,13 @@ class SimklService {
     if (body.isEmpty) return false;
 
     try {
-      final resp = await engineHttp('POST', '$_baseUrl/sync/history', headers: _authHeaders(token), body: json.encode(body), maxRetries: 0);
+      final resp = await engineHttp(
+        'POST',
+        '$_baseUrl/sync/history',
+        headers: _authHeaders(token),
+        body: json.encode(body),
+        maxRetries: 0,
+      );
       return resp.status == 200 || resp.status == 201;
     } catch (e) {
       debugPrint('[Simkl] Add to history error: $e');
@@ -494,7 +552,13 @@ class SimklService {
     if (body.isEmpty) return false;
 
     try {
-      final resp = await engineHttp('POST', '$_baseUrl/sync/history/remove', headers: _authHeaders(token), body: json.encode(body), maxRetries: 0);
+      final resp = await engineHttp(
+        'POST',
+        '$_baseUrl/sync/history/remove',
+        headers: _authHeaders(token),
+        body: json.encode(body),
+        maxRetries: 0,
+      );
       return resp.status == 200;
     } catch (e) {
       debugPrint('[Simkl] Remove from history error: $e');
@@ -512,7 +576,12 @@ class SimklService {
     if (token == null) return [];
 
     try {
-      final resp = await engineHttp('GET', '$_baseUrl/sync/ratings', headers: _authHeaders(token), maxRetries: 0);
+      final resp = await engineHttp(
+        'GET',
+        '$_baseUrl/sync/ratings',
+        headers: _authHeaders(token),
+        maxRetries: 0,
+      );
       if (resp.status == 200) {
         final data = json.decode(resp.body);
         if (data is List) return data.cast<Map<String, dynamic>>();
@@ -539,7 +608,9 @@ class SimklService {
     if (tmdbId != null) ids['tmdb'] = tmdbId;
     if (imdbId != null) ids['imdb'] = imdbId;
 
-    final type = (mediaType == 'tv' || mediaType == 'series') ? 'shows' : 'movies';
+    final type = (mediaType == 'tv' || mediaType == 'series')
+        ? 'shows'
+        : 'movies';
     try {
       final resp = await engineHttp(
         'POST',
@@ -547,8 +618,8 @@ class SimklService {
         headers: _authHeaders(token),
         body: json.encode({
           type: [
-            {'ids': ids, 'rating': rating}
-          ]
+            {'ids': ids, 'rating': rating},
+          ],
         }),
         maxRetries: 0,
       );
@@ -573,7 +644,9 @@ class SimklService {
     if (tmdbId != null) ids['tmdb'] = tmdbId;
     if (imdbId != null) ids['imdb'] = imdbId;
 
-    final type = (mediaType == 'tv' || mediaType == 'series') ? 'shows' : 'movies';
+    final type = (mediaType == 'tv' || mediaType == 'series')
+        ? 'shows'
+        : 'movies';
     try {
       final resp = await engineHttp(
         'POST',
@@ -581,8 +654,8 @@ class SimklService {
         headers: _authHeaders(token),
         body: json.encode({
           type: [
-            {'ids': ids}
-          ]
+            {'ids': ids},
+          ],
         }),
         maxRetries: 0,
       );
@@ -612,15 +685,14 @@ class SimklService {
     int? season,
     int? episode,
     double progress = 0,
-  }) =>
-      _scrobble(
-        'start',
-        tmdbId: tmdbId,
-        mediaType: mediaType,
-        season: season,
-        episode: episode,
-        progress: progress,
-      );
+  }) => _scrobble(
+    'start',
+    tmdbId: tmdbId,
+    mediaType: mediaType,
+    season: season,
+    episode: episode,
+    progress: progress,
+  );
 
   /// Pause scrobbling — saves mid-episode progress on Simkl.
   Future<bool> scrobblePause({
@@ -629,15 +701,14 @@ class SimklService {
     int? season,
     int? episode,
     double progress = 0,
-  }) =>
-      _scrobble(
-        'pause',
-        tmdbId: tmdbId,
-        mediaType: mediaType,
-        season: season,
-        episode: episode,
-        progress: progress,
-      );
+  }) => _scrobble(
+    'pause',
+    tmdbId: tmdbId,
+    mediaType: mediaType,
+    season: season,
+    episode: episode,
+    progress: progress,
+  );
 
   /// Stop scrobbling (user finished watching). Progress ≥80 marks watched.
   Future<bool> scrobbleStop({
@@ -646,15 +717,14 @@ class SimklService {
     int? season,
     int? episode,
     double progress = 0,
-  }) =>
-      _scrobble(
-        'stop',
-        tmdbId: tmdbId,
-        mediaType: mediaType,
-        season: season,
-        episode: episode,
-        progress: progress,
-      );
+  }) => _scrobble(
+    'stop',
+    tmdbId: tmdbId,
+    mediaType: mediaType,
+    season: season,
+    episode: episode,
+    progress: progress,
+  );
 
   // ═══════════════════════════════════════════════════════════════════════
   //  I M P O R T   -   W A T C H L I S T   >   B O O K M A R K S
@@ -737,7 +807,8 @@ class SimklService {
       if (force || savedAll != lastAll) {
         // First connect / force = full library. Later stamp bumps = date_from
         // delta. List buckets stay Sync Now / connect only.
-        final dateFrom = (!force &&
+        final dateFrom =
+            (!force &&
                 savedAll != null &&
                 savedAll.isNotEmpty &&
                 savedAll != lastAll)
@@ -955,22 +1026,24 @@ class SimklService {
     var failed = false;
     try {
       const types = ['movies', 'shows', 'anime'];
-      final batches = await Future.wait(types.map((type) async {
-        try {
-          final items = await _allItemsResult(token, type, status: 'all');
-          if (items == null) {
+      final batches = await Future.wait(
+        types.map((type) async {
+          try {
+            final items = await _allItemsResult(token, type, status: 'all');
+            if (items == null) {
+              failed = true;
+              return const <Map<String, dynamic>>[];
+            }
+            return [
+              for (final item in items) {...item, '_simklType': type},
+            ];
+          } catch (e) {
             failed = true;
+            debugPrint('[Simkl] Library fetch ($type) error: $e');
             return const <Map<String, dynamic>>[];
           }
-          return [
-            for (final item in items) {...item, '_simklType': type},
-          ];
-        } catch (e) {
-          failed = true;
-          debugPrint('[Simkl] Library fetch ($type) error: $e');
-          return const <Map<String, dynamic>>[];
-        }
-      }));
+        }),
+      );
       final rows = [for (final batch in batches) ...batch];
       if (!failed && gen == _libraryGen) {
         _libraryRows = rows;
@@ -1021,10 +1094,20 @@ class SimklService {
     );
     var imported = 0;
     try {
-      for (final item in await _allItems(token, 'shows', status: 'completed', query: q)) {
+      for (final item in await _allItems(
+        token,
+        'shows',
+        status: 'completed',
+        query: q,
+      )) {
         imported += await _markShowEpisodes(item);
       }
-      for (final item in await _allItems(token, 'anime', status: 'completed', query: q)) {
+      for (final item in await _allItems(
+        token,
+        'anime',
+        status: 'completed',
+        query: q,
+      )) {
         imported += await _markAnimeEpisodes(item);
       }
       debugPrint('[Simkl] Imported $imported watched episodes');
@@ -1090,10 +1173,18 @@ class SimklService {
     );
     var imported = 0;
     try {
-      final shows =
-          await _allItems(token, 'shows', status: 'watching', query: q);
-      final anime =
-          await _allItems(token, 'anime', status: 'watching', query: q);
+      final shows = await _allItems(
+        token,
+        'shows',
+        status: 'watching',
+        query: q,
+      );
+      final anime = await _allItems(
+        token,
+        'anime',
+        status: 'watching',
+        query: q,
+      );
 
       for (final item in shows) {
         await _markShowEpisodes(item);
@@ -1102,12 +1193,21 @@ class SimklService {
         await _markAnimeEpisodes(item);
       }
 
-      final candidates = <({Map<String, dynamic> item, bool anime, DateTime? at})>[
-        for (final item in shows)
-          (item: item, anime: false, at: _parseSimklTime(item['last_watched_at'])),
-        for (final item in anime)
-          (item: item, anime: true, at: _parseSimklTime(item['last_watched_at'])),
-      ];
+      final candidates =
+          <({Map<String, dynamic> item, bool anime, DateTime? at})>[
+            for (final item in shows)
+              (
+                item: item,
+                anime: false,
+                at: _parseSimklTime(item['last_watched_at']),
+              ),
+            for (final item in anime)
+              (
+                item: item,
+                anime: true,
+                at: _parseSimklTime(item['last_watched_at']),
+              ),
+          ];
       candidates.sort((a, b) {
         final am = a.at?.millisecondsSinceEpoch ?? 0;
         final bm = b.at?.millisecondsSinceEpoch ?? 0;
@@ -1159,17 +1259,23 @@ class SimklService {
 
       shows.add({
         'ids': {'tmdb': entry.key},
-        'seasons': seasonEps.entries.map((se) => {
-          'number': se.key,
-          'episodes': se.value.map((e) => {'number': e}).toList(),
-        }).toList(),
+        'seasons': seasonEps.entries
+            .map(
+              (se) => {
+                'number': se.key,
+                'episodes': se.value.map((e) => {'number': e}).toList(),
+              },
+            )
+            .toList(),
       });
       exported += entry.value.length;
     }
 
     if (shows.isEmpty) return 0;
     final ok = await addToHistory(shows: shows);
-    debugPrint('[Simkl] Exported $exported watched episodes: ${ok ? 'success' : 'failed'}');
+    debugPrint(
+      '[Simkl] Exported $exported watched episodes: ${ok ? 'success' : 'failed'}',
+    );
     return ok ? exported : 0;
   }
 
@@ -1190,15 +1296,15 @@ class SimklService {
   // ═══════════════════════════════════════════════════════════════════════
 
   Map<String, String> get _publicHeaders => {
-        'Content-Type': 'application/json',
-        'simkl-api-key': _clientId,
-      };
+    'Content-Type': 'application/json',
+    'simkl-api-key': _clientId,
+  };
 
   Map<String, String> _authHeaders(String token) => {
-        'Content-Type': 'application/json',
-        'simkl-api-key': _clientId,
-        'Authorization': 'Bearer $token',
-      };
+    'Content-Type': 'application/json',
+    'simkl-api-key': _clientId,
+    'Authorization': 'Bearer $token',
+  };
 
   int? _asInt(dynamic v) {
     if (v == null) return null;
@@ -1245,7 +1351,10 @@ class SimklService {
     if (code == null || code.isEmpty) return null;
     final se = RegExp(r'^S(\d+)E(\d+)$', caseSensitive: false).firstMatch(code);
     if (se != null) {
-      return (season: int.parse(se.group(1)!), episode: int.parse(se.group(2)!));
+      return (
+        season: int.parse(se.group(1)!),
+        episode: int.parse(se.group(2)!),
+      );
     }
     final ep = RegExp(r'^E(\d+)$', caseSensitive: false).firstMatch(code);
     if (ep != null) {
@@ -1298,12 +1407,19 @@ class SimklService {
       final n = _asInt(item['watched_episodes_count']) ?? 0;
       rows = [
         for (var i = 1; i <= n; i++)
-          (season: 1, episode: i, watchedAt: item['last_watched_at']?.toString()),
+          (
+            season: 1,
+            episode: i,
+            watchedAt: item['last_watched_at']?.toString(),
+          ),
       ];
     }
     for (final row in rows) {
-      final already =
-          await EpisodeWatchedService().isWatched(tmdbId, row.season, row.episode);
+      final already = await EpisodeWatchedService().isWatched(
+        tmdbId,
+        row.season,
+        row.episode,
+      );
       if (already) continue;
       await EpisodeWatchedService().setWatchedLocalWithTimestamp(
         tmdbId,
@@ -1326,7 +1442,11 @@ class SimklService {
       final n = _asInt(item['watched_episodes_count']) ?? 0;
       rows = [
         for (var i = 1; i <= n; i++)
-          (season: 1, episode: i, watchedAt: item['last_watched_at']?.toString()),
+          (
+            season: 1,
+            episode: i,
+            watchedAt: item['last_watched_at']?.toString(),
+          ),
       ];
     }
     for (final row in rows) {
@@ -1401,7 +1521,10 @@ class SimklService {
     return imported > 0 ? 1 : 0;
   }
 
-  Future<Map<String, dynamic>> _fetchTmdbInfo(int tmdbId, String mediaType) async {
+  Future<Map<String, dynamic>> _fetchTmdbInfo(
+    int tmdbId,
+    String mediaType,
+  ) async {
     try {
       final type = mediaType == 'tv' ? 'tv' : 'movie';
       final raw = await runTmdbGetJson('$type/$tmdbId');
@@ -1410,7 +1533,9 @@ class SimklService {
         final poster = data['poster_path']?.toString() ?? '';
         final backdrop = data['backdrop_path']?.toString() ?? '';
         var runtimeMs = 6000000;
-        if (type == 'movie' && data['runtime'] is int && (data['runtime'] as int) > 0) {
+        if (type == 'movie' &&
+            data['runtime'] is int &&
+            (data['runtime'] as int) > 0) {
           runtimeMs = (data['runtime'] as int) * 60000;
         } else if (type == 'tv') {
           final epRuntimes = data['episode_run_time'] as List?;
@@ -1434,8 +1559,9 @@ class SimklService {
   ) async {
     var poster = _simklPosterUrl(media['poster']?.toString());
     final runtimeMin = _asInt(media['runtime']);
-    var durationMs =
-        (runtimeMin != null && runtimeMin > 0) ? runtimeMin * 60000 : 0;
+    var durationMs = (runtimeMin != null && runtimeMin > 0)
+        ? runtimeMin * 60000
+        : 0;
     var backdrop = '';
 
     if (poster.isEmpty || durationMs <= 0) {
@@ -1480,37 +1606,37 @@ class SimklService {
     double progress = 0,
   }) async {
     if (tmdbId <= 0) return false;
-    if (mediaType != 'movie' &&
-        mediaType != 'tv' &&
-        mediaType != 'series') {
+    if (mediaType != 'movie' && mediaType != 'tv' && mediaType != 'series') {
       return false;
     }
     final token = await _secureRead(_keyAccessToken);
     if (token == null) return false;
 
     final pct = progress.clamp(0.0, 100.0);
-    final body = <String, dynamic>{
-      'progress': (pct * 100).round() / 100.0,
-    };
-    final isShow = (mediaType == 'tv' || mediaType == 'series') &&
+    final body = <String, dynamic>{'progress': (pct * 100).round() / 100.0};
+    final isShow =
+        (mediaType == 'tv' || mediaType == 'series') &&
         season != null &&
         episode != null;
     if (isShow) {
       body['show'] = {
-        'ids': {'tmdb': tmdbId}
+        'ids': {'tmdb': tmdbId},
       };
-      body['episode'] = {
-        'season': season,
-        'number': episode,
-      };
+      body['episode'] = {'season': season, 'number': episode};
     } else {
       body['movie'] = {
-        'ids': {'tmdb': tmdbId}
+        'ids': {'tmdb': tmdbId},
       };
     }
 
     try {
-      final resp = await engineHttp('POST', '$_baseUrl/scrobble/$action', headers: _authHeaders(token), body: json.encode(body), maxRetries: 0);
+      final resp = await engineHttp(
+        'POST',
+        '$_baseUrl/scrobble/$action',
+        headers: _authHeaders(token),
+        body: json.encode(body),
+        maxRetries: 0,
+      );
       _handleUnauthorized(resp.status);
       debugPrint(
         '[Simkl] Scrobble $action (tmdb:$tmdbId progress:${body['progress']}): ${resp.status}',
