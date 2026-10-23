@@ -38,39 +38,26 @@ enum BuiltInPlayerEngine {
     return forPlatformProfile(PlatformProfile.phone);
   }
 
-  /// Android phone/TV → ExoPlayer. Desktop → MediaKit (OS-specific IPTV
-  /// defaults live in [defaultForContext]).
-  static BuiltInPlayerEngine forPlatformProfile(PlatformProfile profile) {
-    return switch (profile) {
-      PlatformProfile.desktop => mediaKit,
-      PlatformProfile.phone || PlatformProfile.androidTv => exoPlayer,
-    };
-  }
+  /// All profiles → MediaKit (Exo / AVPlayer / VLC stay selectable where available).
+  static BuiltInPlayerEngine forPlatformProfile(PlatformProfile _) => mediaKit;
 
-  /// Early UI paint before profile/settings hydrate (Android-biased).
-  static BuiltInPlayerEngine platformDefault() => exoPlayer;
+  /// Early UI paint before profile/settings hydrate.
+  static BuiltInPlayerEngine platformDefault() => mediaKit;
 
   /// Per-surface default when no KV value exists.
   static BuiltInPlayerEngine defaultForContext(
-    BuiltInPlayerContext context, {
+    BuiltInPlayerContext _, {
     PlatformProfile profile = PlatformProfile.phone,
   }) {
-    if (context == BuiltInPlayerContext.iptv &&
-        profile == PlatformProfile.desktop &&
-        !kIsWeb) {
-      if (Platform.isMacOS) return avPlayer;
-      if (Platform.isWindows) return vlc;
-      if (Platform.isLinux) return vlc;
-    }
     return forPlatformProfile(profile);
   }
 
   String get displayName => switch (this) {
-        BuiltInPlayerEngine.mediaKit => 'MediaKit (libmpv)',
-        BuiltInPlayerEngine.exoPlayer => 'ExoPlayer (Media3)',
-        BuiltInPlayerEngine.avPlayer => 'AVPlayer',
-        BuiltInPlayerEngine.vlc => 'VLC (libVLC)',
-      };
+    BuiltInPlayerEngine.mediaKit => 'MediaKit (libmpv)',
+    BuiltInPlayerEngine.exoPlayer => 'ExoPlayer (Media3)',
+    BuiltInPlayerEngine.avPlayer => 'AVPlayer',
+    BuiltInPlayerEngine.vlc => 'VLC (libVLC)',
+  };
 
   /// Whether this engine can run on the current OS (compile-time platforms).
   bool get isAvailableOnCurrentPlatform {
@@ -97,23 +84,17 @@ List<BuiltInPlayerEngine> get builtInPlayerEngineOptionsForUi {
     return const [BuiltInPlayerEngine.mediaKit];
   }
   if (Platform.isAndroid) {
-    return const [
-      BuiltInPlayerEngine.exoPlayer,
-      BuiltInPlayerEngine.mediaKit,
-    ];
+    return const [BuiltInPlayerEngine.mediaKit, BuiltInPlayerEngine.exoPlayer];
   }
   if (Platform.isMacOS) {
     return const [
-      BuiltInPlayerEngine.avPlayer,
       BuiltInPlayerEngine.mediaKit,
+      BuiltInPlayerEngine.avPlayer,
       BuiltInPlayerEngine.vlc,
     ];
   }
   if (Platform.isWindows || Platform.isLinux) {
-    return const [
-      BuiltInPlayerEngine.vlc,
-      BuiltInPlayerEngine.mediaKit,
-    ];
+    return const [BuiltInPlayerEngine.mediaKit, BuiltInPlayerEngine.vlc];
   }
   return const [BuiltInPlayerEngine.mediaKit];
 }
@@ -121,9 +102,5 @@ List<BuiltInPlayerEngine> get builtInPlayerEngineOptionsForUi {
 /// Preferred IPTV live engine for an HLS URL on this OS (before availability
 /// probes). Callers that have a saved engine must use that instead.
 BuiltInPlayerEngine preferredIptvHlsEngine() {
-  if (kIsWeb) return BuiltInPlayerEngine.mediaKit;
-  if (Platform.isAndroid) return BuiltInPlayerEngine.exoPlayer;
-  if (Platform.isMacOS) return BuiltInPlayerEngine.avPlayer;
-  if (Platform.isWindows || Platform.isLinux) return BuiltInPlayerEngine.vlc;
   return BuiltInPlayerEngine.mediaKit;
 }

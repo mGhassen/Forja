@@ -46,66 +46,57 @@ void main() {
     expect(await service.getExternalPlayer(), 'Built-in Player');
     expect(
       await service.getBuiltInPlayerEngine(),
-      BuiltInPlayerEngine.exoPlayer,
+      BuiltInPlayerEngine.mediaKit,
     );
-    expect(await service.getSubSize(), 52);
+    expect(await service.getSubSize(), 36);
+    expect(await service.getSubBgOpacity(), 0);
     expect(await service.getSubBottomPadding(), 48);
     expect(await service.getTorrentDiskCacheGb(), 1);
-      expect(await service.isPlaySourceWebstreamingEnabled(), isFalse);
-      expect(await service.isPlaySourceTorrentEnabled(), isFalse);
-      expect(await service.isPlaySourceStremioEnabled(), isFalse);
-      expect(await service.isPlaySourceNuvioEnabled(), isFalse);
-      expect(await service.isPlaySourceEngineEnabled(), isTrue);
-      expect(await service.isPlaySourceEngineAutoStartEnabled(), isTrue);
+    expect(await service.isPlaySourceWebstreamingEnabled(), isFalse);
+    expect(await service.isPlaySourceTorrentEnabled(), isFalse);
+    expect(await service.isPlaySourceStremioEnabled(), isFalse);
+    expect(await service.isPlaySourceNuvioEnabled(), isFalse);
+    expect(await service.isPlaySourceEngineEnabled(), isTrue);
+    expect(await service.isPlaySourceEngineAutoStartEnabled(), isTrue);
   });
 
-  test(
-    'ATV unset IPTV engine stays Exo when VOD is MediaKit; Live stays Exo',
-    () async {
-      addTearDown(() {
-        SettingsService.configurePlatformProfile(PlatformProfile.phone);
-      });
-      SettingsService.configurePlatformProfile(PlatformProfile.androidTv);
-      final service = SettingsService();
-      // Mark Exo-default migration done so an explicit MediaKit pick sticks.
-      await service.ensurePlatformDefaultsSeeded(PlatformProfile.androidTv);
-      await service.setBuiltInPlayerEngine(
-        BuiltInPlayerEngine.mediaKit,
-        context: BuiltInPlayerContext.vod,
-      );
-      expect(
-        await service.getBuiltInPlayerEngine(
-          context: BuiltInPlayerContext.vod,
-        ),
-        BuiltInPlayerEngine.mediaKit,
-      );
-      expect(
-        await service.getBuiltInPlayerEngine(
-          context: BuiltInPlayerContext.iptv,
-        ),
-        BuiltInPlayerEngine.exoPlayer,
-      );
-      expect(
-        await service.getBuiltInPlayerEngine(
-          context: BuiltInPlayerContext.live,
-        ),
-        BuiltInPlayerEngine.exoPlayer,
-      );
-    },
-  );
+  test('ATV unset IPTV/Live default MediaKit when VOD is Exo', () async {
+    addTearDown(() {
+      SettingsService.configurePlatformProfile(PlatformProfile.phone);
+    });
+    SettingsService.configurePlatformProfile(PlatformProfile.androidTv);
+    final service = SettingsService();
+    await service.ensurePlatformDefaultsSeeded(PlatformProfile.androidTv);
+    await service.setBuiltInPlayerEngine(
+      BuiltInPlayerEngine.exoPlayer,
+      context: BuiltInPlayerContext.vod,
+    );
+    expect(
+      await service.getBuiltInPlayerEngine(context: BuiltInPlayerContext.vod),
+      BuiltInPlayerEngine.exoPlayer,
+    );
+    expect(
+      await service.getBuiltInPlayerEngine(context: BuiltInPlayerContext.iptv),
+      BuiltInPlayerEngine.mediaKit,
+    );
+    expect(
+      await service.getBuiltInPlayerEngine(context: BuiltInPlayerContext.live),
+      BuiltInPlayerEngine.mediaKit,
+    );
+  });
 
-  test('legacy MediaKit VOD/IPTV/Live migrate once to Exo default', () async {
+  test('legacy Exo VOD/IPTV/Live migrate once to MediaKit default', () async {
     await kvSetString(
       BuiltInPlayerContext.vod.storageKey,
-      BuiltInPlayerEngine.mediaKit.storageKey,
+      BuiltInPlayerEngine.exoPlayer.storageKey,
     );
     await kvSetString(
       BuiltInPlayerContext.iptv.storageKey,
-      BuiltInPlayerEngine.mediaKit.storageKey,
+      BuiltInPlayerEngine.exoPlayer.storageKey,
     );
     await kvSetString(
       BuiltInPlayerContext.live.storageKey,
-      BuiltInPlayerEngine.mediaKit.storageKey,
+      BuiltInPlayerEngine.exoPlayer.storageKey,
     );
     // Pretend an older install already seeded platform defaults.
     await kvSetString('platform_defaults_seeded_v1', 'androidTv');
@@ -115,63 +106,52 @@ void main() {
     await service.ensurePlatformDefaultsSeeded(PlatformProfile.androidTv);
 
     expect(
-      await service.getBuiltInPlayerEngine(
-        context: BuiltInPlayerContext.vod,
-      ),
-      BuiltInPlayerEngine.exoPlayer,
+      await service.getBuiltInPlayerEngine(context: BuiltInPlayerContext.vod),
+      BuiltInPlayerEngine.mediaKit,
     );
     expect(
-      await service.getBuiltInPlayerEngine(
-        context: BuiltInPlayerContext.iptv,
-      ),
-      BuiltInPlayerEngine.exoPlayer,
+      await service.getBuiltInPlayerEngine(context: BuiltInPlayerContext.iptv),
+      BuiltInPlayerEngine.mediaKit,
     );
     expect(
-      await service.getBuiltInPlayerEngine(
-        context: BuiltInPlayerContext.live,
-      ),
-      BuiltInPlayerEngine.exoPlayer,
+      await service.getBuiltInPlayerEngine(context: BuiltInPlayerContext.live),
+      BuiltInPlayerEngine.mediaKit,
     );
 
     await service.setBuiltInPlayerEngine(
-      BuiltInPlayerEngine.mediaKit,
+      BuiltInPlayerEngine.exoPlayer,
       context: BuiltInPlayerContext.vod,
     );
     await service.ensurePlatformDefaultsSeeded(PlatformProfile.androidTv);
     expect(
-      await service.getBuiltInPlayerEngine(
-        context: BuiltInPlayerContext.vod,
-      ),
-      BuiltInPlayerEngine.mediaKit,
+      await service.getBuiltInPlayerEngine(context: BuiltInPlayerContext.vod),
+      BuiltInPlayerEngine.exoPlayer,
     );
   });
 
-  test(
-    'Android TV play sources honor stored prefs',
-    () async {
-      addTearDown(() {
-        PlatformPlayback.clearOverride();
-        SettingsService.configurePlatformProfile(PlatformProfile.phone);
-      });
-      PlatformPlayback.override = PlaybackProfile.androidTv;
-      SettingsService.configurePlatformProfile(PlatformProfile.androidTv);
+  test('Android TV play sources honor stored prefs', () async {
+    addTearDown(() {
+      PlatformPlayback.clearOverride();
+      SettingsService.configurePlatformProfile(PlatformProfile.phone);
+    });
+    PlatformPlayback.override = PlaybackProfile.androidTv;
+    SettingsService.configurePlatformProfile(PlatformProfile.androidTv);
 
-      final service = SettingsService();
-      await service.setPlaySourceTorrentEnabled(true);
-      await service.setPlaySourceStremioEnabled(true);
-      await service.setPlaySourceNuvioEnabled(true);
+    final service = SettingsService();
+    await service.setPlaySourceTorrentEnabled(true);
+    await service.setPlaySourceStremioEnabled(true);
+    await service.setPlaySourceNuvioEnabled(true);
 
-      expect(await service.isPlaySourceTorrentStored(), isTrue);
-      expect(await service.isPlaySourceStremioStored(), isTrue);
-      expect(await service.isPlaySourceNuvioStored(), isTrue);
-      expect(await service.isPlaySourceTorrentEnabled(), isTrue);
-      expect(await service.isPlaySourceStremioEnabled(), isTrue);
-      expect(await service.isPlaySourceNuvioEnabled(), isTrue);
-      expect(PlatformPlayback.capabilities.playSourceTorrent, isTrue);
-      expect(PlatformPlayback.capabilities.playSourceStremio, isTrue);
-      expect(PlatformPlayback.capabilities.playSourceNuvio, isTrue);
-    },
-  );
+    expect(await service.isPlaySourceTorrentStored(), isTrue);
+    expect(await service.isPlaySourceStremioStored(), isTrue);
+    expect(await service.isPlaySourceNuvioStored(), isTrue);
+    expect(await service.isPlaySourceTorrentEnabled(), isTrue);
+    expect(await service.isPlaySourceStremioEnabled(), isTrue);
+    expect(await service.isPlaySourceNuvioEnabled(), isTrue);
+    expect(PlatformPlayback.capabilities.playSourceTorrent, isTrue);
+    expect(PlatformPlayback.capabilities.playSourceStremio, isTrue);
+    expect(PlatformPlayback.capabilities.playSourceNuvio, isTrue);
+  });
 
   test('P2P acknowledgement defaults off and persists', () async {
     final service = SettingsService();
@@ -209,28 +189,25 @@ void main() {
     expect(await service.getPlayInBackground(), isFalse);
   });
 
-  test(
-    'ATV catalog play sources migration enables Forja only',
-    () async {
-      addTearDown(() {
-        SettingsService.configurePlatformProfile(PlatformProfile.phone);
-      });
-      await kvSetBool('play_source_torrent_enabled', false);
-      await kvSetBool('play_source_stremio_enabled', false);
-      await kvSetBool('play_source_nuvio_enabled', false);
-      await kvSetBool('play_source_engine_enabled', false);
-      await kvSetString('platform_defaults_seeded_v1', 'androidTv');
-      SettingsService.configurePlatformProfile(PlatformProfile.androidTv);
+  test('ATV catalog play sources migration enables Forja only', () async {
+    addTearDown(() {
+      SettingsService.configurePlatformProfile(PlatformProfile.phone);
+    });
+    await kvSetBool('play_source_torrent_enabled', false);
+    await kvSetBool('play_source_stremio_enabled', false);
+    await kvSetBool('play_source_nuvio_enabled', false);
+    await kvSetBool('play_source_engine_enabled', false);
+    await kvSetString('platform_defaults_seeded_v1', 'androidTv');
+    SettingsService.configurePlatformProfile(PlatformProfile.androidTv);
 
-      final service = SettingsService();
-      await service.ensurePlatformDefaultsSeeded(PlatformProfile.androidTv);
+    final service = SettingsService();
+    await service.ensurePlatformDefaultsSeeded(PlatformProfile.androidTv);
 
-      expect(await service.isPlaySourceTorrentEnabled(), isFalse);
-      expect(await service.isPlaySourceStremioEnabled(), isFalse);
-      expect(await service.isPlaySourceNuvioEnabled(), isFalse);
-      expect(await service.isPlaySourceEngineEnabled(), isTrue);
-    },
-  );
+    expect(await service.isPlaySourceTorrentEnabled(), isFalse);
+    expect(await service.isPlaySourceStremioEnabled(), isFalse);
+    expect(await service.isPlaySourceNuvioEnabled(), isFalse);
+    expect(await service.isPlaySourceEngineEnabled(), isTrue);
+  });
 
   test(
     'ATV resets cloud-polluted play_in_background and always pauses',
@@ -289,10 +266,7 @@ void main() {
   test(
     'legacy prefs with opaque hub ids are left alone (no pack rewrite)',
     () async {
-      await kvSetStringList('navbar_config', const [
-        'home',
-        'lists',
-      ]);
+      await kvSetStringList('navbar_config', const ['home', 'lists']);
       await kvSetStringList(
         'navbar_known_ids',
         List.from(SettingsService.allNavIds),
@@ -318,40 +292,43 @@ void main() {
     },
   );
 
-  test('Android TV legacy nav keeps opaque hub ids (no pack rewrite)', () async {
-    await kvSetStringList('navbar_config', const [
-      'home',
-      'search',
-      'anime',
-      'asian_drama',
-      'iptv',
-      'live_sports',
-      'lists',
-    ]);
-    await kvSetStringList(
-      'navbar_known_ids',
-      List.from(SettingsService.allNavIds),
-    );
-    await kvSetString('navbar_shell_080', '1');
-    await kvSetString('navbar_shell_081', '1');
-    await kvSetString('navbar_shell_084', '1');
-    await kvSetString('navbar_shell_085', '1');
-    await kvSetString('navbar_shell_086', '1');
-    await kvSetString('navbar_shell_087', '1');
+  test(
+    'Android TV legacy nav keeps opaque hub ids (no pack rewrite)',
+    () async {
+      await kvSetStringList('navbar_config', const [
+        'home',
+        'search',
+        'anime',
+        'asian_drama',
+        'iptv',
+        'live_sports',
+        'lists',
+      ]);
+      await kvSetStringList(
+        'navbar_known_ids',
+        List.from(SettingsService.allNavIds),
+      );
+      await kvSetString('navbar_shell_080', '1');
+      await kvSetString('navbar_shell_081', '1');
+      await kvSetString('navbar_shell_084', '1');
+      await kvSetString('navbar_shell_085', '1');
+      await kvSetString('navbar_shell_086', '1');
+      await kvSetString('navbar_shell_087', '1');
 
-    SettingsService.configurePlatformProfile(PlatformProfile.androidTv);
-    final service = SettingsService();
-    final nav = await service.getNavbarConfig();
+      SettingsService.configurePlatformProfile(PlatformProfile.androidTv);
+      final service = SettingsService();
+      final nav = await service.getNavbarConfig();
 
-    expect(nav, [
-      'home',
-      'anime',
-      'asian_drama',
-      'iptv',
-      'live_sports',
-      'lists',
-    ]);
-  });
+      expect(nav, [
+        'home',
+        'anime',
+        'asian_drama',
+        'iptv',
+        'live_sports',
+        'lists',
+      ]);
+    },
+  );
 
   test('Android TV custom nav drops archived search id', () async {
     await kvSetStringList('navbar_config', const ['home', 'iptv', 'search']);
@@ -514,40 +491,10 @@ void main() {
     },
   );
 
-  test('desktop legacy search-first nav migrates to pack-seeded default', () async {
-    await kvSetStringList('navbar_config', const ['search', 'home', 'lists']);
-    await kvSetStringList(
-      'navbar_known_ids',
-      List.from(SettingsService.allNavIds),
-    );
-    await kvSetString('navbar_shell_080', '1');
-    await kvSetString('navbar_shell_081', '1');
-    await kvSetString('navbar_shell_084', '1');
-    await kvSetString('navbar_shell_085', '1');
-    await kvSetString('navbar_shell_086', '1');
-
-    SettingsService.configurePlatformProfile(PlatformProfile.desktop);
-    final service = SettingsService();
-    final nav = await service.getNavbarConfig();
-
-    // Pack-seeded rewrite removed — opaque prefs stay (search archived-filtered).
-      expect(nav, isNot(contains('search')));
-      expect(nav, contains('home'));
-      expect(nav, contains('lists'));
-  });
-
   test(
-    'shell 091 migrates previous default that included Search',
+    'desktop legacy search-first nav migrates to pack-seeded default',
     () async {
-      await kvSetStringList('navbar_config', const [
-        'search',
-        'home',
-        'asian_drama',
-        'anime',
-        'iptv',
-        'live_sports',
-        'lists',
-      ]);
+      await kvSetStringList('navbar_config', const ['search', 'home', 'lists']);
       await kvSetStringList(
         'navbar_known_ids',
         List.from(SettingsService.allNavIds),
@@ -557,21 +504,50 @@ void main() {
       await kvSetString('navbar_shell_084', '1');
       await kvSetString('navbar_shell_085', '1');
       await kvSetString('navbar_shell_086', '1');
-      await kvSetString('navbar_shell_087', '1');
-      await kvSetString('navbar_shell_088', '1');
-      await kvSetString('navbar_shell_089', '1');
-      await kvSetString('navbar_shell_090', '1');
 
-      final nav = await SettingsService().getNavbarConfig();
+      SettingsService.configurePlatformProfile(PlatformProfile.desktop);
+      final service = SettingsService();
+      final nav = await service.getNavbarConfig();
 
       // Pack-seeded rewrite removed — opaque prefs stay (search archived-filtered).
       expect(nav, isNot(contains('search')));
       expect(nav, contains('home'));
       expect(nav, contains('lists'));
-      expect(nav, isNot(contains('search')));
     },
   );
 
+  test('shell 091 migrates previous default that included Search', () async {
+    await kvSetStringList('navbar_config', const [
+      'search',
+      'home',
+      'asian_drama',
+      'anime',
+      'iptv',
+      'live_sports',
+      'lists',
+    ]);
+    await kvSetStringList(
+      'navbar_known_ids',
+      List.from(SettingsService.allNavIds),
+    );
+    await kvSetString('navbar_shell_080', '1');
+    await kvSetString('navbar_shell_081', '1');
+    await kvSetString('navbar_shell_084', '1');
+    await kvSetString('navbar_shell_085', '1');
+    await kvSetString('navbar_shell_086', '1');
+    await kvSetString('navbar_shell_087', '1');
+    await kvSetString('navbar_shell_088', '1');
+    await kvSetString('navbar_shell_089', '1');
+    await kvSetString('navbar_shell_090', '1');
+
+    final nav = await SettingsService().getNavbarConfig();
+
+    // Pack-seeded rewrite removed — opaque prefs stay (search archived-filtered).
+    expect(nav, isNot(contains('search')));
+    expect(nav, contains('home'));
+    expect(nav, contains('lists'));
+    expect(nav, isNot(contains('search')));
+  });
 
   test('default nav tab persists and resolves startup index', () async {
     final service = SettingsService();
@@ -598,10 +574,7 @@ void main() {
     expect(SettingsService.normalizeIptvLiveBufferSecs(25), 0);
     expect(SettingsService.normalizeIptvLiveBufferSecs(60), 0);
 
-    expect(
-      SettingsService.iptvLiveBufferSecsLabel(0),
-      'Auto (by resolution)',
-    );
+    expect(SettingsService.iptvLiveBufferSecsLabel(0), 'Auto (by resolution)');
     expect(SettingsService.iptvLiveBufferSecsLabel(30), '30 seconds');
 
     final p15 = SettingsService.iptvLiveBufferProfileForSecs(15);
@@ -651,13 +624,7 @@ void main() {
     ]);
     await service.setNavbarConfig(
       const ['home', 'asian_drama', 'iptv', 'lists'],
-      tabOrder: const [
-        'home',
-        'asian_drama',
-        'anime',
-        'iptv',
-        'lists',
-      ],
+      tabOrder: const ['home', 'asian_drama', 'anime', 'iptv', 'lists'],
     );
 
     // Features toggle ON — restore saved slot (not pack activate).
@@ -685,14 +652,7 @@ void main() {
     ]);
     await service.setNavbarConfig(
       const ['home', 'asian_drama', 'iptv', 'lists'],
-      tabOrder: const [
-        'home',
-        'kids',
-        'asian_drama',
-        'anime',
-        'iptv',
-        'lists',
-      ],
+      tabOrder: const ['home', 'kids', 'asian_drama', 'anime', 'iptv', 'lists'],
     );
 
     // Pack ON — ignore stale mid-list slot; navbar last.
@@ -705,27 +665,13 @@ void main() {
       'lists',
       'kids',
     ]);
-    const hubs = {
-      'home',
-      'asian_drama',
-      'anime',
-      'iptv',
-      'lists',
-      'kids',
-    };
+    const hubs = {'home', 'asian_drama', 'anime', 'iptv', 'lists', 'kids'};
     expect(
       [
         for (final id in await service.getNavbarTabOrder())
           if (hubs.contains(id)) id,
       ],
-      [
-        'home',
-        'asian_drama',
-        'anime',
-        'iptv',
-        'lists',
-        'kids',
-      ],
+      ['home', 'asian_drama', 'anime', 'iptv', 'lists', 'kids'],
     );
   });
 
@@ -757,12 +703,7 @@ void main() {
     await service.setNavbarConfig(const ['iptv']);
 
     await service.ensureActiveDefaultHubsVisible(
-      activeHubIds: const {
-        'home',
-        'anime',
-        'asian_drama',
-        'lists',
-      },
+      activeHubIds: const {'home', 'anime', 'asian_drama', 'lists'},
     );
 
     expect(await service.getNavbarConfig(), [
@@ -774,37 +715,42 @@ void main() {
     ]);
   });
 
-  test('ensureActiveDefaultHubsVisible no-op when a hub already visible',
-      () async {
-    final service = SettingsService();
-    await service.ensurePlatformDefaultsSeeded(PlatformProfile.phone);
-    await service.setNavbarConfig(const ['iptv', 'home']);
+  test(
+    'ensureActiveDefaultHubsVisible no-op when a hub already visible',
+    () async {
+      final service = SettingsService();
+      await service.ensurePlatformDefaultsSeeded(PlatformProfile.phone);
+      await service.setNavbarConfig(const ['iptv', 'home']);
 
-    await service.ensureActiveDefaultHubsVisible(
-      activeHubIds: const {'home', 'anime'},
-    );
+      await service.ensureActiveDefaultHubsVisible(
+        activeHubIds: const {'home', 'anime'},
+      );
 
-    expect(await service.getNavbarConfig(), ['iptv', 'home']);
-  });
+      expect(await service.getNavbarConfig(), ['iptv', 'home']);
+    },
+  );
 
-  test('ensureNavIdsKnown marks hubs known without inserting rail tabs', () async {
-    final service = SettingsService();
-    await service.ensurePlatformDefaultsSeeded(PlatformProfile.phone);
-    expect(await service.getNavbarConfig(), isEmpty);
+  test(
+    'ensureNavIdsKnown marks hubs known without inserting rail tabs',
+    () async {
+      final service = SettingsService();
+      await service.ensurePlatformDefaultsSeeded(PlatformProfile.phone);
+      expect(await service.getNavbarConfig(), isEmpty);
 
-    await service.ensureNavIdsKnown(
-      allHubIds: const ['hub_alpha', 'hub_beta'],
-    );
+      await service.ensureNavIdsKnown(
+        allHubIds: const ['hub_alpha', 'hub_beta'],
+      );
 
-    // Known-only — Features / pack-activate write visibleIds (RFC-086).
-    expect(await service.getNavbarConfig(), isEmpty);
+      // Known-only — Features / pack-activate write visibleIds (RFC-086).
+      expect(await service.getNavbarConfig(), isEmpty);
 
-    await service.setNavbarConfig(const ['hub_alpha']);
-    await service.ensureNavIdsKnown(
-      allHubIds: const ['hub_alpha', 'hub_beta'],
-    );
-    expect(await service.getNavbarConfig(), ['hub_alpha']);
-  });
+      await service.setNavbarConfig(const ['hub_alpha']);
+      await service.ensureNavIdsKnown(
+        allHubIds: const ['hub_alpha', 'hub_beta'],
+      );
+      expect(await service.getNavbarConfig(), ['hub_alpha']);
+    },
+  );
 
   test('ensureNavIdsKnown bumps navbar notifier when newly known', () async {
     final service = SettingsService();
@@ -815,30 +761,32 @@ void main() {
     expect(await service.getNavbarConfig(), isEmpty);
   });
 
-  test('syncActiveHubNavIds strips orphan hub tabs when known includes them',
-      () async {
-    final service = SettingsService();
-    await service.ensurePlatformDefaultsSeeded(PlatformProfile.phone);
-    await service.setNavbarConfig(const [
-      'home',
-      'anime',
-      'iptv',
-      'live_sports',
-    ]);
-    await service.setDefaultNavTab('home');
+  test(
+    'syncActiveHubNavIds strips orphan hub tabs when known includes them',
+    () async {
+      final service = SettingsService();
+      await service.ensurePlatformDefaultsSeeded(PlatformProfile.phone);
+      await service.setNavbarConfig(const [
+        'home',
+        'anime',
+        'iptv',
+        'live_sports',
+      ]);
+      await service.setDefaultNavTab('home');
 
-    // Empty pack index + empty cache: known = visible non-core orphans only.
-    await service.syncActiveHubNavIds(
-      activeHubIds: const {},
-      knownHubIds: const {'home', 'anime'},
-      allowEmptyActiveStrip: true,
-    );
+      // Empty pack index + empty cache: known = visible non-core orphans only.
+      await service.syncActiveHubNavIds(
+        activeHubIds: const {},
+        knownHubIds: const {'home', 'anime'},
+        allowEmptyActiveStrip: true,
+      );
 
-    // Hub orphans stripped; iptv (core) + live_sports (pack tab still in
-    // visible, not in knownHubIds) remain.
-    expect(await service.getNavbarConfig(), ['iptv', 'live_sports']);
-    expect(await service.getDefaultNavTab(), 'iptv');
-  });
+      // Hub orphans stripped; iptv (core) + live_sports (pack tab still in
+      // visible, not in knownHubIds) remain.
+      expect(await service.getNavbarConfig(), ['iptv', 'live_sports']);
+      expect(await service.getDefaultNavTab(), 'iptv');
+    },
+  );
 
   test('addon feature flags migrate from navbar visibleIds', () async {
     final service = SettingsService();
@@ -847,7 +795,9 @@ void main() {
     expect(await service.isAddonFeatureEnabled('iptv'), isTrue);
     // Live Sports is pack-only (RFC-093) — retired capability always false.
     expect(
-      await service.isAddonFeatureEnabled(SettingsService.liveSportsAddonFeatureId),
+      await service.isAddonFeatureEnabled(
+        SettingsService.liveSportsAddonFeatureId,
+      ),
       isFalse,
     );
     expect(await service.isAddonFeatureEnabled('live_sports'), isFalse);
@@ -865,6 +815,9 @@ void main() {
     ]);
 
     expect(results.last, containsAll(['iptv', 'live_sports']));
-    expect(await service.getNavbarConfig(), containsAll(['iptv', 'live_sports']));
+    expect(
+      await service.getNavbarConfig(),
+      containsAll(['iptv', 'live_sports']),
+    );
   });
 }

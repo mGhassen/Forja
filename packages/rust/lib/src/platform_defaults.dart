@@ -12,6 +12,7 @@ class PlatformDefaults {
     required this.externalPlayer,
     required this.builtInPlayerEngine,
     required this.subSize,
+    required this.subBgOpacity,
     required this.subBottomPadding,
     required this.iptvEpgEnabled,
     required this.playSourceTorrent,
@@ -28,6 +29,7 @@ class PlatformDefaults {
   final String externalPlayer;
   final BuiltInPlayerEngine builtInPlayerEngine;
   final double subSize;
+  final double subBgOpacity;
   final double subBottomPadding;
   final bool iptvEpgEnabled;
   final bool playSourceTorrent;
@@ -51,8 +53,9 @@ class PlatformDefaults {
       PlatformProfile.androidTv => const PlatformDefaults(
         visibleNavIds: androidTvNavIds,
         externalPlayer: 'Built-in Player',
-        builtInPlayerEngine: BuiltInPlayerEngine.exoPlayer,
-        subSize: 52,
+        builtInPlayerEngine: BuiltInPlayerEngine.mediaKit,
+        subSize: 36,
+        subBgOpacity: 0,
         subBottomPadding: 48,
         iptvEpgEnabled: true,
         playSourceTorrent: false,
@@ -69,6 +72,7 @@ class PlatformDefaults {
         externalPlayer: 'Built-in Player',
         builtInPlayerEngine: BuiltInPlayerEngine.mediaKit,
         subSize: 44,
+        subBgOpacity: 0.67,
         subBottomPadding: 24,
         iptvEpgEnabled: true,
         playSourceTorrent: false,
@@ -83,8 +87,9 @@ class PlatformDefaults {
       PlatformProfile.phone => const PlatformDefaults(
         visibleNavIds: phoneNavIds,
         externalPlayer: 'Built-in Player',
-        builtInPlayerEngine: BuiltInPlayerEngine.exoPlayer,
+        builtInPlayerEngine: BuiltInPlayerEngine.mediaKit,
         subSize: 24,
+        subBgOpacity: 0.67,
         subBottomPadding: 24,
         iptvEpgEnabled: true,
         playSourceTorrent: false,

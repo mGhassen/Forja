@@ -78,13 +78,17 @@ class SettingsService {
   static const String _externalPlayerKey = 'external_player';
   static const String _builtInPlayerEngineKey = 'built_in_player_engine';
 
-  /// One-shot: flip seeded/legacy VOD+IPTV Exo → MediaKit (superseded by Exo default).
+  /// One-shot: flip seeded/legacy VOD+IPTV Exo → MediaKit (v1; superseded then restored).
   static const String _builtInEngineMediaKitDefaultKey =
       'built_in_engine_mk_default_v1';
 
-  /// One-shot: flip Android MediaKit (or unset) → Exo on VOD / IPTV / Live.
+  /// One-shot: flip Android MediaKit (or unset) → Exo (retired — mark done, no flip).
   static const String _builtInEngineExoDefaultKey =
       'built_in_engine_exo_default_v1';
+
+  /// One-shot: flip Exo (or unset) → MediaKit on VOD / IPTV / Live.
+  static const String _builtInEngineMediaKitDefaultV2Key =
+      'built_in_engine_mk_default_v2';
   static const String _jackettBaseUrlKey = 'jackett_base_url';
   static const String _jackettApiKeyKey = 'jackett_api_key';
   static const String _prowlarrBaseUrlKey = 'prowlarr_base_url';
@@ -633,7 +637,7 @@ class SettingsService {
   Future<void> setSubColor(int v) async => kvSetInt(_subColorKey, v);
 
   Future<double> getSubBgOpacity() async =>
-      kvGetDouble(_subBgOpacityKey, fallback: 0.67);
+      kvGetDouble(_subBgOpacityKey, fallback: _defaults.subBgOpacity);
 
   Future<void> setSubBgOpacity(double v) async =>
       kvSetDouble(_subBgOpacityKey, v);
@@ -1402,33 +1406,34 @@ class SettingsService {
     );
   }
 
-  /// Old MediaKit-default migration — mark done so it never flips Exo → MK again.
+  /// Old MediaKit-default migration — mark done (v2 owns the flip).
   Future<void> _retireBuiltInEngineMediaKitDefaultMigration() async {
     if (await kvHasKey(_builtInEngineMediaKitDefaultKey)) return;
     await kvSetString(_builtInEngineMediaKitDefaultKey, '1');
   }
 
-  /// Android phone/TV: VOD, IPTV, and Live default to ExoPlayer. Flip stored
-  /// MediaKit (or leave unset → Exo via [defaultForContext]). Desktop skipped.
-  /// Users who re-pick MediaKit after this migration keep that choice.
-  Future<void> _migrateBuiltInEngineDefaultToExo() async {
+  /// Old Exo-default migration — mark done so it never flips MediaKit → Exo.
+  Future<void> _retireBuiltInEngineExoDefaultMigration() async {
     if (await kvHasKey(_builtInEngineExoDefaultKey)) return;
-    if (platformProfile == PlatformProfile.desktop) {
-      await kvSetString(_builtInEngineExoDefaultKey, '1');
-      return;
-    }
+    await kvSetString(_builtInEngineExoDefaultKey, '1');
+  }
+
+  /// VOD, IPTV, and Live default to MediaKit. Flip stored Exo (or unset) once.
+  /// Users who re-pick Exo / AVPlayer / VLC after this keep that choice.
+  Future<void> _migrateBuiltInEngineDefaultToMediaKit() async {
+    if (await kvHasKey(_builtInEngineMediaKitDefaultV2Key)) return;
     for (final ctx in BuiltInPlayerContext.values) {
       final raw = await kvGetString(ctx.storageKey);
       if (raw == null ||
           raw.isEmpty ||
-          raw == BuiltInPlayerEngine.mediaKit.storageKey) {
+          raw == BuiltInPlayerEngine.exoPlayer.storageKey) {
         await kvSetString(
           ctx.storageKey,
-          BuiltInPlayerEngine.exoPlayer.storageKey,
+          BuiltInPlayerEngine.mediaKit.storageKey,
         );
       }
     }
-    await kvSetString(_builtInEngineExoDefaultKey, '1');
+    await kvSetString(_builtInEngineMediaKitDefaultV2Key, '1');
   }
 
   Future<void> setBuiltInPlayerEngine(
@@ -1995,7 +2000,8 @@ class SettingsService {
     await ensureCanonicalSettingsMigrated();
     await _purgeRetiredWebstreamrSettings();
     await _retireBuiltInEngineMediaKitDefaultMigration();
-    await _migrateBuiltInEngineDefaultToExo();
+    await _retireBuiltInEngineExoDefaultMigration();
+    await _migrateBuiltInEngineDefaultToMediaKit();
     await _migratePlayInBackgroundDeviceLocal();
     await _migrateAtvCatalogPlaySources();
     if (await kvHasKey(_platformDefaultsSeededKey)) return;
@@ -2018,6 +2024,7 @@ class SettingsService {
         defaults.builtInPlayerEngine.storageKey,
       );
       await kvSetDouble(_subSizeKey, defaults.subSize);
+      await kvSetDouble(_subBgOpacityKey, defaults.subBgOpacity);
       await kvSetDouble(_subBottomPaddingKey, defaults.subBottomPadding);
       await kvSetBool(_iptvEpgEnabledKey, defaults.iptvEpgEnabled);
       await kvSetBool(_playSourceTorrentKey, defaults.playSourceTorrent);

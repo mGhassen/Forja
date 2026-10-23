@@ -14,7 +14,7 @@ Core playback preferences: which backends **Play** tries on the TMDB details scr
 
 - Player engine, audio, subtitles, auto next/skip, content warnings, background play — see rows under **Settings → Addons → Playback**
 - **Play sources** moved: **Direct torrent**, **Stremio**, and **Nuvio** toggles + P2P disclaimer → **Settings → Addons**; pack install → **Settings → Forja Packs** (Forja providers always on)
-- On **Android**, choose **Movies & series engine** — **ExoPlayer (Media3)** (default) or **MediaKit (libmpv)** — for Home, Search, Anime, Asian Drama, and **IPTV Movies/Series** (also changeable from the in-player **Player** menu). When the IPTV tab is visible, **IPTV engine** sets **live channels** only (independent of Movies). The **Live Sports** player defaults to **ExoPlayer** and remembers its own in-player choice. On **Android TV**, the in-player **Player** menu only lists those two engines (no external apps). Streams with a Widevine license (e.g. Shahid) always use ExoPlayer on Android.
+- On **Android**, choose **Movies & series engine** — **MediaKit (libmpv)** (default) or **ExoPlayer (Media3)** — for Home, Search, Anime, Asian Drama, and **IPTV Movies/Series** (also changeable from the in-player **Player** menu). When the IPTV tab is visible, **IPTV engine** sets **live channels** only (independent of Movies). The **Live Sports** player defaults to **MediaKit** and remembers its own in-player choice. On **Android TV**, the in-player **Player** menu only lists those two engines (no external apps). Streams with a Widevine license (e.g. Shahid) always use ExoPlayer on Android.
 - Set **Preferred audio language**
 - Set **Preferred subtitle language** (default **English**). In-stream mux subs are tried first, then online tracks. Pick **None** to start with subs off
 - Toggle **Avoid unsupported audio** (Atmos, TrueHD, 7.1)
@@ -43,7 +43,7 @@ Cache reset moved to **Settings → [Data & backup](cache-data.md)** (stream URL
 - **Green Play** (hero play icon) races Forja providers. Optional preferred list under **Addons** / **Forja Packs** → **Green Play** (search → add). Empty preferred = all enabled Forja plugins. Sources chips stay panel-only.
 - **Max stream quality** caps which sources the engine prefers when ranking (device probe still applies under Auto). Defaults to **4K** (top ladder rung). HLS Auto also uses that cap for start bitrate — Auto is a mid-high soft ceiling for a faster first frame. Lock a Quality chip in the player to force a specific variant.
 - External player is chosen per stream from the in-player **Player** menu on phone and desktop — playback always starts in the built-in player. **Android TV** has no external-app handoff from that menu
-- **Movies & series engine** / **IPTV engine** (Android only) are independent — desktop/iOS always use MediaKit; **ExoPlayer** is the Android default (MediaKit is optional). The **Live Sports** player defaults to **ExoPlayer** until you pick MediaKit from that player’s menu.
+- **Movies & series engine** / **IPTV engine** (Android only) are independent — **MediaKit** is the default on every surface (desktop, phone, Android TV); ExoPlayer stays available on Android. The **Live Sports** player defaults to **MediaKit** until you pick Exo from that player’s menu.
 
 ## Related
 
