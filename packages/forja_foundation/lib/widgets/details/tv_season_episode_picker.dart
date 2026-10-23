@@ -436,10 +436,7 @@ class _TvSeasonEpisodePickerState extends State<TvSeasonEpisodePicker> {
             // Remote: OK on the armed (selected) card plays it. The card is
             // the only focus target in the row, so a second OK must not
             // depend on a nested play node taking focus.
-            if (tvFocus &&
-                armed &&
-                selected &&
-                widget.onEpisodePlay != null) {
+            if (tvFocus && armed && selected && widget.onEpisodePlay != null) {
               widget.onEpisodePlay!(epNum);
               return;
             }
@@ -720,13 +717,13 @@ class _TvSeasonEpisodePickerState extends State<TvSeasonEpisodePicker> {
     // Secondary to the section title (desktop 14 → TV body ladder).
     final countFontSize = tvDensity ? ShellTokens.tvTypeSize(14) : 14.0;
 
-    final viewSelected =
-        _chipsView ? kEpisodeViewChips : kEpisodeViewCards;
+    final viewSelected = _chipsView ? kEpisodeViewChips : kEpisodeViewCards;
     final viewGroup = ViewButtonGroup(
       selectedId: viewSelected,
       onSelect: (id) {
-        final next =
-            episodeViewIsChips(id) ? kEpisodeViewChips : kEpisodeViewCards;
+        final next = episodeViewIsChips(id)
+            ? kEpisodeViewChips
+            : kEpisodeViewCards;
         if (next == widget.episodeView) return;
         widget.onEpisodeViewChanged?.call(next);
       },
@@ -942,7 +939,9 @@ class _EpisodeNumberChipState extends State<_EpisodeNumberChip> {
             : cinematic.borderSubtle;
         final labelColor = episodeDateColor(
           notShippedYet: widget.unaired,
-          normal: widget.selected || liveActive
+          normal: liveActive
+              ? ForjaShellColors.brandGreen
+              : widget.selected
               ? cinematic.textPrimary
               : cinematic.textSecondary,
         );
@@ -1229,11 +1228,13 @@ class _SeasonCardState extends State<_SeasonCard> {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
-                          color: Colors.white.withValues(
-                            alpha: widget.selected ? 1.0 : 0.85,
-                          ),
+                          color: active
+                              ? ForjaShellColors.brandGreen
+                              : Colors.white.withValues(
+                                  alpha: widget.selected ? 1.0 : 0.85,
+                                ),
                           fontSize: seasonFontSize,
-                          fontWeight: widget.selected
+                          fontWeight: widget.selected || active
                               ? FontWeight.w700
                               : FontWeight.w600,
                         ),
@@ -1420,7 +1421,8 @@ class _EpisodeCardState extends State<_EpisodeCard> {
     );
     final enabled = widget.onTap != null;
     final playEnabled = widget.onPlay != null;
-    final showPlayOverlay = !widget.dateNotShippedYet &&
+    final showPlayOverlay =
+        !widget.dateNotShippedYet &&
         (tvFocus
             ? (playEnabled || enabled) && (widget.armed || active)
             : (playEnabled || enabled) && (active || widget.selected));
@@ -1532,7 +1534,7 @@ class _EpisodeCardState extends State<_EpisodeCard> {
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
-                  color: Colors.white,
+                  color: active ? ForjaShellColors.brandGreen : Colors.white,
                   fontSize: titleFontSize,
                   fontWeight: FontWeight.w700,
                   height: 1.25,
@@ -1547,10 +1549,12 @@ class _EpisodeCardState extends State<_EpisodeCard> {
                   style: TextStyle(
                     color: episodeDateColor(
                       notShippedYet: widget.dateNotShippedYet,
-                      normal: Colors.white.withValues(alpha: 0.45),
+                      normal: active
+                          ? ForjaShellColors.brandGreen
+                          : Colors.white.withValues(alpha: 0.45),
                     ),
                     fontSize: metaFontSize,
-                    fontWeight: widget.dateNotShippedYet
+                    fontWeight: widget.dateNotShippedYet || active
                         ? FontWeight.w600
                         : FontWeight.w500,
                     height: 1.2,
@@ -1564,7 +1568,9 @@ class _EpisodeCardState extends State<_EpisodeCard> {
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.45),
+                    color: active
+                        ? ForjaShellColors.brandGreen
+                        : Colors.white.withValues(alpha: 0.45),
                     fontSize: metaFontSize,
                     height: 1.4,
                   ),
