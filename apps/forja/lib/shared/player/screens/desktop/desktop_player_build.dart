@@ -1,6 +1,10 @@
 part of 'desktop_player_screen.dart';
 
-mixin _DesktopPlayerBuild on ConsumerState<DesktopPlayerScreen>, WidgetsBindingObserver, WindowListener {
+mixin _DesktopPlayerBuild
+    on
+        ConsumerState<DesktopPlayerScreen>,
+        WidgetsBindingObserver,
+        WindowListener {
   _DesktopPlayerScreenState get _s => this as _DesktopPlayerScreenState;
 
   @override
@@ -41,7 +45,8 @@ mixin _DesktopPlayerBuild on ConsumerState<DesktopPlayerScreen>, WidgetsBindingO
     // button ([_exitPlayer]) - never a bare Navigator.pop (issue 059).
     final mini = InAppMiniPlayerController.instance.isActive;
     // Include enter-pending / released: float owns Player — never full-screen spinner.
-    final pipMode = _s._isPipMode ||
+    final pipMode =
+        _s._isPipMode ||
         _s._releasedForPip ||
         PipService.instance.isDesktopActive;
     if (!_s._playerReady && !pipMode) {
@@ -64,9 +69,7 @@ mixin _DesktopPlayerBuild on ConsumerState<DesktopPlayerScreen>, WidgetsBindingO
         if (!mini && !pipMode)
           const Positioned.fill(child: ColoredBox(color: Colors.black)),
         if (pipMode)
-          PipPlaceholder(
-            onExpand: () => unawaited(PipService.instance.leave()),
-          )
+          PipPlaceholder(onExpand: () => unawaited(PipService.instance.leave()))
         else
           ValueListenableBuilder<Size>(
             valueListenable: InAppMiniPlayerController.instance.size,
@@ -89,15 +92,15 @@ mixin _DesktopPlayerBuild on ConsumerState<DesktopPlayerScreen>, WidgetsBindingO
                     children: [
                       SizedBox.expand(
                         child: Video(
-                          key: _s._videoViewKey,
+                          key: ValueKey(
+                            'desktop-video-soft-${_s._hwDecMode.softTexture}',
+                          ),
                           controller: _s._controller,
                           controls: NoVideoControls,
                           fit: _s._videoFit,
                           fill: Colors.black,
                           subtitleViewConfiguration:
-                              const SubtitleViewConfiguration(
-                            visible: false,
-                          ),
+                              const SubtitleViewConfiguration(visible: false),
                         ),
                       ),
                       if (mini)
@@ -155,8 +158,9 @@ mixin _DesktopPlayerBuild on ConsumerState<DesktopPlayerScreen>, WidgetsBindingO
             stream: _s._player.stream.subtitle,
             initialData: _s._player.state.subtitle,
             builder: (context, snap) {
-              final text =
-                  formatPlayerSubtitleOverlayText(snap.data ?? const []);
+              final text = formatPlayerSubtitleOverlayText(
+                snap.data ?? const [],
+              );
               if (text.isEmpty) return const SizedBox.shrink();
               const refHeight = 720.0;
               final winH = MediaQuery.of(context).size.height;
@@ -221,9 +225,7 @@ mixin _DesktopPlayerBuild on ConsumerState<DesktopPlayerScreen>, WidgetsBindingO
         // MouseRegion, so maximize never fired. Window caption shows with the
         // controls.
         if (!mini && !pipMode)
-          DesktopWindowChrome.overlayDragStrip(
-            showCaption: _s._showControls,
-          ),
+          DesktopWindowChrome.overlayDragStrip(showCaption: _s._showControls),
       ],
     );
 
@@ -260,10 +262,10 @@ mixin _DesktopPlayerBuild on ConsumerState<DesktopPlayerScreen>, WidgetsBindingO
         (widget.episodes != null && widget.episodes!.isNotEmpty);
     final hasStreamPicker = _s._hasStreamPicker;
     final hasTorrentSources = _s._usesCatalogSourcesPanel;
-    final catalogSourceLines =
-        hasTorrentSources ? _s._catalogSourcesButtonLabels() : null;
-    final streamPickerLines =
-        hasStreamPicker ? _s._streamPickerLabels() : null;
+    final catalogSourceLines = hasTorrentSources
+        ? _s._catalogSourcesButtonLabels()
+        : null;
+    final streamPickerLines = hasStreamPicker ? _s._streamPickerLabels() : null;
     final playingOffline = isOfflineDownloadPlayUrl(
       _s._currentUrl ?? widget.mediaPath,
     );
@@ -311,7 +313,7 @@ mixin _DesktopPlayerBuild on ConsumerState<DesktopPlayerScreen>, WidgetsBindingO
               showPlayer: widget.onSwitchPlayer != null,
               onPlayer: widget.onSwitchPlayer != null
                   ? (anchorContext) =>
-                      unawaited(_s._showPlayerMenu(anchorContext))
+                        unawaited(_s._showPlayerMenu(anchorContext))
                   : null,
               showCast:
                   CastingService.instance.isAirPlayAvailable ||
@@ -333,7 +335,8 @@ mixin _DesktopPlayerBuild on ConsumerState<DesktopPlayerScreen>, WidgetsBindingO
                       _s._isPlayingNotifier.value = true;
                       _s._isBufferingNotifier.value = false;
                     },
-                    onEnded: (resumeAt) => unawaited(_s._resumeAfterCast(resumeAt)),
+                    onEnded: (resumeAt) =>
+                        unawaited(_s._resumeAfterCast(resumeAt)),
                     onPosition: (pos) {
                       if (_s._disposed || _s._lockSeekBarPosition) return;
                       _s._positionNotifier.value = pos;
@@ -375,7 +378,8 @@ mixin _DesktopPlayerBuild on ConsumerState<DesktopPlayerScreen>, WidgetsBindingO
                 _s._isBufferingNotifier,
               ]),
               builder: (context, _) {
-                final showHero = !_s._isPlayingNotifier.value ||
+                final showHero =
+                    !_s._isPlayingNotifier.value ||
                     _s._isBufferingNotifier.value;
                 return AnimatedOpacity(
                   opacity: showHero ? 1.0 : 0.0,
@@ -426,9 +430,7 @@ mixin _DesktopPlayerBuild on ConsumerState<DesktopPlayerScreen>, WidgetsBindingO
                             _s._positionNotifier.value -
                             const Duration(seconds: 10);
                         unawaited(
-                          _s._seekTo(
-                            pos < Duration.zero ? Duration.zero : pos,
-                          ),
+                          _s._seekTo(pos < Duration.zero ? Duration.zero : pos),
                         );
                         _s._onMouseMove();
                       },
@@ -484,7 +486,9 @@ mixin _DesktopPlayerBuild on ConsumerState<DesktopPlayerScreen>, WidgetsBindingO
                     alignment: Alignment.centerRight,
                     child: Padding(
                       // Lift above Skip Intro / Next Episode when those sit bottom-right.
-                      padding: EdgeInsets.only(bottom: 8 + _s._torrentStatsLift),
+                      padding: EdgeInsets.only(
+                        bottom: 8 + _s._torrentStatsLift,
+                      ),
                       child: PlayerTorrentStatsCard(stats: _s._torrentStats!),
                     ),
                   ),
@@ -514,7 +518,8 @@ mixin _DesktopPlayerBuild on ConsumerState<DesktopPlayerScreen>, WidgetsBindingO
                                         unawaited(_s._seekTo(t));
                                         _s._onMouseMove();
                                       },
-                                      onSeekPreview: _s._scheduleTorrentPrefetchAt,
+                                      onSeekPreview:
+                                          _s._scheduleTorrentPrefetchAt,
                                       onDragStart: () =>
                                           _s._hideTimer?.cancel(),
                                       onDragEnd: _s._startHideTimer,
@@ -542,129 +547,134 @@ mixin _DesktopPlayerBuild on ConsumerState<DesktopPlayerScreen>, WidgetsBindingO
                     child: MouseRegion(
                       onEnter: (_) => playerChromeCancelSeekScrubs(),
                       child: Listener(
-                      behavior: HitTestBehavior.opaque,
-                      child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Row(
-                      children: [
-                        ValueListenableBuilder<bool>(
-                          valueListenable: _s._isPlayingNotifier,
-                          builder: (context, playing, _) =>
-                              PlayerFlatIconButton(
-                                icon: playing
-                                    ? Icons.pause_rounded
-                                    : Icons.play_arrow_rounded,
-                                tooltip: playing ? 'Pause' : 'Play',
-                                onPressed: () {
-                                  unawaited(_s._togglePlayPause());
-                                  _s._onMouseMove();
-                                },
-                              ),
+                        behavior: HitTestBehavior.opaque,
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Row(
+                              children: [
+                                ValueListenableBuilder<bool>(
+                                  valueListenable: _s._isPlayingNotifier,
+                                  builder: (context, playing, _) =>
+                                      PlayerFlatIconButton(
+                                        icon: playing
+                                            ? Icons.pause_rounded
+                                            : Icons.play_arrow_rounded,
+                                        tooltip: playing ? 'Pause' : 'Play',
+                                        onPressed: () {
+                                          unawaited(_s._togglePlayPause());
+                                          _s._onMouseMove();
+                                        },
+                                      ),
+                                ),
+                                const SizedBox(width: 2),
+                                _s._buildTransportBackButton(),
+                                const SizedBox(width: 2),
+                                _s._buildTransportForwardButton(),
+                                if (_s._buildTransportPrevEpisodeButton()
+                                    case final prevEp?) ...[
+                                  const SizedBox(width: 2),
+                                  prevEp,
+                                ],
+                                if (_s._buildTransportNextEpisodeButton()
+                                    case final nextEp?) ...[
+                                  const SizedBox(width: 2),
+                                  nextEp,
+                                ],
+                                const SizedBox(width: 6),
+                                ValueListenableBuilder<double>(
+                                  valueListenable: _s._volumeNotifier,
+                                  builder: (context, vol, _) =>
+                                      PlayerVolumeControl(
+                                        volume: vol,
+                                        maxVolume: 150,
+                                        compact: compact,
+                                        onVolumeChanged: _s._player.setVolume,
+                                        onInteraction: _s._onMouseMove,
+                                        onDragStart: () =>
+                                            _s._hideTimer?.cancel(),
+                                        onDragEnd: _s._startHideTimer,
+                                        onSelectedChanged: (selected) =>
+                                            _s._volumeControlSelected =
+                                                selected,
+                                      ),
+                                ),
+                              ],
+                            ),
+                            Row(
+                              children: [
+                                if (hasTorrentSources) ...[
+                                  PlayerSourcesPanelButton(
+                                    label: catalogSourceLines!.label,
+                                    server: catalogSourceLines.server,
+                                    offline: playingOffline,
+                                    onPressed: _s._showTorrentSourcesPanel,
+                                  ),
+                                  const SizedBox(width: 2),
+                                ],
+                                if (hasStreamPicker) ...[
+                                  PlayerStreamPickerButton(
+                                    label: streamPickerLines!.label,
+                                    server: streamPickerLines.server,
+                                    offline: playingOffline,
+                                    onPressedWithContext: (ctx) =>
+                                        _s._showStreamMenu(ctx),
+                                  ),
+                                  const SizedBox(width: 6),
+                                ],
+                                if (hasEpisodePicker) ...[
+                                  PlayerFlatIconButton(
+                                    icon: Icons.video_library_outlined,
+                                    tooltip: 'Episodes',
+                                    onPressedWithContext: _s._showEpisodesMenu,
+                                  ),
+                                  const SizedBox(width: 2),
+                                ],
+                                PlayerFlatIconButton(
+                                  icon: Icons.audiotrack_rounded,
+                                  tooltip: 'Audio',
+                                  onPressedWithContext: _s._showAudioMenu,
+                                ),
+                                const SizedBox(width: 2),
+                                PlayerFlatIconButton(
+                                  icon: Icons.subtitles_outlined,
+                                  tooltip: 'Subtitles',
+                                  onPressedWithContext: _s._showSubtitlesMenu,
+                                ),
+                                const SizedBox(width: 2),
+                                ValueListenableBuilder<List<HlsQuality>?>(
+                                  valueListenable: _s._hlsQualitiesNotifier,
+                                  builder: (context, qs, _) => Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      PlayerFlatIconButton(
+                                        icon: Icons.hd_outlined,
+                                        tooltip: 'Quality',
+                                        onPressedWithContext:
+                                            _s._showQualityMenu,
+                                      ),
+                                      const SizedBox(width: 2),
+                                    ],
+                                  ),
+                                ),
+                                PlayerFlatIconButton(
+                                  icon: Icons.settings_outlined,
+                                  tooltip: 'Settings',
+                                  onPressedWithContext: _s._showSettingsMenu,
+                                ),
+                                const SizedBox(width: 2),
+                                PlayerFlatIconButton(
+                                  icon: _s._isFullscreen
+                                      ? Icons.fullscreen_exit_rounded
+                                      : Icons.fullscreen_rounded,
+                                  tooltip: 'Fullscreen',
+                                  onPressed: _s._toggleFullscreen,
+                                ),
+                              ],
+                            ),
+                          ],
                         ),
-                        const SizedBox(width: 2),
-                        _s._buildTransportBackButton(),
-                        const SizedBox(width: 2),
-                        _s._buildTransportForwardButton(),
-                        if (_s._buildTransportPrevEpisodeButton()
-                            case final prevEp?) ...[
-                          const SizedBox(width: 2),
-                          prevEp,
-                        ],
-                        if (_s._buildTransportNextEpisodeButton()
-                            case final nextEp?) ...[
-                          const SizedBox(width: 2),
-                          nextEp,
-                        ],
-                        const SizedBox(width: 6),
-                        ValueListenableBuilder<double>(
-                          valueListenable: _s._volumeNotifier,
-                          builder: (context, vol, _) => PlayerVolumeControl(
-                            volume: vol,
-                            maxVolume: 150,
-                            compact: compact,
-                            onVolumeChanged: _s._player.setVolume,
-                            onInteraction: _s._onMouseMove,
-                            onDragStart: () => _s._hideTimer?.cancel(),
-                            onDragEnd: _s._startHideTimer,
-                            onSelectedChanged: (selected) =>
-                                _s._volumeControlSelected = selected,
-                          ),
-                        ),
-                      ],
-                    ),
-                    Row(
-                      children: [
-                        if (hasTorrentSources) ...[
-                          PlayerSourcesPanelButton(
-                            label: catalogSourceLines!.label,
-                            server: catalogSourceLines.server,
-                            offline: playingOffline,
-                            onPressed: _s._showTorrentSourcesPanel,
-                          ),
-                          const SizedBox(width: 2),
-                        ],
-                        if (hasStreamPicker) ...[
-                          PlayerStreamPickerButton(
-                            label: streamPickerLines!.label,
-                            server: streamPickerLines.server,
-                            offline: playingOffline,
-                            onPressedWithContext: (ctx) => _s._showStreamMenu(ctx),
-                          ),
-                          const SizedBox(width: 6),
-                        ],
-                        if (hasEpisodePicker) ...[
-                          PlayerFlatIconButton(
-                            icon: Icons.video_library_outlined,
-                            tooltip: 'Episodes',
-                            onPressedWithContext: _s._showEpisodesMenu,
-                          ),
-                          const SizedBox(width: 2),
-                        ],
-                        PlayerFlatIconButton(
-                          icon: Icons.audiotrack_rounded,
-                          tooltip: 'Audio',
-                          onPressedWithContext: _s._showAudioMenu,
-                        ),
-                        const SizedBox(width: 2),
-                        PlayerFlatIconButton(
-                          icon: Icons.subtitles_outlined,
-                          tooltip: 'Subtitles',
-                          onPressedWithContext: _s._showSubtitlesMenu,
-                        ),
-                        const SizedBox(width: 2),
-                        ValueListenableBuilder<List<HlsQuality>?>(
-                          valueListenable: _s._hlsQualitiesNotifier,
-                          builder: (context, qs, _) => Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              PlayerFlatIconButton(
-                                icon: Icons.hd_outlined,
-                                tooltip: 'Quality',
-                                onPressedWithContext: _s._showQualityMenu,
-                              ),
-                              const SizedBox(width: 2),
-                            ],
-                          ),
-                        ),
-                        PlayerFlatIconButton(
-                          icon: Icons.settings_outlined,
-                          tooltip: 'Settings',
-                          onPressedWithContext: _s._showSettingsMenu,
-                        ),
-                        const SizedBox(width: 2),
-                        PlayerFlatIconButton(
-                          icon: _s._isFullscreen
-                              ? Icons.fullscreen_exit_rounded
-                              : Icons.fullscreen_rounded,
-                          tooltip: 'Fullscreen',
-                          onPressed: _s._toggleFullscreen,
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-                    ),
+                      ),
                     ),
                   ),
                 ),

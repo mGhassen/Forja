@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:forja/shell/tv/shell_tv_coordinator.dart';
 import 'package:forja/shell/tv/tv_focus_graph.dart';
 
@@ -80,7 +81,15 @@ class HubPageFocus {
 ///
 /// Empty [focus] clears custom restore preference only — leave enter/restore
 /// unset so hero [defaultFocus] / tab memory remain the land path.
-void bindHubPageFocus(String tabId, HubPageFocus focus) {
+///
+/// [landFallback] runs when the pack enter/restore row and content rows miss
+/// (e.g. IPTV selected Live/Movies/Series shelf while the category rail is
+/// covered by a portal load ticker).
+void bindHubPageFocus(
+  String tabId,
+  HubPageFocus focus, {
+  VoidCallback? landFallback,
+}) {
   if (tabId.isEmpty) return;
 
   if (focus.isEmpty) {
@@ -92,14 +101,24 @@ void bindHubPageFocus(String tabId, HubPageFocus focus) {
   void land(String? rowId, {required bool remembered}) {
     final id = (rowId ?? '').trim();
     if (id.isEmpty) {
-      ShellTvFocusCoordinator.focusFirstContentRow(tabId);
+      if (ShellTvFocusCoordinator.focusFirstContentRow(tabId)) return;
+      if (landFallback != null) {
+        landFallback();
+        return;
+      }
+      ShellTvFocusCoordinator.focusChromeRow(tabId);
       return;
     }
     if (remembered) {
       if (ShellTvFocusCoordinator.focusRowItemRemembered(tabId, id)) return;
     }
     if (ShellTvFocusCoordinator.focusRowItem(tabId, id, 0)) return;
-    ShellTvFocusCoordinator.focusFirstContentRow(tabId);
+    if (ShellTvFocusCoordinator.focusFirstContentRow(tabId)) return;
+    if (landFallback != null) {
+      landFallback();
+      return;
+    }
+    ShellTvFocusCoordinator.focusChromeRow(tabId);
   }
 
   void enter() {
@@ -108,10 +127,7 @@ void bindHubPageFocus(String tabId, HubPageFocus focus) {
   }
 
   bool restore() {
-    land(
-      focus.restore ?? focus.enter,
-      remembered: focus.restoreRemembered,
-    );
+    land(focus.restore ?? focus.enter, remembered: focus.restoreRemembered);
     return true;
   }
 

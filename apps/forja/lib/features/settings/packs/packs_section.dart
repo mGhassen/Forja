@@ -29,6 +29,7 @@ import 'package:forja_foundation/components/switch.dart';
 import 'package:forja/shell/focus/shell_focusable_tap.dart';
 import 'package:forja_foundation/tokens/forja_settings_tokens.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
+
 /// Settings → Forja Packs — JS plugin manifests (providers, hubs, live, …).
 class SettingsForjaPacksSection extends ConsumerStatefulWidget {
   const SettingsForjaPacksSection({super.key, required this.visibility});
@@ -43,17 +44,22 @@ class SettingsForjaPacksSection extends ConsumerStatefulWidget {
 class _SettingsForjaPacksSectionState
     extends ConsumerState<SettingsForjaPacksSection> {
   final TextEditingController _engineController = TextEditingController();
-  late final FocusNode _toolbarDownloadFocus =
-      FocusNode(debugLabel: 'packs-toolbar-download');
-  late final FocusNode _toolbarReloadFocus =
-      FocusNode(debugLabel: 'packs-toolbar-reload');
-  late final FocusNode _toolbarInstallFocus =
-      FocusNode(debugLabel: 'packs-toolbar-install');
-  late final FocusNode _toolbarUpdateAllFocus =
-      FocusNode(debugLabel: 'packs-toolbar-update-all');
+  late final FocusNode _toolbarDownloadFocus = FocusNode(
+    debugLabel: 'packs-toolbar-download',
+  );
+  late final FocusNode _toolbarReloadFocus = FocusNode(
+    debugLabel: 'packs-toolbar-reload',
+  );
+  late final FocusNode _toolbarInstallFocus = FocusNode(
+    debugLabel: 'packs-toolbar-install',
+  );
+  late final FocusNode _toolbarUpdateAllFocus = FocusNode(
+    debugLabel: 'packs-toolbar-update-all',
+  );
   bool _engineInstalling = false;
   bool _engineReloading = false;
   bool _engineUpdatingAll = false;
+
   /// Snapshot while Reload / Update all / Download all runs — keeps rows still.
   List<EnginePack>? _frozenPacksDuringBulk;
   EnginePackUpdatesState? _frozenUpdatesDuringBulk;
@@ -158,18 +164,14 @@ class _SettingsForjaPacksSectionState
             builder: (context, _) => _buildEnginePackSection(
               enginePacks,
               packUpdates,
-              installProgress:
-                  PluginInstallCoordinator.instance.progress.value,
+              installProgress: PluginInstallCoordinator.instance.progress.value,
             ),
           );
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        SettingsGroup(
-          label: 'Forja packs',
-          children: [packSection],
-        ),
+        SettingsGroup(label: 'Forja packs', children: [packSection]),
       ],
     );
   }
@@ -236,7 +238,8 @@ class _SettingsForjaPacksSectionState
               padding: const EdgeInsets.fromLTRB(2, 0, 2, 8),
               child: Text(
                 'Each pack is a manifest.json URL. Forja downloads the manifest, '
-                'then every plugin script, before the pack is fully usable.',
+                'then every plugin script, before the pack is fully usable.\n'
+                '$kCommunityPacksUrl',
                 style: TextStyle(
                   color: ForjaShellColors.textSecondary.withValues(alpha: 0.85),
                   fontSize: SettingsTokens.rowSubtitleSizeOf(context),
@@ -249,10 +252,10 @@ class _SettingsForjaPacksSectionState
               child: ForjaPackChoiceCards(
                 compact: true,
                 settingsTvFocus: true,
+                showOfficial: false,
                 communitySubtitle: PlatformInfo.isAndroidTv
-                    ? 'Choose packs on your phone\n$kCommunityPacksUrl'
+                    ? 'Choose packs on your phone'
                     : 'Browse packs on the web',
-                onInstallOfficial: () => unawaited(_installOfficialBundle()),
                 onBrowseCommunity: () => unawaited(_browseCommunityPacks()),
               ),
             ),
@@ -343,8 +346,7 @@ class _SettingsForjaPacksSectionState
                   onRightEdge: () {
                     final hasUpdates =
                         packs.isNotEmpty && packUpdates.count > 0;
-                    if (hasUpdates &&
-                        _toolbarUpdateAllFocus.canRequestFocus) {
+                    if (hasUpdates && _toolbarUpdateAllFocus.canRequestFocus) {
                       _toolbarUpdateAllFocus.requestFocus();
                     }
                   },
@@ -430,10 +432,7 @@ class _SettingsForjaPacksSectionState
                 }
                 final panelPlugins = [
                   for (final p in pack.plugins)
-                    if (p.isHttp ||
-                        p.isKitPlugin ||
-                        p.isTorrent ||
-                        p.isDebrid)
+                    if (p.isHttp || p.isKitPlugin || p.isTorrent || p.isDebrid)
                       p,
                 ];
                 if (panelPlugins.isEmpty) return const SizedBox.shrink();
@@ -456,9 +455,8 @@ class _SettingsForjaPacksSectionState
                         trailing: _EnginePackActions(
                           packEnabled: pack.enabled,
                           update: update,
-                          onTogglePack: (val) => unawaited(
-                            _togglePackEnabled(pack, enabled: val),
-                          ),
+                          onTogglePack: (val) =>
+                              unawaited(_togglePackEnabled(pack, enabled: val)),
                           onRefresh: () => _refreshEnginePack(
                             pack.sourceUrl,
                             update: update,
@@ -472,8 +470,9 @@ class _SettingsForjaPacksSectionState
                         plugins: panelPlugins,
                         groupKey: EngineCategories.groupKey,
                         groupLabel: EngineCategories.groupLabel,
-                        groupOrder:
-                            EngineCategories.groupOrderFor(panelPlugins),
+                        groupOrder: EngineCategories.groupOrderFor(
+                          panelPlugins,
+                        ),
                         installProgress: installProgress,
                         update: update,
                         deprecated: deprecated,
@@ -483,9 +482,8 @@ class _SettingsForjaPacksSectionState
                         trailing: _EnginePackActions(
                           packEnabled: pack.enabled,
                           update: update,
-                          onTogglePack: (val) => unawaited(
-                            _togglePackEnabled(pack, enabled: val),
-                          ),
+                          onTogglePack: (val) =>
+                              unawaited(_togglePackEnabled(pack, enabled: val)),
                           onRefresh: () => _refreshEnginePack(
                             pack.sourceUrl,
                             update: update,
@@ -535,28 +533,6 @@ class _SettingsForjaPacksSectionState
     );
     if (!ok && mounted) {
       ForjaToast.error('Could not open Community Packs');
-    }
-  }
-
-  Future<void> _installOfficialBundle() async {
-    if (_engineInstalling || _engineReloading) return;
-    setState(() => _engineInstalling = true);
-    try {
-      final outcome = await promptRecommendedBundleInstall();
-      if (!mounted) return;
-      switch (outcome) {
-        case OfficialPackPromptOutcome.alreadyInstalled:
-          ForjaToast.success('Recommended packs already installed');
-        case OfficialPackPromptOutcome.busy:
-          ForjaToast.info('Finish the current pack prompt first');
-        case OfficialPackPromptOutcome.prompted:
-          break;
-      }
-    } catch (e) {
-      if (!mounted) return;
-      ForjaToast.error('Official pack install failed: $e');
-    } finally {
-      if (mounted) setState(() => _engineInstalling = false);
     }
   }
 
@@ -719,8 +695,7 @@ class _SettingsForjaPacksSectionState
     required bool enabled,
   }) async {
     var working = pack;
-    if (enabled &&
-        await PluginRegistry.instance.packNeedsDiskInstall(pack)) {
+    if (enabled && await PluginRegistry.instance.packNeedsDiskInstall(pack)) {
       setState(() => _engineInstalling = true);
       try {
         working = await PluginInstallCoordinator.instance.installManifest(
@@ -913,16 +888,21 @@ class _EnginePackActionsState extends State<_EnginePackActions> {
   bool _confirmingRemove = false;
   bool _yesHasFocus = false;
   DateTime? _confirmEnteredAt;
-  late final FocusNode _switchFocus =
-      FocusNode(debugLabel: 'pack-action-switch');
-  late final FocusNode _refreshFocus =
-      FocusNode(debugLabel: 'pack-action-refresh');
-  late final FocusNode _removeFocus =
-      FocusNode(debugLabel: 'pack-action-remove');
-  late final FocusNode _yesFocus =
-      FocusNode(debugLabel: 'pack-action-remove-yes');
-  late final FocusNode _noFocus =
-      FocusNode(debugLabel: 'pack-action-remove-no');
+  late final FocusNode _switchFocus = FocusNode(
+    debugLabel: 'pack-action-switch',
+  );
+  late final FocusNode _refreshFocus = FocusNode(
+    debugLabel: 'pack-action-refresh',
+  );
+  late final FocusNode _removeFocus = FocusNode(
+    debugLabel: 'pack-action-remove',
+  );
+  late final FocusNode _yesFocus = FocusNode(
+    debugLabel: 'pack-action-remove-yes',
+  );
+  late final FocusNode _noFocus = FocusNode(
+    debugLabel: 'pack-action-remove-no',
+  );
 
   /// ATV Select often synthesizes a click after KeyDown — swallow if it lands
   /// on Yes in the same press that opened confirm.
@@ -1039,7 +1019,8 @@ class _EnginePackActionsState extends State<_EnginePackActions> {
                 value: widget.packEnabled,
                 scale: Switch.settingsScale,
                 onChanged: null,
-                emphasized: _switchFocused ||
+                emphasized:
+                    _switchFocused ||
                     _hoveredN.value ||
                     SettingsExpandHeaderChrome.activeOf(context),
               ),
@@ -1064,8 +1045,8 @@ class _EnginePackActionsState extends State<_EnginePackActions> {
             value: widget.packEnabled,
             scale: Switch.settingsScale,
             onChanged: (v) => widget.onTogglePack(v),
-            emphasized: _hoveredN.value ||
-                SettingsExpandHeaderChrome.activeOf(context),
+            emphasized:
+                _hoveredN.value || SettingsExpandHeaderChrome.activeOf(context),
           ),
         ),
       );
@@ -1205,7 +1186,9 @@ class _PackInstallFailuresBanner extends StatelessWidget {
       decoration: BoxDecoration(
         color: const Color(0xFF7F1D1D).withValues(alpha: 0.35),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: const Color(0xFFF87171).withValues(alpha: 0.45)),
+        border: Border.all(
+          color: const Color(0xFFF87171).withValues(alpha: 0.45),
+        ),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,

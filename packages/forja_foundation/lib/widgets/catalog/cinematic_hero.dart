@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:forja_foundation/components/crossfade_swap.dart';
 import 'package:forja_foundation/tokens/forja_motion_theme.dart';
+import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 import 'package:forja_foundation/utils/cover_urls.dart';
 import 'package:forja_foundation/utils/hero_desktop_layout.dart';
@@ -236,6 +237,7 @@ class CinematicHero extends StatefulWidget {
     this.actionRowBuilder,
     this.upcomingNoticeBuilder,
     this.galleryOverlayBuilder,
+    this.galleryNavHintsVisible = false,
     this.shimmer,
     this.onIndexChanged,
     this.onHeight,
@@ -256,6 +258,11 @@ class CinematicHero extends StatefulWidget {
   final Widget Function(BuildContext context, CinematicHeroSlide slide)?
   upcomingNoticeBuilder;
   final Widget Function(BuildContext context)? galleryOverlayBuilder;
+
+  /// Host: true while the backdrop gallery focus target is focused — paints
+  /// ←/→ chevrons over the image strip so D-pad / arrow keys read as carousel.
+  final bool galleryNavHintsVisible;
+
   final Widget? shimmer;
   final ValueChanged<int>? onIndexChanged;
 
@@ -564,20 +571,14 @@ class CinematicHeroState extends State<CinematicHero>
     if (_ctaHover == hovering) return;
     final wasEngaged = _holdNow();
     _ctaHover = hovering;
-    _onCtaEngagementChanged(
-      wasEngaged: wasEngaged,
-      nowEngaged: _holdNow(),
-    );
+    _onCtaEngagementChanged(wasEngaged: wasEngaged, nowEngaged: _holdNow());
   }
 
   void _setCtaFocus(bool focused) {
     if (_ctaFocus == focused) return;
     final wasEngaged = _holdNow();
     _ctaFocus = focused;
-    _onCtaEngagementChanged(
-      wasEngaged: wasEngaged,
-      nowEngaged: _holdNow(),
-    );
+    _onCtaEngagementChanged(wasEngaged: wasEngaged, nowEngaged: _holdNow());
   }
 
   /// Pause auto-advance while View details / pin is hovered or focused.
@@ -708,10 +709,7 @@ class CinematicHeroState extends State<CinematicHero>
             ceil: compactRightInset,
           )
         : layout.scaledChrome(48, floor: 24.0, ceil: 48.0);
-    final textBottomInset = textColumnBottomInset(
-      layout,
-      pageBleed: pageBleed,
-    );
+    final textBottomInset = textColumnBottomInset(layout, pageBleed: pageBleed);
     final textLeft = layout.scaledChrome(layout.sectionHorizontalPadding);
     final desktopTextWidth = math.min(
       MediaQuery.sizeOf(context).width * ShellTokens.heroTextWidthFraction,
@@ -781,6 +779,20 @@ class CinematicHeroState extends State<CinematicHero>
               end: 0,
               bottom: 0,
               child: widget.galleryOverlayBuilder!(context),
+            ),
+          if (widget.galleryOverlayBuilder != null && slides.length >= 2)
+            PositionedDirectional(
+              start: solidLeftWidth,
+              top: 0,
+              end: 0,
+              bottom: 0,
+              child: IgnorePointer(
+                child: AnimatedOpacity(
+                  opacity: widget.galleryNavHintsVisible ? 1 : 0,
+                  duration: ForjaMotionTheme.of(context).chipLift.duration,
+                  child: const _HeroGalleryNavHints(),
+                ),
+              ),
             ),
           if (pageBleed)
             Positioned(
@@ -1773,6 +1785,93 @@ class _HeroCtaPauseSensorState extends State<_HeroCtaPauseSensor> {
       onEnter: (_) => _setHovering(true),
       onExit: (_) => _setHovering(false),
       child: widget.child,
+    );
+  }
+}
+
+/// Soft ←/→ chevrons over the backdrop strip while gallery focus is held.
+class _HeroGalleryNavHints extends StatelessWidget {
+  const _HeroGalleryNavHints();
+
+  @override
+  Widget build(BuildContext context) {
+    final tv = ShellPaintScope.usesTvDensityOf(context);
+    final control = tv
+        ? ShellTokens.heroGalleryArrowControlSizeTv
+        : ShellTokens.heroGalleryArrowControlSize;
+    final icon = tv
+        ? ShellTokens.heroGalleryArrowIconSizeTv
+        : ShellTokens.heroGalleryArrowIconSize;
+    final offset = ShellTokens.heroGalleryArrowOffset;
+    final rtl = Directionality.of(context) == TextDirection.rtl;
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        PositionedDirectional(
+          start: offset,
+          top: 0,
+          bottom: 0,
+          child: Center(
+            child: _HeroGalleryArrow(
+              controlSize: control,
+              iconSize: icon,
+              icon: rtl
+                  ? Icons.chevron_right_rounded
+                  : Icons.chevron_left_rounded,
+            ),
+          ),
+        ),
+        PositionedDirectional(
+          end: offset,
+          top: 0,
+          bottom: 0,
+          child: Center(
+            child: _HeroGalleryArrow(
+              controlSize: control,
+              iconSize: icon,
+              icon: rtl
+                  ? Icons.chevron_left_rounded
+                  : Icons.chevron_right_rounded,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _HeroGalleryArrow extends StatelessWidget {
+  const _HeroGalleryArrow({
+    required this.controlSize,
+    required this.iconSize,
+    required this.icon,
+  });
+
+  final double controlSize;
+  final double iconSize;
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) {
+    final cinematic = ForjaShellColors.cinematic;
+    return Container(
+      width: controlSize,
+      height: controlSize,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: cinematic.menuSurface.withValues(alpha: 0.55),
+        border: Border.all(
+          color: cinematic.textPrimary.withValues(alpha: 0.28),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.45),
+            blurRadius: 12,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Icon(icon, size: iconSize, color: cinematic.textPrimary),
     );
   }
 }

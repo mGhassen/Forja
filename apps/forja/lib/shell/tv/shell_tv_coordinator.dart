@@ -476,9 +476,8 @@ abstract final class ShellTvFocusCoordinator {
 
   /// Nav Enter on a tab - e.g. search field browse focus (not last page memory).
   ///
-  /// Returns true only when page focus landed **off** top-bar chrome. Flutter
-  /// autofocuses the first focusable (often Catalog) when the tab becomes
-  /// hittable; treating that as success left Live Sports stuck on Catalog.
+  /// Returns true when page focus landed on content, or on top-bar chrome when
+  /// the body has no focusable rows (see [_pageHasContentFocus]).
   static bool focusTabEnterFromNav(String tabId) {
     final enter = _tabEnterFocus[tabId];
     if (enter == null) return false;
@@ -486,12 +485,30 @@ abstract final class ShellTvFocusCoordinator {
     return _pageHasContentFocus(tabId);
   }
 
-  /// Page has D-pad focus that is not shell top-bar chrome (Catalog / Schedule).
+  /// Page has D-pad focus usable as a nav-enter land.
+  ///
+  /// Rejects top-bar chrome when the body still has focusable catalog rows —
+  /// Flutter often autofocuses Catalog/Schedule and that used to strand Live
+  /// Sports on the shelf. When the body has **no** content rows (IPTV
+  /// composition cover while a portal loads), chrome shelf **is** the land.
   static bool _pageHasContentFocus(String tabId) {
     if (!_pageHasFocus()) return false;
     final mem = _tabMemory[tabId];
-    if (mem != null && mem.zone == ShellTvZone.topBar) return false;
+    if (mem != null && mem.zone == ShellTvZone.topBar) {
+      return !_tabHasFocusableContentRow(tabId);
+    }
     return true;
+  }
+
+  /// True when any registered row with [ShellTvRowHandle.sortOrder] ≥ 0 has items.
+  static bool _tabHasFocusableContentRow(String tabId) {
+    final list = _rowsByTab[tabId];
+    if (list == null || list.isEmpty) return false;
+    for (final row in list) {
+      if (row.sortOrder < 0) continue;
+      if (row.itemCount > 0) return true;
+    }
+    return false;
   }
 
   /// OK / click on a nav item: select tab, then land page focus (hero Play, etc.).
@@ -510,9 +527,11 @@ abstract final class ShellTvFocusCoordinator {
           return;
         }
         // Catalog/Schedule autofocus often wrote topBar memory during retries —
-        // drop it so restore lands on category / list, not chrome.
+        // drop it so restore lands on category / list, not chrome — but keep
+        // chrome when the body has nothing focusable (portal load cover).
         final mem = _tabMemory[tabId];
-        if (mem?.zone == ShellTvZone.topBar) {
+        if (mem?.zone == ShellTvZone.topBar &&
+            _tabHasFocusableContentRow(tabId)) {
           _tabMemory.remove(tabId);
         }
         restoreTabFocusAfterNav(tabId);
@@ -1571,6 +1590,19 @@ abstract final class ShellTvFocusCoordinator {
       if (focusRowItem(tabId, row.rowId, idx)) return true;
     }
     return false;
+  }
+
+  /// Top-bar / shelf chrome (`rowId: chrome`, sortOrder < 0).
+  ///
+  /// Used when pack enter/restore (e.g. `cats`) and content rows are missing —
+  /// IPTV portal load cover hides the category rail; nav must still land on
+  /// Live / Movies / Series.
+  static bool focusChromeRow(String tabId) {
+    final handle = _rowHandle(tabId, 'chrome');
+    if (handle == null || handle.itemCount <= 0) return false;
+    final idx = handle.lastFocusedIndex.clamp(0, handle.itemCount - 1);
+    if (focusRowItem(tabId, 'chrome', idx)) return true;
+    return focusRowItem(tabId, 'chrome', 0);
   }
 
   static bool focusRowItem(String tabId, String rowId, int index) {

@@ -448,6 +448,15 @@ abstract final class ShellTokens {
   /// Pause glyph when View details / pin holds auto-advance.
   static const double heroStepIndicatorPauseSize = 14;
 
+  /// ←/→ chevrons when the hero gallery (backdrop strip) holds focus.
+  static const double heroGalleryArrowOffset = 20;
+  static const double heroGalleryArrowControlSize = 48;
+  static const double heroGalleryArrowControlSizeTv =
+      heroGalleryArrowControlSize * tvChromeScale;
+  static const double heroGalleryArrowIconSize = 32;
+  static const double heroGalleryArrowIconSizeTv =
+      heroGalleryArrowIconSize * tvChromeScale;
+
   /// Top inset for hero text: clears [homeTopBarHeight] plus breathing room.
   static double get heroTextColumnTopInsetDesktop => homeTopBarHeight + 16;
 
@@ -856,9 +865,11 @@ abstract final class ShellTokens {
   static const double torrentPanelRowTitleFontSizeDesktop = 13;
   static const double torrentPanelRowTitleFontSizeTv = tvBodyFontSize;
 
-  /// Stream cards are a dense list, not body copy. Kind tabs stay on the body ladder.
-  static const double torrentPanelStreamTitleFontSizeTv = 7;
-  static const double torrentPanelStreamStatusFontSizeTv = 6;
+  /// Stream card title — same ladder as kind tabs / body.
+  static const double torrentPanelStreamTitleFontSizeTv = tvBodyFontSize;
+
+  /// Stream card meta / badges — same ladder as provider chips.
+  static const double torrentPanelStreamStatusFontSizeTv = tvMetaFontSize;
 
   /// Probe / play status stripe on the left of a stream card.
   static const double torrentPanelProbeBarWidthDesktop = 4;

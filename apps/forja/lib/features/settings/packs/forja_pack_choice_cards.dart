@@ -5,25 +5,30 @@ import 'package:forja/shell/tv/shell_tv_coordinator.dart';
 import 'package:forja_foundation/tokens/forja_settings_tokens.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 
-/// Two quick-action cards: official ForjaHQ install + Community Packs browse.
+/// Quick-action cards: optional official ForjaHQ install + Community Packs browse.
 ///
 /// Always D-pad focusable. Pass [installFocusNode] / [browseFocusNode] from
 /// onboarding; Settings leaves them null and registers settings-zone TV meta.
 class ForjaPackChoiceCards extends StatefulWidget {
   const ForjaPackChoiceCards({
     super.key,
-    required this.onInstallOfficial,
     required this.onBrowseCommunity,
+    this.onInstallOfficial,
+    this.showOfficial = true,
     this.installFocusNode,
     this.browseFocusNode,
     this.compact = false,
     this.communitySubtitle,
     this.autofocusInstall = false,
     this.settingsTvFocus = false,
-  });
+  }) : assert(
+         !showOfficial || onInstallOfficial != null,
+         'onInstallOfficial is required when showOfficial is true',
+       );
 
-  final VoidCallback onInstallOfficial;
+  final VoidCallback? onInstallOfficial;
   final VoidCallback onBrowseCommunity;
+  final bool showOfficial;
   final FocusNode? installFocusNode;
   final FocusNode? browseFocusNode;
   final bool compact;
@@ -62,6 +67,24 @@ class _ForjaPackChoiceCardsState extends State<ForjaPackChoiceCards> {
       context,
       compact: widget.compact,
     );
+    final community = ForjaPackChoiceCard(
+      focusNode: _browseNode,
+      compact: widget.compact,
+      settingsTvFocus: widget.settingsTvFocus,
+      tvItemIndex: widget.showOfficial ? 1 : 0,
+      // ← exits to the Settings category rail (same as Official / Back).
+      icon: Icons.public_rounded,
+      title: 'Community Packs',
+      subtitle:
+          widget.communitySubtitle ??
+          (widget.compact
+              ? 'Browse packs on the web'
+              : 'Browse and pick packs on the web'),
+      onTap: widget.onBrowseCommunity,
+    );
+    if (!widget.showOfficial) {
+      return community;
+    }
     // Stretch so Official matches Community when the subtitle has more lines
     // (e.g. TV Community URL). IntrinsicHeight sizes the row from content so TV
     // is not forced to a desktop min height. ← exits to the Settings category
@@ -82,27 +105,11 @@ class _ForjaPackChoiceCardsState extends State<ForjaPackChoiceCards> {
               title: 'Official packs',
               subtitle: 'Choose which ForjaHQ packs to install',
               accent: true,
-              onTap: widget.onInstallOfficial,
+              onTap: widget.onInstallOfficial!,
             ),
           ),
           SizedBox(width: gap),
-          Expanded(
-            child: ForjaPackChoiceCard(
-              focusNode: _browseNode,
-              compact: widget.compact,
-              settingsTvFocus: widget.settingsTvFocus,
-              tvItemIndex: 1,
-              // ← exits to the Settings category rail (same as Official / Back).
-              // → from Official still reaches this card.
-              icon: Icons.public_rounded,
-              title: 'Community Packs',
-              subtitle: widget.communitySubtitle ??
-                  (widget.compact
-                      ? 'Browse packs on the web'
-                      : 'Browse and pick packs on the web'),
-              onTap: widget.onBrowseCommunity,
-            ),
-          ),
+          Expanded(child: community),
         ],
       ),
     );
@@ -156,25 +163,29 @@ class _ForjaPackChoiceCardState extends State<ForjaPackChoiceCard> {
   Widget build(BuildContext context) {
     final compact = widget.compact;
     final radius = SettingsTokens.packChoiceRadiusOf(context, compact: compact);
-    final minHeight =
-        SettingsTokens.packChoiceMinHeightOf(context, compact: compact);
+    final minHeight = SettingsTokens.packChoiceMinHeightOf(
+      context,
+      compact: compact,
+    );
     final pad = SettingsTokens.packChoicePadOf(context, compact: compact);
-    final iconSize =
-        SettingsTokens.packChoiceIconSizeOf(context, compact: compact);
-    final iconTitleGap =
-        SettingsTokens.packChoiceIconTitleGapOf(context, compact: compact);
-    final titleSubGap =
-        SettingsTokens.packChoiceTitleSubGapOf(context, compact: compact);
-    final titleSize =
-        SettingsTokens.typeSizeOf(context, compact ? 13 : 16);
-    final subSize =
-        SettingsTokens.typeSizeOf(context, compact ? 11 : 13);
+    final iconSize = SettingsTokens.packChoiceIconSizeOf(
+      context,
+      compact: compact,
+    );
+    final iconTitleGap = SettingsTokens.packChoiceIconTitleGapOf(
+      context,
+      compact: compact,
+    );
+    final titleSubGap = SettingsTokens.packChoiceTitleSubGapOf(
+      context,
+      compact: compact,
+    );
+    final titleSize = SettingsTokens.typeSizeOf(context, compact ? 13 : 16);
+    final subSize = SettingsTokens.typeSizeOf(context, compact ? 11 : 13);
 
     Widget card({required bool active}) {
       final borderColor = widget.accent
-          ? ForjaShellColors.brandGreen.withValues(
-              alpha: active ? 0.95 : 0.55,
-            )
+          ? ForjaShellColors.brandGreen.withValues(alpha: active ? 0.95 : 0.55)
           : ForjaShellColors.borderSubtle.withValues(
               alpha: active ? 0.95 : 0.7,
             );
@@ -218,10 +229,7 @@ class _ForjaPackChoiceCardState extends State<ForjaPackChoiceCard> {
               ),
             ),
             SizedBox(height: titleSubGap),
-            _SubtitleBlock(
-              text: widget.subtitle,
-              fontSize: subSize,
-            ),
+            _SubtitleBlock(text: widget.subtitle, fontSize: subSize),
           ],
         ),
       );
@@ -229,9 +237,8 @@ class _ForjaPackChoiceCardState extends State<ForjaPackChoiceCard> {
 
     final body = ListenableBuilder(
       listenable: Listenable.merge([widget.focusNode, _hovered]),
-      builder: (context, _) => card(
-        active: widget.focusNode.hasFocus || _hovered.value,
-      ),
+      builder: (context, _) =>
+          card(active: widget.focusNode.hasFocus || _hovered.value),
     );
 
     void onHover(bool hovered) {

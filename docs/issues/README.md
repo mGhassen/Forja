@@ -495,6 +495,8 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [244-[fixed]-…](fixed/244-[fixed]-pending-pack-local-path-no-trash.md) | Pending pack Mac path fails on TV; no trash | P1 | High | fixed | Complete · 4/4 · A 0/2 | — |
 | [223-[fixed]-…](fixed/223-[fixed]-live-streamic-raw-embed-format-fail.md) | Live Providers raw embed → format fail loop | P1 | High | fixed | Complete · 6/6 · A 3/3 | — |
 | [459-[fixed]-…](fixed/459-[fixed]-packs-onboarding-ignores-cloud-onboarded.md) | Packs onboarding ignores cloud onboarded on new device | P1 | High | fixed | Complete · 3/3 · A 0/2 | [RFC-080](../rfc/fixed/080-[fixed]-post-login-packs-onboarding.md) |
+| [460-[fixed]-…](fixed/460-[fixed]-android-tv-iptv-nav-enter-shelf-while-loading.md) | Android TV IPTV nav enter stuck on rail while portal loading | P1 | High | fixed | Complete · 3/3 · A 0/1 | [301](301-[open]-iptv-dpad-focus-hover-chrome.md) |
+| [461-[open]-…](461-[open]-desktop-vod-sw-decode-keeps-hw-texture-pink-green.md) | Desktop VOD SW decode kept HW texture (pink/green) | P1 | High | open | 2/3 · A 0/2 | — |
 
 **Migration parity (draft):** [018](018-[draft]-migration-playback-parity-unverified.md) → [019](019-[draft]-webstreamr-enginejobs-e2e-test-gap.md)–[022](022-[draft]-playback-widget-integration-tests.md).
 

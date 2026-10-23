@@ -65,6 +65,7 @@ Widget _rowItem({
 void main() {
   tearDown(() {
     ShellTvFocusCoordinator.clearTab('iptv');
+    ShellTvFocusCoordinator.clearTab('hub_cover');
     ShellTvFocusCoordinator.clearTab('live_sports');
     ShellTvFocusCoordinator.clearTab('my_list');
     ShellTvFocusCoordinator.clearTab('settings');
@@ -72,8 +73,9 @@ void main() {
   });
 
   group('HubPageFocus bind land + pageBack', () {
-    testWidgets('enter lands remembered cats; pageBack items→cats',
-        (tester) async {
+    testWidgets('enter lands remembered cats; pageBack items→cats', (
+      tester,
+    ) async {
       const tab = 'iptv';
       ShellTvFocus.currentNavTabId = tab;
       ShellTvFocusCoordinator.setNavOrder([tab]);
@@ -100,18 +102,8 @@ void main() {
                 orientation: ShellTvRowOrientation.horizontal,
                 child: Row(
                   children: [
-                    _rowItem(
-                      tabId: tab,
-                      rowId: 'cats',
-                      index: 0,
-                      node: cat0,
-                    ),
-                    _rowItem(
-                      tabId: tab,
-                      rowId: 'cats',
-                      index: 1,
-                      node: cat1,
-                    ),
+                    _rowItem(tabId: tab, rowId: 'cats', index: 0, node: cat0),
+                    _rowItem(tabId: tab, rowId: 'cats', index: 1, node: cat1),
                   ],
                 ),
               ),
@@ -134,10 +126,7 @@ void main() {
       await tester.pump();
 
       // Remember last cats index = 1 via coordinator (updates lastFocusedIndex).
-      expect(
-        ShellTvFocusCoordinator.focusRowItemExact(tab, 'cats', 1),
-        isTrue,
-      );
+      expect(ShellTvFocusCoordinator.focusRowItemExact(tab, 'cats', 1), isTrue);
       await tester.pump();
       expect(cat1.hasFocus, isTrue);
 
@@ -175,6 +164,95 @@ void main() {
       expect(cat1.hasFocus, isTrue, reason: 'pageBack items→cats remembered');
     });
 
+    testWidgets('enter falls back to chrome shelf when cats/content missing', (
+      tester,
+    ) async {
+      // Composition cover hides enter row; nav → chrome (sortOrder < 0).
+      const tab = 'hub_cover';
+      ShellTvFocus.currentNavTabId = tab;
+      ShellTvFocusCoordinator.setNavOrder([tab]);
+      ShellTvFocusCoordinator.clearTab(tab);
+
+      final shelf0 = FocusNode(debugLabel: 'chrome-0');
+      final shelf1 = FocusNode(debugLabel: 'chrome-1');
+      addTearDown(() {
+        shelf0.dispose();
+        shelf1.dispose();
+        ShellTvFocusCoordinator.clearTab(tab);
+      });
+
+      await tester.pumpWidget(
+        _wrapTv(
+          tab,
+          TvKitRow(
+            tabId: tab,
+            rowId: 'chrome',
+            sortOrder: -1,
+            itemCount: 2,
+            child: Row(
+              children: [
+                FocusableControl(
+                  focusNode: shelf0,
+                  scaleOnFocus: 1.0,
+                  ensureVisibleMode: ShellPaintEnsureVisible.off,
+                  tvMeta: const ShellTvFocusMeta(
+                    tabId: tab,
+                    zone: ShellTvZone.topBar,
+                    rowId: 'chrome',
+                    itemIndex: 0,
+                  ),
+                  onTap: () {},
+                  child: const SizedBox(
+                    width: 80,
+                    height: 40,
+                    child: Text('shelf-0'),
+                  ),
+                ),
+                FocusableControl(
+                  focusNode: shelf1,
+                  scaleOnFocus: 1.0,
+                  ensureVisibleMode: ShellPaintEnsureVisible.off,
+                  tvMeta: const ShellTvFocusMeta(
+                    tabId: tab,
+                    zone: ShellTvZone.topBar,
+                    rowId: 'chrome',
+                    itemIndex: 1,
+                  ),
+                  onTap: () {},
+                  child: const SizedBox(
+                    width: 80,
+                    height: 40,
+                    child: Text('shelf-1'),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+      await tester.pump();
+
+      bindHubPageFocus(
+        tab,
+        HubPageFocus.parse({
+          'focus': {
+            'enter': 'cats',
+            'restore': 'cats',
+            'restoreMode': 'remembered',
+            'pageBack': ['items', 'cats'],
+          },
+        }),
+      );
+
+      expect(ShellTvFocusCoordinator.focusTabEnterFromNav(tab), isTrue);
+      await tester.pump();
+      expect(
+        shelf0.hasFocus,
+        isTrue,
+        reason: 'enter lands chrome when enter row is missing',
+      );
+    });
+
     testWidgets(
       'empty HubPageFocus clears restore so defaultFocus owns nav land',
       (tester) async {
@@ -197,7 +275,10 @@ void main() {
             tab,
             Column(
               children: [
-                Focus(focusNode: hero, child: const SizedBox(width: 40, height: 40)),
+                Focus(
+                  focusNode: hero,
+                  child: const SizedBox(width: 40, height: 40),
+                ),
                 TvKitRow(
                   tabId: tab,
                   rowId: 'bleed',
@@ -225,10 +306,7 @@ void main() {
         bindHubPageFocus(
           tab,
           HubPageFocus.parse({
-            'focus': {
-              'restore': 'bleed',
-              'restoreMode': 'remembered',
-            },
+            'focus': {'restore': 'bleed', 'restoreMode': 'remembered'},
           }),
         );
         bindHubPageFocus(tab, HubPageFocus.empty);
@@ -245,8 +323,9 @@ void main() {
   });
 
   group('Hub spines (IPTV / Live / Lists)', () {
-    testWidgets('IPTV cats↑↓ stay in panel; →/← hop cats↔items',
-        (tester) async {
+    testWidgets('IPTV cats↑↓ stay in panel; →/← hop cats↔items', (
+      tester,
+    ) async {
       const tab = 'iptv';
       ShellTvFocus.currentNavTabId = tab;
       final cat0 = FocusNode();
@@ -279,12 +358,7 @@ void main() {
                       node: cat0,
                       autoFocus: true,
                     ),
-                    _rowItem(
-                      tabId: tab,
-                      rowId: 'cats',
-                      index: 1,
-                      node: cat1,
-                    ),
+                    _rowItem(tabId: tab, rowId: 'cats', index: 1, node: cat1),
                   ],
                 ),
               ),
@@ -331,8 +405,9 @@ void main() {
       expect(cat0.hasFocus, isTrue, reason: '← from items → cats');
     });
 
-    testWidgets('Live kind↓schedule; schedule→ miss does not swallow',
-        (tester) async {
+    testWidgets('Live kind↓schedule; schedule→ miss does not swallow', (
+      tester,
+    ) async {
       const tab = 'live_sports';
       ShellTvFocus.currentNavTabId = tab;
       final kind = FocusNode();
@@ -387,9 +462,9 @@ void main() {
                       onRight: () {
                         final ok =
                             ShellTvFocusCoordinator.focusRowItemRemembered(
-                          tab,
-                          'sources-kind',
-                        );
+                              tab,
+                              'sources-kind',
+                            );
                         if (!ok) ShellTvFocusCoordinator.markKitEdgeMiss();
                       },
                     ),
@@ -404,9 +479,9 @@ void main() {
                       onRight: () {
                         final ok =
                             ShellTvFocusCoordinator.focusRowItemRemembered(
-                          tab,
-                          'sources-kind',
-                        );
+                              tab,
+                              'sources-kind',
+                            );
                         if (!ok) ShellTvFocusCoordinator.markKitEdgeMiss();
                       },
                     ),
@@ -442,8 +517,9 @@ void main() {
       expect(kind.hasFocus, isTrue);
     });
 
-    testWidgets('Live schedule scroll registry invoked on remembered restore',
-        (tester) async {
+    testWidgets('Live schedule scroll registry invoked on remembered restore', (
+      tester,
+    ) async {
       const tab = 'live_sports';
       ShellTvFocus.currentNavTabId = tab;
       final scrolled = <int>[];
@@ -491,8 +567,9 @@ void main() {
       expect(scrolled, [1], reason: 'scroll-into-view for off-screen index');
     });
 
-    testWidgets('Sources stream list scroll registry on vertical step',
-        (tester) async {
+    testWidgets('Sources stream list scroll registry on vertical step', (
+      tester,
+    ) async {
       const tab = 'sources-panel';
       ShellTvFocus.currentNavTabId = tab;
       final scrolled = <int>[];
@@ -655,106 +732,112 @@ void main() {
   });
 
   group('Settings I127 A01/A04/A07 primitives', () {
-    testWidgets('A02: pageBack detail→selected category; next Back yields false',
-        (tester) async {
-      const tab = 'settings';
-      ShellTvFocus.currentNavTabId = tab;
-      ShellTvFocusCoordinator.setNavOrder([tab, 'home']);
-      final cat0 = FocusNode();
-      final cat1 = FocusNode();
-      final detail = FocusNode();
-      addTearDown(() {
-        cat0.dispose();
-        cat1.dispose();
-        detail.dispose();
-      });
+    testWidgets(
+      'A02: pageBack detail→selected category; next Back yields false',
+      (tester) async {
+        const tab = 'settings';
+        ShellTvFocus.currentNavTabId = tab;
+        ShellTvFocusCoordinator.setNavOrder([tab, 'home']);
+        final cat0 = FocusNode();
+        final cat1 = FocusNode();
+        final detail = FocusNode();
+        addTearDown(() {
+          cat0.dispose();
+          cat1.dispose();
+          detail.dispose();
+        });
 
-      await tester.pumpWidget(
-        _wrapTv(
-          tab,
-          Column(
-            children: [
-              TvKitRow(
-                tabId: tab,
-                rowId: 'settings-categories',
-                sortOrder: 0,
-                itemCount: 2,
-                orientation: ShellTvRowOrientation.vertical,
-                child: Column(
-                  children: [
-                    _rowItem(
-                      tabId: tab,
-                      rowId: 'settings-categories',
-                      index: 0,
-                      node: cat0,
-                    ),
-                    _rowItem(
-                      tabId: tab,
-                      rowId: 'settings-categories',
-                      index: 1,
-                      node: cat1,
-                    ),
-                  ],
+        await tester.pumpWidget(
+          _wrapTv(
+            tab,
+            Column(
+              children: [
+                TvKitRow(
+                  tabId: tab,
+                  rowId: 'settings-categories',
+                  sortOrder: 0,
+                  itemCount: 2,
+                  orientation: ShellTvRowOrientation.vertical,
+                  child: Column(
+                    children: [
+                      _rowItem(
+                        tabId: tab,
+                        rowId: 'settings-categories',
+                        index: 0,
+                        node: cat0,
+                      ),
+                      _rowItem(
+                        tabId: tab,
+                        rowId: 'settings-categories',
+                        index: 1,
+                        node: cat1,
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-              TvKitRow(
-                tabId: tab,
-                rowId: 'settings-detail',
-                sortOrder: 100,
-                itemCount: 1,
-                child: _rowItem(
+                TvKitRow(
                   tabId: tab,
                   rowId: 'settings-detail',
-                  index: 0,
-                  node: detail,
-                  autoFocus: true,
+                  sortOrder: 100,
+                  itemCount: 1,
+                  child: _rowItem(
+                    tabId: tab,
+                    rowId: 'settings-detail',
+                    index: 0,
+                    node: detail,
+                    autoFocus: true,
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
-        ),
-      );
-      await tester.pump();
+        );
+        await tester.pump();
 
-      // Selected category = index 1 (Playback-like).
-      expect(
-        ShellTvFocusCoordinator.focusRowItemExact(
+        // Selected category = index 1 (Playback-like).
+        expect(
+          ShellTvFocusCoordinator.focusRowItemExact(
+            tab,
+            'settings-categories',
+            1,
+          ),
+          isTrue,
+        );
+        await tester.pump();
+        expect(
+          ShellTvFocusCoordinator.focusRowItemExact(tab, 'settings-detail', 0),
+          isTrue,
+        );
+        await tester.pump();
+
+        TvHeroActions.bind(
           tab,
-          'settings-categories',
-          1,
-        ),
-        isTrue,
-      );
-      await tester.pump();
-      expect(
-        ShellTvFocusCoordinator.focusRowItemExact(tab, 'settings-detail', 0),
-        isTrue,
-      );
-      await tester.pump();
+          pageBack: () {
+            if (detail.hasFocus) {
+              return ShellTvFocusCoordinator.focusRowItemRemembered(
+                tab,
+                'settings-categories',
+              );
+            }
+            return false;
+          },
+        );
 
-      TvHeroActions.bind(
-        tab,
-        pageBack: () {
-          if (detail.hasFocus) {
-            return ShellTvFocusCoordinator.focusRowItemRemembered(
-              tab,
-              'settings-categories',
-            );
-          }
-          return false;
-        },
-      );
+        expect(ShellTvFocusCoordinator.tryPageBack(tab), isTrue);
+        await tester.pump();
+        expect(
+          cat1.hasFocus,
+          isTrue,
+          reason: 'Back returns to selected category',
+        );
 
-      expect(ShellTvFocusCoordinator.tryPageBack(tab), isTrue);
-      await tester.pump();
-      expect(cat1.hasFocus, isTrue, reason: 'Back returns to selected category');
-
-      expect(
-        ShellTvFocusCoordinator.tryPageBack(tab),
-        isFalse,
-        reason: 'further Back leaves to shell nav',
-      );
-    });
+        expect(
+          ShellTvFocusCoordinator.tryPageBack(tab),
+          isFalse,
+          reason: 'further Back leaves to shell nav',
+        );
+      },
+    );
 
     testWidgets('A01: → enters detail; ↑ stays; ← exits', (tester) async {
       final category = FocusNode(debugLabel: 'cat');
@@ -814,14 +897,20 @@ void main() {
                                     scaleOnFocus: 1.0,
                                     tvMeta: detailMeta,
                                     onTap: () {},
-                                    child: const SizedBox(width: 200, height: 40),
+                                    child: const SizedBox(
+                                      width: 200,
+                                      height: 40,
+                                    ),
                                   ),
                                   FocusableControl(
                                     focusNode: detailB,
                                     scaleOnFocus: 1.0,
                                     tvMeta: detailMeta,
                                     onTap: () {},
-                                    child: const SizedBox(width: 200, height: 40),
+                                    child: const SizedBox(
+                                      width: 200,
+                                      height: 40,
+                                    ),
                                   ),
                                 ],
                               ),
@@ -859,9 +948,9 @@ void main() {
       expect(category.hasFocus, isTrue);
     });
 
-    testWidgets(
-        '← between horizontal settings chips moves, not pageBack',
-        (tester) async {
+    testWidgets('← between horizontal settings chips moves, not pageBack', (
+      tester,
+    ) async {
       // Regression: shellTvSettingsBackwardEdge used to run before spatial
       // focusInDirection, so ← from Live Sports never reached Sources.
       const tab = 'settings';
@@ -954,86 +1043,87 @@ void main() {
     });
 
     testWidgets(
-        'A05 row: ← from ContainDpad TvKitRow col-0 pageBacks to category',
-        (tester) async {
-      // Regression: containDpad used to swallow ← before pageBackOnRowLeftEdge,
-      // so Addons / Packs / Features rows never reached the category rail.
-      const tab = 'settings';
-      ShellTvFocus.currentNavTabId = tab;
-      final category = FocusNode(debugLabel: 'cat');
-      final addonRow = FocusNode(debugLabel: 'addon-0');
-      addTearDown(() {
-        category.dispose();
-        addonRow.dispose();
-        ShellTvFocusCoordinator.setPageBackOnRowLeftEdge(tab, false);
-      });
+      'A05 row: ← from ContainDpad TvKitRow col-0 pageBacks to category',
+      (tester) async {
+        // Regression: containDpad used to swallow ← before pageBackOnRowLeftEdge,
+        // so Addons / Packs / Features rows never reached the category rail.
+        const tab = 'settings';
+        ShellTvFocus.currentNavTabId = tab;
+        final category = FocusNode(debugLabel: 'cat');
+        final addonRow = FocusNode(debugLabel: 'addon-0');
+        addTearDown(() {
+          category.dispose();
+          addonRow.dispose();
+          ShellTvFocusCoordinator.setPageBackOnRowLeftEdge(tab, false);
+        });
 
-      TvHeroActions.bind(
-        tab,
-        pageBack: () {
-          if (addonRow.hasFocus) {
-            category.requestFocus();
-            return true;
-          }
-          return false;
-        },
-      );
-      ShellTvFocusCoordinator.setPageBackOnRowLeftEdge(tab, true);
-
-      await tester.pumpWidget(
-        _wrapTv(
+        TvHeroActions.bind(
           tab,
-          Row(
-            children: [
-              TvKitRow(
-                tabId: tab,
-                rowId: 'settings-categories',
-                sortOrder: 0,
-                itemCount: 1,
-                orientation: ShellTvRowOrientation.vertical,
-                child: _rowItem(
+          pageBack: () {
+            if (addonRow.hasFocus) {
+              category.requestFocus();
+              return true;
+            }
+            return false;
+          },
+        );
+        ShellTvFocusCoordinator.setPageBackOnRowLeftEdge(tab, true);
+
+        await tester.pumpWidget(
+          _wrapTv(
+            tab,
+            Row(
+              children: [
+                TvKitRow(
                   tabId: tab,
                   rowId: 'settings-categories',
-                  index: 0,
-                  node: category,
-                ),
-              ),
-              Expanded(
-                child: ShellTvContainDpad(
-                  child: TvKitRow(
+                  sortOrder: 0,
+                  itemCount: 1,
+                  orientation: ShellTvRowOrientation.vertical,
+                  child: _rowItem(
                     tabId: tab,
-                    rowId: 'addon-playback',
-                    sortOrder: 100,
-                    itemCount: 1,
-                    child: _rowItem(
+                    rowId: 'settings-categories',
+                    index: 0,
+                    node: category,
+                  ),
+                ),
+                Expanded(
+                  child: ShellTvContainDpad(
+                    child: TvKitRow(
                       tabId: tab,
                       rowId: 'addon-playback',
-                      index: 0,
-                      node: addonRow,
-                      autoFocus: true,
+                      sortOrder: 100,
+                      itemCount: 1,
+                      child: _rowItem(
+                        tabId: tab,
+                        rowId: 'addon-playback',
+                        index: 0,
+                        node: addonRow,
+                        autoFocus: true,
+                      ),
                     ),
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
-        ),
-      );
-      await tester.pump();
-      expect(addonRow.hasFocus, isTrue);
+        );
+        await tester.pump();
+        expect(addonRow.hasFocus, isTrue);
 
-      await tester.sendKeyEvent(LogicalKeyboardKey.arrowLeft);
-      await tester.pump();
-      expect(
-        category.hasFocus,
-        isTrue,
-        reason: '← from detail TvKitRow col-0 must pageBack to category rail',
-      );
-    });
+        await tester.sendKeyEvent(LogicalKeyboardKey.arrowLeft);
+        await tester.pump();
+        expect(
+          category.hasFocus,
+          isTrue,
+          reason: '← from detail TvKitRow col-0 must pageBack to category rail',
+        );
+      },
+    );
 
-    testWidgets(
-        '← from any settings category (not only index 0) focuses nav',
-        (tester) async {
+    testWidgets('← from any settings category (not only index 0) focuses nav', (
+      tester,
+    ) async {
       const tab = 'settings';
       ShellTvFocus.currentNavTabId = tab;
       ShellTvFocusCoordinator.setNavOrder(['home', tab]);
@@ -1096,8 +1186,9 @@ void main() {
       );
     });
 
-    testWidgets('A04: ↑ from addon IPTV lands Playback, not categories',
-        (tester) async {
+    testWidgets('A04: ↑ from addon IPTV lands Playback, not categories', (
+      tester,
+    ) async {
       const tab = 'settings';
       ShellTvFocus.currentNavTabId = tab;
       final categories = FocusNode();
@@ -1328,18 +1419,8 @@ void main() {
                   node: m0,
                   autoFocus: true,
                 ),
-                _rowItem(
-                  tabId: tab,
-                  rowId: 'schedule',
-                  index: 1,
-                  node: m1,
-                ),
-                _rowItem(
-                  tabId: tab,
-                  rowId: 'schedule',
-                  index: 2,
-                  node: m2,
-                ),
+                _rowItem(tabId: tab, rowId: 'schedule', index: 1, node: m1),
+                _rowItem(tabId: tab, rowId: 'schedule', index: 2, node: m2),
               ],
             ),
           ),

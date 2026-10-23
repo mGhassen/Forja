@@ -160,7 +160,8 @@ mixin _DesktopPlayerEpisodes
       _s._autoNextDismissed = false;
       return;
     }
-    _s._autoNextCountdown = SettingsService.autoNextEpisodeNotifier.value &&
+    _s._autoNextCountdown =
+        SettingsService.autoNextEpisodeNotifier.value &&
         !_s._loopEnabled &&
         !_s._autoNextDismissed;
   }
@@ -620,9 +621,7 @@ mixin _DesktopPlayerEpisodes
           stremioId: widget.stremioId,
           stremioAddonBaseUrl:
               _s._catalogAddonBaseUrl ?? widget.stremioAddonBaseUrl,
-          torrentEp: metaOpenTorrentEp(
-            widget.enginePlaySession?.effectiveOpen,
-          ),
+          torrentEp: metaOpenTorrentEp(widget.enginePlaySession?.effectiveOpen),
         );
         if (resolved != null) break;
       }
@@ -835,12 +834,13 @@ mixin _DesktopPlayerEpisodes
       if (pick.catalogUrl != null && pick.catalogUrl!.isNotEmpty) {
         _s._currentPlayingCatalogUrl = pick.catalogUrl;
         final filePlay = stream['url']?.toString() ?? '';
-        _s._currentUrl =
-            filePlay.startsWith('file:') ? filePlay : pick.catalogUrl;
+        _s._currentUrl = filePlay.startsWith('file:')
+            ? filePlay
+            : pick.catalogUrl;
       }
       _s._catalogAddonBaseUrl = pick.addonBase;
-      _s._catalogAddonName = pick.addonName ??
-          StreamProviderDisplay.playerLabel(pick.providerId);
+      _s._catalogAddonName =
+          pick.addonName ?? StreamProviderDisplay.playerLabel(pick.providerId);
       _s._catalogSourceKind = pick.kind;
       _s._currentProvider = pick.providerId;
     });
@@ -922,9 +922,7 @@ mixin _DesktopPlayerEpisodes
       _s._player.setVolume(_s._volumeNotifier.value);
 
       if (openedUrl == null) {
-        abortCatalogSwitch(
-          message: 'switch failed: ${resolved.streamUrl}',
-        );
+        abortCatalogSwitch(message: 'switch failed: ${resolved.streamUrl}');
         return;
       }
 
@@ -952,8 +950,8 @@ mixin _DesktopPlayerEpisodes
             : ((base != null && base.startsWith('nuvio:'))
                   ? 'nuvio'
                   : (base != null && base.startsWith('engine:'))
-                        ? 'engine'
-                        : 'stremio');
+                  ? 'engine'
+                  : 'stremio');
         _s._currentProvider = catalogHttpPlayProviderId(stream);
       });
       _s._markPlaybackConfirmed(true);
@@ -1006,15 +1004,17 @@ mixin _DesktopPlayerEpisodes
     if (!mounted) return;
 
     var cancelled = false;
-    final loadingMovie =
-        movieForStreamLoading(movie: widget.movie, title: widget.title);
+    final loadingMovie = movieForStreamLoading(
+      movie: widget.movie,
+      title: widget.title,
+    );
     final session = showStreamLoadingOverlay(
       context,
       movie: loadingMovie,
       kind: StreamLoadingKind.torrent,
       initialTorrentStatus: initialTorrentResolveStatus(
-      debridLabel: DebridPackBridge.activePluginLabel?.call(),
-    ),
+        debridLabel: DebridPackBridge.activePluginLabel?.call(),
+      ),
       onCancel: () => cancelled = true,
     );
     await Future<void>.delayed(Duration.zero);
@@ -1042,7 +1042,8 @@ mixin _DesktopPlayerEpisodes
         return;
       }
       if (resolved is! StremioPlayable || resolved.streamUrl.isEmpty) {
-        final msg = resolved is StremioResolveFailure && resolved.message.isNotEmpty
+        final msg =
+            resolved is StremioResolveFailure && resolved.message.isNotEmpty
             ? resolved.message
             : 'Failed to resolve stream';
         debugPrint(
@@ -1059,7 +1060,8 @@ mixin _DesktopPlayerEpisodes
 
       final season = widget.selectedSeason;
       final episode = widget.selectedEpisode;
-      final nextTitle = widget.movie != null && season != null && episode != null
+      final nextTitle =
+          widget.movie != null && season != null && episode != null
           ? '${widget.movie!.title} - S$season E$episode'
           : widget.title;
       final base = stream['_addonBaseUrl']?.toString();
@@ -1097,7 +1099,9 @@ mixin _DesktopPlayerEpisodes
       );
       finishStreamLoadingSession(session);
     } catch (e) {
-      debugPrint('[Player] ${catalogStreamKindLabel(stream)} switch failed: $e');
+      debugPrint(
+        '[Player] ${catalogStreamKindLabel(stream)} switch failed: $e',
+      );
       dismissStreamLoading(session);
       finishStreamLoadingSession(session);
       if (mounted) ForjaToast.info('Failed to resolve stream');
@@ -1120,15 +1124,17 @@ mixin _DesktopPlayerEpisodes
     if (!mounted) return;
 
     var cancelled = false;
-    final loadingMovie =
-        movieForStreamLoading(movie: widget.movie, title: widget.title);
+    final loadingMovie = movieForStreamLoading(
+      movie: widget.movie,
+      title: widget.title,
+    );
     final session = showStreamLoadingOverlay(
       context,
       movie: loadingMovie,
       kind: StreamLoadingKind.torrent,
       initialTorrentStatus: initialTorrentResolveStatus(
-      debridLabel: DebridPackBridge.activePluginLabel?.call(),
-    ),
+        debridLabel: DebridPackBridge.activePluginLabel?.call(),
+      ),
       onCancel: () => cancelled = true,
     );
     await Future<void>.delayed(Duration.zero);
@@ -1168,7 +1174,8 @@ mixin _DesktopPlayerEpisodes
 
       final season = widget.selectedSeason;
       final episode = widget.selectedEpisode;
-      final nextTitle = widget.movie != null && season != null && episode != null
+      final nextTitle =
+          widget.movie != null && season != null && episode != null
           ? '${widget.movie!.title} - S$season E$episode'
           : widget.title;
 
@@ -1304,8 +1311,7 @@ mixin _DesktopPlayerEpisodes
     final settings = SettingsService();
     final preferred = await settings.getPreferredSubtitleLanguage();
     if (_s._disposed || !mounted) return;
-    final embedded =
-        embeddedSubtitleTracks(_s._player.state.tracks.subtitle);
+    final embedded = embeddedSubtitleTracks(_s._player.state.tracks.subtitle);
     if (embedded.isEmpty) return;
 
     if (preferred != 'None' && preferred.isNotEmpty) {
@@ -1491,13 +1497,7 @@ mixin _DesktopPlayerEpisodes
                   grouped: true,
                   onTap: () {
                     if (_s._hwDecMode == mode) return;
-                    setState(() => _s._hwDecMode = mode);
-                    if (_s._player.platform is NativePlayer) {
-                      (_s._player.platform as NativePlayer).setProperty(
-                        'hwdec',
-                        mode.mpvValue,
-                      );
-                    }
+                    _s._applyHwDecMode(mode);
                     setPage(() {});
                   },
                 ),

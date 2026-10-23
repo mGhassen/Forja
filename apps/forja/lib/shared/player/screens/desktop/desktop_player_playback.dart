@@ -442,7 +442,8 @@ mixin _DesktopPlayerPlayback
       logPeakstormResume(
         '_initPlayback resumeAt',
         target: resumeAt,
-        detail: 'widget.start=${widget.startPosition?.inSeconds}s '
+        detail:
+            'widget.start=${widget.startPosition?.inSeconds}s '
             'override=${seekOverride?.inSeconds}s',
       );
     }
@@ -680,8 +681,10 @@ mixin _DesktopPlayerPlayback
                   _s._showControls = true;
                 });
               }
-              final isLocalFile = openUrl.startsWith('file://') ||
-                  (openUrl.startsWith('/') && !isLocalTorrentStreamUrl(openUrl));
+              final isLocalFile =
+                  openUrl.startsWith('file://') ||
+                  (openUrl.startsWith('/') &&
+                      !isLocalTorrentStreamUrl(openUrl));
               if (_s._providerPinned ||
                   widget.streamsPrevalidated ||
                   widget.pinSource ||
@@ -690,8 +693,8 @@ mixin _DesktopPlayerPlayback
                   message: isLocalFile
                       ? 'Downloaded file can’t be played'
                       : isTorrent
-                          ? 'Torrent stream failed to open.'
-                          : 'Playback failed.',
+                      ? 'Torrent stream failed to open.'
+                      : 'Playback failed.',
                 );
               } else {
                 await _autoFallbackToNextProvider();
@@ -1843,9 +1846,8 @@ mixin _DesktopPlayerPlayback
     // This is the officially recommended hwdec mode by mpv developers.
     await safeSet('hwdec', _s._hwDecMode.mpvValue);
 
-    // Zero-copy direct rendering from decoder to GPU texture when possible.
-    // Reduces RAM usage and improves throughput, especially on 4K/HEVC.
-    await safeSet('vd-lavc-dr', 'yes');
+    // Zero-copy DR only with HW texture; soft TextureSW uses CPU blit.
+    await safeSet('vd-lavc-dr', _s._hwDecMode.softTexture ? 'no' : 'yes');
 
     // Let mpv pick the optimal thread count automatically (0 = auto).
     await safeSet('vd-lavc-threads', '0');

@@ -187,9 +187,7 @@ mixin _DesktopPlayerLifecycle
 
     _s._controller = VideoController(
       _s._player,
-      configuration: const VideoControllerConfiguration(
-        enableHardwareAcceleration: true,
-      ),
+      configuration: _s._hwDecMode.videoControllerConfiguration,
     );
 
     if (!mounted || _s._disposed) {
@@ -811,5 +809,24 @@ mixin _DesktopPlayerLifecycle
         prefs.setStringList('anime_watch_history', list);
       }
     });
+  }
+
+  /// Live Video decode switch. Soft texture needs a new [VideoController]
+  /// (TextureHW ↔ TextureSW); HW+/COPY only retarget `hwdec`.
+  void _applyHwDecMode(_HwDecMode mode) {
+    if (_s._hwDecMode == mode) return;
+    final softChanged = mode.softTexture != _s._hwDecMode.softTexture;
+    setState(() => _s._hwDecMode = mode);
+    if (_s._player.platform is NativePlayer) {
+      final mpv = _s._player.platform as NativePlayer;
+      unawaited(mpv.setProperty('hwdec', mode.mpvValue));
+      unawaited(mpv.setProperty('vd-lavc-dr', mode.softTexture ? 'no' : 'yes'));
+    }
+    if (!softChanged || !_s._playerReady) return;
+    _s._controller = VideoController(
+      _s._player,
+      configuration: mode.videoControllerConfiguration,
+    );
+    setState(() {});
   }
 }

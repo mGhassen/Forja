@@ -10,7 +10,7 @@ Widget _paintScope({
   required Widget child,
   required bool scaleOnHover,
   required bool Function(BuildContext context, {required bool focused})
-      focusStyled,
+  focusStyled,
 }) {
   return ShellPaintScope(
     useTvFocus: true,
@@ -54,10 +54,7 @@ void main() {
                   overview: 'Third',
                 ),
               ],
-              layout: const CinematicHeroLayout(
-                kenBurns: false,
-                compact: true,
-              ),
+              layout: const CinematicHeroLayout(kenBurns: false, compact: true),
             ),
           ),
         ),
@@ -93,10 +90,7 @@ void main() {
       required bool isActive,
     }) {
       if (!isActive) return const SizedBox.shrink();
-      return Focus(
-        focusNode: focus,
-        child: Text('CTA ${slide.id}'),
-      );
+      return Focus(focusNode: focus, child: Text('CTA ${slide.id}'));
     }
 
     await tester.pumpWidget(
@@ -121,10 +115,7 @@ void main() {
                   overview: 'Second',
                 ),
               ],
-              layout: const CinematicHeroLayout(
-                kenBurns: false,
-                compact: true,
-              ),
+              layout: const CinematicHeroLayout(kenBurns: false, compact: true),
               actionRowBuilder: actionRow,
             ),
           ),
@@ -142,7 +133,11 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
 
-    expect(focus.hasFocus, isTrue, reason: 'carousel advance must not drop CTA focus');
+    expect(
+      focus.hasFocus,
+      isTrue,
+      reason: 'carousel advance must not drop CTA focus',
+    );
     expect(find.text('CTA b'), findsOneWidget);
     expect(focus.context, isNotNull);
   });
@@ -172,10 +167,7 @@ void main() {
                   overview: 'Second',
                 ),
               ],
-              layout: const CinematicHeroLayout(
-                kenBurns: false,
-                compact: true,
-              ),
+              layout: const CinematicHeroLayout(kenBurns: false, compact: true),
             ),
           ),
         ),
@@ -187,10 +179,7 @@ void main() {
     expect(key.currentState!.heroAdvanceProgress, 0);
 
     await tester.pump(ShellTokens.heroAutoAdvanceDuration * 0.5);
-    expect(
-      key.currentState!.heroAdvanceProgress,
-      closeTo(0.5, 0.05),
-    );
+    expect(key.currentState!.heroAdvanceProgress, closeTo(0.5, 0.05));
     expect(key.currentState!.heroIndex, 0);
 
     await tester.pump(ShellTokens.heroAutoAdvanceDuration * 0.5);
@@ -205,7 +194,11 @@ void main() {
         break;
       }
     }
-    expect(advanced, isTrue, reason: 'auto-advance should move to the next slide');
+    expect(
+      advanced,
+      isTrue,
+      reason: 'auto-advance should move to the next slide',
+    );
     expect(key.currentState!.heroAdvanceProgress, lessThan(0.25));
   });
 
@@ -234,10 +227,7 @@ void main() {
                   overview: 'Second',
                 ),
               ],
-              layout: const CinematicHeroLayout(
-                kenBurns: false,
-                compact: true,
-              ),
+              layout: const CinematicHeroLayout(kenBurns: false, compact: true),
             ),
           ),
         ),
@@ -322,10 +312,7 @@ void main() {
     expect(find.byIcon(Icons.pause_rounded), findsNothing);
     await tester.pump(const Duration(milliseconds: 50));
     await tester.pump(ShellTokens.heroAutoAdvanceDuration * 0.2);
-    expect(
-      key.currentState!.heroAdvanceProgress,
-      greaterThan(pausedAt + 0.05),
-    );
+    expect(key.currentState!.heroAdvanceProgress, greaterThan(pausedAt + 0.05));
   });
 
   testWidgets(
@@ -437,10 +424,7 @@ void main() {
                   overview: 'Second',
                 ),
               ],
-              layout: const CinematicHeroLayout(
-                kenBurns: false,
-                compact: true,
-              ),
+              layout: const CinematicHeroLayout(kenBurns: false, compact: true),
               actionRowBuilder: (context, slide, {required isActive}) {
                 if (!isActive) return const SizedBox.shrink();
                 return const Text('View details');
@@ -504,10 +488,7 @@ void main() {
                   overview: 'Second',
                 ),
               ],
-              layout: const CinematicHeroLayout(
-                kenBurns: false,
-                compact: true,
-              ),
+              layout: const CinematicHeroLayout(kenBurns: false, compact: true),
               actionRowBuilder: (context, slide, {required isActive}) {
                 if (!isActive) return const SizedBox.shrink();
                 return const Text('View details');
@@ -639,10 +620,7 @@ void main() {
                   backdropUrl: 'https://example.com/b.jpg',
                 ),
               ],
-              layout: const CinematicHeroLayout(
-                kenBurns: false,
-                compact: true,
-              ),
+              layout: const CinematicHeroLayout(kenBurns: false, compact: true),
             ),
           ),
         ),
@@ -653,5 +631,78 @@ void main() {
     expect(key.currentState!.heroAdvancePaused, isTrue);
     expect(key.currentState!.heroAdvanceProgress, 0);
     expect(key.currentState!.heroIndex, 0);
+  });
+
+  testWidgets('gallery nav hints paint when galleryNavHintsVisible', (
+    tester,
+  ) async {
+    var hints = false;
+    late void Function(void Function()) setHints;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: StatefulBuilder(
+            builder: (context, setState) {
+              setHints = setState;
+              return SizedBox(
+                height: 420,
+                width: 900,
+                child: CinematicHero(
+                  slides: const [
+                    CinematicHeroSlide(
+                      id: 'a',
+                      title: 'Alpha',
+                      backdropUrl: 'https://example.com/a.jpg',
+                    ),
+                    CinematicHeroSlide(
+                      id: 'b',
+                      title: 'Beta',
+                      backdropUrl: 'https://example.com/b.jpg',
+                    ),
+                  ],
+                  layout: const CinematicHeroLayout(
+                    kenBurns: false,
+                    compact: true,
+                  ),
+                  galleryOverlayBuilder: (_) => const SizedBox.expand(),
+                  galleryNavHintsVisible: hints,
+                ),
+              );
+            },
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+
+    expect(find.byIcon(Icons.chevron_left_rounded), findsOneWidget);
+    expect(find.byIcon(Icons.chevron_right_rounded), findsOneWidget);
+    expect(
+      tester
+          .widget<AnimatedOpacity>(
+            find.ancestor(
+              of: find.byIcon(Icons.chevron_left_rounded),
+              matching: find.byType(AnimatedOpacity),
+            ),
+          )
+          .opacity,
+      0,
+    );
+
+    setHints(() => hints = true);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(
+      tester
+          .widget<AnimatedOpacity>(
+            find.ancestor(
+              of: find.byIcon(Icons.chevron_left_rounded),
+              matching: find.byType(AnimatedOpacity),
+            ),
+          )
+          .opacity,
+      1,
+    );
   });
 }

@@ -123,7 +123,12 @@ class DesktopPlayerScreen extends ConsumerStatefulWidget {
   final Future<void> Function(PlayerKitEpisode episode)? onHubEpisodeSelected;
   final String? episodeOverview;
   final EnginePlaySession? enginePlaySession;
-  final Future<void> Function(Duration position, Duration duration, {String? sourceId, String? streamUrl})?
+  final Future<void> Function(
+    Duration position,
+    Duration duration, {
+    String? sourceId,
+    String? streamUrl,
+  })?
   onSaveProgress;
   final Future<void> Function(String sourceUrl, String sourceTitle)?
   onSourcePinned;
@@ -200,6 +205,7 @@ class _DesktopPlayerScreenState extends ConsumerState<DesktopPlayerScreen>
   bool _playerReady = false;
   bool _disposed = false;
   bool _playbackStopped = false;
+
   /// Main Player torn down while desktop PiP float owns playback.
   bool _releasedForPip = false;
 
@@ -218,17 +224,20 @@ class _DesktopPlayerScreenState extends ConsumerState<DesktopPlayerScreen>
   /// Completes when this player finishes [stopForNewPlay] teardown.
   Completer<void>? _stopForNewPlayCompleter;
 
-  late final FocusNode _miniRootFocus =
-      FocusNode(debugLabel: 'in-app-mini-root');
-  late final FocusNode _miniPlayPauseFocus =
-      FocusNode(debugLabel: 'in-app-mini-play');
-  late final FocusNode _miniExpandFocus =
-      FocusNode(debugLabel: 'in-app-mini-expand');
-  late final FocusNode _miniCloseFocus =
-      FocusNode(debugLabel: 'in-app-mini-close');
+  late final FocusNode _miniRootFocus = FocusNode(
+    debugLabel: 'in-app-mini-root',
+  );
+  late final FocusNode _miniPlayPauseFocus = FocusNode(
+    debugLabel: 'in-app-mini-play',
+  );
+  late final FocusNode _miniExpandFocus = FocusNode(
+    debugLabel: 'in-app-mini-expand',
+  );
+  late final FocusNode _miniCloseFocus = FocusNode(
+    debugLabel: 'in-app-mini-close',
+  );
 
   /// Keep MediaKit [Video] State across full ↔ in-app mini (texture stays alive).
-  final GlobalKey _videoViewKey = GlobalKey(debugLabel: 'desktop-player-video');
 
   @override
   FocusNode get miniRootFocus => _miniRootFocus;
@@ -295,6 +304,7 @@ class _DesktopPlayerScreenState extends ConsumerState<DesktopPlayerScreen>
   Timer? _trackAutoSelectTimer;
   Timer? _embeddedSubtitleAutoTimer;
   StreamSubscription<List<Map<String, dynamic>>>? _subtitleFetchSub;
+
   /// Bumped on exit so an in-flight auto-pick cannot `sub-add` after leave.
   int _subtitleAutoGen = 0;
   bool _subtitleAutoPickBusy = false;
@@ -387,8 +397,10 @@ class _DesktopPlayerScreenState extends ConsumerState<DesktopPlayerScreen>
   final Map<String, PlayerSourceStatus> _urlCheckStatuses = {};
   final ValueNotifier<int> _sourceMenuRevision = ValueNotifier(0);
   bool _isInitPlaybackRunning = false;
+
   /// Remount seek requested while open/remount was in flight (Skip Intro, scrub).
   Duration? _pendingRemountSeek;
+
   /// Pins seek bar position/duration while peakstorm trim remount runs.
   bool _lockSeekBarPosition = false;
   bool _networkRemountInFlight = false;
@@ -399,9 +411,9 @@ class _DesktopPlayerScreenState extends ConsumerState<DesktopPlayerScreen>
   Duration _lastHealthyPosition = Duration.zero;
 
   Duration _recoveryResumePosition() => recoveryResumePosition(
-        lastHealthy: _lastHealthyPosition,
-        shown: _positionNotifier.value,
-      );
+    lastHealthy: _lastHealthyPosition,
+    shown: _positionNotifier.value,
+  );
   bool _playbackConfirmed = false;
   DateTime? _playbackConfirmedAt;
 
@@ -466,7 +478,8 @@ class _DesktopPlayerScreenState extends ConsumerState<DesktopPlayerScreen>
   Future<void> _continueAirPlayIfActive() async {
     if (_disposed) return;
     if (!CastingService.instance.airPlayActive.value) return;
-    final url = _hlsMasterUrl ??
+    final url =
+        _hlsMasterUrl ??
         _currentQualityUrl ??
         _currentUrl ??
         (isLocalTorrentStreamUrl(widget.mediaPath) ? widget.mediaPath : null);
@@ -522,13 +535,13 @@ class _DesktopPlayerScreenState extends ConsumerState<DesktopPlayerScreen>
 
   /// The subtitle on screen now, for a cast receiver.
   Future<CastSubtitle?> _castSubtitle() => castSubtitleForPlayer(
-        _player,
-        delaySeconds: _subtitleDelay,
-        headers: hlsInStreamRequestHeaders(
-          streamHeaders: _hlsMasterHeaders ?? widget.headers,
-          playbackHeaders: currentPlaybackHttpHeaders(_player),
-        ),
-      );
+    _player,
+    delaySeconds: _subtitleDelay,
+    headers: hlsInStreamRequestHeaders(
+      streamHeaders: _hlsMasterHeaders ?? widget.headers,
+      playbackHeaders: currentPlaybackHttpHeaders(_player),
+    ),
+  );
 
   /// The stream's first timestamp — where a cast subtitle's zero sits.
   Future<Duration> _castStartTime() => mpvStreamStartTime(_player);
@@ -581,7 +594,9 @@ class _DesktopPlayerScreenState extends ConsumerState<DesktopPlayerScreen>
     final caller = StackTrace.current;
     if (url != null && peakstormHlsNeedsRemountSeek(url, current, position)) {
       if (_isInitPlaybackRunning) {
-        _pendingRemountSeek = position < Duration.zero ? Duration.zero : position;
+        _pendingRemountSeek = position < Duration.zero
+            ? Duration.zero
+            : position;
         _positionNotifier.value = _pendingRemountSeek!;
         logPeakstormSeekTo(
           from: current,
@@ -602,7 +617,8 @@ class _DesktopPlayerScreenState extends ConsumerState<DesktopPlayerScreen>
           from: current,
           to: position,
           action: 'skip',
-          skipReason: 'open_resume_grace start=${widget.startPosition?.inSeconds}s',
+          skipReason:
+              'open_resume_grace start=${widget.startPosition?.inSeconds}s',
           caller: caller,
         );
         return;
@@ -662,10 +678,7 @@ class _DesktopPlayerScreenState extends ConsumerState<DesktopPlayerScreen>
     final pending = _pendingRemountSeek;
     if (pending == null || _disposed || _isInitPlaybackRunning) return;
     _pendingRemountSeek = null;
-    logPeakstormResume(
-      'flush pending remount seek',
-      target: pending,
-    );
+    logPeakstormResume('flush pending remount seek', target: pending);
     unawaited(_seekTo(pending));
   }
 
@@ -673,7 +686,8 @@ class _DesktopPlayerScreenState extends ConsumerState<DesktopPlayerScreen>
     final url = _currentQualityUrl ?? _currentUrl;
     final w = _postSeekStall;
     if (w == null) return;
-    w.enabled = url != null &&
+    w.enabled =
+        url != null &&
         !isLocalTorrentStreamUrl(url) &&
         !isLocalLoopbackPlayUrl(url);
     if (shouldSkipPostSeekStallArm(
@@ -700,8 +714,10 @@ class _DesktopPlayerScreenState extends ConsumerState<DesktopPlayerScreen>
   // ── Next Episode State ────────────────────────────────────────────────────
   bool _isLoadingNextEp = false;
   bool _nearEndOfEpisode = false;
+
   /// Auto next countdown ring is running on the Next Episode chip.
   bool _autoNextCountdown = false;
+
   /// X on the chip — no auto next until the chip hides again.
   bool _autoNextDismissed = false;
   bool _hasPrevEpisodeAdjacent = false;
@@ -813,8 +829,7 @@ class _DesktopPlayerScreenState extends ConsumerState<DesktopPlayerScreen>
     // replacement player owns the engine now; leave its resolve alone.
     if (!TorrentStreamService().retainForExternalHandoff &&
         !TorrentStreamService().replacementPlayerAlive) {
-      final torrentId =
-          _activeMagnet ?? widget.magnetLink ?? widget.mediaPath;
+      final torrentId = _activeMagnet ?? widget.magnetLink ?? widget.mediaPath;
       TorrentStreamService().removeTorrent(torrentId);
     }
 

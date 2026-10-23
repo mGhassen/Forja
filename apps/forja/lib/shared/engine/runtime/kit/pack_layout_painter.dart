@@ -84,8 +84,10 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
   final Map<String, List<Map<String, dynamic>>> _dynamicBarItems = {};
   final ValueNotifier<Map<String, dynamic>?> _selectedListItem =
       ValueNotifier<Map<String, dynamic>?>(null);
-  final ValueNotifier<Set<String>> _searchHitKinds =
-      ValueNotifier<Set<String>>(const {});
+  final ValueNotifier<Set<String>> _searchHitKinds = ValueNotifier<Set<String>>(
+    const {},
+  );
+
   /// Category selected before opening Search (restored on clear).
   String? _categoryBeforeSearch;
   bool _layoutRtl = false;
@@ -96,9 +98,11 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
   Set<String> _eagerLoadKeys = const {};
   Set<String> _pageFeedRailIds = const {};
   Future<Map<String, List<dynamic>>>? _pageFeedFuture;
+
   /// Sync rails for [PackChromeScope.pageFeedRails] — avoids microtask skeleton.
   Map<String, List<dynamic>>? _pageFeedRails;
   MetaError? _pageFeedError;
+
   /// Bumped on chrome filter flip / forced page-feed reload — drop late
   /// progressive publishes from a superseded All/Films/TV fetch.
   int _pageFeedGen = 0;
@@ -108,13 +112,16 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
   HubPageFocus _pageFocus = HubPageFocus.empty;
   String? _tvBoundKey;
   bool _listStyleHydrateStarted = false;
+
   /// Pack install wiped this hub's cache. Soft-reload when the user opens
   /// the hub — never scrape on the wipe itself.
   bool _pendingHubFeedSoftReload = false;
   bool _openReloadRunning = false;
+
   /// Bumped when a pack reload flags this hub, so an in-flight layout
   /// waiting on install idle cannot continue and mark the tab fresh.
   int _layoutGen = 0;
+
   /// A save finished before this hub's layout was known. Reload once the
   /// offline grid is in the tree.
   bool _downloadLibraryDirty = false;
@@ -176,10 +183,7 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
   /// hydrate from disk; guide/epg stay session-only.
   void _applyViewStyle(String style) {
     final v = style.trim().toLowerCase();
-    if (v != 'list' &&
-        v != 'cards' &&
-        v != 'guide' &&
-        v != 'epg') {
+    if (v != 'list' && v != 'cards' && v != 'guide' && v != 'epg') {
       return;
     }
     if (_viewStyle == v && _layoutSelections['view'] == v) return;
@@ -187,6 +191,7 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
       _viewStyle = v;
       _layoutSelections['view'] = v;
     }
+
     if (mounted) {
       setState(apply);
     } else {
@@ -251,10 +256,22 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
 
   void _bindHubTvDefaults(String tab) {
     if (tab.isEmpty) return;
+    // Re-bind every build so landFallback sees current shelf selection / chrome.
+    bindHubPageFocus(
+      tab,
+      _pageFocus,
+      landFallback: () {
+        final shelf = _focusShelfChip(context, 'catalog');
+        if (shelf != null) {
+          shelf();
+          return;
+        }
+        ShellTvFocusCoordinator.focusChromeRow(tab);
+      },
+    );
     final key = '$tab|${_pageFocus.signature}';
     if (_tvBoundKey != key) {
       _tvBoundKey = key;
-      bindHubPageFocus(tab, _pageFocus);
       ShellTvFocusCoordinator.setTabPageScroll(tab, _nudgeHubPageScroll);
     }
     // Always refresh reveal — hub hero only binds defaultFocus; a prior State
@@ -268,7 +285,8 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
     final pos = _scroll.position;
     if (!pos.hasPixels || !pos.hasContentDimensions) return false;
     // Title pad + poster height + section gap — enough to reveal the next rail.
-    final step = catalogSectionTitleTop(context) +
+    final step =
+        catalogSectionTitleTop(context) +
         shellPosterCardHeight(context) +
         ShellTokens.homeRowSpacing +
         48;
@@ -464,8 +482,9 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
 
   void _publishScroll() {
     if (_pageKey.isEmpty) return;
-    ShellBus.hubScrollOffsetFor(_pageKey).value =
-        _scroll.hasClients ? _scroll.offset : 0;
+    ShellBus.hubScrollOffsetFor(_pageKey).value = _scroll.hasClients
+        ? _scroll.offset
+        : 0;
   }
 
   @override
@@ -505,7 +524,8 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
 
   /// Pack reload sets the registry flag. Opening this hub consumes it.
   Future<void> _reloadFlaggedHubOnOpen() async {
-    final flagged = _pendingHubFeedSoftReload ||
+    final flagged =
+        _pendingHubFeedSoftReload ||
         PluginRegistry.hubNeedsReloadOnOpen(widget.pluginId);
     if (!flagged || _openReloadRunning) return;
     if (!shellTabVisible) {
@@ -554,9 +574,8 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
           final selected = (_layoutSelections[menuId] ?? '').trim();
           final want = e.value;
           if (want is List) {
-            final ids = <String>{
-              for (final raw in want) raw.toString().trim(),
-            }..removeWhere((s) => s.isEmpty);
+            final ids = <String>{for (final raw in want) raw.toString().trim()}
+              ..removeWhere((s) => s.isEmpty);
             if (ids.isNotEmpty && !ids.contains(selected)) return;
           } else {
             final wantId = want.toString().trim();
@@ -573,10 +592,10 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
   }
 
   Map<String, dynamic> _pageRunParams() => <String, dynamic>{
-        ...?widget.pageParams,
-        ...?PluginNavRegistry.pageParamsForTab(_pageKey),
-        'page': _pageKey,
-      };
+    ...?widget.pageParams,
+    ...?PluginNavRegistry.pageParamsForTab(_pageKey),
+    'page': _pageKey,
+  };
 
   /// Sync-apply pack page tree from EngineCache. Returns true when structure painted.
   bool _tryApplyCachedLayout() {
@@ -750,7 +769,8 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
         for (final w in widgets) {
           final type = LayoutTypes.normalize((w['type'] ?? '').toString(), w);
           if (preferRail) {
-            final isRail = type == LayoutTypes.row ||
+            final isRail =
+                type == LayoutTypes.row ||
                 type == 'rail' ||
                 type == 'ranked' ||
                 type == LayoutTypes.list;
@@ -954,11 +974,7 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
       return;
     }
 
-    _applyLayoutData(
-      envelope.data!,
-      forceFeed: force,
-      reuseFeed: !force,
-    );
+    _applyLayoutData(envelope.data!, forceFeed: force, reuseFeed: !force);
   }
 
   Set<String> _firstPaintEagerKeys(List<Map<String, dynamic>> widgets) {
@@ -1011,12 +1027,12 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
   }
 
   Map<String, dynamic> _pageFeedParams() => catalogParamsWithFilters(
-        const {},
-        filters: catalogChromeFilters(
-          tabId: widget.tabId,
-          pluginId: widget.pluginId,
-        ),
-      );
+    const {},
+    filters: catalogChromeFilters(
+      tabId: widget.tabId,
+      pluginId: widget.pluginId,
+    ),
+  );
 
   Map<String, List<dynamic>>? _railsMapFromEnvelope(MetaEnvelope? envelope) {
     if (envelope == null || !envelope.ok) return null;
@@ -1126,11 +1142,7 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
       try {
         final pool = await pools[railId]!;
         final cap = _pageFeedRailCap(railId);
-        items = _claimPageFeedItems(
-          pool.items,
-          claimed: claimed,
-          cap: cap,
-        );
+        items = _claimPageFeedItems(pool.items, claimed: claimed, cap: cap);
         MetaError? railError = pool.error;
         if (items.length < cap) {
           final filled = await _backfillPageFeedRail(
@@ -1186,11 +1198,7 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
           _pageFeedError = hardError;
         });
       }
-      throw MetaEnvelope(
-        ok: false,
-        action: 'feed',
-        error: hardError,
-      );
+      throw MetaEnvelope(ok: false, action: 'feed', error: hardError);
     }
 
     _storePageFeedCache(acc, params: feedParams);
@@ -1199,8 +1207,10 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
 
   /// Display caps — must match pack `TMDB_HOME_*_CAP` / layout pageSize.
   static const _kPageFeedPoolPageSize = 20;
+
   /// Match pack `TMDB_HOME_FETCH_PAGES` — first batch per rail, fetched in parallel.
   static const _kPageFeedPoolPages = 2;
+
   /// Extra pages after the pool when exclusive claim left a rail short.
   static const _kPageFeedFillMaxPages = 10;
 
@@ -1220,15 +1230,12 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
         pluginId: widget.pluginId,
         packSourceUrl: widget.packSourceUrl,
         action: 'rail',
-        params: catalogParamsWithFilters(
-          {
-            'rail': railId,
-            'page': page,
-            'limit': _kPageFeedPoolPageSize,
-            '_poolPage': true,
-          },
-          filters: chromeFilters,
-        ),
+        params: catalogParamsWithFilters({
+          'rail': railId,
+          'page': page,
+          'limit': _kPageFeedPoolPageSize,
+          '_poolPage': true,
+        }, filters: chromeFilters),
         forceRefresh: forceRefresh,
       );
       if (!envelope.ok) {
@@ -1316,9 +1323,11 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
     final out = List<dynamic>.from(already);
     MetaError? hardError;
 
-    for (var page = startPage;
-        page <= _kPageFeedFillMaxPages && out.length < cap;
-        page++) {
+    for (
+      var page = startPage;
+      page <= _kPageFeedFillMaxPages && out.length < cap;
+      page++
+    ) {
       if (gen != _pageFeedGen) {
         return (items: out, error: hardError);
       }
@@ -1379,10 +1388,11 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
     if (ids == null) return null;
     final tmdb = ids['tmdb'];
     if (tmdb == null || tmdb.toString().trim().isEmpty) return null;
-    final type = (item['type'] ??
-            (item['meta'] is Map ? (item['meta'] as Map)['type'] : null) ??
-            '')
-        .toString();
+    final type =
+        (item['type'] ??
+                (item['meta'] is Map ? (item['meta'] as Map)['type'] : null) ??
+                '')
+            .toString();
     return '$type:$tmdb';
   }
 
@@ -1409,8 +1419,7 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
         final id = (action['id'] ?? '').toString().trim();
         if (id.isEmpty) continue;
         if (action['dynamicCatalogs'] == true) {
-          final pref =
-              container.read(kitFeedCatalogFilterProvider(key)).trim();
+          final pref = container.read(kitFeedCatalogFilterProvider(key)).trim();
           final current = (_layoutSelections[id] ?? '').trim();
           final def = (action['default'] ?? 'all').toString().trim();
           // Keep a surviving chip; only fill pack default / empty from prefs.
@@ -1440,10 +1449,7 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
       }
       if (widgetId == 'view') {
         final v = value.trim().toLowerCase();
-        if (v == 'list' ||
-            v == 'cards' ||
-            v == 'guide' ||
-            v == 'epg') {
+        if (v == 'list' || v == 'cards' || v == 'guide' || v == 'epg') {
           _viewStyle = v;
         }
       }
@@ -1619,9 +1625,10 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
     if (action == null || !_actionIsShelf(action)) return null;
     final items = layoutItemsFromSpec(action);
     if (items.isEmpty) return null;
-    final sel = (_layoutSelections[actionId] ??
-            (action['default'] ?? items.first.id).toString())
-        .trim();
+    final sel =
+        (_layoutSelections[actionId] ??
+                (action['default'] ?? items.first.id).toString())
+            .trim();
     var itemIdx = 0;
     for (var i = 0; i < items.length; i++) {
       if (items[i].id == sel) {
@@ -1650,8 +1657,10 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
   }
 
   bool _actionIsShelf(Map<String, dynamic> action) {
-    final style =
-        (action['style'] ?? action['paint'] ?? '').toString().trim().toLowerCase();
+    final style = (action['style'] ?? action['paint'] ?? '')
+        .toString()
+        .trim()
+        .toLowerCase();
     final nested = layoutItemsFromSpec(action);
     return nested.isNotEmpty &&
         (style == 'shelf' ||
@@ -1686,9 +1695,8 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
           final selected = (_layoutSelections[menuId] ?? '').trim();
           final want = e.value;
           if (want is List) {
-            final ids = <String>{
-              for (final raw in want) raw.toString().trim(),
-            }..removeWhere((s) => s.isEmpty);
+            final ids = <String>{for (final raw in want) raw.toString().trim()}
+              ..removeWhere((s) => s.isEmpty);
             if (ids.isNotEmpty && !ids.contains(selected)) {
               gated = true;
               break;
@@ -1711,19 +1719,25 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
 
   int _chromeShelfSlotSpan(Map<String, dynamic> action) {
     final id = (action['id'] ?? '').toString().trim().toLowerCase();
-    final verb =
-        (action['action'] ?? action['id'] ?? '').toString().trim().toLowerCase();
-    final style =
-        (action['style'] ?? action['paint'] ?? '').toString().trim().toLowerCase();
+    final verb = (action['action'] ?? action['id'] ?? '')
+        .toString()
+        .trim()
+        .toLowerCase();
+    final style = (action['style'] ?? action['paint'] ?? '')
+        .toString()
+        .trim()
+        .toLowerCase();
     final nested = layoutItemsFromSpec(action);
     final isView = id == 'view' || verb == 'view';
-    final isViewGroup = isView &&
+    final isViewGroup =
+        isView &&
         nested.isNotEmpty &&
         (style == 'group' ||
             style == 'toggle' ||
             style == 'buttons' ||
             style.isEmpty);
-    final isShelf = nested.isNotEmpty &&
+    final isShelf =
+        nested.isNotEmpty &&
         (style == 'shelf' ||
             style == 'segment' ||
             action['expandOnHover'] == true);
@@ -1754,10 +1768,7 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
             builder: (_, _) => _wrapLayoutScope(context, _pageBody()),
           );
     if (_layoutRtl) {
-      result = Directionality(
-        textDirection: TextDirection.rtl,
-        child: result,
-      );
+      result = Directionality(textDirection: TextDirection.rtl, child: result);
     }
     final tab = widget.tabId?.trim() ?? '';
     if (tab.isNotEmpty) {
@@ -1800,9 +1811,7 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
       cacheExtent: cacheExtent,
       sections: sections,
       sectionSliver: (context, section, index) {
-        final gap = index == 0
-            ? leadingInset
-            : ShellTokens.homeRowSpacing;
+        final gap = index == 0 ? leadingInset : ShellTokens.homeRowSpacing;
         return SliverToBoxAdapter(
           child: gap <= 0
               ? section
@@ -1854,8 +1863,7 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
       tabId: _pageKey,
       pluginId: widget.pluginId,
     )?.toLowerCase();
-    final only =
-        (w['showOnlyWhenType'] ?? '').toString().trim().toLowerCase();
+    final only = (w['showOnlyWhenType'] ?? '').toString().trim().toLowerCase();
     if (only.isNotEmpty) {
       if (active == null || active.isEmpty) return false;
       return _chromeTypeMatches(only, active);
@@ -1892,7 +1900,9 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
         // backdrop + soft fade, not a sibling section below a short hero.
         out.add(
           KeyedSubtree(
-            key: ValueKey('hub-section-${widget.pluginId}-${w['id'] ?? w['rail'] ?? type}'),
+            key: ValueKey(
+              'hub-section-${widget.pluginId}-${w['id'] ?? w['rail'] ?? type}',
+            ),
             child: PackPaintTree(
               spec: w,
               pluginId: widget.pluginId,
@@ -1911,7 +1921,9 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
       }
       out.add(
         KeyedSubtree(
-          key: ValueKey('hub-section-${widget.pluginId}-${w['id'] ?? w['rail'] ?? type}'),
+          key: ValueKey(
+            'hub-section-${widget.pluginId}-${w['id'] ?? w['rail'] ?? type}',
+          ),
           child: PackPaintTree(
             spec: w,
             pluginId: widget.pluginId,
@@ -1935,14 +1947,15 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
     final plugin = packs == null
         ? null
         : PluginRegistry.pluginFromPacks(packs, widget.pluginId);
-    final menuVisible = shellMenu &&
+    final menuVisible =
+        shellMenu &&
         hubShellTopBarVisible(
           plugin,
-          hasVerticalFilters:
-              VerticalFiltersRegistry.specFor(_pageKey) != null,
+          hasVerticalFilters: VerticalFiltersRegistry.specFor(_pageKey) != null,
         );
     final leading = _firstPaintedSpec();
-    final leadingHero = leading != null &&
+    final leadingHero =
+        leading != null &&
         LayoutTypes.normalize((leading['type'] ?? '').toString(), leading) ==
             LayoutTypes.hero;
     final menuHeight = menuVisible
@@ -1984,7 +1997,8 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
         for (final w in _widgets) {
           final type = LayoutTypes.normalize((w['type'] ?? '').toString(), w);
           if (preferRail) {
-            final isRail = type == LayoutTypes.row ||
+            final isRail =
+                type == LayoutTypes.row ||
                 type == 'rail' ||
                 type == 'ranked' ||
                 type == LayoutTypes.list;
@@ -2000,8 +2014,7 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
           final rail = (w['rail'] ?? '').toString().trim();
           if (id != bleedKey && rail != bleedKey) continue;
           if (!_chromeShowsWidget(w)) continue;
-          if (w['hideWhenTypeFilter'] == true &&
-              _chromeHidesTypeFilterRail()) {
+          if (w['hideWhenTypeFilter'] == true && _chromeHidesTypeFilterRail()) {
             break;
           }
           bleedSpec = w;
@@ -2013,10 +2026,7 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
     return (hero: heroSpec, bleed: bleedSpec);
   }
 
-  bool _includeInPage(
-    Map<String, dynamic> w,
-    Map<String, dynamic>? bleedSpec,
-  ) {
+  bool _includeInPage(Map<String, dynamic> w, Map<String, dynamic>? bleedSpec) {
     final type = LayoutTypes.normalize((w['type'] ?? '').toString(), w);
     if (type == LayoutTypes.verticalFilters) return false;
     if (!_chromeShowsWidget(w)) return false;
@@ -2056,8 +2066,7 @@ class _PackLayoutPainterLoaderState extends State<PackLayoutPainterLoader> {
         PluginNavRegistry.pluginIdForTabSync(widget.tabId)?.trim() ?? '';
     if (syncId.isNotEmpty) {
       _pluginId = syncId;
-      _packSourceUrl =
-          PluginNavRegistry.packSourceUrlForTabSync(widget.tabId);
+      _packSourceUrl = PluginNavRegistry.packSourceUrlForTabSync(widget.tabId);
       _loading = false;
       return;
     }

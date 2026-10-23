@@ -134,10 +134,7 @@ class PackPaintTree extends StatelessWidget {
       return const SizedBox.shrink();
     }
 
-    final type = LayoutTypes.normalize(
-      (spec['type'] ?? '').toString(),
-      spec,
-    );
+    final type = LayoutTypes.normalize((spec['type'] ?? '').toString(), spec);
 
     // Opaque load first — then remount merged node as the same type catalog.
     // continue / mood / because own host store or selection → handled in _mount.
@@ -150,7 +147,8 @@ class PackPaintTree extends StatelessWidget {
       final id = (spec['id'] ?? spec['rail'] ?? type).toString();
       final rail = (spec['rail'] ?? load.params['rail'] ?? '').toString();
       final chrome = PackChromeScope.maybeOf(context);
-      final eager = type == LayoutTypes.hero ||
+      final eager =
+          type == LayoutTypes.hero ||
           (spec['bleed'] != null &&
               (spec['bleed'] as Object).toString().trim().isNotEmpty) ||
           (chrome?.isEagerLoad(id, rail: rail) ?? false);
@@ -165,8 +163,7 @@ class PackPaintTree extends StatelessWidget {
         action: load.action,
         params: load.params,
         fallbackSpec: spec,
-        loadingBottomChild:
-            type == LayoutTypes.hero ? pageBottomChild : null,
+        loadingBottomChild: type == LayoutTypes.hero ? pageBottomChild : null,
         builder: (ctx2, merged) => PackPaintTree(
           spec: merged,
           pluginId: pluginId,
@@ -216,12 +213,14 @@ class PackPaintTree extends StatelessWidget {
     }
 
     if (type == LayoutTypes.list) {
-      final listLoad = packLoadSpec(spec['load']) ??
+      final listLoad =
+          packLoadSpec(spec['load']) ??
           (action: 'feed', params: <String, dynamic>{});
       // Include list id — Sports/TV (and IPTV shelves) must not share State
       // or load-params like catalogFilter:all bleed across showWhen flips.
-      final listId =
-          (spec['id'] ?? spec['rail'] ?? listLoad.action).toString().trim();
+      final listId = (spec['id'] ?? spec['rail'] ?? listLoad.action)
+          .toString()
+          .trim();
       return _withMotion(
         context,
         spec,
@@ -250,7 +249,8 @@ class PackPaintTree extends StatelessWidget {
     final props = _propsOf(node);
     final top = node['motion'];
     final propsMotion = props['motion'];
-    final hasNums = props.containsKey('hoverScale') ||
+    final hasNums =
+        props.containsKey('hoverScale') ||
         props.containsKey('focusScale') ||
         props.containsKey('durationMs') ||
         props.containsKey('curve');
@@ -265,10 +265,7 @@ class PackPaintTree extends StatelessWidget {
   }
 
   /// Eager host section that still claims a prefetch lane index.
-  Widget _prefetchParticipant({
-    required String id,
-    required Widget child,
-  }) {
+  Widget _prefetchParticipant({required String id, required Widget child}) {
     return LazyViewportGate(
       key: ValueKey('lazy-gate-$pluginId-$id'),
       detectorKey: Key('lazy-$pluginId-$id'),
@@ -316,12 +313,12 @@ class PackPaintTree extends StatelessWidget {
     final body = kids.isEmpty
         ? const SizedBox.shrink()
         : kids.length == 1
-            ? kids.first
-            : Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                mainAxisSize: MainAxisSize.min,
-                children: kids,
-              );
+        ? kids.first
+        : Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            mainAxisSize: MainAxisSize.min,
+            children: kids,
+          );
     final bg = ForjaShellColors.cinematic.menuSurface;
     final scope = LayoutScope.maybeOf(context);
 
@@ -499,7 +496,10 @@ class PackPaintTree extends StatelessWidget {
       for (final c in rawKids) {
         if (c is! Map) continue;
         final child = Map<String, dynamic>.from(c);
-        final t = LayoutTypes.normalize((child['type'] ?? '').toString(), child);
+        final t = LayoutTypes.normalize(
+          (child['type'] ?? '').toString(),
+          child,
+        );
         if (t == LayoutTypes.topBar) {
           merged['actions'] ??= child['actions'];
           merged['title'] ??= child['title'] ?? child['label'];
@@ -535,8 +535,9 @@ class PackPaintTree extends StatelessWidget {
             merged['sideItems'] ??= child['items'];
           }
           final live = scope?.selectedId(barId);
-          merged['selectedSideId'] =
-              (live != null && live.isNotEmpty) ? live : child['default'];
+          merged['selectedSideId'] = (live != null && live.isNotEmpty)
+              ? live
+              : child['default'];
           merged['defaultSideId'] ??= child['default'];
           if (child['width'] != null) merged['sideWidth'] ??= child['width'];
           if (child['focusUp'] != null) merged['focusUp'] ??= child['focusUp'];
@@ -575,7 +576,7 @@ class PackPaintTree extends StatelessWidget {
             if ((a['id'] ?? '').toString().isNotEmpty)
               (a['id'] as Object).toString():
                   scope?.selectedId((a['id'] as Object).toString()) ??
-                      (a['default'] ?? '').toString(),
+                  (a['default'] ?? '').toString(),
         },
         actionSlots: _portalsActionSlots(
           context,
@@ -597,10 +598,11 @@ class PackPaintTree extends StatelessWidget {
         onSideSelect: side != null
             ? null
             : (id) {
-                final barId = (categoryChild?['id'] ??
-                        _childIdOfType(node, LayoutTypes.categoryBar) ??
-                        'cats')
-                    .toString();
+                final barId =
+                    (categoryChild?['id'] ??
+                            _childIdOfType(node, LayoutTypes.categoryBar) ??
+                            'cats')
+                        .toString();
                 scope?.onSelect(barId, id, toggle: false);
               },
       ),
@@ -618,13 +620,12 @@ class PackPaintTree extends StatelessWidget {
     for (final e in when.entries) {
       final menuId = e.key.toString().trim();
       if (menuId.isEmpty) continue;
-      final selected =
-          (scope?.selectedId(menuId) ?? selections[menuId] ?? '').trim();
+      final selected = (scope?.selectedId(menuId) ?? selections[menuId] ?? '')
+          .trim();
       final want = e.value;
       if (want is List) {
-        final ids = <String>{
-          for (final raw in want) raw.toString().trim(),
-        }..removeWhere((s) => s.isEmpty);
+        final ids = <String>{for (final raw in want) raw.toString().trim()}
+          ..removeWhere((s) => s.isEmpty);
         if (ids.isNotEmpty && !ids.contains(selected)) return false;
       } else {
         final wantId = want.toString().trim();
@@ -651,7 +652,10 @@ class PackPaintTree extends StatelessWidget {
       for (final c in rawKids) {
         if (c is! Map) continue;
         final child = Map<String, dynamic>.from(c);
-        final t = LayoutTypes.normalize((child['type'] ?? '').toString(), child);
+        final t = LayoutTypes.normalize(
+          (child['type'] ?? '').toString(),
+          child,
+        );
         if (t == LayoutTypes.topBar) {
           merged['actions'] ??= child['actions'];
           merged['title'] ??= child['title'] ?? child['label'];
@@ -670,7 +674,10 @@ class PackPaintTree extends StatelessWidget {
       for (final c in rawKids) {
         if (c is! Map) continue;
         final child = Map<String, dynamic>.from(c);
-        final t = LayoutTypes.normalize((child['type'] ?? '').toString(), child);
+        final t = LayoutTypes.normalize(
+          (child['type'] ?? '').toString(),
+          child,
+        );
         if (t == LayoutTypes.topBar) continue;
         if (!_layoutShowWhenMatches(child, scope, actionSelections)) {
           continue;
@@ -708,8 +715,9 @@ class PackPaintTree extends StatelessWidget {
             merged['kindItems'] ??= child['items'];
           }
           final live = scope?.selectedId(barId);
-          merged['selectedKindId'] =
-              (live != null && live.isNotEmpty) ? live : child['default'];
+          merged['selectedKindId'] = (live != null && live.isNotEmpty)
+              ? live
+              : child['default'];
           merged['defaultKindId'] ??= child['default'];
         } else if (t == LayoutTypes.list || child['load'] != null) {
           final listId = (child['id'] ?? 'items').toString().trim();
@@ -734,30 +742,30 @@ class PackPaintTree extends StatelessWidget {
     }
     final actions = previewActions;
     final barId = (categoryChild?['id'] ?? 'kind').toString();
-    final useCircles = categoryChild != null &&
+    final useCircles =
+        categoryChild != null &&
         (categoryChild['kindIcons'] is Map ||
             (categoryChild['source'] ?? '').toString() == 'live_schedule');
     final kindsBar = categoryChild == null
         ? const SizedBox.shrink()
         : useCircles
-            ? _kindCircleBar(
-                context,
-                barId: barId,
-                items: _kindItemsWithIcons(
-                  merged['kindItems'] is List
-                      ? merged['kindItems'] as List
-                      : const [],
-                  kindIcons: kitCategoryBarKindIcons(categoryChild),
-                ),
-                selectedId: (merged['selectedKindId'] ??
-                        merged['defaultKindId'] ??
-                        'all')
+        ? _kindCircleBar(
+            context,
+            barId: barId,
+            items: _kindItemsWithIcons(
+              merged['kindItems'] is List
+                  ? merged['kindItems'] as List
+                  : const [],
+              kindIcons: kitCategoryBarKindIcons(categoryChild),
+            ),
+            selectedId:
+                (merged['selectedKindId'] ?? merged['defaultKindId'] ?? 'all')
                     .toString(),
-                onSelect: (id) => scope?.onSelect(barId, id, toggle: false),
-                focusDown: categoryChild['focusDown']?.toString(),
-                focusUp: categoryChild['focusUp']?.toString(),
-              )
-            : null;
+            onSelect: (id) => scope?.onSelect(barId, id, toggle: false),
+            focusDown: categoryChild['focusDown']?.toString(),
+            focusUp: categoryChild['focusUp']?.toString(),
+          )
+        : null;
     final chromeDown = _chromeFocusDown(scope, merged);
     return Consumer(
       builder: (context, ref, _) {
@@ -769,8 +777,10 @@ class PackPaintTree extends StatelessWidget {
           kindsBar: kindsBar,
           actions: paintedActions,
           actionSelections: actionSelections,
-          actionSelectionLabels:
-              _topBarSelectionLabels(actionSelections, actions),
+          actionSelectionLabels: _topBarSelectionLabels(
+            actionSelections,
+            actions,
+          ),
           actionSlots: _portalsActionSlots(
             context,
             actions: paintedActions,
@@ -810,7 +820,10 @@ class PackPaintTree extends StatelessWidget {
       for (final c in rawKids) {
         if (c is! Map) continue;
         final child = Map<String, dynamic>.from(c);
-        final t = LayoutTypes.normalize((child['type'] ?? '').toString(), child);
+        final t = LayoutTypes.normalize(
+          (child['type'] ?? '').toString(),
+          child,
+        );
         final painted = PackPaintTree(
           spec: child,
           pluginId: pluginId,
@@ -830,10 +843,15 @@ class PackPaintTree extends StatelessWidget {
       props,
       menu: menu,
       tabs: tabs,
-      cards: feed ??
+      cards:
+          feed ??
           CatalogCardsGrid(
             items: const [],
-            emptyTitle: propsStringOr(props, 'emptyTitle', 'Your list is empty'),
+            emptyTitle: propsStringOr(
+              props,
+              'emptyTitle',
+              'Your list is empty',
+            ),
             emptyDescription: propsString(props, 'emptyDescription'),
             cardKind: 'poster',
           ),
@@ -889,18 +907,16 @@ class PackPaintTree extends StatelessWidget {
             final meta = kitMoodCircleMeta(id: item.id, icon: item.icon);
             return ShellMoodCircleItem(
               layout: layout,
-              label: catalogKitCategoryLabel(
-                item.id,
-                label: item.label,
-              ),
+              label: catalogKitCategoryLabel(item.id, label: item.label),
               icon: meta.icon,
               accent: meta.accent,
               selected: selectedId == item.id,
               listIndex: i,
               onDownEdge: down.isEmpty
                   ? null
-                  : () =>
-                      scope?.resolveFocusEdge(down, last: true, down: true)?.call(),
+                  : () => scope
+                        ?.resolveFocusEdge(down, last: true, down: true)
+                        ?.call(),
               onUpEdge: up.isEmpty
                   ? null
                   : () => scope?.resolveFocusEdge(up, last: true)?.call(),
@@ -968,11 +984,13 @@ class PackPaintTree extends StatelessWidget {
   }) {
     final chrome = PackChromeScope.maybeOf(context);
     final action = actions.cast<Map<String, dynamic>?>().firstWhere(
-          (a) => a != null && (a['id'] ?? '').toString() == actionId,
-          orElse: () => null,
-        );
-    final verb =
-        (action?['action'] ?? actionId).toString().trim().toLowerCase();
+      (a) => a != null && (a['id'] ?? '').toString() == actionId,
+      orElse: () => null,
+    );
+    final verb = (action?['action'] ?? actionId)
+        .toString()
+        .trim()
+        .toLowerCase();
     if (verb == 'refresh' || actionId == 'refresh') {
       chrome?.onBumpRefresh();
       return;
@@ -1068,9 +1086,9 @@ class PackPaintTree extends StatelessWidget {
     required String actionId,
     required LayoutScope? scope,
   }) async {
-    final current = (scope?.selectedId(actionId) ??
-            (action['default'] ?? '').toString())
-        .trim();
+    final current =
+        (scope?.selectedId(actionId) ?? (action['default'] ?? '').toString())
+            .trim();
     // Live Sports only — never treat every `id: catalog` / schedule id as
     // host product (other hubs may reuse those ids with static items).
     final dynamicCatalog = action['dynamicCatalogs'] == true;
@@ -1110,8 +1128,7 @@ class PackPaintTree extends StatelessWidget {
           options = [
             (id: 'all', label: 'All', subtitle: null),
             for (final o in dynamicOpts)
-              if (o.id != 'all')
-                (id: o.id, label: o.label, subtitle: null),
+              if (o.id != 'all') (id: o.id, label: o.label, subtitle: null),
           ];
         }
       }
@@ -1208,29 +1225,32 @@ class PackPaintTree extends StatelessWidget {
   /// Chrome focus slots for one top-bar action (View / shelf chips = N).
   int _chromeActionSlotSpan(Map<String, dynamic> action) {
     final id = (action['id'] ?? '').toString().trim().toLowerCase();
-    final verb =
-        (action['action'] ?? action['id'] ?? '').toString().trim().toLowerCase();
-    final style =
-        (action['style'] ?? action['paint'] ?? '').toString().trim().toLowerCase();
+    final verb = (action['action'] ?? action['id'] ?? '')
+        .toString()
+        .trim()
+        .toLowerCase();
+    final style = (action['style'] ?? action['paint'] ?? '')
+        .toString()
+        .trim()
+        .toLowerCase();
     final nested = propsIdLabelList(action, 'items');
     final isView = id == 'view' || verb == 'view';
-    final isViewGroup = isView &&
+    final isViewGroup =
+        isView &&
         nested.isNotEmpty &&
         (style == 'group' ||
             style == 'toggle' ||
             style == 'buttons' ||
             style.isEmpty);
-    final isShelf = nested.isNotEmpty &&
+    final isShelf =
+        nested.isNotEmpty &&
         (style == 'shelf' ||
             style == 'segment' ||
             action['expandOnHover'] == true);
     return (isViewGroup || isShelf) ? nested.length : 1;
   }
 
-  bool _chromeActionVisible(
-    BuildContext context,
-    Map<String, dynamic> action,
-  ) {
+  bool _chromeActionVisible(BuildContext context, Map<String, dynamic> action) {
     if (action['hideWhenCompact'] == true &&
         ShellTokens.usesCompactNavDrawer(context)) {
       return false;
@@ -1289,8 +1309,7 @@ class PackPaintTree extends StatelessWidget {
       final id = (a['id'] ?? '').toString().trim();
       if (id.isEmpty || !_chromeActionVisible(context, a)) continue;
       final verb = (a['action'] ?? '').toString().trim().toLowerCase();
-      if (portalsAction == null &&
-          (id == 'portals' || verb == 'portals')) {
+      if (portalsAction == null && (id == 'portals' || verb == 'portals')) {
         portalsAction = a;
       }
       // Inline expanding search (IPTV / Live) — not hub catalog Search.
@@ -1305,13 +1324,11 @@ class PackPaintTree extends StatelessWidget {
     }
 
     if (searchAction != null) {
-      final tooltip =
-          (searchAction['label'] ?? 'Search').toString().trim();
-      final hint = (searchAction['placeholder'] ??
-              searchAction['hint'] ??
-              'Search…')
-          .toString()
-          .trim();
+      final tooltip = (searchAction['label'] ?? 'Search').toString().trim();
+      final hint =
+          (searchAction['placeholder'] ?? searchAction['hint'] ?? 'Search…')
+              .toString()
+              .trim();
       final slotId = (searchAction['id'] ?? 'search').toString().trim();
       final searchId = slotId.isEmpty ? 'search' : slotId;
       out[searchId] = ShellPaintTvTabScope(
@@ -1321,14 +1338,26 @@ class PackPaintTree extends StatelessWidget {
           placeholder: hint.isEmpty ? 'Search…' : hint,
           tvItemIndex: _chromeIndexOfAction(context, actions, searchId),
           onDownEdge: onDownEdge,
-          collapsedSize:
-              PackPaintArtifact.packLength(context, searchAction['collapsedSize']),
-          expandedWidth:
-              PackPaintArtifact.packLength(context, searchAction['expandedWidth']),
-          fontSize: PackPaintArtifact.packLength(context, searchAction['fontSize']),
-          iconSize: PackPaintArtifact.packLength(context, searchAction['iconSize']),
-          fieldIconSize:
-              PackPaintArtifact.packLength(context, searchAction['fieldIconSize']),
+          collapsedSize: PackPaintArtifact.packLength(
+            context,
+            searchAction['collapsedSize'],
+          ),
+          expandedWidth: PackPaintArtifact.packLength(
+            context,
+            searchAction['expandedWidth'],
+          ),
+          fontSize: PackPaintArtifact.packLength(
+            context,
+            searchAction['fontSize'],
+          ),
+          iconSize: PackPaintArtifact.packLength(
+            context,
+            searchAction['iconSize'],
+          ),
+          fieldIconSize: PackPaintArtifact.packLength(
+            context,
+            searchAction['fieldIconSize'],
+          ),
         ),
       );
     }
@@ -1349,10 +1378,9 @@ class PackPaintTree extends StatelessWidget {
       );
     }
     if (portalsAction != null) {
-      final hoist = (portalsAction['hoistSource'] ??
-              portalsAction['source'] ??
-              '')
-          .toString();
+      final hoist =
+          (portalsAction['hoistSource'] ?? portalsAction['source'] ?? '')
+              .toString();
       final sizeKeys = const [
         'width',
         'height',
@@ -1403,12 +1431,12 @@ class PackPaintTree extends StatelessWidget {
     if (tab.isEmpty || !ShellPaintScope.useTvFocusOf(context)) return null;
     final count = _chromeTotalSlots(context, actions);
     return (child) => TvKitRow(
-          tabId: tab,
-          rowId: 'chrome',
-          sortOrder: -1,
-          itemCount: count <= 0 ? 1 : count,
-          child: child,
-        );
+      tabId: tab,
+      rowId: 'chrome',
+      sortOrder: -1,
+      itemCount: count <= 0 ? 1 : count,
+      child: child,
+    );
   }
 
   /// Always-open list search painted above a vertical category rail.
@@ -1443,11 +1471,20 @@ class PackPaintTree extends StatelessWidget {
         placeholder: hint.isEmpty ? 'Search…' : hint,
         alwaysOpen: true,
         tvItemIndex: 0,
-        collapsedSize: PackPaintArtifact.packLength(context, search['collapsedSize']),
-        expandedWidth: PackPaintArtifact.packLength(context, search['expandedWidth']),
+        collapsedSize: PackPaintArtifact.packLength(
+          context,
+          search['collapsedSize'],
+        ),
+        expandedWidth: PackPaintArtifact.packLength(
+          context,
+          search['expandedWidth'],
+        ),
         fontSize: PackPaintArtifact.packLength(context, search['fontSize']),
         iconSize: PackPaintArtifact.packLength(context, search['iconSize']),
-        fieldIconSize: PackPaintArtifact.packLength(context, search['fieldIconSize']),
+        fieldIconSize: PackPaintArtifact.packLength(
+          context,
+          search['fieldIconSize'],
+        ),
       ),
     );
   }
@@ -1480,18 +1517,14 @@ class PackPaintTree extends StatelessWidget {
       openMap = Map<String, dynamic>.from(open);
     }
     final props = PackPaintArtifact.propsOf(item);
-    final portalKey = (openMap?['portalKey'] ??
-            props['portalKey'] ??
-            item['portalKey'] ??
-            '')
-        .toString()
-        .trim();
-    final streamId = (openMap?['streamId'] ??
-            props['streamId'] ??
-            item['streamId'] ??
-            '')
-        .toString()
-        .trim();
+    final portalKey =
+        (openMap?['portalKey'] ?? props['portalKey'] ?? item['portalKey'] ?? '')
+            .toString()
+            .trim();
+    final streamId =
+        (openMap?['streamId'] ?? props['streamId'] ?? item['streamId'] ?? '')
+            .toString()
+            .trim();
     final surface = (openMap?['surface'] ?? '').toString().trim();
     final kind = (openMap?['kind'] ?? '').toString().trim();
     if (portalKey.isEmpty || streamId.isEmpty) return null;
@@ -1509,11 +1542,7 @@ class PackPaintTree extends StatelessWidget {
     Map<String, dynamic> item, {
     required bool active,
   }) {
-    final live = _liveFavoriteAccessory(
-      context,
-      item,
-      active: active,
-    );
+    final live = _liveFavoriteAccessory(context, item, active: active);
     if (live != null) return live;
     final props = PackPaintArtifact.propsOf(item);
     final known = (item['listStatus'] ?? props['listStatus'] ?? '')
@@ -1545,10 +1574,9 @@ class PackPaintTree extends StatelessWidget {
       // Prefer nested paint meta; flat MetaItem JSON (id/type/name/open) works too.
       final MetaItem? meta = item['meta'] is Map
           ? MetaItem.fromJson(Map<String, dynamic>.from(item['meta'] as Map))
-          : (item['open'] is Map &&
-                  (item['id'] != null || item['name'] != null)
-              ? MetaItem.fromJson(item)
-              : null);
+          : (item['open'] is Map && (item['id'] != null || item['name'] != null)
+                ? MetaItem.fromJson(item)
+                : null);
       final open = item['open'] is Map
           ? MetaOpen.fromJson(Map<String, dynamic>.from(item['open'] as Map))
           : meta?.open;
@@ -1557,21 +1585,23 @@ class PackPaintTree extends StatelessWidget {
           .trim();
       // Prefer paint props; fall back to nested meta, then top-level enrich fields
       // (companion enrich may update meta.background before paint is rebuilt).
-      final backdrop = (props['backdropUrl'] ??
-              props['backgroundUrl'] ??
-              meta?.background ??
-              item['background'] ??
-              item['backdrop'] ??
-              '')
-          .toString()
-          .trim();
-      final poster = (props['posterUrl'] ??
-              props['imageUrl'] ??
-              meta?.poster ??
-              item['poster'] ??
-              '')
-          .toString()
-          .trim();
+      final backdrop =
+          (props['backdropUrl'] ??
+                  props['backgroundUrl'] ??
+                  meta?.background ??
+                  item['background'] ??
+                  item['backdrop'] ??
+                  '')
+              .toString()
+              .trim();
+      final poster =
+          (props['posterUrl'] ??
+                  props['imageUrl'] ??
+                  meta?.poster ??
+                  item['poster'] ??
+                  '')
+              .toString()
+              .trim();
       if (title.isEmpty && backdrop.isEmpty && poster.isEmpty) continue;
       final id = (open?.id ?? meta?.id ?? item['id'] ?? props['id'] ?? title)
           .toString();
@@ -1581,34 +1611,34 @@ class PackPaintTree extends StatelessWidget {
           title: title.isEmpty ? 'Title' : title,
           backdropUrl: backdrop.isNotEmpty ? backdrop : poster,
           posterUrl: poster.isEmpty ? null : poster,
-          logoUrl: (props['logoUrl'] ??
-                  props['logo'] ??
-                  meta?.logo ??
-                  item['logo'] ??
-                  '')
-              .toString(),
-          overview: (props['overview'] ??
-                  props['description'] ??
-                  meta?.description ??
-                  item['description'] ??
-                  '')
-              .toString(),
+          logoUrl:
+              (props['logoUrl'] ??
+                      props['logo'] ??
+                      meta?.logo ??
+                      item['logo'] ??
+                      '')
+                  .toString(),
+          overview:
+              (props['overview'] ??
+                      props['description'] ??
+                      meta?.description ??
+                      item['description'] ??
+                      '')
+                  .toString(),
           rating: props['rating'] is num
               ? (props['rating'] as num).toDouble()
               : (meta?.rating ??
-                  (item['rating'] is num
-                      ? (item['rating'] as num).toDouble()
-                      : null)),
+                    (item['rating'] is num
+                        ? (item['rating'] as num).toDouble()
+                        : null)),
           year: () {
             final y = (props['year'] ?? meta?.releaseInfo ?? '').toString();
             return y.isEmpty ? null : y.split(' • ').first;
           }(),
           badge: (props['badge'] ?? meta?.badge)?.toString(),
-          mediaType: (props['mediaType'] ??
-                  meta?.tmdbMediaType ??
-                  meta?.type ??
-                  '')
-              .toString(),
+          mediaType:
+              (props['mediaType'] ?? meta?.tmdbMediaType ?? meta?.type ?? '')
+                  .toString(),
           genres: props['genres'] is List
               ? [
                   for (final g in props['genres'] as List)
@@ -1637,7 +1667,10 @@ class PackPaintTree extends StatelessWidget {
     final bleed = (node['bleed'] ?? '').toString().trim();
     final focusDown = bleed.isNotEmpty
         ? scope?.resolveFocusEdge(bleed, down: true)
-        : scope?.resolveFocusEdge((node['focusDown'] ?? '').toString(), down: true);
+        : scope?.resolveFocusEdge(
+            (node['focusDown'] ?? '').toString(),
+            down: true,
+          );
     final tab = (tabId ?? scope?.tabId ?? '').trim();
 
     return _HubTvCinematicHero(
@@ -1735,7 +1768,8 @@ class PackPaintTree extends StatelessWidget {
       openSettingId: openSetting,
       layoutOpen: (spec['open'] ?? '').toString(),
       builder: (effectiveOpen) {
-        final merged = Map<String, dynamic>.from(spec)..['open'] = effectiveOpen;
+        final merged = Map<String, dynamic>.from(spec)
+          ..['open'] = effectiveOpen;
         return _mountListBody(context, merged);
       },
     );
@@ -1768,11 +1802,8 @@ class PackPaintTree extends StatelessWidget {
           // (issue 290). Paint must not kind-filter a stale previous page or
           // the grid flashes empty while the new page loads.
           final vodPaged = packChromeVodPagedFeed(spec, layoutScope);
-          final paintOnlySearch =
-              !packChromeKindReloadsFeed(spec) && !vodPaged;
-          final q = paintOnlySearch
-              ? (chrome?.eventQuery ?? '').trim()
-              : '';
+          final paintOnlySearch = !packChromeKindReloadsFeed(spec) && !vodPaged;
+          final q = paintOnlySearch ? (chrome?.eventQuery ?? '').trim() : '';
           final searchActive = q.isNotEmpty;
 
           // Legacy IPTV Search: match name OR category across the full feed,
@@ -1862,13 +1893,16 @@ class PackPaintTree extends StatelessWidget {
             final sortId = sortMenu.isEmpty
                 ? ''
                 : (LayoutScope.maybeOf(context)?.selectedId(sortMenu) ?? '')
-                    .trim();
+                      .trim();
             filtered = _sortCatalogItems(filtered, sortId);
           }
-          final packCardKind =
-              (spec['cardKind'] ?? '').toString().trim().toLowerCase();
-          final packLocksCardKind =
-              kKitListCardKindAliases.containsKey(packCardKind);
+          final packCardKind = (spec['cardKind'] ?? '')
+              .toString()
+              .trim()
+              .toLowerCase();
+          final packLocksCardKind = kKitListCardKindAliases.containsKey(
+            packCardKind,
+          );
           final packChannelCards = kitListCardKindIsChannel(
             kKitListCardKindAliases[packCardKind] ?? '',
           );
@@ -1876,15 +1910,16 @@ class PackPaintTree extends StatelessWidget {
           // Chrome View only remaps lists that opt in (`viewMenu`).
           final viewMenu = (spec['viewMenu'] ?? '').toString().trim();
           if (viewMenu.isNotEmpty && !packLocksCardKind) {
-            final chromeView =
-                (chrome?.viewStyle ?? '').toString().trim().toLowerCase();
+            final chromeView = (chrome?.viewStyle ?? '')
+                .toString()
+                .trim()
+                .toLowerCase();
             final scopeView =
                 (LayoutScope.maybeOf(context)?.selectedId(viewMenu) ?? '')
                     .toString()
                     .trim()
                     .toLowerCase();
-            final viewOverride =
-                chromeView.isNotEmpty ? chromeView : scopeView;
+            final viewOverride = chromeView.isNotEmpty ? chromeView : scopeView;
             if (viewOverride == 'cards' ||
                 viewOverride == 'list' ||
                 viewOverride == 'timeline' ||
@@ -1910,15 +1945,15 @@ class PackPaintTree extends StatelessWidget {
           final panelSelectedId = selected == null
               ? null
               : (selected['id'] ??
-                      (selected['meta'] is Map
-                          ? (selected['meta'] as Map)['id']
-                          : null) ??
-                      '')
-                  .toString();
-          final highlightId =
-              (IptvCatalogLand.highlightedStreamId.value ?? '').trim();
-          final selectedId = (panelSelectedId != null &&
-                  panelSelectedId.isNotEmpty)
+                        (selected['meta'] is Map
+                            ? (selected['meta'] as Map)['id']
+                            : null) ??
+                        '')
+                    .toString();
+          final highlightId = (IptvCatalogLand.highlightedStreamId.value ?? '')
+              .trim();
+          final selectedId =
+              (panelSelectedId != null && panelSelectedId.isNotEmpty)
               ? panelSelectedId
               : (highlightId.isEmpty ? null : highlightId);
           final canShowSidePanel = kitListCanShowSidePanel(
@@ -1929,8 +1964,9 @@ class PackPaintTree extends StatelessWidget {
           // Opt-in only. A list mounts the saved-files panel when it sets `panel: 'offline'`.
           final offlinePanel =
               (spec['panel'] ?? '').toString().trim().toLowerCase() ==
-                  'offline';
-          final showPanel = selected != null &&
+              'offline';
+          final showPanel =
+              selected != null &&
               resolveKitListTapOpen(
                     openMode: openMode,
                     hasMatchOpenSurface: managedOpen,
@@ -1939,7 +1975,10 @@ class PackPaintTree extends StatelessWidget {
                   KitListTapOpen.panel;
           final gap = PackPaintArtifact.packLength(context, spec['gap']);
           final pad = PackPaintArtifact.packLength(context, spec['pad']);
-          final cardWidth = PackPaintArtifact.packLength(context, spec['cardWidth']);
+          final cardWidth = PackPaintArtifact.packLength(
+            context,
+            spec['cardWidth'],
+          );
           final listId = (spec['id'] ?? 'items').toString().trim();
           final kindFilterLive = kindMenu == 'cats';
           final currentKind = kindFilter;
@@ -2065,12 +2104,13 @@ class PackPaintTree extends StatelessWidget {
             final props = catalogItemProps(item);
             final open = item['open'];
             final openMap = open is Map ? open : null;
-            final cat = (openMap?['categoryId'] ??
-                    item['categoryId'] ??
-                    props['categoryId'] ??
-                    '')
-                .toString()
-                .trim();
+            final cat =
+                (openMap?['categoryId'] ??
+                        item['categoryId'] ??
+                        props['categoryId'] ??
+                        '')
+                    .toString()
+                    .trim();
             if (cat.isEmpty ||
                 cat == 'all' ||
                 PortalLiveCatalog.isSyntheticId(cat)) {
@@ -2087,13 +2127,14 @@ class PackPaintTree extends StatelessWidget {
 
           Widget buildGrid({
             ValueListenable<bool?>? Function(Map<String, dynamic>)?
-                healthListenableFor,
+            healthListenableFor,
             void Function(Map<String, dynamic> item, {required bool active})?
-                onInteractiveActive,
+            onInteractiveActive,
             Future<List<GuideEpgProgramme>> Function(Map<String, dynamic> item)?
-                loadEpgProgrammes,
+            loadEpgProgrammes,
           }) {
-            final allowHoldJump = kindFilterLive &&
+            final allowHoldJump =
+                kindFilterLive &&
                 (currentKind == PortalLiveCatalog.favoritesId ||
                     currentKind == PortalLiveCatalog.watchedId ||
                     currentKind == 'favorites' ||
@@ -2120,8 +2161,7 @@ class PackPaintTree extends StatelessWidget {
                   : (focusRight == 'portals' ? 'portals' : ''),
               lastItem: true,
             );
-            final rowId =
-                listId.isEmpty ? IptvCatalogLand.itemsRowId : listId;
+            final rowId = listId.isEmpty ? IptvCatalogLand.itemsRowId : listId;
             final tab = (tabId ?? '').trim();
 
             final grid = CatalogCardsGrid(
@@ -2131,24 +2171,23 @@ class PackPaintTree extends StatelessWidget {
               gap: gap,
               pad: pad,
               cardWidth: cardWidth,
-              emptyTitle:
-                  (spec['emptyTitle'] ?? 'Nothing here yet.').toString(),
+              emptyTitle: (spec['emptyTitle'] ?? 'Nothing here yet.')
+                  .toString(),
               emptyDescription:
                   (spec['emptyDescription'] ?? '').toString().isEmpty
-                      ? null
-                      : spec['emptyDescription']?.toString(),
+                  ? null
+                  : spec['emptyDescription']?.toString(),
               emptyAction: _listEmptyAction(context, spec),
               itemAccessory: managedOpen
                   ? null
                   : (liveChannels
-                      ? _liveFavoriteAccessory
-                      : _listPosterPinAccessory),
+                        ? _liveFavoriteAccessory
+                        : _listPosterPinAccessory),
               itemHealthListenable: healthListenableFor,
               onItemInteractiveActive: onInteractiveActive,
               loadEpgProgrammes: loadEpgProgrammes,
               onItemTap: onListItemTap,
-              onItemLongPress:
-                  managedOpen ? null : onListItemOpenWith,
+              onItemLongPress: managedOpen ? null : onListItemOpenWith,
               landEpoch: IptvCatalogLand.landEpoch,
               preferCategoryFocusOnLand:
                   IptvCatalogLand.preferCategoryFocusOnLand,
@@ -2194,10 +2233,14 @@ class PackPaintTree extends StatelessWidget {
           Widget grid;
           if (cardKind == 'guide') {
             grid = CatalogEpgGuideHost(
-              builder: (context,
-                  {required loadEpgProgrammes, required loadShortEpgProgrammes}) {
-                return buildGrid(loadEpgProgrammes: loadEpgProgrammes);
-              },
+              builder:
+                  (
+                    context, {
+                    required loadEpgProgrammes,
+                    required loadShortEpgProgrammes,
+                  }) {
+                    return buildGrid(loadEpgProgrammes: loadEpgProgrammes);
+                  },
             );
           } else if (cardKind == 'channel' || cardKind == 'channelList') {
             grid = ValueListenableBuilder<String?>(
@@ -2206,115 +2249,139 @@ class PackPaintTree extends StatelessWidget {
                 final hid = (highlight ?? '').trim();
                 final effectiveSelected =
                     (panelSelectedId != null && panelSelectedId.isNotEmpty)
-                        ? panelSelectedId
-                        : (hid.isEmpty ? null : hid);
+                    ? panelSelectedId
+                    : (hid.isEmpty ? null : hid);
                 return CatalogEpgGuideHost(
-                  builder: (context,
-                      {required loadEpgProgrammes,
-                      required loadShortEpgProgrammes}) {
-                    return ChannelCatalogHealthHost(
-                      builder: (context,
-                          {required healthListenableFor,
-                          required onInteractiveActive}) {
-                        final allowHoldJump = kindFilterLive &&
-                            (currentKind == PortalLiveCatalog.favoritesId ||
-                                currentKind == PortalLiveCatalog.watchedId ||
-                                currentKind == 'favorites' ||
-                                currentKind == 'watched');
-                        final scope = LayoutScope.maybeOf(context);
-                        final leftEdge = scope?.resolveFocusEdge(
-                          (spec['focusLeft'] ?? '').toString(),
-                          last: true,
-                        );
-                        final rightEdge = scope?.resolveFocusEdge(
-                          (spec['focusRight'] ?? '').toString(),
-                          last: true,
-                        );
-                        final upShelf = scope?.resolveFocusEdge(
-                          (spec['focusUp'] ?? spec['focusUpLeft'] ?? '')
-                              .toString(),
-                        );
-                        final upPortalsRaw =
-                            (spec['focusUpRight'] ?? '').toString().trim();
-                        final focusRight =
-                            (spec['focusRight'] ?? '').toString().trim();
-                        final upPortals = scope?.resolveFocusEdge(
-                          upPortalsRaw.isNotEmpty
-                              ? upPortalsRaw
-                              : (focusRight == 'portals' ? 'portals' : ''),
-                          lastItem: true,
-                        );
-                        final rowId = listId.isEmpty
-                            ? IptvCatalogLand.itemsRowId
-                            : listId;
-                        final tab = (tabId ?? '').trim();
-                        final grid = CatalogCardsGrid(
-                          items: filtered,
-                          cardKind: cardKind,
-                          selectedItemId: effectiveSelected,
-                          gap: gap,
-                          pad: pad,
-                          cardWidth: cardWidth,
-                          emptyTitle: (spec['emptyTitle'] ?? 'Nothing here yet.')
-                              .toString(),
-                          emptyDescription:
-                              (spec['emptyDescription'] ?? '').toString().isEmpty
-                                  ? null
-                                  : spec['emptyDescription']?.toString(),
-                          emptyAction: _listEmptyAction(context, spec),
-                          itemAccessory: managedOpen
-                              ? null
-                              : _liveFavoriteAccessory,
-                          itemHealthListenable: healthListenableFor,
-                          onItemInteractiveActive: onInteractiveActive,
-                          loadEpgProgrammes: loadShortEpgProgrammes,
-                          onItemTap: onListItemTap,
-                          onItemLongPress:
-                              managedOpen ? null : onListItemOpenWith,
-                          landEpoch: IptvCatalogLand.landEpoch,
-                          preferCategoryFocusOnLand:
-                              IptvCatalogLand.preferCategoryFocusOnLand,
-                          preferCategoryFocusNow: () =>
-                              IptvCatalogLand.preferCategoryFocusOnLand,
-                          onHoldJumpToCategory:
-                              allowHoldJump ? onHoldJump : null,
-                          onRequestFocusAt: liveFocusBrowserStreamAt,
-                          onArmFocusMemory: liveArmBrowserStreamFocusMemory,
-                          onLeftEdge: leftEdge,
-                          onRightEdge: rightEdge,
-                          onUpEdge: upShelf,
-                          onUpEdgeLeftHalf: upShelf,
-                          onUpEdgeRightHalf: upPortals ?? upShelf,
-                          onScrollIntoViewChanged: tab.isEmpty
-                              ? null
-                              : (scroll) {
-                                  ShellTvFocusCoordinator.setRowScrollIntoView(
-                                    tab,
-                                    rowId,
-                                    scroll,
-                                  );
-                                },
-                        );
-                        if (tab.isEmpty ||
-                            !ShellPaintScope.useTvFocusOf(context)) {
-                          return grid;
-                        }
-                        final count = filtered.isEmpty
-                            ? (_listEmptyAction(context, spec) != null ? 1 : 0)
-                            : filtered.length;
-                        return TvKitRow(
-                          tabId: tab,
-                          rowId: rowId,
-                          sortOrder: 2,
-                          itemCount: count,
-                          orientation: kitListCardKindIsVertical(cardKind)
-                              ? ShellTvRowOrientation.vertical
-                              : ShellTvRowOrientation.horizontal,
-                          child: grid,
+                  builder:
+                      (
+                        context, {
+                        required loadEpgProgrammes,
+                        required loadShortEpgProgrammes,
+                      }) {
+                        return ChannelCatalogHealthHost(
+                          builder:
+                              (
+                                context, {
+                                required healthListenableFor,
+                                required onInteractiveActive,
+                              }) {
+                                final allowHoldJump =
+                                    kindFilterLive &&
+                                    (currentKind ==
+                                            PortalLiveCatalog.favoritesId ||
+                                        currentKind ==
+                                            PortalLiveCatalog.watchedId ||
+                                        currentKind == 'favorites' ||
+                                        currentKind == 'watched');
+                                final scope = LayoutScope.maybeOf(context);
+                                final leftEdge = scope?.resolveFocusEdge(
+                                  (spec['focusLeft'] ?? '').toString(),
+                                  last: true,
+                                );
+                                final rightEdge = scope?.resolveFocusEdge(
+                                  (spec['focusRight'] ?? '').toString(),
+                                  last: true,
+                                );
+                                final upShelf = scope?.resolveFocusEdge(
+                                  (spec['focusUp'] ?? spec['focusUpLeft'] ?? '')
+                                      .toString(),
+                                );
+                                final upPortalsRaw =
+                                    (spec['focusUpRight'] ?? '')
+                                        .toString()
+                                        .trim();
+                                final focusRight = (spec['focusRight'] ?? '')
+                                    .toString()
+                                    .trim();
+                                final upPortals = scope?.resolveFocusEdge(
+                                  upPortalsRaw.isNotEmpty
+                                      ? upPortalsRaw
+                                      : (focusRight == 'portals'
+                                            ? 'portals'
+                                            : ''),
+                                  lastItem: true,
+                                );
+                                final rowId = listId.isEmpty
+                                    ? IptvCatalogLand.itemsRowId
+                                    : listId;
+                                final tab = (tabId ?? '').trim();
+                                final grid = CatalogCardsGrid(
+                                  items: filtered,
+                                  cardKind: cardKind,
+                                  selectedItemId: effectiveSelected,
+                                  gap: gap,
+                                  pad: pad,
+                                  cardWidth: cardWidth,
+                                  emptyTitle:
+                                      (spec['emptyTitle'] ??
+                                              'Nothing here yet.')
+                                          .toString(),
+                                  emptyDescription:
+                                      (spec['emptyDescription'] ?? '')
+                                          .toString()
+                                          .isEmpty
+                                      ? null
+                                      : spec['emptyDescription']?.toString(),
+                                  emptyAction: _listEmptyAction(context, spec),
+                                  itemAccessory: managedOpen
+                                      ? null
+                                      : _liveFavoriteAccessory,
+                                  itemHealthListenable: healthListenableFor,
+                                  onItemInteractiveActive: onInteractiveActive,
+                                  loadEpgProgrammes: loadShortEpgProgrammes,
+                                  onItemTap: onListItemTap,
+                                  onItemLongPress: managedOpen
+                                      ? null
+                                      : onListItemOpenWith,
+                                  landEpoch: IptvCatalogLand.landEpoch,
+                                  preferCategoryFocusOnLand:
+                                      IptvCatalogLand.preferCategoryFocusOnLand,
+                                  preferCategoryFocusNow: () =>
+                                      IptvCatalogLand.preferCategoryFocusOnLand,
+                                  onHoldJumpToCategory: allowHoldJump
+                                      ? onHoldJump
+                                      : null,
+                                  onRequestFocusAt: liveFocusBrowserStreamAt,
+                                  onArmFocusMemory:
+                                      liveArmBrowserStreamFocusMemory,
+                                  onLeftEdge: leftEdge,
+                                  onRightEdge: rightEdge,
+                                  onUpEdge: upShelf,
+                                  onUpEdgeLeftHalf: upShelf,
+                                  onUpEdgeRightHalf: upPortals ?? upShelf,
+                                  onScrollIntoViewChanged: tab.isEmpty
+                                      ? null
+                                      : (scroll) {
+                                          ShellTvFocusCoordinator.setRowScrollIntoView(
+                                            tab,
+                                            rowId,
+                                            scroll,
+                                          );
+                                        },
+                                );
+                                if (tab.isEmpty ||
+                                    !ShellPaintScope.useTvFocusOf(context)) {
+                                  return grid;
+                                }
+                                final count = filtered.isEmpty
+                                    ? (_listEmptyAction(context, spec) != null
+                                          ? 1
+                                          : 0)
+                                    : filtered.length;
+                                return TvKitRow(
+                                  tabId: tab,
+                                  rowId: rowId,
+                                  sortOrder: 2,
+                                  itemCount: count,
+                                  orientation:
+                                      kitListCardKindIsVertical(cardKind)
+                                      ? ShellTvRowOrientation.vertical
+                                      : ShellTvRowOrientation.horizontal,
+                                  child: grid,
+                                );
+                              },
                         );
                       },
-                    );
-                  },
                 );
               },
             );
@@ -2326,8 +2393,9 @@ class PackPaintTree extends StatelessWidget {
           // (a new ScrollController would jump back to the top).
           Widget? panel;
           String? dockKey;
-          final pageDock =
-              offlinePanel ? TabsCardsDockHost.maybeOf(context) : null;
+          final pageDock = offlinePanel
+              ? TabsCardsDockHost.maybeOf(context)
+              : null;
           if (showPanel) {
             final entry = _listEntryFromItem(selected);
             if (offlinePanel) {
@@ -2338,34 +2406,34 @@ class PackPaintTree extends StatelessWidget {
                 onClosed: () => chrome?.onSelectListItem(null),
               );
             } else {
-            final hubTab = (tabId ?? '').trim();
-            panel = KitResolvePanelHost.instance.buildSidePanel(
-              context: context,
-              entry: entry,
-              layoutWidgets: [
-                if (spec['panelTabs'] is List)
-                  {
-                    'type': 'kit.list',
-                    'panelTabs': spec['panelTabs'],
-                    'panelTab': spec['panelTab'],
-                  },
-              ],
-              shellTabVisible: chrome?.shellTabVisible ?? true,
-              refreshEpoch: chrome?.refreshEpoch ?? 0,
-              onClosed: () => chrome?.onSelectListItem(null),
-              tvTabId: hubTab.isEmpty ? null : hubTab,
-              onPanelLeftEdge: hubTab.isEmpty
-                  ? null
-                  : () {
-                      final listRow = listId.isEmpty
-                          ? IptvCatalogLand.itemsRowId
-                          : listId;
-                      ShellTvFocusCoordinator.focusRowItemRemembered(
-                        hubTab,
-                        listRow,
-                      );
+              final hubTab = (tabId ?? '').trim();
+              panel = KitResolvePanelHost.instance.buildSidePanel(
+                context: context,
+                entry: entry,
+                layoutWidgets: [
+                  if (spec['panelTabs'] is List)
+                    {
+                      'type': 'kit.list',
+                      'panelTabs': spec['panelTabs'],
+                      'panelTab': spec['panelTab'],
                     },
-            );
+                ],
+                shellTabVisible: chrome?.shellTabVisible ?? true,
+                refreshEpoch: chrome?.refreshEpoch ?? 0,
+                onClosed: () => chrome?.onSelectListItem(null),
+                tvTabId: hubTab.isEmpty ? null : hubTab,
+                onPanelLeftEdge: hubTab.isEmpty
+                    ? null
+                    : () {
+                        final listRow = listId.isEmpty
+                            ? IptvCatalogLand.itemsRowId
+                            : listId;
+                        ShellTvFocusCoordinator.focusRowItemRemembered(
+                          hubTab,
+                          listRow,
+                        );
+                      },
+              );
             }
           }
           if (pageDock != null) {
@@ -2384,7 +2452,10 @@ class PackPaintTree extends StatelessWidget {
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Expanded(flex: showPanel && panel != null ? 60 : 1, child: grid),
+                Expanded(
+                  flex: showPanel && panel != null ? 60 : 1,
+                  child: grid,
+                ),
                 if (panel != null) Expanded(flex: 40, child: panel),
               ],
             ),
@@ -2395,7 +2466,8 @@ class PackPaintTree extends StatelessWidget {
             // Composition roots (columnsHeader / topBody) already wrap below the
             // top bar. Avoid nested SidePanelOverlay when those are present.
             final scope = LayoutScope.maybeOf(context);
-            final underComposition = scope?.widgetSpecs.values.any((spec) {
+            final underComposition =
+                scope?.widgetSpecs.values.any((spec) {
                   final t = LayoutTypes.normalize(
                     (spec['type'] ?? '').toString(),
                     spec,
@@ -2432,10 +2504,9 @@ class PackPaintTree extends StatelessWidget {
             'id': (item['id'] ?? PackPaintArtifact.propsOf(item)['id'] ?? '')
                 .toString(),
             'type': (item['type'] ?? 'other').toString(),
-            'name': (PackPaintArtifact.propsOf(item)['title'] ??
-                    item['name'] ??
-                    '')
-                .toString(),
+            'name':
+                (PackPaintArtifact.propsOf(item)['title'] ?? item['name'] ?? '')
+                    .toString(),
           };
     // Schedule rows carry open on the item (hubPaintEvent) — keep it on meta
     // so details / resolve see the same handoff as the list row.
@@ -2463,10 +2534,12 @@ class PackPaintTree extends StatelessWidget {
 
   String? _hoistSourceFromActions(List<Map<String, dynamic>> actions) {
     for (final a in actions) {
-      final verb = (a['action'] ?? a['id'] ?? '').toString().trim().toLowerCase();
+      final verb = (a['action'] ?? a['id'] ?? '')
+          .toString()
+          .trim()
+          .toLowerCase();
       if (verb != 'portals') continue;
-      final hoist =
-          (a['hoistSource'] ?? a['source'] ?? '').toString().trim();
+      final hoist = (a['hoistSource'] ?? a['source'] ?? '').toString().trim();
       if (hoist.isNotEmpty) return hoist;
     }
     return null;
@@ -2482,12 +2555,12 @@ class PackPaintTree extends StatelessWidget {
     if (hoist == null || tab.isEmpty) return null;
     final chrome = PackChromeScope.maybeOf(context);
     return (child) => PortalsActionHost.wrapListBody(
-          context,
-          tabId: tab,
-          sourceId: hoist,
-          shellTabVisible: chrome?.shellTabVisible ?? true,
-          child: child,
-        );
+      context,
+      tabId: tab,
+      sourceId: hoist,
+      shellTabVisible: chrome?.shellTabVisible ?? true,
+      child: child,
+    );
   }
 
   Widget? _listEmptyAction(BuildContext context, Map<String, dynamic> spec) {
@@ -2495,7 +2568,10 @@ class PackPaintTree extends StatelessWidget {
     if (raw is! Map) return null;
     final label = (raw['label'] ?? '').toString().trim();
     if (label.isEmpty) return null;
-    final verb = (raw['action'] ?? raw['id'] ?? '').toString().trim().toLowerCase();
+    final verb = (raw['action'] ?? raw['id'] ?? '')
+        .toString()
+        .trim()
+        .toLowerCase();
     if (verb != 'portals') return null;
     final listId = (spec['id'] ?? 'items').toString().trim();
     final tab = (tabId ?? '').trim();
@@ -2617,24 +2693,25 @@ class PackPaintTree extends StatelessWidget {
     // `type: movie` does not steal category matching.
     final type = (item['type'] ?? '').toString().trim();
     final rawKind = (item['kind'] ?? '').toString().trim();
-    return liveSportIdsMatch(type, filter) || liveSportIdsMatch(rawKind, filter);
+    return liveSportIdsMatch(type, filter) ||
+        liveSportIdsMatch(rawKind, filter);
   }
 
   bool _itemMatchesEventQuery(Map<String, dynamic> item, String query) {
     final needle = query.trim().toLowerCase();
     if (needle.isEmpty) return true;
     final name = (item['name'] ?? item['title'] ?? '').toString().toLowerCase();
-    final cat = (item['categoryName'] ??
-            item['description'] ??
-            item['kind'] ??
-            '')
+    final cat =
+        (item['categoryName'] ?? item['description'] ?? item['kind'] ?? '')
+            .toString()
+            .toLowerCase();
+    final props = PackPaintArtifact.propsOf(item);
+    final propTitle = (props['title'] ?? props['name'] ?? '')
         .toString()
         .toLowerCase();
-    final props = PackPaintArtifact.propsOf(item);
-    final propTitle =
-        (props['title'] ?? props['name'] ?? '').toString().toLowerCase();
-    final propSub =
-        (props['subtitle'] ?? props['categoryLabel'] ?? '').toString().toLowerCase();
+    final propSub = (props['subtitle'] ?? props['categoryLabel'] ?? '')
+        .toString()
+        .toLowerCase();
     return name.contains(needle) ||
         cat.contains(needle) ||
         propTitle.contains(needle) ||
@@ -2742,10 +2819,10 @@ class PackPaintTree extends StatelessWidget {
     final seed = layoutItemsFromSpec(spec);
     final scope = LayoutScope.maybeOf(context);
     // IPTV shelf section — VOD must not keep Live Favorites / auto-pick a Live cat.
-    final catalogSection =
-        (scope?.selectedId('catalog') ?? '').trim().toLowerCase();
-    final vodSection =
-        catalogSection == 'movies' || catalogSection == 'series';
+    final catalogSection = (scope?.selectedId('catalog') ?? '')
+        .trim()
+        .toLowerCase();
+    final vodSection = catalogSection == 'movies' || catalogSection == 'series';
     // Layout seed first (e.g. Live Sports "All"), then dynamic kinds.
     // Packs that omit All (IPTV) never get a host-invented row.
     final seen = <String>{};
@@ -2776,15 +2853,15 @@ class PackPaintTree extends StatelessWidget {
       }
     }
     if (items.isEmpty) return const SizedBox.shrink();
-    final selectedRaw = (scope?.selectedId(id) ??
-            (spec['default'] ?? '').toString())
-        .trim();
+    final selectedRaw =
+        (scope?.selectedId(id) ?? (spec['default'] ?? '').toString()).trim();
     final selectedInItems =
         selectedRaw.isNotEmpty && items.any((e) => e.id == selectedRaw);
     // Favorites / Already watched live in CategoryBarActionHost (withPins), not
     // feed `kinds`. PackLoadedPaint overwrites barItems without them — must not
     // snap selection back to the first portal group (grid never switched).
-    final keepSyntheticLive = !vodSection &&
+    final keepSyntheticLive =
+        !vodSection &&
         CategoryBarActionHost.featuresEnabled(spec) &&
         PortalLiveCatalog.isSyntheticId(selectedRaw);
     // Search starts with no category (shelf-wide). Mid-search pick stays lit.
@@ -2818,9 +2895,7 @@ class PackPaintTree extends StatelessWidget {
     } else {
       selected = _firstPortalCategoryId(items);
     }
-    if (selected.isNotEmpty &&
-        selected != selectedRaw &&
-        scope != null) {
+    if (selected.isNotEmpty && selected != selectedRaw && scope != null) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!context.mounted) return;
         scope.onSelect(id, selected, toggle: false);
@@ -2831,12 +2906,12 @@ class PackPaintTree extends StatelessWidget {
         .trim()
         .toLowerCase();
     final source = (spec['source'] ?? '').toString().trim().toLowerCase();
-    final vertical = orientation == 'vertical' ||
+    final vertical =
+        orientation == 'vertical' ||
         orientation == 'rail' ||
         spec['vertical'] == true ||
         source == 'iptv';
-    final useCircles =
-        spec['kindIcons'] is Map || source == 'live_schedule';
+    final useCircles = spec['kindIcons'] is Map || source == 'live_schedule';
     if (useCircles && !vertical) {
       return _kindCircleBar(
         context,
@@ -2849,7 +2924,8 @@ class PackPaintTree extends StatelessWidget {
       );
     }
     if (vertical) {
-      final width = PackPaintArtifact.packLength(context, spec['width']) ??
+      final width =
+          PackPaintArtifact.packLength(context, spec['width']) ??
           catalogSideRailWidth(context);
       final searchHeader = _categoryBarSearchHeader(context, spec);
       if (CategoryBarActionHost.featuresEnabled(spec)) {
@@ -2907,8 +2983,8 @@ class PackPaintTree extends StatelessWidget {
     for (final a in actions) {
       final id = (a['id'] ?? '').toString().trim();
       if (id.isEmpty) continue;
-      var selected =
-          (scope?.selectedId(id) ?? (a['default'] ?? '').toString()).trim();
+      var selected = (scope?.selectedId(id) ?? (a['default'] ?? '').toString())
+          .trim();
       // Live dynamic menus — defaults only when pack opts in. Static menus keep
       // pack `default` / first item (do not force by action id).
       if (a['dynamicCatalogs'] == true && selected.isEmpty) selected = 'all';
@@ -3201,15 +3277,19 @@ class _HeroPackVisuals {
       heightFraction: PackPaintArtifact.packDouble(node['heightFraction']),
       bleedDownOffset: PackPaintArtifact.packDouble(node['bleedDownOffset']),
       minHeight: PackPaintArtifact.packDouble(node['minHeight']),
-      nextRowPeekFraction:
-          PackPaintArtifact.packDouble(node['nextRowPeekFraction']),
-      imageStartFraction:
-          PackPaintArtifact.packDouble(node['imageStartFraction']),
+      nextRowPeekFraction: PackPaintArtifact.packDouble(
+        node['nextRowPeekFraction'],
+      ),
+      imageStartFraction: PackPaintArtifact.packDouble(
+        node['imageStartFraction'],
+      ),
       textColumnWidth: PackPaintArtifact.packDouble(node['textColumnWidth']),
-      textColumnTopInset:
-          PackPaintArtifact.packDouble(node['textColumnTopInset']),
-      textColumnVerticalAlign:
-          PackPaintArtifact.packDouble(node['textColumnVerticalAlign']),
+      textColumnTopInset: PackPaintArtifact.packDouble(
+        node['textColumnTopInset'],
+      ),
+      textColumnVerticalAlign: PackPaintArtifact.packDouble(
+        node['textColumnVerticalAlign'],
+      ),
       titleSlotHeight: PackPaintArtifact.packDouble(node['titleSlotHeight']),
       logoMaxHeight: PackPaintArtifact.packDouble(node['logoMaxHeight']),
       minTitleHeight: PackPaintArtifact.packDouble(node['minTitleHeight']),
@@ -3219,13 +3299,16 @@ class _HeroPackVisuals {
       metaActionsGap: PackPaintArtifact.packDouble(node['metaActionsGap']),
       overviewMaxLines: maxLines?.clamp(1, 12),
       overviewFontSize: PackPaintArtifact.packDouble(node['overviewFontSize']),
-      overviewLineHeight:
-          PackPaintArtifact.packDouble(node['overviewLineHeight']),
-      upcomingNoticeReserve:
-          PackPaintArtifact.packDouble(node['upcomingNoticeReserve']),
+      overviewLineHeight: PackPaintArtifact.packDouble(
+        node['overviewLineHeight'],
+      ),
+      upcomingNoticeReserve: PackPaintArtifact.packDouble(
+        node['upcomingNoticeReserve'],
+      ),
       sectionPad: PackPaintArtifact.packDouble(node['sectionPad']),
-      compactRightInset:
-          PackPaintArtifact.packDouble(node['compactRightInset']),
+      compactRightInset: PackPaintArtifact.packDouble(
+        node['compactRightInset'],
+      ),
     );
   }
 
@@ -3288,7 +3371,9 @@ class _HubTvCinematicHeroState extends State<_HubTvCinematicHero> {
   final FocusNode _playFocus = FocusNode(debugLabel: 'hub-hero-details');
   final FocusNode _followFocus = FocusNode(debugLabel: 'hub-hero-follow');
   final FocusNode _galleryFocus = FocusNode(debugLabel: 'hub-hero-gallery');
-  final GlobalKey<CinematicHeroState> _heroKey = GlobalKey<CinematicHeroState>();
+  final GlobalKey<CinematicHeroState> _heroKey =
+      GlobalKey<CinematicHeroState>();
+
   /// One-shot — Spotlight remount after Films / Categories must not steal ↓
   /// off Featured back onto View details via autofocus.
   bool _ctaAutofocusConsumed = false;
@@ -3301,12 +3386,18 @@ class _HubTvCinematicHeroState extends State<_HubTvCinematicHero> {
   @override
   void initState() {
     super.initState();
+    _galleryFocus.addListener(_onGalleryFocusChanged);
     _bindTv();
   }
 
   void _onHeroFocusWithin(bool within) {
     if (_focusWithin == within) return;
     setState(() => _focusWithin = within);
+  }
+
+  void _onGalleryFocusChanged() {
+    if (!mounted) return;
+    setState(() {});
   }
 
   @override
@@ -3321,6 +3412,7 @@ class _HubTvCinematicHeroState extends State<_HubTvCinematicHero> {
     // may still need enterFromNav / restore for list hubs after hero unmount.
     // defaultFocus below returns null once unmounted so restore cannot use
     // disposed FocusNodes; heroReveal stays PackLayoutPainter's scroll.
+    _galleryFocus.removeListener(_onGalleryFocusChanged);
     _playFocus.dispose();
     _followFocus.dispose();
     _galleryFocus.dispose();
@@ -3333,10 +3425,7 @@ class _HubTvCinematicHeroState extends State<_HubTvCinematicHero> {
     // defaultFocus only — pack page `focus.enter/restore` owns nav land.
     // Do not bind heroReveal here: PackLayoutPainter registers a ScrollController
     // reveal that survives hero remounts (rail reload during nav enter).
-    TvHeroActions.bind(
-      tab,
-      defaultFocus: () => mounted ? _playFocus : null,
-    );
+    TvHeroActions.bind(tab, defaultFocus: () => mounted ? _playFocus : null);
   }
 
   void _focusGallery() {
@@ -3418,13 +3507,13 @@ class _HubTvCinematicHeroState extends State<_HubTvCinematicHero> {
       height: pack.height,
       advancePaused: pauseWhenUnfocused && !_focusWithin,
       galleryOverlayBuilder: tv ? _galleryOverlay : null,
+      galleryNavHintsVisible: tv && _galleryFocus.hasFocus,
       layout: CinematicHeroLayout(
         compact: compact,
         tvDensity: metrics.usesTvDensity,
         kenBurns: pack.kenBurns ?? policy.kenBurnsBackdrop,
         plainTitle: policy.useFocusableMoodChips,
-        heroMinTitleHeight:
-            pack.minTitleHeight ?? metrics.heroMinTitleHeight,
+        heroMinTitleHeight: pack.minTitleHeight ?? metrics.heroMinTitleHeight,
         heroActionUseFittedBox: metrics.heroActionUseFittedBox,
         heroCompactRightInset:
             pack.compactRightInset ?? metrics.heroCompactRightInset,
@@ -3438,8 +3527,8 @@ class _HubTvCinematicHeroState extends State<_HubTvCinematicHero> {
         firstCatalogRowHeight: widget.pageBottomChild == null
             ? 0
             : catalogSectionTitleTop(context) +
-                shellPosterCardHeight(context) +
-                shellPosterCardRowGap(context),
+                  shellPosterCardHeight(context) +
+                  shellPosterCardRowGap(context),
         bleedDownOffset: pack.bleedDownOffset,
         scale: shellLayoutScale(context),
         imageStartFraction: pack.imageStartFraction,
@@ -3471,10 +3560,7 @@ class _HubTvCinematicHeroState extends State<_HubTvCinematicHero> {
         final details = slide.onDetails;
         final follow = meta == null
             ? null
-            : ListFollowTarget.fromMeta(
-                meta: meta,
-                pluginId: widget.pluginId,
-              );
+            : ListFollowTarget.fromMeta(meta: meta, pluginId: widget.pluginId);
 
         final children = <Widget>[];
         var autofocusUsed = false;
@@ -3483,12 +3569,14 @@ class _HubTvCinematicHeroState extends State<_HubTvCinematicHero> {
         void focusNav() {
           ShellTvFocusCoordinator.focusActiveNavTab();
         }
+
         for (final action in widget.actionSpecs) {
           final id = action.id;
           Widget? child;
           if (id == 'details') {
             if (details == null) continue;
-            final useAuto = tv &&
+            final useAuto =
+                tv &&
                 policy.heroPlayAutoFocus &&
                 !autofocusUsed &&
                 !_ctaAutofocusConsumed;
@@ -3518,17 +3606,17 @@ class _HubTvCinematicHeroState extends State<_HubTvCinematicHero> {
               onLeftEdge: !tv
                   ? null
                   : packRtl && hasFollow
-                      ? _focusFollow
-                      : !navOnRight && (!packRtl || !hasFollow)
-                          ? focusNav
-                          : null,
+                  ? _focusFollow
+                  : !navOnRight && (!packRtl || !hasFollow)
+                  ? focusNav
+                  : null,
               onRightEdge: !tv
                   ? null
                   : !packRtl && hasFollow
-                      ? _focusFollow
-                      : navOnRight && (packRtl || !hasFollow)
-                          ? focusNav
-                          : null,
+                  ? _focusFollow
+                  : navOnRight && (packRtl || !hasFollow)
+                  ? focusNav
+                  : null,
             );
           } else if (id == 'follow') {
             if (follow == null) continue;
@@ -3542,24 +3630,26 @@ class _HubTvCinematicHeroState extends State<_HubTvCinematicHero> {
               onLeftEdge: !tv
                   ? null
                   : packRtl
-                      ? (navOnRight ? null : focusNav)
-                      : _focusPlay,
+                  ? (navOnRight ? null : focusNav)
+                  : _focusPlay,
               onRightEdge: !tv
                   ? null
                   : packRtl
-                      ? _focusPlay
-                      : (navOnRight ? focusNav : null),
+                  ? _focusPlay
+                  : (navOnRight ? focusNav : null),
               enabled: true,
             );
           } else {
             continue;
           }
           if (children.isNotEmpty) {
-            children.add(SizedBox(
-              width: ShellPaintScope.usesTvDensityOf(context)
-                  ? DetailsTokens.heroPillGapTv
-                  : DetailsTokens.heroPillGap,
-            ));
+            children.add(
+              SizedBox(
+                width: ShellPaintScope.usesTvDensityOf(context)
+                    ? DetailsTokens.heroPillGapTv
+                    : DetailsTokens.heroPillGap,
+              ),
+            );
           }
           children.add(child);
         }
@@ -3736,12 +3826,7 @@ class _MoodMountState extends State<_MoodMount> {
       PackPaintArtifact.stableSortOrder(tabEarly, 'mood-chips');
       PackPaintArtifact.stableSortOrder(tabEarly, 'mood-results');
     }
-    final parsed = <({
-      String id,
-      String label,
-      IconData icon,
-      Color accent,
-    })>[];
+    final parsed = <({String id, String label, IconData icon, Color accent})>[];
     for (final raw in options) {
       if (raw is! Map) continue;
       final opt = Map<String, dynamic>.from(raw);
@@ -3757,7 +3842,8 @@ class _MoodMountState extends State<_MoodMount> {
     }
     if (parsed.isEmpty) return const SizedBox.shrink();
     final defaultPad = catalogSectionHorizontalPadding(context);
-    final pad = PackPaintArtifact.packLength(context, widget.spec['pad']) ?? defaultPad;
+    final pad =
+        PackPaintArtifact.packLength(context, widget.spec['pad']) ?? defaultPad;
     final titlePad = PackPaintArtifact.titlePadInsets(
       widget.spec['titlePad'],
       context,
@@ -3793,136 +3879,135 @@ class _MoodMountState extends State<_MoodMount> {
     // title (centered strip only — a horizontal scroller keeps its own reveal).
     return LayoutBuilder(
       builder: (context, constraints) {
-          final layout = ShellMoodCircleLayout.resolve(
-            context,
-            itemCount: parsed.length,
-            maxWidth: constraints.maxWidth,
+        final layout = ShellMoodCircleLayout.resolve(
+          context,
+          itemCount: parsed.length,
+          maxWidth: constraints.maxWidth,
+        );
+        final rowHeight =
+            PackPaintArtifact.packLength(context, widget.spec['rowHeight']) ??
+            layout.rowHeight;
+        final chipGap =
+            PackPaintArtifact.packLength(context, widget.spec['gap']) ??
+            layout.horizontalGap;
+        final tab = (widget.tabId ?? '').trim();
+        const chipRowId = 'mood-chips';
+        const resultsRowId = 'mood-results';
+
+        Widget chipAt(int i, {TvChipEdges? edges}) {
+          final m = parsed[i];
+          return ShellMoodCircleItem(
+            layout: layout,
+            label: m.label,
+            icon: m.icon,
+            accent: m.accent,
+            selected: _selectedId == m.id,
+            listIndex: i,
+            onTap: () {
+              final already = _selectedId == m.id;
+              setState(() => _selectedId = m.id);
+              if (already) edges?.onSelectAlreadySelected();
+            },
+            onLeftEdge: edges?.onLeft,
+            onRightEdge: edges?.onRight,
+            onUpEdge: edges?.onUp,
+            onDownEdge: edges?.onDown,
           );
-          final rowHeight =
-              PackPaintArtifact.packLength(context, widget.spec['rowHeight']) ??
-                  layout.rowHeight;
-          final chipGap =
-              PackPaintArtifact.packLength(context, widget.spec['gap']) ??
-                  layout.horizontalGap;
-          final tab = (widget.tabId ?? '').trim();
-          const chipRowId = 'mood-chips';
-          const resultsRowId = 'mood-results';
+        }
 
-          Widget chipAt(int i, {TvChipEdges? edges}) {
-            final m = parsed[i];
-            return ShellMoodCircleItem(
-              layout: layout,
-              label: m.label,
-              icon: m.icon,
-              accent: m.accent,
-              selected: _selectedId == m.id,
-              listIndex: i,
-              onTap: () {
-                final already = _selectedId == m.id;
-                setState(() => _selectedId = m.id);
-                if (already) edges?.onSelectAlreadySelected();
-              },
-              onLeftEdge: edges?.onLeft,
-              onRightEdge: edges?.onRight,
-              onUpEdge: edges?.onUp,
-              onDownEdge: edges?.onDown,
-            );
-          }
+        final tvNav = ShellPaintScope.useTvFocusOf(context);
+        final fits = layout.contentWidth(parsed.length) <= constraints.maxWidth;
 
-          final tvNav = ShellPaintScope.useTvFocusOf(context);
-          final fits =
-              layout.contentWidth(parsed.length) <= constraints.maxWidth;
-
-          Widget centeredRow({
-            required bool scaleToFit,
-            TvChipEdges Function(int index)? edgesFor,
-          }) {
-            final row = Row(
-              mainAxisSize: MainAxisSize.min,
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                for (var i = 0; i < parsed.length; i++) ...[
-                  if (i > 0) SizedBox(width: chipGap),
-                  chipAt(i, edges: edgesFor?.call(i)),
-                ],
+        Widget centeredRow({
+          required bool scaleToFit,
+          TvChipEdges Function(int index)? edgesFor,
+        }) {
+          final row = Row(
+            mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              for (var i = 0; i < parsed.length; i++) ...[
+                if (i > 0) SizedBox(width: chipGap),
+                chipAt(i, edges: edgesFor?.call(i)),
               ],
-            );
-            return SizedBox(
-              height: rowHeight,
-              width: double.infinity,
-              child: scaleToFit
-                  ? FittedBox(
-                      fit: BoxFit.scaleDown,
-                      alignment: Alignment.center,
-                      child: row,
-                    )
-                  : Center(child: row),
-            );
-          }
-
-          Widget chipStrip() {
-            if (tvNav) {
-              final packFocusUp = LayoutScope.maybeOf(context)
-                  ?.resolveFocusEdge((widget.spec['focusUp'] ?? '').toString());
-              final packFocusDown = LayoutScope.maybeOf(context)
-                  ?.resolveFocusEdge(
-                    (widget.spec['focusDown'] ?? '').toString(),
-                    down: true,
-                  );
-              return TvChipStrip(
-                tabId: tab.isEmpty ? null : tab,
-                rowId: chipRowId,
-                sortOrder: PackPaintArtifact.stableSortOrder(
-                  tab.isEmpty ? TvFocusGraph.tabIdOf(context) : tab,
-                  chipRowId,
-                ),
-                itemCount: parsed.length,
-                resultsRowId: resultsRowId,
-                onFocusUp: packFocusUp,
-                // Pack focusDown used when mood-results is empty / unmounted —
-                // chip ↓ still prefers results via shellTvChipDownToRow first.
-                onFocusDown: packFocusDown,
-                builder: (context, edgesFor) {
-                  if (fits) {
-                    return centeredRow(scaleToFit: true, edgesFor: edgesFor);
-                  }
-                  return HorizontalScroller(
-                    height: rowHeight,
-                    padding: EdgeInsets.symmetric(horizontal: pad),
-                    itemCount: parsed.length,
-                    separatorBuilder: (_, _) => SizedBox(width: chipGap),
-                    itemBuilder: (context, i) =>
-                        chipAt(i, edges: edgesFor(i)),
-                  );
-                },
-              );
-            }
-
-            if (fits) return centeredRow(scaleToFit: false);
-            return HorizontalScroller(
-              height: rowHeight,
-              padding: EdgeInsets.symmetric(horizontal: pad),
-              itemCount: parsed.length,
-              separatorBuilder: (_, _) => SizedBox(width: chipGap),
-              itemBuilder: (context, i) => chipAt(i),
-            );
-          }
-
-          return MoodSection(
-            title: title.isEmpty ? null : title,
-            titlePadding: EdgeInsets.fromLTRB(
-              pad,
-              titlePad.top,
-              pad,
-              titlePad.bottom,
-            ),
-            // Focused chip reveal keeps "title + chips" on screen instead of
-            // pinning the chip flush to the top with its title cut off.
-            revealIncludesTitle: fits,
-            chipStrip: chipStrip(),
-            results: results,
+            ],
           );
+          return SizedBox(
+            height: rowHeight,
+            width: double.infinity,
+            child: scaleToFit
+                ? FittedBox(
+                    fit: BoxFit.scaleDown,
+                    alignment: Alignment.center,
+                    child: row,
+                  )
+                : Center(child: row),
+          );
+        }
+
+        Widget chipStrip() {
+          if (tvNav) {
+            final packFocusUp = LayoutScope.maybeOf(
+              context,
+            )?.resolveFocusEdge((widget.spec['focusUp'] ?? '').toString());
+            final packFocusDown = LayoutScope.maybeOf(context)
+                ?.resolveFocusEdge(
+                  (widget.spec['focusDown'] ?? '').toString(),
+                  down: true,
+                );
+            return TvChipStrip(
+              tabId: tab.isEmpty ? null : tab,
+              rowId: chipRowId,
+              sortOrder: PackPaintArtifact.stableSortOrder(
+                tab.isEmpty ? TvFocusGraph.tabIdOf(context) : tab,
+                chipRowId,
+              ),
+              itemCount: parsed.length,
+              resultsRowId: resultsRowId,
+              onFocusUp: packFocusUp,
+              // Pack focusDown used when mood-results is empty / unmounted —
+              // chip ↓ still prefers results via shellTvChipDownToRow first.
+              onFocusDown: packFocusDown,
+              builder: (context, edgesFor) {
+                if (fits) {
+                  return centeredRow(scaleToFit: true, edgesFor: edgesFor);
+                }
+                return HorizontalScroller(
+                  height: rowHeight,
+                  padding: EdgeInsets.symmetric(horizontal: pad),
+                  itemCount: parsed.length,
+                  separatorBuilder: (_, _) => SizedBox(width: chipGap),
+                  itemBuilder: (context, i) => chipAt(i, edges: edgesFor(i)),
+                );
+              },
+            );
+          }
+
+          if (fits) return centeredRow(scaleToFit: false);
+          return HorizontalScroller(
+            height: rowHeight,
+            padding: EdgeInsets.symmetric(horizontal: pad),
+            itemCount: parsed.length,
+            separatorBuilder: (_, _) => SizedBox(width: chipGap),
+            itemBuilder: (context, i) => chipAt(i),
+          );
+        }
+
+        return MoodSection(
+          title: title.isEmpty ? null : title,
+          titlePadding: EdgeInsets.fromLTRB(
+            pad,
+            titlePad.top,
+            pad,
+            titlePad.bottom,
+          ),
+          // Focused chip reveal keeps "title + chips" on screen instead of
+          // pinning the chip flush to the top with its title cut off.
+          revealIncludesTitle: fits,
+          chipStrip: chipStrip(),
+          results: results,
+        );
       },
     );
   }
@@ -4017,192 +4102,191 @@ class _BecauseMountState extends State<_BecauseMount> {
         if (items is! List || items.isEmpty) {
           return const SizedBox.shrink();
         }
-                final tab = widget.tabId ??
-                    LayoutScope.maybeOf(ctx)?.tabId ??
-                    TvFocusGraph.tabIdOf(ctx);
-                final defaultPad = catalogSectionHorizontalPadding(ctx);
-                final pad = PackPaintArtifact.packLength(
-                      ctx,
-                      widget.spec['pad'] ?? node['pad'],
-                    ) ??
-                    defaultPad;
-                final titlePad = PackPaintArtifact.titlePadInsets(
-                  widget.spec['titlePad'] ?? node['titlePad'],
-                  ctx,
-                );
-                final canShuffle = node['canShuffle'] == true;
-                final packFocusUp = LayoutScope.maybeOf(ctx)
-                    ?.resolveFocusEdge((widget.spec['focusUp'] ?? '').toString());
-                final packFocusDown = LayoutScope.maybeOf(ctx)
-                    ?.resolveFocusEdge(
-                      (widget.spec['focusDown'] ?? '').toString(),
-                      down: true,
-                    );
-                final gap = PackPaintArtifact.packLength(
-                      ctx,
-                      widget.spec['gap'] ?? node['gap'],
-                    ) ??
-                    shellPosterCardRowGap(ctx);
-                // Raw desktop px — fromPaint applies TV scale once.
-                final packCardW = PackPaintArtifact.packDouble(
-                  widget.spec['cardWidth'] ?? node['cardWidth'],
-                );
-                final packCardH = PackPaintArtifact.packDouble(
-                  widget.spec['cardHeight'] ?? node['cardHeight'],
-                );
-                final cardH = PackPaintArtifact.packLength(
-                      ctx,
-                      widget.spec['cardHeight'] ?? node['cardHeight'],
-                    ) ??
-                    InteractivePosterCard.cardHeight(ctx);
-                final sizedCards = <Widget>[];
-                for (var i = 0; i < items.length; i++) {
-                  final raw = items[i];
-                  if (raw is! Map) continue;
-                  final item = Map<String, dynamic>.from(raw);
-                  final paint = item['paint'];
-                  if (paint is Map) {
-                    final paintMap = Map<String, dynamic>.from(paint);
-                    if (packCardW != null || packCardH != null) {
-                      final p = Map<String, dynamic>.from(
-                        paintMap['props'] is Map
-                            ? Map<String, dynamic>.from(
-                                paintMap['props'] as Map,
-                              )
-                            : PackPaintArtifact.propsOf(item),
-                      );
-                      if (packCardW != null) {
-                        p.putIfAbsent('width', () => packCardW);
-                      }
-                      if (packCardH != null) {
-                        p.putIfAbsent('height', () => packCardH);
-                      }
-                      paintMap['props'] = p;
-                    }
-                    sizedCards.add(
-                      PackPaintArtifact.fromPaint(
-                        ctx,
-                        pluginId: widget.pluginId,
-                        paint: paintMap,
-                        open: item['open'] ?? paint['open'],
-                        meta: item['meta'] ?? paint['meta'],
-                        listIndex: i,
-                      ),
-                    );
-                    continue;
-                  }
-                  final props = PackPaintArtifact.propsOf(item);
-                  if (packCardW != null) props['width'] = packCardW;
-                  if (packCardH != null) props['height'] = packCardH;
-                  sizedCards.add(
-                    PackPaintArtifact.fromPaint(
-                      ctx,
-                      pluginId: widget.pluginId,
-                      paint: {'type': 'posterCard', 'props': props},
-                      open: item['open'],
-                      meta: item['meta'],
-                      listIndex: i,
-                    ),
-                  );
-                }
-                if (sizedCards.isEmpty) return const SizedBox.shrink();
-                final rail = HorizontalScroller(
-                  height: cardH,
-                  padding: EdgeInsets.symmetric(horizontal: pad),
-                  itemCount: sizedCards.length,
-                  separatorBuilder: (_, _) => SizedBox(width: gap),
-                  itemBuilder: (_, i) => sizedCards[i],
-                );
-                final tabKey = tab.trim();
-                final shuffleSort = canShuffle && tabKey.isNotEmpty
-                    ? PackPaintArtifact.stableSortOrder(
-                        tabKey,
-                        'because-shuffle',
-                      )
-                    : null;
-                final becauseSort = tabKey.isEmpty
-                    ? 0
-                    : PackPaintArtifact.stableSortOrder(tabKey, 'because');
-                final section = BecauseSection(
-                  title: (node['heading'] ?? '').toString().isEmpty
-                      ? null
-                      : (node['heading'] ?? '').toString(),
-                  seedPosterUrl: (node['seedPoster'] ?? '').toString().isEmpty
-                      ? null
-                      : (node['seedPoster'] ?? '').toString(),
-                  kickerFontSize: PackPaintArtifact.packLength(
-                    ctx,
-                    widget.spec['kickerFontSize'] ?? node['kickerFontSize'],
-                  ),
-                  titleFontSize: PackPaintArtifact.packLength(
-                    ctx,
-                    widget.spec['titleFontSize'] ?? node['titleFontSize'],
-                  ),
-                  seeAllFontSize: PackPaintArtifact.packLength(
-                    ctx,
-                    widget.spec['seeAllFontSize'] ?? node['seeAllFontSize'],
-                  ),
-                  trailing: canShuffle
-                      ? (tabKey.isEmpty || shuffleSort == null
-                          ? BecauseShuffleButton(
-                              onTap: () => setState(() => _shuffleKey++),
-                            )
-                          : TvKitRow(
-                              tabId: tabKey,
-                              rowId: 'because-shuffle',
-                              sortOrder: shuffleSort,
-                              itemCount: 1,
-                              onFocusUp: packFocusUp,
-                              onFocusDown: () {
-                                ShellTvFocusCoordinator.focusRowItem(
-                                  tabKey,
-                                  'because',
-                                  0,
-                                );
-                              },
-                              child: BecauseShuffleButton(
-                                onTap: () => setState(() => _shuffleKey++),
-                                listIndex: 0,
-                                onUpEdge: packFocusUp,
-                                onDownEdge: () {
-                                  ShellTvFocusCoordinator.focusRowItem(
-                                    tabKey,
-                                    'because',
-                                    0,
-                                  );
-                                },
-                              ),
-                            ))
-                      : null,
-                  titlePadding: EdgeInsets.fromLTRB(
-                    pad,
-                    titlePad.top,
-                    pad,
-                    titlePad.bottom,
-                  ),
-                  rail: tabKey.isEmpty
-                      ? rail
-                      : TvKitRow(
-                          tabId: tabKey,
-                          rowId: 'because',
-                          sortOrder: becauseSort,
-                          itemCount: sizedCards.length,
-                          onFocusUp: canShuffle
-                              ? () {
-                                  ShellTvFocusCoordinator.focusRowItem(
-                                    tabKey,
-                                    'because-shuffle',
-                                    0,
-                                  );
-                                }
-                              : packFocusUp,
-                          onFocusDown: packFocusDown,
-                          child: rail,
-                        ),
-                );
-                return section;
-              },
+        final tab =
+            widget.tabId ??
+            LayoutScope.maybeOf(ctx)?.tabId ??
+            TvFocusGraph.tabIdOf(ctx);
+        final defaultPad = catalogSectionHorizontalPadding(ctx);
+        final pad =
+            PackPaintArtifact.packLength(
+              ctx,
+              widget.spec['pad'] ?? node['pad'],
+            ) ??
+            defaultPad;
+        final titlePad = PackPaintArtifact.titlePadInsets(
+          widget.spec['titlePad'] ?? node['titlePad'],
+          ctx,
+        );
+        final canShuffle = node['canShuffle'] == true;
+        final packFocusUp = LayoutScope.maybeOf(
+          ctx,
+        )?.resolveFocusEdge((widget.spec['focusUp'] ?? '').toString());
+        final packFocusDown = LayoutScope.maybeOf(ctx)?.resolveFocusEdge(
+          (widget.spec['focusDown'] ?? '').toString(),
+          down: true,
+        );
+        final gap =
+            PackPaintArtifact.packLength(
+              ctx,
+              widget.spec['gap'] ?? node['gap'],
+            ) ??
+            shellPosterCardRowGap(ctx);
+        // Raw desktop px — fromPaint applies TV scale once.
+        final packCardW = PackPaintArtifact.packDouble(
+          widget.spec['cardWidth'] ?? node['cardWidth'],
+        );
+        final packCardH = PackPaintArtifact.packDouble(
+          widget.spec['cardHeight'] ?? node['cardHeight'],
+        );
+        final cardH =
+            PackPaintArtifact.packLength(
+              ctx,
+              widget.spec['cardHeight'] ?? node['cardHeight'],
+            ) ??
+            InteractivePosterCard.cardHeight(ctx);
+        final sizedCards = <Widget>[];
+        for (var i = 0; i < items.length; i++) {
+          final raw = items[i];
+          if (raw is! Map) continue;
+          final item = Map<String, dynamic>.from(raw);
+          final paint = item['paint'];
+          if (paint is Map) {
+            final paintMap = Map<String, dynamic>.from(paint);
+            if (packCardW != null || packCardH != null) {
+              final p = Map<String, dynamic>.from(
+                paintMap['props'] is Map
+                    ? Map<String, dynamic>.from(paintMap['props'] as Map)
+                    : PackPaintArtifact.propsOf(item),
+              );
+              if (packCardW != null) {
+                p.putIfAbsent('width', () => packCardW);
+              }
+              if (packCardH != null) {
+                p.putIfAbsent('height', () => packCardH);
+              }
+              paintMap['props'] = p;
+            }
+            sizedCards.add(
+              PackPaintArtifact.fromPaint(
+                ctx,
+                pluginId: widget.pluginId,
+                paint: paintMap,
+                open: item['open'] ?? paint['open'],
+                meta: item['meta'] ?? paint['meta'],
+                listIndex: i,
+              ),
             );
+            continue;
+          }
+          final props = PackPaintArtifact.propsOf(item);
+          if (packCardW != null) props['width'] = packCardW;
+          if (packCardH != null) props['height'] = packCardH;
+          sizedCards.add(
+            PackPaintArtifact.fromPaint(
+              ctx,
+              pluginId: widget.pluginId,
+              paint: {'type': 'posterCard', 'props': props},
+              open: item['open'],
+              meta: item['meta'],
+              listIndex: i,
+            ),
+          );
+        }
+        if (sizedCards.isEmpty) return const SizedBox.shrink();
+        final rail = HorizontalScroller(
+          height: cardH,
+          padding: EdgeInsets.symmetric(horizontal: pad),
+          itemCount: sizedCards.length,
+          separatorBuilder: (_, _) => SizedBox(width: gap),
+          itemBuilder: (_, i) => sizedCards[i],
+        );
+        final tabKey = tab.trim();
+        final shuffleSort = canShuffle && tabKey.isNotEmpty
+            ? PackPaintArtifact.stableSortOrder(tabKey, 'because-shuffle')
+            : null;
+        final becauseSort = tabKey.isEmpty
+            ? 0
+            : PackPaintArtifact.stableSortOrder(tabKey, 'because');
+        final section = BecauseSection(
+          title: (node['heading'] ?? '').toString().isEmpty
+              ? null
+              : (node['heading'] ?? '').toString(),
+          seedPosterUrl: (node['seedPoster'] ?? '').toString().isEmpty
+              ? null
+              : (node['seedPoster'] ?? '').toString(),
+          kickerFontSize: PackPaintArtifact.packLength(
+            ctx,
+            widget.spec['kickerFontSize'] ?? node['kickerFontSize'],
+          ),
+          titleFontSize: PackPaintArtifact.packLength(
+            ctx,
+            widget.spec['titleFontSize'] ?? node['titleFontSize'],
+          ),
+          seeAllFontSize: PackPaintArtifact.packLength(
+            ctx,
+            widget.spec['seeAllFontSize'] ?? node['seeAllFontSize'],
+          ),
+          trailing: canShuffle
+              ? (tabKey.isEmpty || shuffleSort == null
+                    ? BecauseShuffleButton(
+                        onTap: () => setState(() => _shuffleKey++),
+                      )
+                    : TvKitRow(
+                        tabId: tabKey,
+                        rowId: 'because-shuffle',
+                        sortOrder: shuffleSort,
+                        itemCount: 1,
+                        onFocusUp: packFocusUp,
+                        onFocusDown: () {
+                          ShellTvFocusCoordinator.focusRowItem(
+                            tabKey,
+                            'because',
+                            0,
+                          );
+                        },
+                        child: BecauseShuffleButton(
+                          onTap: () => setState(() => _shuffleKey++),
+                          listIndex: 0,
+                          onUpEdge: packFocusUp,
+                          onDownEdge: () {
+                            ShellTvFocusCoordinator.focusRowItem(
+                              tabKey,
+                              'because',
+                              0,
+                            );
+                          },
+                        ),
+                      ))
+              : null,
+          titlePadding: EdgeInsets.fromLTRB(
+            pad,
+            titlePad.top,
+            pad,
+            titlePad.bottom,
+          ),
+          rail: tabKey.isEmpty
+              ? rail
+              : TvKitRow(
+                  tabId: tabKey,
+                  rowId: 'because',
+                  sortOrder: becauseSort,
+                  itemCount: sizedCards.length,
+                  onFocusUp: canShuffle
+                      ? () {
+                          ShellTvFocusCoordinator.focusRowItem(
+                            tabKey,
+                            'because-shuffle',
+                            0,
+                          );
+                        }
+                      : packFocusUp,
+                  onFocusDown: packFocusDown,
+                  child: rail,
+                ),
+        );
+        return section;
+      },
+    );
   }
 }
 
@@ -4309,8 +4393,9 @@ class _ContinueMountState extends State<_ContinueMount> {
         final clamped = (durMs > 0 && posMs > durMs - 30000)
             ? (durMs - 30000)
             : posMs;
-        startPosition =
-            Duration(milliseconds: (clamped - 3000).clamp(0, 1 << 31));
+        startPosition = Duration(
+          milliseconds: (clamped - 3000).clamp(0, 1 << 31),
+        );
       }
       final extras = entry['extras'];
       final preferredPluginId = preferredEnginePluginForResume(
@@ -4322,9 +4407,7 @@ class _ContinueMountState extends State<_ContinueMount> {
         pluginId: widget.pluginId,
         episodeNumber: epNum,
         episodeVideoId: entry['episodeVideoId']?.toString(),
-        extras: extras is Map
-            ? Map<String, dynamic>.from(extras)
-            : const {},
+        extras: extras is Map ? Map<String, dynamic>.from(extras) : const {},
         startPosition: startPosition,
         preferredPluginId: preferredPluginId,
         savedStreamUrl: entry['streamUrl']?.toString(),
@@ -4390,11 +4473,13 @@ class _ContinueMountState extends State<_ContinueMount> {
     final defaultW = tv
         ? ShellTokens.continueWatchingCardWidthTv
         : (shellUsesWideLayout(context)
-            ? ShellTokens.shellContinueWatchingCardWidthDesktop
-            : ShellTokens.shellContinueWatchingCardWidthCompact);
+              ? ShellTokens.shellContinueWatchingCardWidthDesktop
+              : ShellTokens.shellContinueWatchingCardWidthCompact);
     final cardW =
-        PackPaintArtifact.packLength(context, widget.spec['cardWidth']) ?? defaultW;
-    final cardH = PackPaintArtifact.packLength(context, widget.spec['cardHeight']) ??
+        PackPaintArtifact.packLength(context, widget.spec['cardWidth']) ??
+        defaultW;
+    final cardH =
+        PackPaintArtifact.packLength(context, widget.spec['cardHeight']) ??
         (cardW * 9 / 16);
     final defaultPad = catalogSectionHorizontalPadding(context);
     final pad =
@@ -4403,17 +4488,21 @@ class _ContinueMountState extends State<_ContinueMount> {
       widget.spec['titlePad'],
       context,
     );
-    final gap = PackPaintArtifact.packLength(context, widget.spec['gap']) ??
+    final gap =
+        PackPaintArtifact.packLength(context, widget.spec['gap']) ??
         shellPosterCardRowGap(context);
     return TvKitRow(
       tabId: tab,
       rowId: resolvedRowId,
       sortOrder: PackPaintArtifact.stableSortOrder(tab, resolvedRowId),
       itemCount: _entries.length,
-      onFocusUp: LayoutScope.maybeOf(context)
-          ?.resolveFocusEdge((widget.spec['focusUp'] ?? '').toString()),
-      onFocusDown: LayoutScope.maybeOf(context)
-          ?.resolveFocusEdge((widget.spec['focusDown'] ?? '').toString(), down: true),
+      onFocusUp: LayoutScope.maybeOf(
+        context,
+      )?.resolveFocusEdge((widget.spec['focusUp'] ?? '').toString()),
+      onFocusDown: LayoutScope.maybeOf(context)?.resolveFocusEdge(
+        (widget.spec['focusDown'] ?? '').toString(),
+        down: true,
+      ),
       child: ContinueSection(
         title: 'Continue Watching',
         scrollController: _scroll,
@@ -4421,14 +4510,22 @@ class _ContinueMountState extends State<_ContinueMount> {
         cardWidth: cardW,
         cardHeight: cardH,
         cardGap: gap,
-        titleFontSize:
-            PackPaintArtifact.packLength(context, widget.spec['titleFontSize']),
-        cardTitleFontSize:
-            PackPaintArtifact.packLength(context, widget.spec['cardTitleFontSize']),
-        cardSubtitleFontSize:
-            PackPaintArtifact.packLength(context, widget.spec['cardSubtitleFontSize']),
-        cardRemainingFontSize:
-            PackPaintArtifact.packLength(context, widget.spec['cardRemainingFontSize']),
+        titleFontSize: PackPaintArtifact.packLength(
+          context,
+          widget.spec['titleFontSize'],
+        ),
+        cardTitleFontSize: PackPaintArtifact.packLength(
+          context,
+          widget.spec['cardTitleFontSize'],
+        ),
+        cardSubtitleFontSize: PackPaintArtifact.packLength(
+          context,
+          widget.spec['cardSubtitleFontSize'],
+        ),
+        cardRemainingFontSize: PackPaintArtifact.packLength(
+          context,
+          widget.spec['cardRemainingFontSize'],
+        ),
         titlePadding: EdgeInsets.fromLTRB(
           pad,
           titlePad.top,

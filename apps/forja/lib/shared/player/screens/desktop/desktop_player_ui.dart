@@ -1,6 +1,10 @@
 part of 'desktop_player_screen.dart';
 
-mixin _DesktopPlayerUi on ConsumerState<DesktopPlayerScreen>, WidgetsBindingObserver, WindowListener {
+mixin _DesktopPlayerUi
+    on
+        ConsumerState<DesktopPlayerScreen>,
+        WidgetsBindingObserver,
+        WindowListener {
   _DesktopPlayerScreenState get _s => this as _DesktopPlayerScreenState;
 
   bool get _statusBlocksControlsHide {
@@ -34,8 +38,9 @@ mixin _DesktopPlayerUi on ConsumerState<DesktopPlayerScreen>, WidgetsBindingObse
   /// only arms; second exits.
   void _hideChromeIntentional({bool armEscape = false}) {
     _s._hideTimer?.cancel();
-    _s._suppressChromeRevealUntil =
-        DateTime.now().add(const Duration(milliseconds: 450));
+    _s._suppressChromeRevealUntil = DateTime.now().add(
+      const Duration(milliseconds: 450),
+    );
     _s._lastHoverPos = null;
     if (!armEscape) {
       _s._escapeExitArmed = false;
@@ -78,8 +83,8 @@ mixin _DesktopPlayerUi on ConsumerState<DesktopPlayerScreen>, WidgetsBindingObse
   }
 
   Future<void> _escapeLeaveFullscreenOrContinue() async {
-    final osFull = DesktopWindowGeometry.isDesktop &&
-        await windowManager.isFullScreen();
+    final osFull =
+        DesktopWindowGeometry.isDesktop && await windowManager.isFullScreen();
     final inFullscreen = osFull || _s._isFullscreen;
     debugPrint(
       '[DesktopPlayer] Escape ladder armed=${_s._escapeExitArmed} '
@@ -92,7 +97,9 @@ mixin _DesktopPlayerUi on ConsumerState<DesktopPlayerScreen>, WidgetsBindingObse
         'fs=$inFullscreen wasArmed=${_s._escapeExitArmed}',
       );
       _hideChromeIntentional(armEscape: false);
-      debugPrint('[DesktopPlayer] Escape after hide armed=${_s._escapeExitArmed}');
+      debugPrint(
+        '[DesktopPlayer] Escape after hide armed=${_s._escapeExitArmed}',
+      );
       return;
     }
     if (inFullscreen) {
@@ -105,7 +112,9 @@ mixin _DesktopPlayerUi on ConsumerState<DesktopPlayerScreen>, WidgetsBindingObse
         _s._isFullscreen = false;
         _s._escapeExitArmed = false;
       });
-      debugPrint('[DesktopPlayer] Escape fullscreen done armed=${_s._escapeExitArmed}');
+      debugPrint(
+        '[DesktopPlayer] Escape fullscreen done armed=${_s._escapeExitArmed}',
+      );
       return;
     }
     // Mini on: demote immediately when chrome is already hidden. Skip the
@@ -122,12 +131,12 @@ mixin _DesktopPlayerUi on ConsumerState<DesktopPlayerScreen>, WidgetsBindingObse
     if (!_s._escapeExitArmed) {
       debugPrint('[DesktopPlayer] Escape → arm only (armed=false → true)');
       _armEscapeExit();
-      debugPrint('[DesktopPlayer] Escape after arm armed=${_s._escapeExitArmed}');
+      debugPrint(
+        '[DesktopPlayer] Escape after arm armed=${_s._escapeExitArmed}',
+      );
       return;
     }
-    debugPrint(
-      '[DesktopPlayer] Escape → confirm (armed=true)',
-    );
+    debugPrint('[DesktopPlayer] Escape → confirm (armed=true)');
     _s._escapeExitArmed = false;
     await _exitPlayer();
   }
@@ -173,12 +182,14 @@ mixin _DesktopPlayerUi on ConsumerState<DesktopPlayerScreen>, WidgetsBindingObse
 
   Future<PipHandoffSnapshot?> captureForPip() async {
     if (_s._disposed || !_s._playerReady || _s._releasedForPip) return null;
-    final url = _s._hlsMasterUrl ??
+    final url =
+        _s._hlsMasterUrl ??
         _s._currentQualityUrl ??
         _s._currentUrl ??
         widget.mediaPath;
     if (url.isEmpty) return null;
-    final src = _s._currentSources != null &&
+    final src =
+        _s._currentSources != null &&
             _s._currentFallbackSourceIndex < _s._currentSources!.length
         ? _s._currentSources![_s._currentFallbackSourceIndex]
         : null;
@@ -252,9 +263,7 @@ mixin _DesktopPlayerUi on ConsumerState<DesktopPlayerScreen>, WidgetsBindingObse
     );
     _s._controller = VideoController(
       _s._player,
-      configuration: const VideoControllerConfiguration(
-        enableHardwareAcceleration: true,
-      ),
+      configuration: _s._hwDecMode.videoControllerConfiguration,
     );
     _s._playerReady = true;
     _s._playbackStopped = false;
@@ -321,10 +330,7 @@ mixin _DesktopPlayerUi on ConsumerState<DesktopPlayerScreen>, WidgetsBindingObse
     _s._bypassEscapeArm = true;
     await _exitPlayer();
     if (!c.isCompleted) {
-      await c.future.timeout(
-        const Duration(seconds: 8),
-        onTimeout: () {},
-      );
+      await c.future.timeout(const Duration(seconds: 8), onTimeout: () {});
     }
   }
 
@@ -516,7 +522,8 @@ mixin _DesktopPlayerUi on ConsumerState<DesktopPlayerScreen>, WidgetsBindingObse
           : const Duration(seconds: -10);
       var newPos = _s._positionNotifier.value + delta;
       if (newPos < Duration.zero) newPos = Duration.zero;
-      if (newPos > _s._durationNotifier.value) newPos = _s._durationNotifier.value;
+      if (newPos > _s._durationNotifier.value)
+        newPos = _s._durationNotifier.value;
       unawaited(_s._seekTo(newPos));
     } else if (key == LogicalKeyboardKey.arrowRight) {
       final delta = HardwareKeyboard.instance.isShiftPressed
@@ -524,10 +531,10 @@ mixin _DesktopPlayerUi on ConsumerState<DesktopPlayerScreen>, WidgetsBindingObse
           : const Duration(seconds: 10);
       var newPos = _s._positionNotifier.value + delta;
       if (newPos < Duration.zero) newPos = Duration.zero;
-      if (newPos > _s._durationNotifier.value) newPos = _s._durationNotifier.value;
+      if (newPos > _s._durationNotifier.value)
+        newPos = _s._durationNotifier.value;
       unawaited(_s._seekTo(newPos));
-    } else if (key == LogicalKeyboardKey.arrowUp &&
-        _s._volumeControlSelected) {
+    } else if (key == LogicalKeyboardKey.arrowUp && _s._volumeControlSelected) {
       _s._player.setVolume((_s._volumeNotifier.value + 5).clamp(0, 150));
     } else if (key == LogicalKeyboardKey.arrowDown &&
         _s._volumeControlSelected) {
