@@ -106,7 +106,7 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [082-[open]-…](082-[open]-multi-server-collect-all.md) | Multi-server must show every mirror | P1 | High | open | 9/9 · A 1/5 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [083-[open]-…](083-[open]-anime-first-hit-no-background-scan.md) | Anime first playable wins (no background scan) | P1 | High | open | 4/4 · A 0/3 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [084-[open]-…](084-[open]-megaplay-nekostream-cdn-referer.md) | Megaplay nekostream Referer + `/stream/ani/` | P1 | High | open | 29/29 · A 3/11 | [1.0.1](../backlog/1.0.1-[open].md) |
-| [085-[open]-…](085-[open]-desktop-involuntary-signout-dumps-login.md) | Session loss → login + wipe (no Guest portal leak) | P1 | High | open | 5/5 · A 0/2 · 1⏭️ | [1.0.1](../backlog/1.0.1-[open].md) |
+| [085-[open]-…](085-[open]-desktop-involuntary-signout-dumps-login.md) | Session loss → login + wipe (no Guest portal leak) | P1 | High | open | 6/6 · A 0/2 · 1⏭️ | [1.0.1](../backlog/1.0.1-[open].md) |
 | [086-[fixed]-…](fixed/086-[fixed]-provider-score-running-total-floor.md) | Provider score re-sum buried ups under Auto fails | P1 | High | fixed | Complete · 3/3 · A 2/2 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [087-[open]-…](087-[open]-update-dialog-empty-changelogs.md) | Update dialog empty notes (R2 changelog archive) | P1 | High | open | 2/2 · A 0/2 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [088-[fixed]-…](fixed/088-[fixed]-stale-webstreaming-cache-token-replay.md) | Stale webstreaming cache / history token replay | P1 | High | fixed | Complete · 4/4 · A 2/3 | [1.0.1](../backlog/1.0.1-[open].md) |
@@ -266,7 +266,7 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [257-[open]-…](257-[open]-android-tv-guest-settings-only-dpad.md) | ATV guest / Settings-only D-pad stuck on Settings rail | P0 | High | open | 4/4 · A 1/2 | [253](253-[open]-starred-home-opens-on-settings.md) |
 | [258-[open]-…](258-[open]-shahid-android-drm-manual-qa.md) | Shahid Android DRM manual QA | P1 | Medium | open | 0/5 | [RFC-101](../rfc/101-[open]-shahid-hub-provider-exo-widevine.md) |
 | [259-[open]-…](259-[open]-cloud-pack-auto-install-before-profile-splash.md) | Cloud pack auto-install before profile splash | P0 | Critical | open | 6/6 · A 0/5 | [225](225-[open]-official-pack-install-aborts-skips-nav-refresh.md) |
-| [260-[open]-…](260-[open]-host-hardcodes-specific-plugins.md) | Host still hardcodes specific plugins (community-owned audit) | P0 | Critical | open | 5/6 · A 0/4 | [255](255-[open]-provider-runtime-config-builtins-debt.md) |
+| [260-[open]-…](260-[open]-host-hardcodes-specific-plugins.md) | Host still hardcodes specific plugins (community-owned audit) | P0 | Critical | open | 6/7 · A 0/4 | [255](255-[open]-provider-runtime-config-builtins-debt.md) |
 | [261-[fixed]-…](fixed/261-[fixed]-windows-iptv-portal-unreachable-dns64.md) | Windows IPTV portal unreachable (DNS64 AAAA) | P1 | High | fixed | Complete · 3/3 · A 0/1 | [252](fixed/252-[fixed]-iptv-status-checks-false-red.md) |
 | [262-[fixed]-…](fixed/262-[fixed]-android-tv-forja-packs-last-pack-clipped.md) | ATV Forja Packs last pack clipped / unreachable | P1 | High | fixed | Complete · 3/3 · A 0/1 | [127](fixed/127-[fixed]-android-tv-settings-detail-dpad.md) |
 | [263-[fixed]-…](fixed/263-[fixed]-live-sports-schedule-merge-soft-match.md) | Live Sports schedule merge dead / soft-match too weak | P1 | High | fixed | Complete · 5/5 · A 0/1 | [240](fixed/240-[fixed]-live-sports-providers-missing-sibling-resolvers.md) |
@@ -512,6 +512,9 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [473-[fixed]-…](fixed/473-[fixed]-my-list-open-with-size-persist-card.md) | My List Open with… size + persist/card update | P1 | High | fixed | Complete · 3/3 · A 0/2 | [400](400-[open]-my-list-open-with-hub-checkbox.md) |
 | [474-[fixed]-…](fixed/474-[fixed]-mediakit-hls-instream-subtitle-menu-twins.md) | MediaKit HLS in-stream subtitle menu twins on pick | P1 | High | fixed | Complete · 4/4 · A 1/3 | [458](fixed/458-[fixed]-exo-online-subtitle-pick-no-op-and-menu-twins.md) |
 | [475-[fixed]-…](fixed/475-[fixed]-release-tv-login-shows-dev-forjahq.md) | Release TV login shows `dev.forjahq.xyz` | P0 | High | fixed | Complete · 3/3 · A 1/2 | — |
+| [476-[draft]-…](476-[draft]-android-tv-mottled-dots-hw-decode-no-sw-path.md) | Android TV mottled dots; TV Video decode SW/COPY has no paint path | P1 | High | draft | 0/6 · A 0/4 | — |
+| [477-[open]-…](477-[open]-kit-list-open-bind-verb-pack-declared.md) | My List Open in… sheet host-decided; kit.list pack-declared `bind` verb | P1 | High | open | 6/6 · A 1/4 | — |
+| [478-[open]-…](478-[open]-desktop-web-login-auto-handoff-signed-in-portal-user.md) | Web login from Forja hands off the signed-in portal account | P1 | Medium | open | 2/2 · A 0/2 | — |
 
 **Migration parity (draft):** [018](018-[draft]-migration-playback-parity-unverified.md) → [019](019-[draft]-webstreamr-enginejobs-e2e-test-gap.md)–[022](022-[draft]-playback-widget-integration-tests.md).
 

@@ -75,7 +75,10 @@ class TvDeviceLinkAuth {
   /// Cap Edge invoke so dead DNS cannot leave "Preparing a code…" forever.
   static const _invokeTimeout = Duration(seconds: 15);
 
-  static Future<TvDeviceLinkSession> create() async {
+  /// [addAccount] appends `switch_account=1` to the connect URL so a portal
+  /// already signed in asks "Continue as … / Use another account" instead of
+  /// approving the browser user automatically.
+  static Future<TvDeviceLinkSession> create({bool addAccount = false}) async {
     await ForjaSupabase.ensureInitialized();
     final client = ForjaSupabase.clientOrNull;
     if (client == null) {
@@ -89,7 +92,7 @@ class TvDeviceLinkAuth {
             body: <String, dynamic>{},
           )
           .timeout(_invokeTimeout);
-      return _sessionFromData(response.data);
+      return _sessionFromData(response.data, addAccount: addAccount);
     } on TimeoutException {
       debugPrint('[TvDeviceLink] create timed out');
       throw const AuthException(
@@ -150,7 +153,10 @@ class TvDeviceLinkAuth {
     }
   }
 
-  static TvDeviceLinkSession _sessionFromData(dynamic raw) {
+  static TvDeviceLinkSession _sessionFromData(
+    dynamic raw, {
+    bool addAccount = false,
+  }) {
     final data = _asMap(raw);
     final userCode = (data['user_code'] as String?)?.trim() ?? '';
     final deviceCode = (data['device_code'] as String?)?.trim() ?? '';
@@ -159,7 +165,8 @@ class TvDeviceLinkAuth {
     }
 
     final verificationUri = '$webUrl/connect';
-    final verificationUriComplete = '$verificationUri?code=$userCode';
+    final verificationUriComplete =
+        '$verificationUri?code=$userCode${addAccount ? '&switch_account=1' : ''}';
 
     return TvDeviceLinkSession(
       userCode: userCode,

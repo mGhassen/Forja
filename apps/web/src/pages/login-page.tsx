@@ -66,6 +66,7 @@ function LoginForm() {
   const {
     signIn,
     signInWithPasskey,
+    signOut,
     session,
     user,
     loading,
@@ -85,6 +86,10 @@ function LoginForm() {
   const [desktopReady, setDesktopReady] = useState(false)
   const [desktopHandoff, setDesktopHandoff] = useState(false)
   const [handoffBusy, setHandoffBusy] = useState(false)
+  // `desktop_switch=1`: the app is adding another account. A browser that is
+  // already signed in must ask which account to hand off, never auto-mint.
+  const [desktopSwitch, setDesktopSwitch] = useState(false)
+  const [switchBusy, setSwitchBusy] = useState(false)
   const autoHandoffTried = useRef(false)
   const [desktopParams, setDesktopParams] = useState<{
     callback: string | null
@@ -105,8 +110,13 @@ function LoginForm() {
     if (isSafeDesktopCallback(params.callback)) {
       lockDesktopHandoff()
     }
-    const err = new URLSearchParams(window.location.search).get('error')
+    const search = new URLSearchParams(window.location.search)
+    const err = search.get('error')
     if (err) setError(err)
+    setDesktopSwitch(
+      isSafeDesktopCallback(params.callback) &&
+        search.get('desktop_switch') === '1',
+    )
     setDesktopReady(true)
   }, [])
 
@@ -179,6 +189,9 @@ function LoginForm() {
       resolveDesktopAuthParams().callback,
     )
     if (desktopNow && session?.access_token && session.refresh_token) {
+      // Add-account mode: the user picks "Continue as" or signs in again.
+      // Handoff then runs from that click, never from this effect.
+      if (desktopSwitch) return
       if (autoHandoffTried.current) return
       autoHandoffTried.current = true
       void handoffToDesktop()
@@ -190,6 +203,7 @@ function LoginForm() {
   }, [
     desktopReady,
     desktopHandoff,
+    desktopSwitch,
     loading,
     user,
     session,
@@ -298,8 +312,26 @@ function LoginForm() {
     await handoffToDesktop()
   }
 
+  async function onContinueAsCurrent() {
+    autoHandoffTried.current = true
+    await onReturnToForja()
+  }
+
+  // Local sign-out only: this browser forgets the session, other devices and
+  // the desktop app keep theirs. The sign-in form then takes over and its
+  // own submit path hands the new account to the app.
+  async function onUseAnotherAccount() {
+    setError(null)
+    setSwitchBusy(true)
+    try {
+      await signOut({ scope: 'local' })
+    } finally {
+      setSwitchBusy(false)
+    }
+  }
+
   const authBusy =
-    submitting || passkeySubmitting || handoffBusy || oauthBusy
+    submitting || passkeySubmitting || handoffBusy || oauthBusy || switchBusy
 
   // Desktop handoff: never show credentials while session is hydrating, or
   // when already signed in (auto-mint / Return to Forja only).
@@ -333,12 +365,13 @@ function LoginForm() {
     desktopHandoff ||
     desktopPendingAuth ||
     desktopSignedIn ||
-    (isDesktopLogin && handoffBusy)
+    (isDesktopLogin && (handoffBusy || switchBusy))
   ) {
     const showLoading =
       desktopHandoff
         ? false
-        : handoffBusy || desktopPendingAuth || !desktopSignedIn
+        : handoffBusy || switchBusy || desktopPendingAuth || !desktopSignedIn
+    const showAccountChoice = desktopSwitch && !showLoading
     return (
       <section className="flex h-full min-h-0 flex-1 items-center justify-center px-5 py-14 sm:px-8 lg:px-10 lg:py-20">
         <Reveal variant="right" className="reveal-slow w-full max-w-md">
@@ -351,10 +384,58 @@ function LoginForm() {
                     loadingLabel={
                       handoffBusy
                         ? 'Signing you in and connecting to the desktop app…'
-                        : 'Checking your portal session…'
+                        : switchBusy
+                          ? 'Signing out of this browser…'
+                          : 'Checking your portal session…'
                     }
                   />
                 </CardContent>
+              ) : showAccountChoice ? (
+                <>
+                  <CardHeader className="space-y-2 pb-2">
+                    <p className="font-mono-ui text-[10px] uppercase tracking-[0.2em] text-[rgba(237,230,218,0.4)]">
+                      Desktop handoff
+                    </p>
+                    <CardTitle className="font-disp text-3xl font-extrabold uppercase tracking-tight">
+                      Add an account
+                    </CardTitle>
+                    <CardDescription className="text-base leading-relaxed text-[rgba(237,230,218,0.5)]">
+                      This browser is signed in as{' '}
+                      <span className="text-[#EDE6DA]">{user?.email}</span>.
+                      Send that account to Forja, or sign in with another one.
+                      Use another account signs this browser out first.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    {error ? (
+                      <p
+                        role="alert"
+                        className="rounded-lg border border-flame/35 bg-flame/10 px-3 py-2.5 text-sm text-[#EDE6DA]"
+                      >
+                        {error}
+                      </p>
+                    ) : null}
+                    <Button
+                      type="button"
+                      disabled={authBusy}
+                      onClick={() => void onContinueAsCurrent()}
+                      className="h-12 w-full rounded-full font-mono-ui text-xs font-bold uppercase tracking-[0.12em]"
+                    >
+                      <span className="truncate">
+                        Continue as {user?.email}
+                      </span>
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      disabled={authBusy}
+                      onClick={() => void onUseAnotherAccount()}
+                      className="h-12 w-full rounded-full border-[rgba(237,230,218,0.22)] font-mono-ui text-xs font-bold uppercase tracking-[0.12em]"
+                    >
+                      Use another account
+                    </Button>
+                  </CardContent>
+                </>
               ) : (
                 <>
                   <CardHeader className="space-y-2 pb-2">

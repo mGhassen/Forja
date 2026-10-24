@@ -1,7 +1,10 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:forja/features/account/account_entry_screen.dart';
+import 'package:forja/features/account/account_switch_flow.dart';
 import 'package:forja/features/account/device_link_connect_view.dart';
+import 'package:forja/features/account/mfa_challenge_view.dart';
 import 'package:forja/features/account/profile_chooser_screen.dart';
 import 'package:forja/features/account/tv_account_link_screen.dart';
 import 'package:forja/features/settings/ui/settings_ui.dart';
@@ -250,6 +253,145 @@ class _SettingsForjaAccountPanelState extends State<SettingsForjaAccountPanel> {
     }
   }
 
+  /// Lands on the remembered profile (avatar splash) or Who's watching.
+  Future<void> _landAfterAccountChange(String userId) async {
+    final viaSplash = await AccountSwitchFlow.pushRememberedProfileSplash(
+      context,
+      userId,
+    );
+    if (!mounted) return;
+    if (!viaSplash) {
+      await presentProfileChooser(context, prepareCurrentOnSwitch: false);
+      if (!mounted) return;
+    }
+    await _refreshRemote();
+    if (mounted) setState(() {});
+  }
+
+  Future<void> _switchAccount(String userId) async {
+    if (_busy) return;
+    final entry = AccountVault.instance.entryFor(userId);
+    if (entry == null) return;
+    _refreshGen++;
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    final result = await AccountSwitchFlow.switchTo(context, entry);
+    if (!mounted) return;
+    setState(() {
+      _clearProfileUi();
+      _busy = false;
+      _error = result.switched ? null : result.message;
+    });
+    if (!result.switched) {
+      if (result.outcome == AccountSwitchFlowOutcome.cancelled) {
+        await _refreshRemote();
+      }
+      return;
+    }
+    ForjaToast.success('Signed in as ${entry.label}');
+    await _landAfterAccountChange(userId);
+  }
+
+  Future<void> _removeAccount(String userId) async {
+    if (_busy) return;
+    final entry = AccountVault.instance.entryFor(userId);
+    if (entry == null) return;
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    final result = await AccountSwitcher.instance.remove(
+      userId,
+      signOutActive: () async {
+        _refreshGen++;
+        SyncDomainBridge.instance.cancelPendingPushes();
+        await SyncService.instance.signOut();
+      },
+    );
+    if (!mounted) return;
+    setState(() {
+      if (result == AccountRemoveResult.signedOut) _clearProfileUi();
+      _busy = false;
+    });
+    switch (result) {
+      case AccountRemoveResult.removed:
+        ForjaToast.success('Removed ${entry.label} from this device');
+      case AccountRemoveResult.removedLocally:
+        ForjaToast.warning(
+          'Removed ${entry.label} from this device. Forja could not be '
+          'reached, so that sign-in stays valid until it expires.',
+        );
+      case AccountRemoveResult.signedOut:
+      case AccountRemoveResult.notFound:
+        break;
+    }
+  }
+
+  /// Opens the sign-in form in add mode; the current account stays signed in
+  /// and resumable from "Accounts on this device".
+  Future<void> _addAccount() async {
+    if (_busy) return;
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    final previous = SyncService.instance.session?.user.id;
+    await AccountSwitcher.instance.beginAdd();
+    if (!mounted) return;
+    setState(() => _busy = false);
+    final useDeviceLink = PlatformInfo.isAndroidTv || PlatformInfo.isDesktop;
+    final linked = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(
+        fullscreenDialog: true,
+        builder: (context) => useDeviceLink
+            ? TvAccountLinkScreen(
+                addMode: true,
+                onAuthenticated: () => Navigator.of(context).pop(true),
+                onCancel: () => Navigator.of(context).pop(false),
+                onContinueAsGuest: () => Navigator.of(context).pop(false),
+              )
+            : AccountEntryScreen(
+                addMode: true,
+                onAuthenticated: () => Navigator.of(context).pop(true),
+                onCancel: () => Navigator.of(context).pop(false),
+                onContinueAsGuest: () => Navigator.of(context).pop(false),
+              ),
+      ),
+    );
+    if (!mounted) return;
+    if (linked != true) {
+      AccountSwitcher.instance.cancelAdd();
+      await _refreshRemote();
+      return;
+    }
+    final changed = await AccountSwitcher.instance.finishAdd(
+      previousUserId: previous,
+    );
+    if (!mounted) return;
+    if (!changed) {
+      ForjaToast.info(AccountSwitchFlow.alreadyOnDeviceMessage);
+      await _refreshRemote();
+      return;
+    }
+    // Device link does not run the authenticator step itself.
+    if (SyncService.instance.requiresMfaChallenge()) {
+      final ok = await MfaChallengeView.present(context);
+      if (!mounted) return;
+      if (!ok) {
+        if (previous != null) await AccountSwitcher.instance.switchTo(previous);
+        if (!mounted) return;
+        await _refreshRemote();
+        return;
+      }
+    }
+    final userId = SyncService.instance.session?.user.id;
+    if (userId == null) return;
+    setState(_clearProfileUi);
+    await _landAfterAccountChange(userId);
+  }
+
   Future<void> _signOut() async {
     if (_busy) return;
     // Invalidate in-flight profile load so it cannot paint signed-in chrome
@@ -384,14 +526,24 @@ class _SettingsForjaAccountPanelState extends State<SettingsForjaAccountPanel> {
           ),
         );
       }
-      return _SignedInAccountBody(
-        activeProfile: activeProfile,
-        email: email,
-        domains: _domains,
-        busy: _busy,
-        onOpenChooser: () => _openChooser(),
-        onSignOut: _signOut,
-        error: _error,
+      return ValueListenableBuilder<List<AccountVaultEntry>>(
+        valueListenable: AccountVault.instance.entries,
+        builder: (context, accounts, _) => _SignedInAccountBody(
+          activeProfile: activeProfile!,
+          email: email,
+          domains: _domains,
+          busy: _busy,
+          onOpenChooser: () => _openChooser(),
+          onSignOut: _signOut,
+          error: _error,
+          accounts: accounts,
+          activeUserId: SyncService.instance.session?.user.id,
+          onSwitchAccount: (id) => unawaited(_switchAccount(id)),
+          onRemoveAccount: (id) => unawaited(_removeAccount(id)),
+          onAddAccount: accounts.length < AccountVault.maxAccounts
+              ? () => unawaited(_addAccount())
+              : null,
+        ),
       );
     }
 
@@ -427,6 +579,11 @@ class _SignedInAccountBody extends StatelessWidget {
     required this.busy,
     required this.onOpenChooser,
     required this.onSignOut,
+    required this.accounts,
+    required this.activeUserId,
+    required this.onSwitchAccount,
+    required this.onRemoveAccount,
+    required this.onAddAccount,
     this.error,
   });
 
@@ -436,7 +593,55 @@ class _SignedInAccountBody extends StatelessWidget {
   final bool busy;
   final VoidCallback onOpenChooser;
   final VoidCallback onSignOut;
+  final List<AccountVaultEntry> accounts;
+  final String? activeUserId;
+  final ValueChanged<String> onSwitchAccount;
+  final ValueChanged<String> onRemoveAccount;
+
+  /// Null when this device already holds the maximum number of accounts.
+  final VoidCallback? onAddAccount;
   final String? error;
+
+  static String _lastUsedLabel(DateTime at) {
+    final diff = DateTime.now().toUtc().difference(at.toUtc());
+    if (diff.inMinutes < 1) return 'Last used just now';
+    if (diff.inHours < 1) return 'Last used ${diff.inMinutes} min ago';
+    if (diff.inDays < 1) return 'Last used ${diff.inHours} h ago';
+    if (diff.inDays == 1) return 'Last used yesterday';
+    return 'Last used ${diff.inDays} days ago';
+  }
+
+  Widget _accountRow(BuildContext context, AccountVaultEntry account) {
+    final active = account.userId == activeUserId;
+    final subtitle = active
+        ? 'Active'
+        : account.needsSignIn
+        ? 'Sign in again to use this account.'
+        : _lastUsedLabel(account.lastUsedAt);
+    final iconSize = SettingsTokens.iconButtonIconSizeOf(context);
+    return SettingsActionRow(
+      title: account.label,
+      subtitle: subtitle,
+      leading: Icon(
+        active ? Icons.check_circle_rounded : Icons.account_circle_outlined,
+        color: active ? ForjaShellColors.brandGreen : ForjaShellColors.iconMuted,
+        size: iconSize,
+      ),
+      // Active row is informational (sign out below); inactive rows switch.
+      onTap: busy || active || account.needsSignIn
+          ? null
+          : () => onSwitchAccount(account.userId),
+      trailing: active
+          ? const SizedBox.shrink()
+          : Button(
+              variant: ButtonVariant.plainIcon,
+              size: ButtonSize.icon,
+              icon: Icons.close_rounded,
+              tooltip: 'Remove from this device',
+              onPressed: busy ? null : () => onRemoveAccount(account.userId),
+            ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -463,6 +668,24 @@ class _SignedInAccountBody extends StatelessWidget {
                   ? Icons.cloud_queue_rounded
                   : Icons.cloud_done_rounded,
             ),
+          ],
+        ),
+        SettingsGroup(
+          label: 'Accounts on this device',
+          children: [
+            for (final account in accounts) _accountRow(context, account),
+            if (onAddAccount != null)
+              SettingsActionRow(
+                title: 'Add account',
+                subtitle: 'Sign in with another Forja account and switch '
+                    'between them without signing out',
+                leading: Icon(
+                  Icons.person_add_alt_1_rounded,
+                  color: ForjaShellColors.iconMuted,
+                  size: SettingsTokens.iconButtonIconSizeOf(context),
+                ),
+                onTap: busy ? null : onAddAccount,
+              ),
           ],
         ),
         SettingsGroup(

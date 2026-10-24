@@ -28,7 +28,8 @@ profile is known — another profile’s settings are never shown first.
 - **App:** select the profile avatar at the bottom of the desktop or TV rail (opens
   **Settings → Profile & account**), or open that page from Settings —
   the page shows the active profile (**Watching now** — tap to switch), cloud
-  sync status, passkeys (macOS / Windows), and **Sign out**. From Who’s watching,
+  sync status, passkeys (macOS / Windows), **Accounts on this device** (switch,
+  add, remove — see [Account switching](../accounts/account-switching.md)), and **Sign out**. From Who’s watching,
   **Account settings** opens Settings and dismisses any open TMDB details so the
   hub is visible.
 - **Web:** sign in at `/login` with email/password or **Sign in with passkey**, or

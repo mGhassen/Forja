@@ -72,11 +72,15 @@ class DesktopBrowserAuth {
   /// the browser only closes after the session is actually applied. Tokens are
   /// still applied even if [cancel] already completed the wait (dispose /
   /// accidental cancel race).
+  ///
+  /// [addAccount] appends `desktop_switch=1` so a browser that is already
+  /// signed in asks which account to hand over instead of auto-approving.
   static Future<DesktopBrowserAuthResult> signIn({
     Duration timeout = const Duration(minutes: 5),
     Future<void> Function(Uri loginUrl)? launchBrowser,
     Future<void>? cancel,
     Future<void> Function(String accessToken, String refreshToken)? onTokens,
+    bool addAccount = false,
   }) async {
     final state = _randomState();
     HttpServer? server;
@@ -96,6 +100,7 @@ class DesktopBrowserAuth {
           'desktop_state': state,
           // Helps the portal pick the handoff UI before auth hydrates.
           'desktop_client': 'forja',
+          if (addAccount) 'desktop_switch': '1',
         },
       );
 

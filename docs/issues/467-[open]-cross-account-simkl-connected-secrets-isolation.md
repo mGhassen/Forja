@@ -10,7 +10,7 @@
 
 | | |
 |--|--|
-| **Progress** | **6 / 6** fix · **0 / 3** acceptance |
+| **Progress** | **6 / 6** fix · **0 / 4** acceptance |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -54,6 +54,7 @@ Verified in code:
 | 1 | I467-A01 | ATV: Simkl on A → sign out → sign in B → Simkl disconnected, My List has no A bleed | ⬜ |
 | 2 | I467-A02 | Sign back into A → Simkl still connected, My List restored from A’s cache | ⬜ |
 | 3 | I467-A03 | Profile switch A/p1 → A/p2 does not share Simkl token | ⬜ |
+| 4 | I467-A04 | Account switch A → B → A ([RFC-124](../rfc/124-[open]-multi-account-switching.md)) keeps A's Simkl connected; B never sees it | ⬜ |
 
 ## Out of scope (this issue)
 

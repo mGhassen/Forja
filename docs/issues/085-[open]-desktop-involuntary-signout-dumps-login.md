@@ -10,7 +10,7 @@
 
 | | |
 |--|--|
-| **Progress** | **5 / 5** fix · **0 / 2** acceptance (manual smoke) · **1 / 1** superseded |
+| **Progress** | **6 / 6** fix · **0 / 2** acceptance (manual smoke) · **1 / 1** superseded |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -25,6 +25,7 @@
 | 3 | I85-T03 | Clear account features + cancel sync pushes without tearing down navigation | ✅ |
 | 4 | I85-T04 | Reverse keep-shell: every `signedOut` returns to Account entry (security) | ✅ |
 | 5 | I85-T05 | Wipe account-bound local state on sign-out (IPTV portals, prefs, alive/channel caches) | ✅ |
+| 6 | I85-T06 | Account entry lists the other accounts saved on this device after a sign-out or an expired session; a switch never routes through this gate ([RFC-124](../rfc/124-[open]-multi-account-switching.md)) | ✅ |
 
 ---
 

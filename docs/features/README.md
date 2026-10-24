@@ -93,6 +93,7 @@ How Forja finds torrents, streams, and subtitles from the web.
 - [Simkl](accounts/simkl.md)
 - [MDBList](accounts/mdblist.md)
 - [Link Android TV](accounts/tv-connect.md) — desktop and TV code / QR → portal `/connect`
+- [Account switching](accounts/account-switching.md) — several accounts on one device, switch without signing out
 - [Cloud sync](settings/cloud-sync.md) — Forja account (Supabase)
 
 ---
@@ -147,3 +148,4 @@ Tabs and verticals not in the default product surface — guides kept for refere
 | Customize the app | [Settings overview](settings/overview.md) · [Features](settings/navigation-bar.md) |
 | Opt in to crash reports | [App updates](settings/app-updates.md) |
 | Sign in with a code or QR | [Link Android TV](accounts/tv-connect.md) |
+| Use two Forja accounts on one TV or desktop | [Account switching](accounts/account-switching.md) |

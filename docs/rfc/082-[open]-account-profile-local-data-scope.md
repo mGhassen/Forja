@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| **Progress** | **5 / 5** components · **9 / 10** acceptance |
+| **Progress** | **5 / 5** components · **9 / 11** acceptance |
 | **Current slice** | Path-scoped KV + portal inventory shipped (RFC-116); backup export A10 still open |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
@@ -42,6 +42,7 @@
 | 8 | R82-A08 | IPTV portal list + Keychain passwords isolated without relying only on wipe | ✅ |
 | 9 | R82-A09 | `forja_engine_store.json` / synced domains path-scoped per identity | ✅ |
 | 10 | R82-A10 | Backup export/import is active-identity only (no other profile bleed) | ⬜ |
+| 11 | R82-A11 | Account switch ([RFC-124](124-[open]-multi-account-switching.md)) rebinds the scope without wiping either account's local data | ⬜ |
 
 ---
 

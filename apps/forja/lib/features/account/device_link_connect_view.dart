@@ -21,6 +21,7 @@ class DeviceLinkConnectView extends StatefulWidget {
     this.compact = false,
     this.backFocusNode,
     this.autofocusBack = false,
+    this.addAccount = false,
   });
 
   final VoidCallback onAuthenticated;
@@ -29,6 +30,10 @@ class DeviceLinkConnectView extends StatefulWidget {
   final bool compact;
   final FocusNode? backFocusNode;
   final bool autofocusBack;
+
+  /// Adding a second account: the portal connect page asks which account to
+  /// link instead of approving its signed-in user automatically.
+  final bool addAccount;
 
   @override
   State<DeviceLinkConnectView> createState() => _DeviceLinkConnectViewState();
@@ -75,7 +80,9 @@ class _DeviceLinkConnectViewState extends State<DeviceLinkConnectView> {
     });
 
     try {
-      final session = await TvDeviceLinkAuth.create();
+      final session = await TvDeviceLinkAuth.create(
+        addAccount: widget.addAccount,
+      );
       if (!mounted) return;
       setState(() {
         _session = session;

@@ -2,6 +2,8 @@ import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:forja/features/account/account_rail.dart';
+import 'package:forja/features/account/mfa_challenge_view.dart';
 import 'package:forja/shared/sync/sync.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -18,10 +20,30 @@ class AccountEntryScreen extends StatefulWidget {
     super.key,
     required this.onAuthenticated,
     required this.onContinueAsGuest,
+    this.addMode = false,
+    this.onCancel,
+    this.accounts = const [],
+    this.activeUserId,
+    this.onSwitchAccount,
+    this.accountsMessage,
   });
 
   final VoidCallback onAuthenticated;
   final VoidCallback onContinueAsGuest;
+
+  /// Adding a second account: title says so, Cancel returns via [onCancel]
+  /// and the portal is told not to hand over its signed-in user silently.
+  final bool addMode;
+  final VoidCallback? onCancel;
+
+  /// Accounts remembered on this device ("Continue as …" row).
+  final List<AccountRailItem> accounts;
+  final String? activeUserId;
+  final ValueChanged<String>? onSwitchAccount;
+
+  /// Inline status for the account row (toasts are queued behind the splash
+  /// on the cold gate).
+  final String? accountsMessage;
 
   @override
   State<AccountEntryScreen> createState() => _AccountEntryScreenState();
@@ -33,12 +55,10 @@ class _AccountEntryScreenState extends State<AccountEntryScreen>
 
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
-  final _mfaController = TextEditingController();
   bool _obscurePassword = true;
   bool _busy = false;
   bool _webBusy = false;
-  bool _mfaBusy = false;
-  String? _mfaFactorId;
+  bool _awaitingMfa = false;
   String? _message;
   bool _messageIsError = false;
   int _wordIndex = 0;
@@ -75,70 +95,19 @@ class _AccountEntryScreenState extends State<AccountEntryScreen>
     _enter.dispose();
     _emailController.dispose();
     _passwordController.dispose();
-    _mfaController.dispose();
     super.dispose();
   }
 
-  bool get _awaitingMfa => _mfaFactorId != null;
-
   Future<void> _finishAuthenticated() async {
     if (SyncService.instance.requiresMfaChallenge()) {
-      final factors = SyncService.instance.listTotpFactors();
-      if (factors.isEmpty) {
-        setState(() {
-          _message =
-              'Authenticator required. Finish MFA on the web portal, then use Web login.';
-          _messageIsError = true;
-        });
-        return;
-      }
+      // [MfaChallengeView] owns the code entry and the no-factor message.
       setState(() {
-        _mfaFactorId = factors.first.id;
-        _message = 'Enter the 6-digit code from your authenticator app.';
-        _messageIsError = false;
+        _awaitingMfa = true;
+        _message = null;
       });
       return;
     }
     widget.onAuthenticated();
-  }
-
-  Future<void> _submitMfa() async {
-    final factorId = _mfaFactorId;
-    final code = _mfaController.text.trim();
-    if (factorId == null || code.length < 6) {
-      setState(() {
-        _message = 'Enter the 6-digit authenticator code.';
-        _messageIsError = true;
-      });
-      return;
-    }
-    setState(() {
-      _mfaBusy = true;
-      _message = null;
-    });
-    try {
-      await SyncService.instance.verifyMfaTotp(factorId: factorId, code: code);
-      if (!mounted) return;
-      setState(() {
-        _mfaFactorId = null;
-        _mfaController.clear();
-      });
-      widget.onAuthenticated();
-    } on AuthException catch (error) {
-      if (!mounted) return;
-      setState(() {
-        _message = error.message;
-        _messageIsError = true;
-      });
-    } catch (_) {
-      if (!mounted) return;
-      setState(() {
-        _message = 'Could not verify the code. Try again.';
-        _messageIsError = true;
-      });
-    } finally {
-      if (mounted) setState(() => _mfaBusy = false);
-    }
   }
 
   Future<void> _submit() async {
@@ -202,6 +171,7 @@ class _AccountEntryScreenState extends State<AccountEntryScreen>
     try {
       final response = await SyncService.instance.signInWithBrowser(
         cancel: cancel.future,
+        addAccount: widget.addMode,
       );
       if (!mounted) return;
       if (response.session == null) {
@@ -245,6 +215,11 @@ class _AccountEntryScreenState extends State<AccountEntryScreen>
     widget.onContinueAsGuest();
   }
 
+  void _cancelAdd() {
+    _cancelWebLogin();
+    (widget.onCancel ?? widget.onContinueAsGuest)();
+  }
+
   Future<void> _openSignup() async {
     final uri = DesktopBrowserAuth.signupUri();
     final ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
@@ -258,8 +233,8 @@ class _AccountEntryScreenState extends State<AccountEntryScreen>
 
   /// Password auth locks the form. Web login only locks email/password submit
   /// so Cancel / guest stay available if the browser never returns.
-  bool get _formLocked => _busy || _webBusy || _mfaBusy;
-  bool get _passwordLocked => _busy || _mfaBusy;
+  bool get _formLocked => _busy || _webBusy || _awaitingMfa;
+  bool get _passwordLocked => _busy || _awaitingMfa;
   bool get _canSubmitPassword => !_formLocked;
 
   @override
@@ -417,8 +392,30 @@ class _AccountEntryScreenState extends State<AccountEntryScreen>
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
+                if (widget.accounts.isNotEmpty &&
+                    widget.onSwitchAccount != null) ...[
+                  AccountRail(
+                    accounts: widget.accounts,
+                    activeUserId: widget.activeUserId,
+                    enabled: !_formLocked,
+                    switchPrefix: 'Continue as',
+                    onSwitch: widget.onSwitchAccount!,
+                  ),
+                  if (widget.accountsMessage != null) ...[
+                    const SizedBox(height: 10),
+                    Text(
+                      widget.accountsMessage!,
+                      style: GoogleFonts.plusJakartaSans(
+                        color: const Color(0xFFFF8A80),
+                        fontSize: 13,
+                        height: 1.4,
+                      ),
+                    ),
+                  ],
+                  const SizedBox(height: 24),
+                ],
                 Text(
-                  'Welcome back',
+                  widget.addMode ? 'Add another account' : 'Welcome back',
                   style: GoogleFonts.oswald(
                     color: ForjaShellColors.textPrimary,
                     fontSize: 34,
@@ -438,18 +435,12 @@ class _AccountEntryScreenState extends State<AccountEntryScreen>
                   ),
                 ),
                 const SizedBox(height: 32),
-                if (_awaitingMfa) ...[
-                  _HairlineField(
-                    controller: _mfaController,
-                    enabled: !_mfaBusy,
-                    label: 'Authenticator code',
-                    keyboardType: TextInputType.number,
-                    textInputAction: TextInputAction.done,
-                    autofillHints: const [AutofillHints.oneTimeCode],
-                    prefix: Icons.phonelink_lock_rounded,
-                    onSubmitted: (_) => _submitMfa(),
-                  ),
-                ] else ...[
+                if (_awaitingMfa)
+                  MfaChallengeView(
+                    onVerified: widget.onAuthenticated,
+                    onCancel: () => setState(() => _awaitingMfa = false),
+                  )
+                else ...[
                   _HairlineField(
                     controller: _emailController,
                     enabled: !_formLocked,
@@ -501,41 +492,7 @@ class _AccountEntryScreenState extends State<AccountEntryScreen>
                   ),
                 ],
                 const SizedBox(height: 28),
-                if (_awaitingMfa)
-                  SizedBox(
-                    height: 52,
-                    child: FilledButton(
-                      onPressed: _mfaBusy ? null : _submitMfa,
-                      style: FilledButton.styleFrom(
-                        backgroundColor: ForjaShellColors.brandGreen
-                            .withValues(alpha: 0.12),
-                        foregroundColor: ForjaShellColors.brandGreen,
-                        disabledBackgroundColor: ForjaShellColors.brandGreen
-                            .withValues(alpha: 0.06),
-                        disabledForegroundColor: ForjaShellColors.brandGreen
-                            .withValues(alpha: 0.45),
-                        side: BorderSide(
-                          color: ForjaShellColors.brandGreen.withValues(
-                            alpha: _mfaBusy ? 0.35 : 0.55,
-                          ),
-                          width: 1.5,
-                        ),
-                        shape: const RoundedRectangleBorder(
-                          borderRadius: BorderRadius.zero,
-                        ),
-                        elevation: 0,
-                      ),
-                      child: Text(
-                        _mfaBusy ? 'Verifying…' : 'Verify code',
-                        style: GoogleFonts.plusJakartaSans(
-                          fontWeight: FontWeight.w700,
-                          fontSize: 15,
-                          letterSpacing: 0.2,
-                        ),
-                      ),
-                    ),
-                  )
-                else
+                if (!_awaitingMfa)
                   SizedBox(
                     height: 52,
                     child: Row(
@@ -617,16 +574,20 @@ class _AccountEntryScreenState extends State<AccountEntryScreen>
                 ),
                 const SizedBox(height: 18),
                 TextButton.icon(
-                  onPressed: _busy ? null : _continueAsGuest,
+                  onPressed: _busy
+                      ? null
+                      : (widget.addMode ? _cancelAdd : _continueAsGuest),
                   icon: Icon(
-                    Icons.person_outline_rounded,
+                    widget.addMode
+                        ? Icons.arrow_back_rounded
+                        : Icons.person_outline_rounded,
                     size: 20,
                     color: ForjaShellColors.textSecondary.withValues(
                       alpha: _busy ? 0.4 : 1,
                     ),
                   ),
                   label: Text(
-                    'Continue without an account',
+                    widget.addMode ? 'Cancel' : 'Continue without an account',
                     style: GoogleFonts.plusJakartaSans(
                       color: ForjaShellColors.textSecondary,
                       fontWeight: FontWeight.w600,
@@ -636,7 +597,9 @@ class _AccountEntryScreenState extends State<AccountEntryScreen>
                 ),
                 const SizedBox(height: 6),
                 Text(
-                  'Guest mode keeps everything on this device. You can sign in later from Settings.',
+                  widget.addMode
+                      ? 'The account you are using stays signed in on this device.'
+                      : 'Guest mode keeps everything on this device. You can sign in later from Settings.',
                   style: GoogleFonts.plusJakartaSans(
                     color: ForjaShellColors.textSecondary.withValues(
                       alpha: 0.85,

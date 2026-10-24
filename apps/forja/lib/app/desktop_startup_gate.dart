@@ -4,6 +4,9 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja/features/account/account_entry_screen.dart';
+import 'package:forja/features/account/account_rail.dart';
+import 'package:forja/features/account/account_switch_flow.dart';
+import 'package:forja/features/account/mfa_challenge_view.dart';
 import 'package:forja/features/account/packs_onboarding_screen.dart';
 import 'package:forja/features/account/profile_chooser_screen.dart';
 import 'package:forja/features/account/profile_switch_splash.dart';
@@ -15,6 +18,7 @@ import 'package:forja/shared/services/update/app_updater_service.dart';
 import 'package:forja/shared/supabase/forja_supabase.dart';
 import 'package:forja/shared/sync/sync.dart';
 import 'package:forja/shell/desktop/desktop_window_chrome.dart';
+import 'package:forja/shell/feedback/forja_toast.dart';
 import 'package:forja/shell/update/update_dialog.dart';
 import 'package:rust/rust.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -89,6 +93,15 @@ class _DesktopStartupGateState extends ConsumerState<DesktopStartupGate> {
 
   /// Restored-session or guest packs path: packs done → shell (no profile splash).
   bool _packsSkipProfileSplash = false;
+
+  /// Account stage opened from "Add account": the current account stays
+  /// signed in and resumable; Cancel returns to Who's watching.
+  bool _addAccountMode = false;
+  String? _addPreviousUserId;
+
+  /// Inline status under the "Continue as …" row (toasts wait for the splash).
+  String? _accountsMessage;
+  bool _accountSwitchBusy = false;
 
   bool get _isDesktopOs =>
       Platform.isMacOS || Platform.isWindows || Platform.isLinux;
@@ -294,9 +307,95 @@ class _DesktopStartupGateState extends ConsumerState<DesktopStartupGate> {
     ShellBus.selectDefaultTabOnNextNavLoad = false;
     _splashProfile = null;
     _packsSkipProfileSplash = false;
+    _addAccountMode = false;
+    _addPreviousUserId = null;
 
     setState(() => _stage = _StartupStage.account);
   }
+
+  /// "Continue as …" on the cold gate, or a switch from Who's watching.
+  Future<void> _switchAccountFromGate(String userId) async {
+    if (_accountSwitchBusy) return;
+    final entry = AccountVault.instance.entryFor(userId);
+    if (entry == null) return;
+    setState(() {
+      _accountSwitchBusy = true;
+      _accountsMessage = null;
+    });
+    final result = await AccountSwitchFlow.switchTo(context, entry);
+    if (!mounted) return;
+    if (!result.switched) {
+      setState(() {
+        _accountSwitchBusy = false;
+        _accountsMessage = result.message;
+      });
+      return;
+    }
+    _addAccountMode = false;
+    _addPreviousUserId = null;
+    final profile = await AccountSwitchFlow.rememberedProfile(userId);
+    if (!mounted) return;
+    setState(() => _accountSwitchBusy = false);
+    if (profile != null) {
+      await _afterProfileReady(profile);
+      return;
+    }
+    setState(() => _stage = _StartupStage.profiles);
+  }
+
+  /// Who's watching → Add account (the chooser already snapshotted the
+  /// current account via [AccountSwitcher.beginAdd]).
+  void _openAddAccount() {
+    _addPreviousUserId = SyncService.instance.session?.user.id;
+    setState(() {
+      _addAccountMode = true;
+      _accountsMessage = null;
+      _stage = _StartupStage.account;
+    });
+  }
+
+  void _cancelAddAccount() {
+    AccountSwitcher.instance.cancelAdd();
+    _addAccountMode = false;
+    _addPreviousUserId = null;
+    // The session can be gone when the add flow failed mid-way — the gate
+    // then stays on the regular sign-in screen.
+    setState(() {
+      _stage = SyncService.instance.isSignedIn
+          ? _StartupStage.profiles
+          : _StartupStage.account;
+    });
+  }
+
+  Future<void> _onGateAuthenticated() async {
+    if (_addAccountMode) {
+      final previous = _addPreviousUserId;
+      final changed = await AccountSwitcher.instance.finishAdd(
+        previousUserId: previous,
+      );
+      _addAccountMode = false;
+      _addPreviousUserId = null;
+      if (!mounted) return;
+      if (!changed) {
+        ForjaToast.info(AccountSwitchFlow.alreadyOnDeviceMessage);
+      }
+      // Device link does not run the authenticator step itself.
+      if (SyncService.instance.requiresMfaChallenge()) {
+        final ok = await MfaChallengeView.present(context);
+        if (!mounted) return;
+        if (!ok && previous != null && previous != SyncService.instance.session?.user.id) {
+          await AccountSwitcher.instance.switchTo(previous);
+          if (!mounted) return;
+        }
+      }
+    }
+    setState(() => _stage = _StartupStage.profiles);
+  }
+
+  List<AccountRailItem> _railItems(List<AccountVaultEntry> accounts) => [
+    for (final a in accounts)
+      AccountRailItem(userId: a.userId, label: a.label, needsSignIn: a.needsSignIn),
+  ];
 
   /// After [ProfileSwitchSplash] (avatar fly + intro-style warm) — open the shell
   /// without a second logo intro splash.
@@ -392,18 +491,34 @@ class _DesktopStartupGateState extends ConsumerState<DesktopStartupGate> {
     // Splash → MainScreen owns its own caption. Pre-shell stages need chrome
     // here - title bar is hidden app-wide, and WindowCaption only lives in
     // DesktopWindowChrome.wrapShell.
+    final accounts = ref.watch(accountVaultProvider);
+    final activeUserId = SyncService.instance.session?.user.id;
     final child = switch (_stage) {
       _StartupStage.account =>
         (_isAndroidTv || !kShowDesktopEmailAuth)
             ? TvAccountLinkScreen(
-                onAuthenticated: () =>
-                    setState(() => _stage = _StartupStage.profiles),
+                onAuthenticated: () => unawaited(_onGateAuthenticated()),
                 onContinueAsGuest: () => unawaited(_continueAsGuest()),
+                addMode: _addAccountMode,
+                onCancel: _cancelAddAccount,
+                accounts: _railItems(accounts),
+                activeUserId: activeUserId,
+                onSwitchAccount: _accountSwitchBusy
+                    ? null
+                    : (id) => unawaited(_switchAccountFromGate(id)),
+                accountsMessage: _accountsMessage,
               )
             : AccountEntryScreen(
-                onAuthenticated: () =>
-                    setState(() => _stage = _StartupStage.profiles),
+                onAuthenticated: () => unawaited(_onGateAuthenticated()),
                 onContinueAsGuest: () => unawaited(_continueAsGuest()),
+                addMode: _addAccountMode,
+                onCancel: _cancelAddAccount,
+                accounts: _railItems(accounts),
+                activeUserId: activeUserId,
+                onSwitchAccount: _accountSwitchBusy
+                    ? null
+                    : (id) => unawaited(_switchAccountFromGate(id)),
+                accountsMessage: _accountsMessage,
               ),
       _StartupStage.profiles => ProfileChooserScreen(
         prepareCurrentOnSwitch: false,
@@ -411,6 +526,7 @@ class _DesktopStartupGateState extends ConsumerState<DesktopStartupGate> {
         useLogoIntroSplash: true,
         onProfileSelected: (profile) => unawaited(_afterProfileReady(profile)),
         onSignOut: () => setState(() => _stage = _StartupStage.account),
+        onAddAccount: _openAddAccount,
       ),
       _StartupStage.packs => PacksOnboardingScreen(
         onFinished: () => unawaited(_onPacksFinished()),

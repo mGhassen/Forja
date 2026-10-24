@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:forja/features/account/account_rail.dart';
 import 'package:forja/features/account/device_link_connect_view.dart';
 
 import 'package:forja/shared/theme/app_theme.dart';
@@ -14,10 +15,30 @@ class TvAccountLinkScreen extends StatefulWidget {
     super.key,
     required this.onAuthenticated,
     required this.onContinueAsGuest,
+    this.addMode = false,
+    this.onCancel,
+    this.accounts = const [],
+    this.activeUserId,
+    this.onSwitchAccount,
+    this.accountsMessage,
   });
 
   final VoidCallback onAuthenticated;
   final VoidCallback onContinueAsGuest;
+
+  /// Adding a second account: title says so, the secondary action is Cancel
+  /// ([onCancel]) and the portal connect page asks which account to link.
+  final bool addMode;
+  final VoidCallback? onCancel;
+
+  /// Accounts remembered on this device ("Continue as …" row).
+  final List<AccountRailItem> accounts;
+  final String? activeUserId;
+  final ValueChanged<String>? onSwitchAccount;
+
+  /// Inline status for the account row (toasts are queued behind the splash
+  /// on the cold gate).
+  final String? accountsMessage;
 
   @override
   State<TvAccountLinkScreen> createState() => _TvAccountLinkScreenState();
@@ -105,12 +126,20 @@ class _TvAccountLinkScreenState extends State<TvAccountLinkScreen>
                           signInFocus: _signInFocus,
                           guestFocus: _guestFocus,
                           onSignIn: _openConnect,
-                          onGuest: widget.onContinueAsGuest,
+                          onGuest: widget.addMode
+                              ? (widget.onCancel ?? widget.onContinueAsGuest)
+                              : widget.onContinueAsGuest,
+                          addMode: widget.addMode,
+                          accounts: widget.accounts,
+                          activeUserId: widget.activeUserId,
+                          onSwitchAccount: widget.onSwitchAccount,
+                          accountsMessage: widget.accountsMessage,
                         ),
                         _TvLinkStep.connect => _ConnectPage(
                           backFocus: _backFocus,
                           onBack: _backToWelcome,
                           onAuthenticated: widget.onAuthenticated,
+                          addAccount: widget.addMode,
                         ),
                         _TvLinkStep.error => _ErrorPage(
                           message: _error ?? 'Something went wrong.',
@@ -215,15 +244,26 @@ class _WelcomePage extends StatelessWidget {
     required this.guestFocus,
     required this.onSignIn,
     required this.onGuest,
+    this.addMode = false,
+    this.accounts = const [],
+    this.activeUserId,
+    this.onSwitchAccount,
+    this.accountsMessage,
   });
 
   final FocusNode signInFocus;
   final FocusNode guestFocus;
   final VoidCallback onSignIn;
   final VoidCallback onGuest;
+  final bool addMode;
+  final List<AccountRailItem> accounts;
+  final String? activeUserId;
+  final ValueChanged<String>? onSwitchAccount;
+  final String? accountsMessage;
 
   @override
   Widget build(BuildContext context) {
+    final showAccounts = accounts.isNotEmpty && onSwitchAccount != null;
     return Center(
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 520),
@@ -234,7 +274,30 @@ class _WelcomePage extends StatelessWidget {
             children: [
               const _WelcomeLogo(),
               const SizedBox(height: 28),
-              const _WelcomeTitle(),
+              if (showAccounts) ...[
+                AccountRail(
+                  accounts: accounts,
+                  activeUserId: activeUserId,
+                  switchPrefix: 'Continue as',
+                  onSwitch: onSwitchAccount!,
+                ),
+                if (accountsMessage != null) ...[
+                  const SizedBox(height: 10),
+                  Text(
+                    accountsMessage!,
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.plusJakartaSans(
+                      textStyle: _tvText(
+                        color: const Color(0xFFF87171),
+                        size: 13,
+                        height: 1.4,
+                      ),
+                    ),
+                  ),
+                ],
+                const SizedBox(height: 24),
+              ],
+              _WelcomeTitle(addMode: addMode),
               const SizedBox(height: 16),
               const _WelcomeBody(),
               const SizedBox(height: 32),
@@ -254,7 +317,7 @@ class _WelcomePage extends StatelessWidget {
               const SizedBox(height: 8),
               _FlatAction(
                 focusNode: guestFocus,
-                label: 'Continue as guest',
+                label: addMode ? 'Cancel' : 'Continue as guest',
                 onTap: onGuest,
               ),
             ],
@@ -312,12 +375,14 @@ class _WelcomeLogo extends StatelessWidget {
 }
 
 class _WelcomeTitle extends StatelessWidget {
-  const _WelcomeTitle();
+  const _WelcomeTitle({this.addMode = false});
+
+  final bool addMode;
 
   @override
   Widget build(BuildContext context) {
     return Text(
-      'Your cinema.\nOn the big screen.',
+      addMode ? 'Add another account' : 'Your cinema.\nOn the big screen.',
       textAlign: TextAlign.center,
       style: GoogleFonts.outfit(
         textStyle: _tvText(
@@ -434,11 +499,13 @@ class _ConnectPage extends StatelessWidget {
     required this.backFocus,
     required this.onBack,
     required this.onAuthenticated,
+    this.addAccount = false,
   });
 
   final FocusNode backFocus;
   final VoidCallback onBack;
   final VoidCallback onAuthenticated;
+  final bool addAccount;
 
   @override
   Widget build(BuildContext context) {
@@ -466,6 +533,7 @@ class _ConnectPage extends StatelessWidget {
                 autofocusBack: true,
                 onBack: onBack,
                 onAuthenticated: onAuthenticated,
+                addAccount: addAccount,
               ),
             ],
           ),

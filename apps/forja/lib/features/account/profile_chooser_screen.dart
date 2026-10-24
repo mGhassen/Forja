@@ -1,8 +1,11 @@
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:forja/features/account/account_rail.dart';
+import 'package:forja/features/account/account_switch_flow.dart';
 import 'package:forja/features/account/profile_chooser_metrics.dart';
 import 'package:forja/features/account/profile_switch_splash.dart';
 import 'package:forja/features/settings/ui/settings_ui.dart';
@@ -60,6 +63,7 @@ class ProfileChooserScreen extends ConsumerStatefulWidget {
     super.key,
     required this.onProfileSelected,
     this.onSignOut,
+    this.onAddAccount,
     this.showBack = false,
     this.initialMode = ProfileChooserMode.choose,
     this.prepareCurrentOnSwitch = false,
@@ -68,7 +72,14 @@ class ProfileChooserScreen extends ConsumerStatefulWidget {
   });
 
   final ValueChanged<SyncProfile> onProfileSelected;
+
+  /// After the active account was removed from this device (signed out).
   final VoidCallback? onSignOut;
+
+  /// "Add account": the caller opens its sign-in form in add mode (the
+  /// current account stays signed in and is resumable from the account row).
+  /// Falls back to [onSignOut] when null.
+  final VoidCallback? onAddAccount;
   final bool showBack;
   final ProfileChooserMode initialMode;
 
@@ -176,16 +187,107 @@ class _ProfileChooserScreenState extends ConsumerState<ProfileChooserScreen> {
     });
   }
 
-  Future<void> _signOut() async {
+  bool get _canAddAccount =>
+      widget.onAddAccount != null || widget.onSignOut != null;
+
+  /// Keeps the current account signed in (snapshotted for the account row)
+  /// and hands over to the caller's sign-in form in add mode.
+  Future<void> _addAccount() async {
     if (_busy) return;
-    setState(() => _busy = true);
-    SyncDomainBridge.instance.cancelPendingPushes();
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
     try {
-      await SyncService.instance.signOut();
+      await AccountSwitcher.instance.beginAdd();
     } finally {
-      if (mounted) {
-        setState(() => _busy = false);
-        widget.onSignOut?.call();
+      if (mounted) setState(() => _busy = false);
+    }
+    if (!mounted) return;
+    final handler = widget.onAddAccount ?? widget.onSignOut;
+    handler?.call();
+  }
+
+  Future<void> _switchAccount(String userId) async {
+    if (_busy) return;
+    final entry = AccountVault.instance.entryFor(userId);
+    if (entry == null) return;
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    final result = await AccountSwitchFlow.switchTo(context, entry);
+    if (!mounted) return;
+    if (!result.switched) {
+      setState(() {
+        _busy = false;
+        _error = result.message;
+      });
+      return;
+    }
+    final profile = await AccountSwitchFlow.rememberedProfile(userId);
+    if (!mounted) return;
+    if (profile == null) {
+      // No profile picked on this device yet — Who's watching reloads for
+      // the new account (identity revision bumped by the switch).
+      setState(() {
+        _busy = false;
+        _screen = _Screen.choose;
+      });
+      return;
+    }
+    if (widget.useLogoIntroSplash) {
+      widget.onProfileSelected(profile);
+      return;
+    }
+    final ok = await Navigator.of(context).push<bool>(
+      PageRouteBuilder<bool>(
+        opaque: true,
+        transitionDuration: Duration.zero,
+        reverseTransitionDuration: const Duration(milliseconds: 280),
+        pageBuilder: (context, animation, secondaryAnimation) =>
+            // Pending pushes were flushed before the account switch.
+            ProfileSwitchSplash(profile: profile, prepareCurrent: false),
+      ),
+    );
+    if (!mounted) return;
+    if (ok == true) {
+      widget.onProfileSelected(profile);
+      return;
+    }
+    setState(() {
+      _busy = false;
+      _error = 'Could not open this profile. Check your connection and retry.';
+    });
+  }
+
+  Future<void> _removeAccount(String userId) async {
+    if (_busy) return;
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    final result = await AccountSwitcher.instance.remove(
+      userId,
+      signOutActive: () async {
+        SyncDomainBridge.instance.cancelPendingPushes();
+        await SyncService.instance.signOut();
+      },
+    );
+    if (!mounted) return;
+    setState(() {
+      _busy = false;
+      _error = result == AccountRemoveResult.removedLocally
+          ? 'Removed from this device. Forja could not be reached, so that '
+                'sign-in stays valid until it expires.'
+          : null;
+    });
+    if (result == AccountRemoveResult.signedOut) {
+      if (widget.onSignOut != null) {
+        widget.onSignOut!.call();
+      } else {
+        // Pushed from Settings: the gate below already shows sign-in.
+        await Navigator.of(context).maybePop();
       }
     }
   }
@@ -414,6 +516,35 @@ class _ProfileChooserScreenState extends ConsumerState<ProfileChooserScreen> {
     );
   }
 
+  /// Accounts on this device above Who's watching. Autofocus stays on the
+  /// active profile tile; the row is reached with ↑ / Tab.
+  Widget _buildAccountRow(bool managing) {
+    final accounts = ref.watch(accountVaultProvider);
+    if (accounts.isEmpty) return const SizedBox.shrink();
+    final metrics = ProfileChooserMetrics.of(context);
+    final activeUserId = SyncService.instance.session?.user.id;
+    final canAdd = _canAddAccount && accounts.length < AccountVault.maxAccounts;
+    return Padding(
+      padding: EdgeInsets.only(bottom: metrics.sectionGap),
+      child: AccountRail(
+        accounts: [
+          for (final a in accounts)
+            AccountRailItem(
+              userId: a.userId,
+              label: a.label,
+              needsSignIn: a.needsSignIn,
+            ),
+        ],
+        activeUserId: activeUserId,
+        managing: managing,
+        enabled: !_busy,
+        onSwitch: (id) => unawaited(_switchAccount(id)),
+        onRemove: (id) => unawaited(_removeAccount(id)),
+        onAdd: canAdd ? () => unawaited(_addAccount()) : null,
+      ),
+    );
+  }
+
   Widget _buildChooserBody(
     List<SyncProfile> profiles,
     String? activeProfileId,
@@ -453,6 +584,7 @@ class _ProfileChooserScreenState extends ConsumerState<ProfileChooserScreen> {
                     mainAxisAlignment: MainAxisAlignment.center,
                     mainAxisSize: MainAxisSize.min,
                     children: [
+                      _buildAccountRow(managing),
                       Text(
                         managing ? 'Manage profiles' : 'Who’s watching?',
                         textAlign: TextAlign.center,
@@ -509,11 +641,11 @@ class _ProfileChooserScreenState extends ConsumerState<ProfileChooserScreen> {
                                           .read(syncProfilesProvider.notifier)
                                           .reload(),
                               ),
-                              if (widget.onSignOut != null) ...[
+                              if (_canAddAccount) ...[
                                 const SizedBox(height: 8),
                                 _ChooserAction(
-                                  label: 'Use another account',
-                                  onTap: _busy ? null : _signOut,
+                                  label: 'Add account',
+                                  onTap: _busy ? null : _addAccount,
                                 ),
                               ],
                             ],
@@ -601,10 +733,10 @@ class _ProfileChooserScreenState extends ConsumerState<ProfileChooserScreen> {
                                       Navigator.of(context).pop(false);
                                     },
                             ),
-                          if (widget.onSignOut != null)
+                          if (_canAddAccount)
                             _ChooserAction(
-                              label: 'Use another account',
-                              onTap: _busy ? null : _signOut,
+                              label: 'Add account',
+                              onTap: _busy ? null : _addAccount,
                             ),
                         ],
                       ),

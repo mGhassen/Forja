@@ -166,6 +166,14 @@ Future<void> bootstrapForja({String title = 'Forja'}) async {
   debugPrint('[Boot] Flutter binding initialized');
   await ForjaPlatformSecureStore.ensureConsentLoaded();
   await ForjaSupabase.ensureInitialized();
+  // Accounts remembered on this device mirror auth events from here on —
+  // bound before the first refresh so an expired RT flags the entry instead
+  // of losing it.
+  await AccountVault.instance.load();
+  final supabaseClient = ForjaSupabase.clientOrNull;
+  if (supabaseClient != null) {
+    AccountVault.instance.bind(supabaseClient.auth.onAuthStateChange);
+  }
   // Always rotate the access JWT on cold start when a session exists. Skew /
   // gotrue discard can leave a locally "valid" AT that PostgREST rejects.
   await SyncService.instance.refreshSession(force: true);

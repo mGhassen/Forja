@@ -362,6 +362,7 @@ export function completeDesktopHandoffKeepingPortal(): void {
   const url = new URL(window.location.href)
   url.searchParams.delete('desktop_callback')
   url.searchParams.delete('desktop_state')
+  url.searchParams.delete('desktop_switch')
   url.searchParams.delete('access_token')
   url.searchParams.delete('refresh_token')
   const next = url.pathname + url.search + url.hash

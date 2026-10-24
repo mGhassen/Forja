@@ -26,9 +26,14 @@ const CLOSE_TAB_SECONDS = 5
 
 type ConnectPageProps = {
   initialCode?: string
+  /** Device is adding another account: ask which one before any approval. */
+  switchAccount?: boolean
 }
 
-export function ConnectPage({ initialCode = '' }: ConnectPageProps) {
+export function ConnectPage({
+  initialCode = '',
+  switchAccount = false,
+}: ConnectPageProps) {
   const navigate = useNavigate()
   const {
     user,
@@ -36,6 +41,7 @@ export function ConnectPage({ initialCode = '' }: ConnectPageProps) {
     configured,
     isPasswordRecovery,
     requiresMfa,
+    signOut,
   } = useAuth()
   const [code, setCode] = useState(() =>
     normalizeDeviceUserCode(initialCode),
@@ -47,7 +53,10 @@ export function ConnectPage({ initialCode = '' }: ConnectPageProps) {
   const [closeSecondsLeft, setCloseSecondsLeft] = useState(CLOSE_TAB_SECONDS)
   const [closeBlocked, setCloseBlocked] = useState(false)
   const [autoCancelled, setAutoCancelled] = useState(false)
+  const [accountConfirmed, setAccountConfirmed] = useState(false)
+  const [switchBusy, setSwitchBusy] = useState(false)
   const submitStarted = useRef(false)
+  const askAccount = switchAccount && !accountConfirmed
 
   const fromDeepLink = normalizeDeviceUserCode(initialCode).length >= 6
   const sessionReady =
@@ -94,6 +103,7 @@ export function ConnectPage({ initialCode = '' }: ConnectPageProps) {
     if (!sessionReady || !fromDeepLink || done || submitting || autoCancelled) {
       return
     }
+    if (askAccount) return
     if (autoSecondsLeft !== null) return
     setAutoSecondsLeft(AUTO_LINK_SECONDS)
   }, [
@@ -102,6 +112,7 @@ export function ConnectPage({ initialCode = '' }: ConnectPageProps) {
     done,
     submitting,
     autoCancelled,
+    askAccount,
     autoSecondsLeft,
   ])
 
@@ -181,6 +192,19 @@ export function ConnectPage({ initialCode = '' }: ConnectPageProps) {
     setAutoSecondsLeft(null)
   }
 
+  // Local sign-out only: this browser forgets the session, other devices
+  // keep theirs. With no user the page sends the browser to /login with
+  // next=/connect, so the new sign-in lands back here with the same code.
+  async function onUseAnotherAccount() {
+    setError(null)
+    setSwitchBusy(true)
+    try {
+      await signOut({ scope: 'local' })
+    } finally {
+      setSwitchBusy(false)
+    }
+  }
+
   function onCloseNow() {
     closeDesktopHandoffWindow()
     window.setTimeout(() => {
@@ -252,6 +276,38 @@ export function ConnectPage({ initialCode = '' }: ConnectPageProps) {
                       Go to account
                     </Button>
                   </div>
+                </div>
+              ) : askAccount ? (
+                <div className="space-y-3">
+                  <p className="text-sm text-forja-muted">
+                    This browser is signed in as{' '}
+                    <span className="text-[#EDE6DA]">{user.email}</span>. Link
+                    the device to that account, or sign in with another one.
+                  </p>
+                  <Button
+                    type="button"
+                    className="w-full"
+                    disabled={switchBusy}
+                    onClick={() => setAccountConfirmed(true)}
+                  >
+                    <span className="truncate">Continue as {user.email}</span>
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="w-full"
+                    disabled={switchBusy}
+                    onClick={() => void onUseAnotherAccount()}
+                  >
+                    {switchBusy ? (
+                      <>
+                        <Loader2 className="size-4 animate-spin" />
+                        Signing out of this browser…
+                      </>
+                    ) : (
+                      'Use another account'
+                    )}
+                  </Button>
                 </div>
               ) : (
                 <form className="space-y-4" onSubmit={(e) => void onSubmit(e)}>

@@ -8,6 +8,7 @@ import 'package:forja/shared/engine/portals/store/storage.dart';
 import 'package:forja/shared/supabase/forja_secure_local_storage.dart';
 import 'package:forja/shared/supabase/forja_supabase.dart';
 import 'package:forja/shared/sync/models/account_features.dart';
+import 'package:forja/shared/sync/auth/account_vault.dart';
 import 'package:forja/shared/sync/auth/desktop_browser_auth.dart';
 import 'package:rust/rust.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -93,6 +94,19 @@ class SyncService {
   /// Single in-flight refresh (Guepard desktop-boot pattern) so boot/resume/
   /// focus never rotate the same RT twice in parallel.
   Future<bool>? _refreshInFlight;
+
+  /// Resolves once any app-driven refresh in flight has settled. Account
+  /// switching snapshots the leaving refresh token only after this.
+  Future<void> awaitRefreshIdle() async {
+    final inflight = _refreshInFlight;
+    if (inflight != null) await inflight;
+  }
+
+  /// gotrue background refresh ticker passthroughs (account switch pauses it
+  /// while the leaving account is snapshotted).
+  void stopAutoRefresh() => ForjaSupabase.clientOrNull?.auth.stopAutoRefresh();
+  void startAutoRefresh() =>
+      ForjaSupabase.clientOrNull?.auth.startAutoRefresh();
 
   /// Renews tokens so Auth's inactivity timeout (30d) stays reset while in use.
   ///
@@ -429,6 +443,7 @@ class SyncService {
   Future<void> signOut() async {
     final client = ForjaSupabase.clientOrNull;
     if (client == null) return;
+    final userId = client.auth.currentUser?.id;
     // Gate listens for signedOut and wipes account-bound local state (IPTV…).
     // gotrue clears local session first, then may throw on remote revoke when
     // DNS/TLS is down — never leave Settings stuck on signed-in error chrome.
@@ -437,6 +452,9 @@ class SyncService {
     } catch (e) {
       debugPrint('[Sync] signOut remote revoke failed (local cleared): $e');
     }
+    // Signing out forgets the account on this device (the auth listener does
+    // the same on `signedOut(userInitiated)`; this covers a missed event).
+    if (userId != null) await AccountVault.instance.remove(userId);
     AccountFeatures.instance.clear();
     _notifyIdentityChanged();
   }
@@ -522,10 +540,17 @@ class SyncService {
   ///
   /// Complete [cancel] to abort the wait (e.g. user tapped Cancel on the
   /// account entry screen).
-  Future<AuthResponse> signInWithBrowser({Future<void>? cancel}) async {
+  ///
+  /// [addAccount] tells the portal a signed-in browser user must confirm or
+  /// pick another account instead of handing its session over automatically.
+  Future<AuthResponse> signInWithBrowser({
+    Future<void>? cancel,
+    bool addAccount = false,
+  }) async {
     AuthResponse? applied;
     final result = await DesktopBrowserAuth.signIn(
       cancel: cancel,
+      addAccount: addAccount,
       onTokens: (accessToken, refreshToken) async {
         applied = await signInWithBrowserTokens(
           accessToken: accessToken,
@@ -656,6 +681,19 @@ class SyncService {
     );
     await _syncPluginDiskScope(accountId: userId, profileId: active.id);
     return active;
+  }
+
+  /// Profile id last selected on this device for [userId], from local prefs
+  /// only. Null when that account never picked a profile here.
+  Future<String?> lastProfileIdFor(String userId) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final id = prefs.getString('$_activeProfileKeyPrefix$userId')?.trim();
+      return (id == null || id.isEmpty) ? null : id;
+    } catch (e) {
+      debugPrint('[Sync] lastProfileIdFor: $e');
+      return null;
+    }
   }
 
   /// Last active profile this device resolved, from local prefs only — no
