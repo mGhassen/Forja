@@ -3,7 +3,7 @@ use serde_json::Value;
 
 use crate::fetch;
 
-const PRIMARY_BASE: &str = "https://api.theintrodb.org/v2";
+const PRIMARY_BASE: &str = "https://api.theintrodb.org/v4";
 const FALLBACK_BASE: &str = "https://api.introdb.app";
 
 #[derive(Debug, Clone, Serialize, PartialEq)]
@@ -70,13 +70,7 @@ fn fetch_primary(
     season: Option<i32>,
     episode: Option<i32>,
 ) -> Result<Option<IntroDbResponse>, String> {
-    let mut url = format!("{PRIMARY_BASE}/media?tmdb_id={tmdb_id}");
-    if let Some(s) = season {
-        url.push_str(&format!("&season={s}"));
-    }
-    if let Some(e) = episode {
-        url.push_str(&format!("&episode={e}"));
-    }
+    let url = primary_url(tmdb_id, season, episode);
     let (status, body) = fetch::get(&url, &Default::default(), 8)?;
     if status != 200 {
         return Ok(None);
@@ -85,7 +79,18 @@ fn fetch_primary(
     if !data.is_object() {
         return Ok(None);
     }
-    Ok(Some(parse_primary(&data)))
+    Ok(Some(parse_primary(&data, tmdb_id)))
+}
+
+fn primary_url(tmdb_id: i64, season: Option<i32>, episode: Option<i32>) -> String {
+    let mut url = format!("{PRIMARY_BASE}/media?tmdb_id={tmdb_id}");
+    if let Some(s) = season {
+        url.push_str(&format!("&season={s}"));
+    }
+    if let Some(e) = episode {
+        url.push_str(&format!("&episode={e}"));
+    }
+    url
 }
 
 fn fetch_fallback(
@@ -111,9 +116,10 @@ fn fetch_fallback(
     Ok(Some(parse_fallback(&data)))
 }
 
-fn parse_primary(json: &Value) -> IntroDbResponse {
+// v4 bodies are keyed by tvdb_id and carry no tmdb_id, so echo the id we asked with.
+fn parse_primary(json: &Value, tmdb_id: i64) -> IntroDbResponse {
     IntroDbResponse {
-        tmdb_id: json.get("tmdb_id").and_then(|v| v.as_i64()).unwrap_or(0),
+        tmdb_id,
         kind: json
             .get("type")
             .and_then(|v| v.as_str())
@@ -179,6 +185,27 @@ fn parse_timestamp(value: &Value) -> Option<IntroDbTimestamp> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn primary_url_targets_v4() {
+        assert_eq!(
+            primary_url(456, Some(1), Some(2)),
+            "https://api.theintrodb.org/v4/media?tmdb_id=456&season=1&episode=2"
+        );
+    }
+
+    #[test]
+    fn parses_v4_body_without_tmdb_id() {
+        let body: Value = serde_json::from_str(
+            r#"{"tvdb_id":71663,"type":"tv","season":1,"episode":1,
+                "intro":[{"start_ms":null,"end_ms":23000}]}"#,
+        )
+        .unwrap();
+        let r = parse_primary(&body, 456);
+        assert_eq!(r.tmdb_id, 456);
+        assert_eq!(r.kind, "tv");
+        assert_eq!(r.intro, vec![IntroDbTimestamp { start_ms: None, end_ms: Some(23_000) }]);
+    }
 
     #[test]
     fn merges_segment_types() {
