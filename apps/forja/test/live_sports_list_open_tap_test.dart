@@ -6,10 +6,7 @@ void main() {
   group('kitListCanShowSidePanel', () {
     test('needs chrome', () {
       expect(
-        kitListCanShowSidePanel(
-          hasChrome: false,
-          layoutWidth: 1200,
-        ),
+        kitListCanShowSidePanel(hasChrome: false, layoutWidth: 1200),
         isFalse,
       );
     });
@@ -91,7 +88,7 @@ void main() {
       );
     });
 
-    test('unknown mode with match surface → panel (not My List openTap)', () {
+    test('unknown mode with match surface → panel (not bind)', () {
       expect(
         resolveKitListTapOpen(
           openMode: 'whatever',
@@ -132,6 +129,39 @@ void main() {
           canShowSidePanel: true,
         ),
         KitListTapOpen.play,
+      );
+    });
+
+    test('bind without match surface → bind', () {
+      expect(
+        resolveKitListTapOpen(
+          openMode: 'bind',
+          hasMatchOpenSurface: false,
+          canShowSidePanel: true,
+        ),
+        KitListTapOpen.bind,
+      );
+    });
+
+    test('bind with match surface stays managed → panel', () {
+      expect(
+        resolveKitListTapOpen(
+          openMode: 'bind',
+          hasMatchOpenSurface: true,
+          canShowSidePanel: true,
+        ),
+        KitListTapOpen.panel,
+      );
+    });
+
+    test('empty open without match surface → openTap, never bind', () {
+      expect(
+        resolveKitListTapOpen(
+          openMode: '',
+          hasMatchOpenSurface: false,
+          canShowSidePanel: true,
+        ),
+        KitListTapOpen.openTap,
       );
     });
   });

@@ -31,8 +31,9 @@ ValueListenable<int> get packSettingsRevisionListenable =>
 /// How a kit.list tap should open after resolving [openMode].
 ///
 /// Lists with `openSetting` / `panelTabs` ([hasMatchOpenSurface]) stay on
-/// panel/details — never fall through to hub Open-in binding.
-enum KitListTapOpen { panel, details, openTap, play }
+/// panel/details — never fall through to the pack-declared hub-bind sheet.
+/// [bind] only when the pack declares `open: 'bind'`.
+enum KitListTapOpen { panel, details, openTap, play, bind }
 
 /// Whether a kit list may paint / open the docked streams side panel.
 ///
@@ -66,7 +67,10 @@ KitListTapOpen resolveKitListTapOpen({
   if (mode == 'play') {
     return KitListTapOpen.play;
   }
-  // Managed-open lists never fall through to hub Open-in binding.
+  if (mode == 'bind' && !hasMatchOpenSurface) {
+    return KitListTapOpen.bind;
+  }
+  // Managed-open lists never fall through to the hub-bind sheet.
   if (hasMatchOpenSurface) {
     if (mode == 'details') return KitListTapOpen.details;
     return canShowSidePanel ? KitListTapOpen.panel : KitListTapOpen.details;

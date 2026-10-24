@@ -206,16 +206,7 @@ void main() {
     });
   });
 
-  group('kitListUsesOpenBinding', () {
-    test('feed-only caller (no details) uses binding', () {
-      expect(kitListUsesOpenBinding(callerHasDetails: false), isTrue);
-    });
-
-    test('details hub skips binding', () {
-      expect(kitListUsesOpenBinding(callerHasDetails: true), isFalse);
-      expect(kitListUsesOpenBinding(callerHasDetails: null), isFalse);
-    });
-
+  group('kitListItemSurface', () {
     test('offline surface is readable from a feed row', () {
       expect(
         kitListItemSurface({

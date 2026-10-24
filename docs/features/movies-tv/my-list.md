@@ -27,7 +27,7 @@ Install and enable the **ForjaHQ My List** hub pack, then show **My List** under
 - My List statuses are stored locally on your device. With Simkl connected, the open tab prefers your local status for titles you’ve already bookmarked, and still lists Simkl-only rows. Opening a title remembers the hub without changing its status. Connecting or Sync Now asks Keep local / Use Simkl / Merge — or No sync / Back to do nothing
 - Titles missing a poster or a year fill from TMDB. Cards that already have both open with the saved list.
 - Cards show **year • type** under the title when known (from the bookmark, Simkl, the title, or TMDB) — including on **Android TV** (same footer as desktop; titles stay a bit smaller so more of the name fits)
-- Use [Backup & restore](../settings/backup-restore.md) to move lists to another install
+- [Backup & restore](../settings/backup-restore.md) exports settings and keys only; My List statuses stay on this device (with Simkl connected, the Simkl library follows your Simkl account)
 
 ## Related
 

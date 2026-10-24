@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:forja/shared/engine/runtime/kit/paint_artifact.dart';
-import 'package:forja/shared/engine/runtime/nav/plugin_nav.dart';
 import 'package:forja/shared/engine/runtime/open/catalog_open.dart';
 import 'package:forja/shared/engine/store/legacy_list_item.dart';
 import 'package:forja/shared/engine/store/list_open_bind_sheet.dart';
@@ -9,11 +7,6 @@ import 'package:forja/shared/engine/store/list_open_binding.dart';
 import 'package:forja/shared/engine/store/list_providers.dart';
 import 'package:forja/shell/feedback/forja_toast.dart';
 import 'package:forja_foundation/protocol/protocol.dart';
-
-/// Feed-only kits (no `details`) use hub binding; details hubs open meta as-is.
-@visibleForTesting
-bool kitListUsesOpenBinding({required bool? callerHasDetails}) =>
-    callerHasDetails == false;
 
 /// `open.surface` on a kit.list row, including one nested under `meta`.
 String? kitListItemSurface(Map<String, dynamic> item) {
@@ -58,37 +51,19 @@ Map<String, dynamic> kitListOpenRow(Map<String, dynamic> item) {
   return row;
 }
 
-/// Open a kit.list poster — hub binding when the caller pack has no details.
-Future<void> openKitListItem(
+/// Open a kit.list row through the pack-declared hub-bind sheet
+/// (`open: 'bind'` + `bind{}`). [forcePick] re-opens the sheet to rebind.
+Future<void> openKitListBind(
   BuildContext context, {
   required String pluginId,
   required Map<String, dynamic> item,
+  required KitListBindSpec spec,
   String? shellTabId,
   bool forcePick = false,
 }) async {
-  final syncHas = PluginNavRegistry.pluginHasDetailsSync(pluginId);
-  final hasDetails =
-      syncHas ?? await PluginNavRegistry.pluginHasDetails(pluginId);
-  if (!kitListUsesOpenBinding(callerHasDetails: hasDetails)) {
-    if (forcePick) return;
-    final meta = PackPaintArtifact.metaItemOf(
-      props: PackPaintArtifact.propsOf(item),
-      open: item['open'] ?? item['metaOpen'] ?? item['catalogOpen'],
-      meta: item['meta'],
-    );
-    if (meta == null) return;
-    if (!context.mounted) return;
-    await openMetaItem(
-      context,
-      pluginId: pluginId,
-      item: meta,
-      shellTabId: shellTabId,
-    );
-    return;
-  }
-  if (!context.mounted) return;
   await openListItemWithBinding(
     context,
+    spec: spec,
     item: kitListOpenRow(item),
     sourceItem: item,
     shellTabId: shellTabId,
@@ -96,9 +71,11 @@ Future<void> openKitListItem(
   );
 }
 
-/// Open a My List / catalog list row with hub binding (RFC-108).
+/// Open a list row with hub binding (RFC-108). Copy, candidate filter and
+/// whether the pick is remembered all come from the pack [spec].
 Future<void> openListItemWithBinding(
   BuildContext context, {
+  required KitListBindSpec spec,
   required Map<String, dynamic> item,
   Map<String, dynamic>? sourceItem,
   String? shellTabId,
@@ -126,12 +103,14 @@ Future<void> openListItemWithBinding(
       meta: meta,
     );
     if (preferred != null) {
-      await ListOpenBinding.persistBinding(
-        item: row,
-        pluginId: preferred.pluginId,
-        open: preferred.meta.open!,
-        meta: preferred.meta,
-      );
+      if (spec.remember) {
+        await ListOpenBinding.persistBinding(
+          item: row,
+          pluginId: preferred.pluginId,
+          open: preferred.meta.open!,
+          meta: preferred.meta,
+        );
+      }
       if (!context.mounted) return;
       await openMetaItem(
         context,
@@ -161,6 +140,7 @@ Future<void> openListItemWithBinding(
   final candidates = await ListOpenBinding.candidatesFor(
     item: row,
     meta: meta,
+    excludeTypes: spec.excludeTypes,
     allDetailsHubs: forcePick,
   );
 
@@ -171,12 +151,14 @@ Future<void> openListItemWithBinding(
         meta.open;
     if (open != null && open.id.trim().isNotEmpty) {
       final next = meta.copyWith(open: open);
-      await ListOpenBinding.persistBinding(
-        item: row,
-        pluginId: only.pluginId,
-        open: open,
-        meta: next,
-      );
+      if (spec.remember) {
+        await ListOpenBinding.persistBinding(
+          item: row,
+          pluginId: only.pluginId,
+          open: open,
+          meta: next,
+        );
+      }
       if (!context.mounted) return;
       await openMetaItem(
         context,
@@ -189,8 +171,8 @@ Future<void> openListItemWithBinding(
   }
 
   if (candidates.isEmpty) {
-    if (context.mounted) {
-      ForjaToast.info('No hub available to open this title');
+    if (context.mounted && spec.noHub.isNotEmpty) {
+      ForjaToast.info(spec.noHub);
     }
     return;
   }
@@ -199,13 +181,14 @@ Future<void> openListItemWithBinding(
   if (forcePick) {
     await showListOpenBindSheet(
       context,
+      spec: spec,
       candidates: candidates,
       sourceMeta: meta,
-      title: 'Open with…',
       initialPluginId: row['pluginId']?.toString(),
       pickFilm: true,
       onSave: (bound) async {
         final saved = await persistListOpenBinding(
+          spec: spec,
           row: row,
           meta: meta,
           bound: bound,
@@ -213,9 +196,11 @@ Future<void> openListItemWithBinding(
         );
         if (saved == null) return false;
         ProviderContainer? container;
-        try {
-          container = ProviderScope.containerOf(context, listen: false);
-        } catch (_) {}
+        if (context.mounted) {
+          try {
+            container = ProviderScope.containerOf(context, listen: false);
+          } catch (_) {}
+        }
         invalidateListHubFeeds(container);
         return true;
       },
@@ -225,14 +210,15 @@ Future<void> openListItemWithBinding(
 
   final bound = await showListOpenBindSheet(
     context,
+    spec: spec,
     candidates: candidates,
     sourceMeta: meta,
-    title: 'Open in…',
     initialPluginId: row['pluginId']?.toString(),
   );
   if (bound == null || !context.mounted) return;
 
   final saved = await persistListOpenBinding(
+    spec: spec,
     row: row,
     meta: meta,
     bound: bound,
@@ -295,8 +281,10 @@ void stampListOpenBinding(
   }
 }
 
-/// Writes the chosen hub onto the bookmark. Returns the meta that would open.
+/// Writes the chosen hub onto the bookmark when the pack remembers binds.
+/// Returns the meta that would open.
 Future<MetaItem?> persistListOpenBinding({
+  required KitListBindSpec spec,
   required Map<String, dynamic> row,
   required MetaItem meta,
   required ListOpenBindResult bound,
@@ -310,7 +298,7 @@ Future<MetaItem?> persistListOpenBinding({
     final hit = bound.hit!;
     final hitOpen = hit.open;
     if (hitOpen == null || hitOpen.id.trim().isEmpty) {
-      ForjaToast.info('That match has no open handoff');
+      if (spec.noHandoff.isNotEmpty) ForjaToast.info(spec.noHandoff);
       return null;
     }
     open = hitOpen;
@@ -331,12 +319,15 @@ Future<MetaItem?> persistListOpenBinding({
         ListOpenBinding.metaOpenForCandidate(row, meta, candidate.types) ??
         meta.open;
     if (open == null || open.id.trim().isEmpty) {
-      ForjaToast.info('No open handoff for ${candidate.label}');
+      if (spec.noHandoffFor.isNotEmpty) {
+        ForjaToast.info(spec.noHandoffForHub(candidate.label));
+      }
       return null;
     }
     next = meta.copyWith(open: open);
   }
 
+  if (!spec.remember) return next;
   await ListOpenBinding.persistBinding(
     item: row,
     pluginId: candidate.pluginId,

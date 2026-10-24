@@ -85,15 +85,26 @@ abstract final class ListOpenBinding {
     return null;
   }
 
+  /// Installed hub the sheet may offer: kit plugin with `nav` + `details`
+  /// whose types are not all in the pack-declared [excludeTypes].
+  @visibleForTesting
+  static bool isBindCandidate(EnginePlugin pl, List<String> excludeTypes) {
+    if (!pl.isKitPlugin || !pl.hasCapability('details')) return false;
+    if (pl.nav == null || pl.nav!.isEmpty) return false;
+    if (pl.types.every(excludeTypes.contains)) return false;
+    return true;
+  }
+
   static Future<List<ListOpenCandidate>> candidatesFor({
     required Map<String, dynamic> item,
     required MetaItem meta,
+    required List<String> excludeTypes,
     bool allDetailsHubs = false,
   }) async {
     final tokens = listOpenIdentityTokens(item, meta);
     final out = <ListOpenCandidate>[];
     for (final pl in await PluginNavRegistry.listKitPlugins()) {
-      if (!PackHubSelectOptions.isBrowseHub(pl)) continue;
+      if (!isBindCandidate(pl, excludeTypes)) continue;
       final compatible = tokens.isNotEmpty && _typesIntersect(pl.types, tokens);
       if (!allDetailsHubs && tokens.isNotEmpty && !compatible) continue;
       out.add(
@@ -107,7 +118,12 @@ abstract final class ListOpenBinding {
       );
     }
     if (out.isEmpty && !allDetailsHubs) {
-      return candidatesFor(item: item, meta: meta, allDetailsHubs: true);
+      return candidatesFor(
+        item: item,
+        meta: meta,
+        excludeTypes: excludeTypes,
+        allDetailsHubs: true,
+      );
     }
     out.sort((a, b) {
       if (a.compatible != b.compatible) return a.compatible ? -1 : 1;

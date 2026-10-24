@@ -44,11 +44,14 @@ class ListOpenBindResult {
 }
 
 /// One sheet: hub chips + optional title search + ranked hits.
+///
+/// Every string comes from the pack [spec] (`kit.list.bind`); the sheet
+/// paints them as-is.
 Future<ListOpenBindResult?> showListOpenBindSheet(
   BuildContext context, {
+  required KitListBindSpec spec,
   required List<ListOpenCandidate> candidates,
   required MetaItem sourceMeta,
-  String title = 'Open in…',
   String? initialPluginId,
   bool pickFilm = false,
   Future<bool> Function(ListOpenBindResult result)? onSave,
@@ -61,9 +64,9 @@ Future<ListOpenBindResult?> showListOpenBindSheet(
       return ShellScope.rehost(
         context,
         _ListOpenBindSheet(
+          spec: spec,
           candidates: candidates,
           sourceMeta: sourceMeta,
-          title: title,
           initialPluginId: initialPluginId,
           pickFilm: pickFilm,
           onSave: onSave,
@@ -75,17 +78,17 @@ Future<ListOpenBindResult?> showListOpenBindSheet(
 
 class _ListOpenBindSheet extends StatefulWidget {
   const _ListOpenBindSheet({
+    required this.spec,
     required this.candidates,
     required this.sourceMeta,
-    required this.title,
     this.initialPluginId,
     this.pickFilm = false,
     this.onSave,
   });
 
+  final KitListBindSpec spec;
   final List<ListOpenCandidate> candidates;
   final MetaItem sourceMeta;
-  final String title;
   final String? initialPluginId;
 
   /// Right-click rebind: search every hub, check a title to save it.
@@ -243,7 +246,7 @@ class _ListOpenBindSheetState extends State<_ListOpenBindSheet> {
     if (!_usesSearch && _hub.compatible && !widget.pickFilm) return;
     if (!_hub.hasSearch) {
       setState(() {
-        _error = '${_hub.label} has no search';
+        _error = widget.spec.noSearchFor(_hub.label);
         _hits = const [];
       });
       return;
@@ -264,7 +267,7 @@ class _ListOpenBindSheetState extends State<_ListOpenBindSheet> {
         _fitHitFocus(0);
         _hits = const [];
         _searching = false;
-        _error = 'Type a title to search';
+        _error = widget.spec.searchEmpty;
       });
       return;
     }
@@ -283,7 +286,7 @@ class _ListOpenBindSheetState extends State<_ListOpenBindSheet> {
       _searching = false;
       _fitHitFocus(hits.length);
       _hits = hits;
-      _error = hits.isEmpty ? 'No matches in ${_hub.label}' : null;
+      _error = hits.isEmpty ? widget.spec.noMatchFor(_hub.label) : null;
     });
   }
 
@@ -387,7 +390,9 @@ class _ListOpenBindSheetState extends State<_ListOpenBindSheet> {
                 children: [
                   Expanded(
                     child: Text(
-                      widget.title,
+                      widget.pickFilm
+                          ? widget.spec.pickTitleOrTitle
+                          : widget.spec.title,
                       style: GoogleFonts.plusJakartaSans(
                         color: ForjaShellColors.textPrimary,
                         fontSize: type(18),
@@ -407,7 +412,7 @@ class _ListOpenBindSheetState extends State<_ListOpenBindSheet> {
                       minimumSize: Size(px(48), px(28)),
                     ),
                     child: Text(
-                      'Cancel',
+                      widget.spec.cancel,
                       style: TextStyle(
                         color: ForjaShellColors.textSecondary,
                         fontSize: type(14),
@@ -428,7 +433,7 @@ class _ListOpenBindSheetState extends State<_ListOpenBindSheet> {
                       children: [
                         Text(
                           _headerMeta.name.trim().isEmpty
-                              ? 'Untitled'
+                              ? widget.spec.untitled
                               : _headerMeta.name.trim(),
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
@@ -455,7 +460,7 @@ class _ListOpenBindSheetState extends State<_ListOpenBindSheet> {
               ),
               SizedBox(height: px(14)),
               Text(
-                'Hub',
+                widget.spec.hubLabel,
                 style: TextStyle(
                   color: ForjaShellColors.textSecondary,
                   fontSize: type(11),
@@ -496,6 +501,7 @@ class _ListOpenBindSheetState extends State<_ListOpenBindSheet> {
               if (_filmOnly) ...[
                 _FilmCheckRow(
                   meta: widget.sourceMeta,
+                  untitled: widget.spec.untitled,
                   checked: _pickedKey == 'source',
                   onPick: _confirmCompatible,
                   dpad: dpad,
@@ -506,7 +512,7 @@ class _ListOpenBindSheetState extends State<_ListOpenBindSheet> {
                 const Spacer(),
               ] else if (_hub.compatible && !widget.pickFilm) ...[
                 _CompatibleOpenBody(
-                  hubLabel: _hub.label,
+                  label: widget.spec.openInFor(_hub.label),
                   onOpen: _confirmCompatible,
                   dpad: dpad,
                   density: density,
@@ -518,6 +524,8 @@ class _ListOpenBindSheetState extends State<_ListOpenBindSheet> {
                 _SearchField(
                   controller: _query,
                   focusNode: _queryFocus,
+                  hint: widget.spec.searchHint,
+                  browseHint: widget.spec.searchBrowseHint,
                   leanback: leanback,
                   density: density,
                   onChanged: (_) => _scheduleSearch(),
@@ -546,6 +554,7 @@ class _ListOpenBindSheetState extends State<_ListOpenBindSheet> {
                 SizedBox(height: px(10)),
                 Expanded(
                   child: _HitsBody(
+                    bestMatchLabel: widget.spec.bestMatch,
                     searching: _searching,
                     error: _error,
                     hits: _hits,
@@ -617,6 +626,7 @@ class _PosterThumb extends StatelessWidget {
 class _FilmCheckRow extends StatelessWidget {
   const _FilmCheckRow({
     required this.meta,
+    required this.untitled,
     required this.checked,
     required this.onPick,
     required this.dpad,
@@ -626,6 +636,7 @@ class _FilmCheckRow extends StatelessWidget {
   });
 
   final MetaItem meta;
+  final String untitled;
   final bool checked;
   final VoidCallback onPick;
   final bool dpad;
@@ -642,7 +653,7 @@ class _FilmCheckRow extends StatelessWidget {
     final year = meta.releaseInfo.trim().isNotEmpty
         ? meta.releaseInfo.trim()
         : meta.premiereDate.trim();
-    final name = meta.name.trim().isEmpty ? 'Untitled' : meta.name.trim();
+    final name = meta.name.trim().isEmpty ? untitled : meta.name.trim();
     final row = Padding(
       padding: EdgeInsets.symmetric(vertical: px(8), horizontal: px(6)),
       child: Row(
@@ -713,7 +724,7 @@ class _FilmCheckRow extends StatelessWidget {
 
 class _CompatibleOpenBody extends StatelessWidget {
   const _CompatibleOpenBody({
-    required this.hubLabel,
+    required this.label,
     required this.onOpen,
     required this.dpad,
     required this.density,
@@ -721,7 +732,8 @@ class _CompatibleOpenBody extends StatelessWidget {
     required this.onUp,
   });
 
-  final String hubLabel;
+  /// Already hub-substituted by the caller.
+  final String label;
   final VoidCallback onOpen;
   final bool dpad;
   final bool density;
@@ -753,7 +765,7 @@ class _CompatibleOpenBody extends StatelessWidget {
           SizedBox(width: px(10)),
           Expanded(
             child: Text(
-              'Open in $hubLabel',
+              label,
               style: GoogleFonts.plusJakartaSans(
                 color: ForjaShellColors.textPrimary,
                 fontSize: type,
@@ -799,6 +811,8 @@ class _SearchField extends StatelessWidget {
   const _SearchField({
     required this.controller,
     required this.focusNode,
+    required this.hint,
+    required this.browseHint,
     required this.leanback,
     required this.density,
     required this.onChanged,
@@ -808,6 +822,8 @@ class _SearchField extends StatelessWidget {
 
   final TextEditingController controller;
   final FocusNode focusNode;
+  final String hint;
+  final String browseHint;
   final bool leanback;
   final bool density;
   final ValueChanged<String> onChanged;
@@ -829,7 +845,7 @@ class _SearchField extends StatelessWidget {
       fontSize: fontSize,
     );
     final decoration = InputDecoration(
-      hintText: 'Search title',
+      hintText: hint,
       hintStyle: TextStyle(
         color: ForjaShellColors.textSecondary,
         fontSize: tv
@@ -881,7 +897,7 @@ class _SearchField extends StatelessWidget {
         onKeyEvent: onKeyEvent,
         decoration: decoration,
         style: style,
-        browsePlaceholder: 'Search title — OK to type',
+        browsePlaceholder: browseHint.isEmpty ? null : browseHint,
         caretHeight: fontSize,
       );
     }
@@ -899,6 +915,7 @@ class _SearchField extends StatelessWidget {
 
 class _HitsBody extends StatelessWidget {
   const _HitsBody({
+    required this.bestMatchLabel,
     required this.searching,
     required this.error,
     required this.hits,
@@ -913,6 +930,7 @@ class _HitsBody extends StatelessWidget {
     this.hitKey,
   });
 
+  final String bestMatchLabel;
   final bool searching;
   final String? error;
   final List<MetaItem> hits;
@@ -982,7 +1000,7 @@ class _HitsBody extends StatelessWidget {
                     Padding(
                       padding: EdgeInsets.only(bottom: px(2)),
                       child: Text(
-                        'Best match',
+                        bestMatchLabel,
                         style: TextStyle(
                           color: ForjaShellColors.brandGreen,
                           fontSize: type(10),

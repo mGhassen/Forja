@@ -10,7 +10,7 @@
 
 | | |
 |--|--|
-| **Progress** | **5 / 6** fix · **0 / 4** acceptance |
+| **Progress** | **6 / 7** fix · **0 / 4** acceptance |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -26,6 +26,7 @@
 | 4 | I260-T04 | Playback headers / ProviderRuntimeConfig: no Dart `if (kisskh|videasy|dimatoon)` — packs own knobs ([255](255-[open]-provider-runtime-config-builtins-debt.md)) | ✅ |
 | 5 | I260-T05 | Kit details: stop host `TmdbApi` rich enrich — pack enrich companions only | ✅ |
 | 6 | I260-T06 | Host tests: synthetic fixtures only — no `plugins/hubs/**` / `loadAllForjaHqPlugins` oracles | ⬜ |
+| 7 | I260-T07 | kit.list open-bind: host no longer infers My List behaviour from a missing `details`; sheet copy and pin come from the pack ([477](477-[open]-kit-list-open-bind-verb-pack-declared.md)) | ✅ |
 
 ---
 

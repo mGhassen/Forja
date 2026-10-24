@@ -101,6 +101,9 @@ bool _packTruthy(Object? value) {
   return s == 'true' || s == '1';
 }
 
+/// `pluginId/listId` pairs already warned for `open: 'bind'` without `bind.title`.
+final Set<String> _kitListBindWarned = <String>{};
+
 /// One mount table: pack `{ type, props, children?, load? }` → foundation.
 ///
 /// Prepared pages and small chrome types are the same catalog — packs compose
@@ -1536,14 +1539,12 @@ class PackPaintTree extends StatelessWidget {
     );
   }
 
-  /// Poster pin — falls back after channel favorite star.
+  /// Watch-status pin (`accessory: 'listPin'`).
   Widget? _listPosterPinAccessory(
     BuildContext context,
     Map<String, dynamic> item, {
     required bool active,
   }) {
-    final live = _liveFavoriteAccessory(context, item, active: active);
-    if (live != null) return live;
     final props = PackPaintArtifact.propsOf(item);
     final known = (item['listStatus'] ?? props['listStatus'] ?? '')
         .toString()
@@ -1941,7 +1942,27 @@ class PackPaintTree extends StatelessWidget {
             items: filtered,
           );
           final liveChannels = kitListCardKindIsChannel(cardKind);
-          final openMode = (spec['open'] ?? '').toString().trim().toLowerCase();
+          final listSpecId = (spec['id'] ?? '').toString().trim();
+          final bindSpec = KitListBindSpec.fromJson(spec['bind']);
+          var openMode = (spec['open'] ?? '').toString().trim().toLowerCase();
+          if (openMode == 'bind' && bindSpec == null) {
+            final warnKey = '$pluginId/$listSpecId';
+            if (_kitListBindWarned.add(warnKey)) {
+              debugPrint("kit.list $listSpecId: open:'bind' needs bind.title");
+            }
+            openMode = '';
+          }
+          // Pack-declared card accessory; managed-open lists paint none.
+          final accessory = managedOpen
+              ? null
+              : KitListAccessorySpec.parse(
+                  spec['accessory'],
+                )?.resolve(cardKind);
+          final itemAccessory = switch (accessory) {
+            KitListAccessory.listPin => _listPosterPinAccessory,
+            KitListAccessory.favorite => _liveFavoriteAccessory,
+            null => null,
+          };
           final panelSelectedId = selected == null
               ? null
               : (selected['id'] ??
@@ -1965,6 +1986,9 @@ class PackPaintTree extends StatelessWidget {
           final offlinePanel =
               (spec['panel'] ?? '').toString().trim().toLowerCase() ==
               'offline';
+          // Long-press: offline library, or rebind when the pack allows it.
+          final canLongPress =
+              !managedOpen && (offlinePanel || (bindSpec?.rebind ?? false));
           final showPanel =
               selected != null &&
               resolveKitListTapOpen(
@@ -2038,6 +2062,13 @@ class PackPaintTree extends StatelessWidget {
             );
           }
 
+          void noteListStreamFocus(Map<String, dynamic> item) {
+            final streamId = _itemStreamId(item);
+            if (streamId.isEmpty) return;
+            IptvCatalogLand.highlightedStreamId.value = streamId;
+            IptvCatalogLand.noteFocusedStreamId(streamId);
+          }
+
           void onListItemTap(Map<String, dynamic> item) {
             final tapOpen = resolveKitListTapOpen(
               openMode: openMode,
@@ -2060,6 +2091,18 @@ class PackPaintTree extends StatelessWidget {
               case KitListTapOpen.play:
                 unawaited(_playListItemDirect(context, item: item));
                 return;
+              case KitListTapOpen.bind:
+                noteListStreamFocus(item);
+                unawaited(
+                  openKitListBind(
+                    context,
+                    pluginId: pluginId,
+                    item: item,
+                    spec: bindSpec!,
+                    shellTabId: (tabId ?? '').trim().isEmpty ? null : tabId,
+                  ),
+                );
+                return;
               case KitListTapOpen.openTap:
                 if (managedOpen) {
                   if (canShowSidePanel && chrome != null) {
@@ -2071,17 +2114,18 @@ class PackPaintTree extends StatelessWidget {
                 }
                 break;
             }
-            final streamId = _itemStreamId(item);
-            if (streamId.isNotEmpty) {
-              IptvCatalogLand.highlightedStreamId.value = streamId;
-              IptvCatalogLand.noteFocusedStreamId(streamId);
-            }
-            // Feed-only hubs (My List): hub binding + Open in… sheet.
+            noteListStreamFocus(item);
+            final meta = PackPaintArtifact.metaItemOf(
+              props: PackPaintArtifact.propsOf(item),
+              open: item['open'] ?? item['metaOpen'] ?? item['catalogOpen'],
+              meta: item['meta'],
+            );
+            if (meta == null) return;
             unawaited(
-              openKitListItem(
+              openMetaItem(
                 context,
                 pluginId: pluginId,
-                item: item,
+                item: meta,
                 shellTabId: (tabId ?? '').trim().isEmpty ? null : tabId,
               ),
             );
@@ -2097,11 +2141,13 @@ class PackPaintTree extends StatelessWidget {
               return;
             }
             if (managedOpen) return;
+            if (bindSpec == null || !bindSpec.rebind) return;
             unawaited(
-              openKitListItem(
+              openKitListBind(
                 context,
                 pluginId: pluginId,
                 item: item,
+                spec: bindSpec,
                 shellTabId: (tabId ?? '').trim().isEmpty ? null : tabId,
                 forcePick: true,
               ),
@@ -2188,16 +2234,12 @@ class PackPaintTree extends StatelessWidget {
                   ? null
                   : spec['emptyDescription']?.toString(),
               emptyAction: _listEmptyAction(context, spec),
-              itemAccessory: managedOpen
-                  ? null
-                  : (liveChannels
-                        ? _liveFavoriteAccessory
-                        : _listPosterPinAccessory),
+              itemAccessory: itemAccessory,
               itemHealthListenable: healthListenableFor,
               onItemInteractiveActive: onInteractiveActive,
               loadEpgProgrammes: loadEpgProgrammes,
               onItemTap: onListItemTap,
-              onItemLongPress: managedOpen ? null : onListItemOpenWith,
+              onItemLongPress: canLongPress ? onListItemOpenWith : null,
               landEpoch: IptvCatalogLand.landEpoch,
               preferCategoryFocusOnLand:
                   IptvCatalogLand.preferCategoryFocusOnLand,
@@ -2335,16 +2377,14 @@ class PackPaintTree extends StatelessWidget {
                                       ? null
                                       : spec['emptyDescription']?.toString(),
                                   emptyAction: _listEmptyAction(context, spec),
-                                  itemAccessory: managedOpen
-                                      ? null
-                                      : _liveFavoriteAccessory,
+                                  itemAccessory: itemAccessory,
                                   itemHealthListenable: healthListenableFor,
                                   onItemInteractiveActive: onInteractiveActive,
                                   loadEpgProgrammes: loadShortEpgProgrammes,
                                   onItemTap: onListItemTap,
-                                  onItemLongPress: managedOpen
-                                      ? null
-                                      : onListItemOpenWith,
+                                  onItemLongPress: canLongPress
+                                      ? onListItemOpenWith
+                                      : null,
                                   landEpoch: IptvCatalogLand.landEpoch,
                                   preferCategoryFocusOnLand:
                                       IptvCatalogLand.preferCategoryFocusOnLand,

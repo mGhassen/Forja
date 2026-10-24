@@ -1,9 +1,8 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:forja_foundation/protocol/protocol.dart';
 import 'package:forja/shared/engine/runtime/open/catalog_open.dart';
 import 'package:forja/shared/engine/runtime/nav/plugin_nav.dart';
 import 'package:forja/shared/engine/store/list_follow.dart';
-import 'package:forja/shared/engine/store/list_open_flow.dart';
 
 /// Prefer [metaOpen] / [open]; accept persisted [catalogOpen] from upsertCatalog.
 Object? legacyListStoredOpenRaw(Map<String, dynamic> item) =>
@@ -260,18 +259,4 @@ Future<String?> resolveLegacyListDetailsPluginId({
   final engineType = legacyListEngineType(item);
   if (engineType == null || engineType.isEmpty) return null;
   return PluginNavRegistry.pluginIdForEngineType(engineType);
-}
-
-Future<void> openLegacyListItem(
-  BuildContext context, {
-  required Map<String, dynamic> item,
-  String? shellTabId,
-  bool forcePick = false,
-}) async {
-  await openListItemWithBinding(
-    context,
-    item: item,
-    shellTabId: shellTabId,
-    forcePick: forcePick,
-  );
 }

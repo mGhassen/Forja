@@ -83,7 +83,7 @@ String? _cardKindFromPaint(List<Map<String, dynamic>> items) {
   return best;
 }
 
-/// Side-panel / openSetting lists — no My List pin / Open-in on the grid.
+/// Side-panel / openSetting lists — managed-open lists ignore `bind` / `accessory`.
 bool kitListManagedOpen(Map<String, dynamic> spec) {
   if ((spec['openSetting'] ?? '').toString().trim().isNotEmpty) return true;
   final tabs = spec['panelTabs'];

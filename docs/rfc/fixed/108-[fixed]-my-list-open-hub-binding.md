@@ -110,3 +110,4 @@ My List must open titles into the right installed catalog hub without the pack i
 - [my-list feature](../features/movies-tv/my-list.md)
 - [issue 260](../issues/260-[open]-host-hardcodes-specific-plugins.md) — no pack-id allowlists
 - [issue 468](../issues/fixed/468-[fixed]-my-list-open-default-hub-ignored.md) — type defaults ignored vs first-hub short-circuit
+- [issue 477](../../issues/477-[open]-kit-list-open-bind-verb-pack-declared.md) — the sheet is now opened by a pack-declared `kit.list` `bind` verb; copy and pin come from the My List pack

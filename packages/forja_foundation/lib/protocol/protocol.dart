@@ -1,6 +1,8 @@
 /// Catalog hub protocol v1 — envelope, errors, meta, filter AST, layout. RFC-070.
 library;
 
+export 'kit_list_bind.dart';
+
 const int hostKitVersion = 1;
 const int hostProtocolVersion = 1;
 
