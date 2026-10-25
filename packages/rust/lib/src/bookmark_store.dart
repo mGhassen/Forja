@@ -6,17 +6,11 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'local_data_scope.dart';
 
-typedef BookmarkSyncAddHandler = void Function(
-  int? tmdbId,
-  String? imdbId,
-  String mediaType,
-);
+typedef BookmarkSyncAddHandler =
+    void Function(int? tmdbId, String? imdbId, String mediaType);
 
-typedef BookmarkSyncRemoveHandler = void Function(
-  int? tmdbId,
-  String? imdbId,
-  String mediaType,
-);
+typedef BookmarkSyncRemoveHandler =
+    void Function(int? tmdbId, String? imdbId, String mediaType);
 
 /// Host bookmark persist engine — opaque rows + change notify.
 /// Tracker sync via [syncAddHandler] / [syncRemoveHandler] from the host app.
@@ -105,7 +99,8 @@ class BookmarkStore {
   }
 
   static String stremioItemId(Map<String, dynamic> item) {
-    final id = item['imdb_id']?.toString() ??
+    final id =
+        item['imdb_id']?.toString() ??
         item['imdbId']?.toString() ??
         item['id']?.toString() ??
         item['name']?.toString() ??
@@ -180,13 +175,8 @@ class BookmarkStore {
     return loose;
   }
 
-  bool hasEntry({
-    required String uniqueId,
-    int? tmdbId,
-    String? mediaType,
-  }) =>
-      resolve(uniqueId: uniqueId, tmdbId: tmdbId, mediaType: mediaType) !=
-      null;
+  bool hasEntry({required String uniqueId, int? tmdbId, String? mediaType}) =>
+      resolve(uniqueId: uniqueId, tmdbId: tmdbId, mediaType: mediaType) != null;
 
   /// Null when not in any list; otherwise stored status (or [defaultStatus]).
   String? resolvedStatus({
@@ -194,8 +184,11 @@ class BookmarkStore {
     int? tmdbId,
     String? mediaType,
   }) {
-    final row =
-        resolve(uniqueId: uniqueId, tmdbId: tmdbId, mediaType: mediaType);
+    final row = resolve(
+      uniqueId: uniqueId,
+      tmdbId: tmdbId,
+      mediaType: mediaType,
+    );
     if (row == null) return null;
     return row['listStatus']?.toString() ?? defaultStatus;
   }
@@ -264,8 +257,7 @@ class BookmarkStore {
       'tmdbId': ?tmdbId,
       'tmdbMediaType': ?tmdbMediaType,
       'hubLabel': ?hubLabel,
-      'addedAt':
-          existing?['addedAt'] ?? DateTime.now().millisecondsSinceEpoch,
+      'addedAt': existing?['addedAt'] ?? DateTime.now().millisecondsSinceEpoch,
     };
     // Hub label belongs to the hub that wrote this row — never inherit a
     // sibling's label when the pin moves hubs.
@@ -434,21 +426,41 @@ class BookmarkStore {
     syncAddHandler?.call(null, imdb, item['type']?.toString() ?? 'movie');
   }
 
-  Future<void> remove(
-    String uniqueId, {
-    int? tmdbId,
-    String? mediaType,
+  /// Attach / replace TMDB ids on an existing catalog row without changing open.
+  Future<void> patchTmdbLink({
+    required String uniqueId,
+    required int tmdbId,
+    String? tmdbMediaType,
   }) async {
     await _ensureLoaded();
-    final item = resolve(
-          uniqueId: uniqueId,
-          tmdbId: tmdbId,
-          mediaType: mediaType,
+    final uid = uniqueId.trim();
+    if (uid.isEmpty || tmdbId <= 0) return;
+    final idx = _items.indexWhere((e) => e['uniqueId']?.toString() == uid);
+    if (idx < 0) return;
+    final row = Map<String, dynamic>.from(_items[idx]);
+    final mt =
+        normalizeTmdbMediaType(
+          tmdbMediaType ??
+              row['tmdbMediaType']?.toString() ??
+              row['mediaType']?.toString(),
         ) ??
+        'tv';
+    row['tmdbId'] = tmdbId;
+    row['tmdbMediaType'] = mt;
+    _items[idx] = row;
+    _dropTmdbAliases(keepUniqueId: uid, tmdbId: tmdbId, mediaType: mt);
+    await _save();
+  }
+
+  Future<void> remove(String uniqueId, {int? tmdbId, String? mediaType}) async {
+    await _ensureLoaded();
+    final item =
+        resolve(uniqueId: uniqueId, tmdbId: tmdbId, mediaType: mediaType) ??
         itemOf(uniqueId);
     final tid = item?['tmdbId'] as int? ?? tmdbId;
     final imdbId = item?['imdbId']?.toString();
-    final mt = item?['tmdbMediaType']?.toString() ??
+    final mt =
+        item?['tmdbMediaType']?.toString() ??
         item?['mediaType']?.toString() ??
         mediaType ??
         'movie';

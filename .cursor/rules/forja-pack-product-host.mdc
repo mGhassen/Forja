@@ -5,9 +5,27 @@ alwaysApply: true
 
 # Pack-product host (law)
 
-Read skill **forja-pack-product-host** when deciding pack vs host vs foundation, editing the kit painter, or `open.surface` routing.
+**PRIORITY — before any My List / hub / Simkl / Sources / kit paint change:** decide **pack vs host vs foundation** first. Wrong layer is a reject, not a later cleanup. Read skill **forja-pack-product-host** when deciding placement, editing the kit painter, or `open.surface` routing.
 
 **One-liner:** Empty shell + engines. Packs are product. Foundation paints only. Host validates + paints pack JSON — never invents product fields or verbs.
+
+## Separation (how it must work)
+
+| Question | Pack (`forja-packs`) | Host (`apps/forja`) | Foundation |
+|----------|----------------------|---------------------|------------|
+| Who owns the **user story** (My List S mark, Open with vs Simkl, hub rails, labels)? | **Yes** — emit paint / feed / prefs | No | No |
+| Who owns **generic engines** (bookmark store, Simkl API, open-hub bind, runPlugin)? | No | **Yes** | No |
+| Who owns **dumb paint** (PosterCard, LetterLinkMark from props)? | Declares props | Mounts props → widget | **Widget only** |
+| Uninstall this pack — does host Dart still make sense? | N/A | **Must be yes** for every host line you add | N/A |
+
+**Flow (mandatory):** pack decides product → emits JSON (`paint.props`, feed fields like `trackerMark` / `trackerLink`) → host paints or runs generic persist — host never *invents* “this is My List / Simkl / Afflem”.
+
+```
+Wrong: host paint_artifact injects Simkl S on every poster when logged in
+Right: my_list pack emits props.trackerMark → host paints LetterLinkMark only if props present
+Wrong: host hardcodes Open-with Simkl mode for all list rows
+Right: pack sets trackerLink on feed rows → host enables tracker sheet only when row opted in
+```
 
 ### Sniff tests
 
@@ -15,12 +33,14 @@ Read skill **forja-pack-product-host** when deciding pack vs host vs foundation,
 |-------|------|
 | **Host** | Pack uninstalled — does this Dart still make sense as a **generic** capability? No → pack (or delete) |
 | **Foundation** | shadcn-style props in → UI out? Else host engine or pack |
-| **Painter** | Names schedule/feed/panel/tabs or invents `title`/`poster` heuristics? Illegal — validate props → DS mount only |
+| **Painter** | Names schedule/feed/panel/tabs or invents `title`/`poster` / Simkl / My List heuristics? Illegal — validate props → DS mount only |
+| **Before coding** | Write the layer in one line. If product UX → start in `forja-packs`. If store/API/route → host. If widget chrome → foundation |
 
 ### Hard forbidden (summary)
 
 - Product folders / pack-id branches / hub inventory in `apps/forja`
 - Field mappers (`title`/`poster`/`homeTeam`) or product runtimes in host
+- Host inventing hub product chrome (tracker marks, list-only dialog modes) without pack-emitted props / opt-in flags
 - Orchestrators / hooks / registries in `forja_foundation`
 - Painter branches on product verbs (`feed`/`layout`/`rail`)
 - Assert shipped pack ids in host tests

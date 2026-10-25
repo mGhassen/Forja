@@ -7,6 +7,7 @@ import 'package:forja/shared/engine/store/legacy_list_item.dart';
 import 'package:forja/shared/engine/store/list_open_bind_sheet.dart';
 import 'package:forja/shared/engine/store/list_open_binding.dart';
 import 'package:forja/shared/engine/store/list_providers.dart';
+import 'package:forja/shared/services/tracker/simkl_service.dart';
 import 'package:forja/shell/feedback/forja_toast.dart';
 import 'package:forja_foundation/protocol/protocol.dart';
 
@@ -55,6 +56,18 @@ Map<String, dynamic> kitListOpenRow(Map<String, dynamic> item) {
   } else {
     row['open'] ??= item['metaOpen'] ?? item['catalogOpen'];
   }
+  // Lift pack trackerMark / trackerLink onto the bind row.
+  final paint = item['paint'];
+  if (paint is Map) {
+    final p = paint['props'];
+    if (p is Map && p['trackerMark'] is Map) {
+      row['trackerLink'] ??= true;
+      final mark = Map<String, dynamic>.from(p['trackerMark'] as Map);
+      if (mark['linked'] == true) row['trackerLinked'] ??= true;
+    }
+  }
+  if (item['trackerLink'] == true) row['trackerLink'] = true;
+  if (item['trackerLinked'] == true) row['trackerLinked'] = true;
   return row;
 }
 
@@ -65,11 +78,12 @@ Future<void> openKitListItem(
   required Map<String, dynamic> item,
   String? shellTabId,
   bool forcePick = false,
+  bool simklLinkMode = false,
 }) async {
   final syncHas = PluginNavRegistry.pluginHasDetailsSync(pluginId);
   final hasDetails =
       syncHas ?? await PluginNavRegistry.pluginHasDetails(pluginId);
-  if (!kitListUsesOpenBinding(callerHasDetails: hasDetails)) {
+  if (!kitListUsesOpenBinding(callerHasDetails: hasDetails) && !simklLinkMode) {
     if (forcePick) return;
     final meta = PackPaintArtifact.metaItemOf(
       props: PackPaintArtifact.propsOf(item),
@@ -92,7 +106,8 @@ Future<void> openKitListItem(
     item: kitListOpenRow(item),
     sourceItem: item,
     shellTabId: shellTabId,
-    forcePick: forcePick,
+    forcePick: forcePick || simklLinkMode,
+    simklLinkMode: simklLinkMode,
   );
 }
 
@@ -103,11 +118,12 @@ Future<void> openListItemWithBinding(
   Map<String, dynamic>? sourceItem,
   String? shellTabId,
   bool forcePick = false,
+  bool simklLinkMode = false,
 }) async {
   final row = Map<String, dynamic>.from(item);
   var meta = metaItemFromLegacyListItem(row);
 
-  if (!forcePick) {
+  if (!forcePick && !simklLinkMode) {
     // Order: per-title bind → type default (settings) → first hub (Auto).
     final stored = await ListOpenBinding.resolveStored(item: row, meta: meta);
     if (stored != null) {
@@ -196,14 +212,49 @@ Future<void> openListItemWithBinding(
   }
 
   if (!context.mounted) return;
-  if (forcePick) {
+  // Pack opts in via row.trackerLink (My List when Simkl connected).
+  final packTrackerLink =
+      row['trackerLink'] == true ||
+      (row['paint'] is Map &&
+          (row['paint'] as Map)['props'] is Map &&
+          ((row['paint'] as Map)['props'] as Map)['trackerMark'] is Map);
+  final simklOn = packTrackerLink && await SimklService().isLoggedIn();
+  final simklHub = simklOn ? await ListOpenBinding.tmdbSearchCandidate() : null;
+  final openHubLabel = row['hubLabel']?.toString().trim();
+  String? resolvedOpenLabel = (openHubLabel != null && openHubLabel.isNotEmpty)
+      ? openHubLabel
+      : null;
+  if (resolvedOpenLabel == null) {
+    final pid = row['pluginId']?.toString().trim() ?? '';
+    if (pid.isNotEmpty) {
+      resolvedOpenLabel = await ListOpenBinding.hubLabelOf(pid);
+    }
+  }
+  if (!context.mounted) return;
+
+  void invalidateFeeds() {
+    ProviderContainer? container;
+    try {
+      container = ProviderScope.containerOf(context, listen: false);
+    } catch (_) {}
+    invalidateListHubFeeds(container);
+  }
+
+  final trackerUi = simklOn && simklHub != null;
+  if (forcePick || simklLinkMode) {
     await showListOpenBindSheet(
       context,
       candidates: candidates,
       sourceMeta: meta,
-      title: 'Open with…',
+      title: simklLinkMode ? 'Link Simkl…' : 'Open with…',
       initialPluginId: row['pluginId']?.toString(),
       pickFilm: true,
+      simklLinkEnabled: trackerUi,
+      initialSimklMode: simklLinkMode && trackerUi,
+      openHubLabel: resolvedOpenLabel,
+      simklSearchCandidate: simklHub,
+      hasSimklLink:
+          legacyListTmdbId(row) != null || row['trackerLinked'] == true,
       onSave: (bound) async {
         final saved = await persistListOpenBinding(
           row: row,
@@ -212,11 +263,20 @@ Future<void> openListItemWithBinding(
           sourceItem: sourceItem,
         );
         if (saved == null) return false;
-        ProviderContainer? container;
-        try {
-          container = ProviderScope.containerOf(context, listen: false);
-        } catch (_) {}
-        invalidateListHubFeeds(container);
+        invalidateFeeds();
+        return true;
+      },
+      onSimklSave: (hit) async {
+        final ok = await ListOpenBinding.persistSimklTmdbLink(
+          item: row,
+          hit: hit,
+        );
+        if (!ok) return false;
+        final grid = sourceItem;
+        if (grid != null) {
+          stampListOpenBinding(row, grid);
+        }
+        invalidateFeeds();
         return true;
       },
     );
@@ -229,6 +289,21 @@ Future<void> openListItemWithBinding(
     sourceMeta: meta,
     title: 'Open in…',
     initialPluginId: row['pluginId']?.toString(),
+    simklLinkEnabled: trackerUi,
+    openHubLabel: resolvedOpenLabel,
+    simklSearchCandidate: simklHub,
+    hasSimklLink: legacyListTmdbId(row) != null || row['trackerLinked'] == true,
+    onSimklSave: (hit) async {
+      final ok = await ListOpenBinding.persistSimklTmdbLink(
+        item: row,
+        hit: hit,
+      );
+      if (!ok) return false;
+      final grid = sourceItem;
+      if (grid != null) stampListOpenBinding(row, grid);
+      invalidateFeeds();
+      return true;
+    },
   );
   if (bound == null || !context.mounted) return;
 
@@ -261,6 +336,8 @@ void stampListOpenBinding(
     'catalogOpen',
     'listStatus',
     'mediaType',
+    'tmdbId',
+    'tmdbMediaType',
     'title',
     'name',
     'poster',
@@ -275,9 +352,19 @@ void stampListOpenBinding(
   final open = saved['open'];
   if (meta is Map) {
     if (open != null) meta['open'] = open;
-    for (final key in const ['name', 'poster', 'background']) {
+    for (final key in const ['name', 'poster', 'background', 'tmdbMediaType']) {
       if (!saved.containsKey(key)) continue;
       meta[key] = saved[key];
+    }
+    final tid = saved['tmdbId'];
+    if (tid != null) {
+      final ids = Map<String, dynamic>.from(
+        (meta['ids'] is Map)
+            ? Map<String, dynamic>.from(meta['ids'] as Map)
+            : {},
+      );
+      ids['tmdb'] = tid;
+      meta['ids'] = ids;
     }
   }
   final paint = target['paint'];

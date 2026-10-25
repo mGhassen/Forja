@@ -292,6 +292,8 @@ void main() {
         'metaOpen': {'surface': 'drama', 'id': '9'},
         'catalogOpen': {'surface': 'drama', 'id': '9'},
         'mediaType': 'drama',
+        'tmdbId': 4242,
+        'tmdbMediaType': 'movie',
         'title': 'Bound Title',
         'name': 'Bound Title',
         'poster': 'https://example/p.jpg',
@@ -317,13 +319,148 @@ void main() {
       expect(((grid['meta'] as Map)['open'] as Map)['surface'], 'drama');
       expect(grid['title'], 'Bound Title');
       expect(grid['poster'], 'https://example/p.jpg');
+      expect(grid['tmdbId'], 4242);
+      expect(grid['tmdbMediaType'], 'movie');
       expect((grid['meta'] as Map)['name'], 'Bound Title');
       expect((grid['meta'] as Map)['poster'], 'https://example/p.jpg');
+      expect(((grid['meta'] as Map)['ids'] as Map)['tmdb'], 4242);
       expect(((grid['paint'] as Map)['props'] as Map)['title'], 'Bound Title');
       expect(
         ((grid['paint'] as Map)['props'] as Map)['imageUrl'],
         'https://example/p.jpg',
       );
+    });
+  });
+
+  group('persistSimklTmdbLink', () {
+    test('sets tmdbId without changing hub open', () async {
+      SharedPreferences.setMockInitialValues({});
+      BookmarkStore().clearForTest();
+
+      final open = MetaOpen(
+        surface: 'drama',
+        id: '99',
+        extract: const MetaOpenExtract(
+          resolveType: 'tv',
+          panelCategory: 'drama',
+          ctx: {'kisskhId': 99},
+        ),
+      );
+      final item = <String, dynamic>{
+        'uniqueId': BookmarkStore.catalogEntryId('hub-arabic-a', '99'),
+        'pluginId': 'hub-arabic-a',
+        'mediaType': 'drama',
+        'listStatus': 'plantowatch',
+        'title': 'Arabic Title',
+        'open': open.toJson(),
+      };
+      await BookmarkStore().upsertCatalog(
+        pluginId: 'hub-arabic-a',
+        open: open.toJson(),
+        uniqueId: item['uniqueId'] as String,
+        mediaType: 'drama',
+        title: 'Arabic Title',
+        posterPath: '',
+        listStatus: 'plantowatch',
+      );
+
+      final hit = MetaItem(
+        id: 'tmdb:777',
+        type: 'movie',
+        name: 'Marnali',
+        poster: '',
+        ids: const {'tmdb': 777},
+        tmdbMediaType: 'movie',
+        open: const MetaOpen(
+          surface: 'tmdb',
+          id: '777',
+          extract: MetaOpenExtract(
+            resolveType: 'movie',
+            panelCategory: 'movie',
+            ctx: {'tmdbId': 777},
+          ),
+        ),
+      );
+
+      final ok = await ListOpenBinding.persistSimklTmdbLink(
+        item: item,
+        hit: hit,
+      );
+      expect(ok, isTrue);
+      expect(item['tmdbId'], 777);
+      expect(item['tmdbMediaType'], 'movie');
+      expect(item['pluginId'], 'hub-arabic-a');
+      expect((item['open'] as Map)['surface'], 'drama');
+      expect((item['open'] as Map)['id'], '99');
+      final stored = BookmarkStore().itemOf(item['uniqueId'] as String)!;
+      expect(stored['tmdbId'], 777);
+      expect((stored['open'] as Map)['surface'], 'drama');
+    });
+  });
+
+  group('persistBinding preserves tmdb', () {
+    test('keeps bookmark tmdb when hub hit has none', () async {
+      SharedPreferences.setMockInitialValues({});
+      BookmarkStore().clearForTest();
+
+      final dramaOpen = MetaOpen(
+        surface: 'drama',
+        id: '12',
+        extract: const MetaOpenExtract(
+          resolveType: 'tv',
+          panelCategory: 'drama',
+          ctx: {'kisskhId': 12},
+        ),
+      );
+      final item = <String, dynamic>{
+        'uniqueId': BookmarkStore.catalogEntryId('hub-a', '12'),
+        'pluginId': 'hub-a',
+        'mediaType': 'drama',
+        'tmdbId': 9001,
+        'tmdbMediaType': 'movie',
+        'listStatus': 'watching',
+        'title': 'Local',
+        'open': dramaOpen.toJson(),
+      };
+      await BookmarkStore().upsertCatalog(
+        pluginId: 'hub-a',
+        open: dramaOpen.toJson(),
+        uniqueId: item['uniqueId'] as String,
+        mediaType: 'drama',
+        title: 'Local',
+        posterPath: '',
+        listStatus: 'watching',
+        tmdbId: 9001,
+        tmdbMediaType: 'movie',
+      );
+
+      final hubBOpen = MetaOpen(
+        surface: 'drama',
+        id: '12',
+        extract: const MetaOpenExtract(
+          resolveType: 'tv',
+          panelCategory: 'drama',
+          ctx: {'kisskhId': 12},
+        ),
+      );
+      final metaNoTmdb = MetaItem(
+        id: 'drama:12',
+        type: 'drama',
+        name: 'Local',
+        poster: '',
+        open: hubBOpen,
+      );
+
+      await ListOpenBinding.persistBinding(
+        item: item,
+        pluginId: 'hub-b',
+        open: hubBOpen,
+        meta: metaNoTmdb,
+      );
+
+      expect(item['tmdbId'], 9001);
+      expect(BookmarkStore().items.single['tmdbId'], 9001);
+      expect(item['pluginId'], 'hub-b');
     });
   });
 }

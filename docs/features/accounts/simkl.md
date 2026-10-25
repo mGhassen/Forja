@@ -43,6 +43,7 @@ The app must be built with `SIMKL_CLIENT_ID` (repo-root `.env` for local `flutte
 ## Tips
 
 - While connected, My List shows Simkl for movies/TV/anime; Asian Drama / unmatched hub titles can still appear from local
+- My List Open with… can attach a TMDB id for Simkl without changing the open hub (Open with vs Simkl **S** in the same sheet). Cards show linked **S**, or **S** with a red cross when not linked yet
 - Background sync no longer silently overwrites local list buckets — only your chooser does
 - After the first sync, background history sync only pulls what changed since the last Simkl activity stamp (`date_from`), and skips entirely for ~15 minutes after a successful sync
 - [Trakt](trakt.md) is admin-only and needs its own API app

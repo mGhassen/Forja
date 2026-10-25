@@ -5,6 +5,7 @@ import 'package:forja/shared/engine/runtime/nav/plugin_nav.dart';
 import 'package:forja/shared/engine/store/list_open_prefs.dart';
 import 'package:forja/shared/engine/models/models.dart';
 import 'package:forja/shared/engine/packs/settings/pack_hub_select_options.dart';
+import 'package:forja/shared/services/tracker/simkl_service.dart';
 import 'package:forja_foundation/protocol/protocol.dart';
 import 'package:rust/rust.dart';
 
@@ -226,6 +227,75 @@ abstract final class ListOpenBinding {
     return null;
   }
 
+  /// Home-like hub with movie/tv search — used to match TMDB for Simkl.
+  static Future<ListOpenCandidate?> tmdbSearchCandidate() async {
+    ListOpenCandidate? fallback;
+    for (final pl in await PluginNavRegistry.listKitPlugins()) {
+      if (!PackHubSelectOptions.isBrowseHub(pl)) continue;
+      if (!pl.hasCapability('search')) continue;
+      final hasMovie = pl.types.contains('movie');
+      final hasTv = pl.types.contains('tv');
+      if (!hasMovie && !hasTv) continue;
+      final c = ListOpenCandidate(
+        pluginId: pl.id,
+        label: PackHubSelectOptions.labelFor(pl),
+        types: List<String>.from(pl.types),
+        compatible: true,
+        hasSearch: true,
+      );
+      if (hasMovie && hasTv) return c;
+      fallback ??= c;
+    }
+    return fallback;
+  }
+
+  /// Write TMDB onto the bookmark for Simkl without changing hub open.
+  static Future<bool> persistSimklTmdbLink({
+    required Map<String, dynamic> item,
+    required MetaItem hit,
+  }) async {
+    final tmdb =
+        hit.numericId('tmdb') ??
+        (hit.open?.surface.trim() == 'tmdb' ? hit.open?.idInt : null);
+    if (tmdb == null || tmdb <= 0) return false;
+    final uid = item['uniqueId']?.toString().trim() ?? '';
+    if (uid.isEmpty) return false;
+    final mt =
+        BookmarkStore.normalizeTmdbMediaType(
+          hit.tmdbMediaType ??
+              hit.open?.effectiveExtract.resolveType ??
+              item['tmdbMediaType']?.toString() ??
+              item['mediaType']?.toString(),
+        ) ??
+        'tv';
+    await BookmarkStore().patchTmdbLink(
+      uniqueId: uid,
+      tmdbId: tmdb,
+      tmdbMediaType: mt,
+    );
+    item['tmdbId'] = tmdb;
+    item['tmdbMediaType'] = mt;
+    final nested = item['meta'];
+    if (nested is Map) {
+      final ids = Map<String, dynamic>.from(
+        (nested['ids'] is Map)
+            ? Map<String, dynamic>.from(nested['ids'] as Map)
+            : {},
+      );
+      ids['tmdb'] = tmdb;
+      nested['ids'] = ids;
+      nested['tmdbMediaType'] = mt;
+    }
+    final status = item['listStatus']?.toString().trim();
+    final to = (status != null && status.isNotEmpty)
+        ? status
+        : BookmarkStore.defaultStatus;
+    if (await SimklService().isLoggedIn()) {
+      return SimklService().setListStatus(tmdbId: tmdb, mediaType: mt, to: to);
+    }
+    return true;
+  }
+
   static Future<void> persistBinding({
     required Map<String, dynamic> item,
     required String pluginId,
@@ -235,7 +305,8 @@ abstract final class ListOpenBinding {
     await BookmarkStore().ensureLoaded();
     final newUid = BookmarkStore.catalogEntryId(pluginId, open.id);
     final oldUid = item['uniqueId']?.toString();
-    final tmdb = legacyListTmdbId(item) ?? meta.numericId('tmdb');
+    // Prefer existing bookmark TMDB when the hub hit has none (Afflem open).
+    final tmdb = meta.numericId('tmdb') ?? legacyListTmdbId(item);
     final tmdbMt =
         meta.tmdbMediaType ??
         item['tmdbMediaType']?.toString() ??
@@ -285,6 +356,12 @@ abstract final class ListOpenBinding {
     item['open'] = open.toJson();
     item['catalogOpen'] = open.toJson();
     item['listStatus'] = status;
+    if (tmdb != null) {
+      item['tmdbId'] = tmdb;
+      if (tmdbMt != null && tmdbMt.trim().isNotEmpty) {
+        item['tmdbMediaType'] = tmdbMt;
+      }
+    }
     final title = meta.name.trim();
     if (title.isNotEmpty) {
       item['title'] = title;
@@ -306,6 +383,18 @@ abstract final class ListOpenBinding {
       if (title.isNotEmpty) nested['name'] = title;
       if (poster.isNotEmpty) nested['poster'] = poster;
       if (bg.isNotEmpty) nested['background'] = bg;
+      if (tmdb != null) {
+        final ids = Map<String, dynamic>.from(
+          (nested['ids'] is Map)
+              ? Map<String, dynamic>.from(nested['ids'] as Map)
+              : {},
+        );
+        ids['tmdb'] = tmdb;
+        nested['ids'] = ids;
+        if (tmdbMt != null && tmdbMt.trim().isNotEmpty) {
+          nested['tmdbMediaType'] = tmdbMt;
+        }
+      }
     }
   }
 }
