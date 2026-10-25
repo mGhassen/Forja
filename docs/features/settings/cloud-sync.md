@@ -56,7 +56,7 @@ Per profile:
 |---------|------------------|
 | **`accounts.features`** | Lean account flags (default `{}` = all off). Enabled boolean keys only — e.g. `iptvScrape` (Find Portals) and `dealPortal` (Deal from catalog pool). Numeric `maxIptvPortals` when raised above the default **5** (omit when 5). Admins (`is_admin`) are unlimited for portals. The app re-pulls flags/credits on IPTV open and when the app resumes. |
 | **`user_iptv_portals`** | Assigned portals: `portal_id` + your **portal name** + favorite. Credentials live on shared `iptv_portals` (passwords encrypted at rest). |
-| **`profile_settings` → Playback** | Player prefs (audio / subtitle, auto next/skip, content warnings, auto PiP, max quality) plus play-source masters (torrent / Stremio / Nuvio). Web **Profile → Addons** owns the play-source switches; **Addons → Playback** is player prefs only. IPTV EPG is under **Addons → IPTV** when the IPTV pack is on. Webstreaming / Simple resolve keys still sync from the app but are not editable on the portal. Legacy `anime_title_language` under Playback is migrated into pack settings and stripped on the next write. |
+| **`profile_settings` → Playback** | Player prefs (audio / subtitle, auto next/skip, content warnings, auto PiP, max quality) plus play-source masters (torrent / Stremio / Nuvio), plus Simkl **list sync mode** and **auto sync on My List** (login token stays on the device). Web **Profile → Addons** owns the play-source switches; **Addons → Playback** is player prefs only. IPTV EPG is under **Addons → IPTV** when the IPTV pack is on. Webstreaming / Simple resolve keys still sync from the app but are not editable on the portal. Legacy `anime_title_language` under Playback is migrated into pack settings and stripped on the next write. |
 | **`profile_settings` → Navigation** | Features rail `visibleIds` + `tabOrder` among **available** tabs only (hub packs on the profile). Written by pack enable (default-on) and by **Features** (hide/reorder). Web **Profile → Features**. |
 | **`profile_settings` → Features** | Visible shell tabs and default tab — editable on web under **Profile → Features**. Empty list means no feature tabs (Settings only). The portal lists hub tab ids from **enabled** packs on this profile. |
 | **`profile_settings` → Stremio** | Installed addon manifest URLs — web **Addons → Stremio** |
@@ -75,7 +75,7 @@ Not synced — device-specific or sensitive:
 - Torrent cache size, connections, and learned provider scores
 - Debrid and indexer API keys (for now)
 - Cache clears, downloaded updates, WebView data
-- Trakt / Simkl / MDBList account linking (per Forja account and profile on the device)
+- Trakt / Simkl / MDBList login tokens (PIN / OAuth) — list sync mode and auto sync on My List sync with the profile
 
 ## What you can do
 
@@ -226,7 +226,7 @@ Supabase `service_role` / `sb_secret_…` key in a desktop build.
 - IPTV credentials live on shared `iptv_portals` rows with passwords encrypted at rest. Your per-profile **portal name** is only on `user_iptv_portals`.
 - **Cloud is master for portal assignments.** The device IPTV list is a cache. An empty local cache never deletes cloud portals (profile switch / sign-out wipe). Only deleting portals in the UI (or an intentional clear-all) updates cloud. On **profile switch**, the device cache is wiped **before** pull (fail-closed): a stalled or failed pull must not leave the previous profile’s portals on screen.
 - **Cloud is master for `profile_settings` too.** The device settings file is a cache of the active profile’s cloud row. Edits write the cache and push; wipe / pull / defaults never upload an empty or partial cache over Stremio, Nuvio, or navigation already in cloud. A **failed** lean settings pull (network / expired token) keeps the local lean cache and does **not** seed platform defaults or push — only a confirmed missing cloud row seeds a new profile. **IPTV is separate:** profile-switch wipe clears portals first (see above). Debounced edits push only that domain (a playback toggle does not rewrite Features / default tab). Soft-pull lands cloud edits when you reopen Settings / Addons, resume the app, or refocus the web Profile tab — Features editing itself does not soft-pull mid-toggle.
-- Cloud settings never store M3U playlists, M3U channel lists, or My List — those stay on each device. Playback prefs (including play sources and preferred subtitle language) sync in full.
+- Cloud settings never store M3U playlists, M3U channel lists, or My List — those stay on each device. Playback prefs (including play sources, preferred subtitle language, and Simkl list sync mode / auto sync) sync in full.
 - Portal **share codes** are a peer handoff: copy gives an 8-character `XXXX-XXXX` code that expires after **7 days**. Credentials are encrypted on the device; the short code is a lookup (not stored in your sync payload).
 - Each account always keeps at least one profile. Deleting a profile also deletes its remote settings.
 - Profile selection is local to each device; profile settings remain remote and account-owned.

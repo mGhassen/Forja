@@ -13,6 +13,7 @@ import 'package:forja/shared/engine/packs/settings/pack_green_play_config.dart';
 import 'package:forja/shared/engine/packs/settings/pack_settings_store.dart';
 import 'package:forja/shared/engine/store/list_open_prefs.dart';
 import 'package:forja/shared/engine/runtime/nav/plugin_nav.dart';
+import 'package:forja/shared/services/tracker/simkl_service.dart';
 import 'package:forja/shared/sync/models/account_features.dart';
 import 'package:forja/shared/sync/bridge/packs_onboarding_store.dart';
 import 'package:forja/shared/sync/api/sync_service.dart';
@@ -32,6 +33,10 @@ class SyncDomainBridge {
     PackSettingsStore.onNonSecretUserWrite ??= () {
       notePackSettingsDirty();
       schedulePush(_domainPackSettings);
+    };
+    SimklService.onListSyncPrefsWrite ??= () {
+      notePreferencesDirty();
+      schedulePush(_domainPreferences);
     };
   }
   static final SyncDomainBridge instance = SyncDomainBridge._();
@@ -179,6 +184,8 @@ class SyncDomainBridge {
       'iptv_epg_enabled': defaults.iptvEpgEnabled,
       'max_playback_height': 2160,
       'addon_feature_iptv': false,
+      'simkl_list_sync_mode': null,
+      'simkl_auto_sync_lists': false,
     });
     await _settings.setNavbarConfig(
       List<String>.from(defaults.visibleNavIds),
@@ -1516,6 +1523,7 @@ class SyncDomainBridge {
   }
 
   Future<Map<String, dynamic>> exportPreferences() async {
+    final simkl = SimklService();
     return {
       // Stored (not effective) so Android TV does not wipe desktop play sources.
       'play_source_torrent_enabled': await _settings
@@ -1542,6 +1550,11 @@ class SyncDomainBridge {
       'max_playback_height': await _settings.getMaxPlaybackHeight(),
       // Pack-only — always false in cloud payload (legacy key).
       'addon_feature_iptv': false,
+      // Simkl OAuth stays device-local; list sync prefs follow the profile.
+      'simkl_list_sync_mode': SimklService.listSyncModeToStorage(
+        await simkl.getListSyncMode(),
+      ),
+      'simkl_auto_sync_lists': await simkl.getAutoSyncLists(),
     };
   }
 
@@ -1613,6 +1626,27 @@ class SyncDomainBridge {
       await _settings.setMaxPlaybackHeight(
         (payload['max_playback_height'] as num).toInt(),
       );
+    }
+    if (payload.containsKey('simkl_list_sync_mode') ||
+        payload.containsKey('simkl_auto_sync_lists')) {
+      final simkl = SimklService();
+      final prevHook = SimklService.onListSyncPrefsWrite;
+      SimklService.onListSyncPrefsWrite = null;
+      try {
+        if (payload.containsKey('simkl_list_sync_mode')) {
+          final raw = payload['simkl_list_sync_mode'];
+          await simkl.setListSyncMode(
+            SimklService.listSyncModeFromStorage(raw is String ? raw : null),
+          );
+        }
+        if (payload.containsKey('simkl_auto_sync_lists')) {
+          await simkl.setAutoSyncLists(
+            payload['simkl_auto_sync_lists'] == true,
+          );
+        }
+      } finally {
+        SimklService.onListSyncPrefsWrite = prevHook;
+      }
     }
     // Legacy host Playback key → Anime pack setting (packSettings is SoT now).
     if (payload.containsKey('anime_title_language')) {

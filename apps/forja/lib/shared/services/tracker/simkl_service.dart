@@ -48,6 +48,9 @@ class SimklService {
     LocalDataScope.addListener(_onScopeChanged);
   }
 
+  /// Cloud sync hook for list sync mode / auto-sync prefs (not the OAuth token).
+  static void Function()? onListSyncPrefsWrite;
+
   // ── Constants ──────────────────────────────────────────────────────────
   static const String _baseUrl = 'https://api.simkl.com';
 
@@ -119,19 +122,14 @@ class SimklService {
 
   /// Last chosen Keep local / Use Simkl / Merge (null until Sync Now / connect).
   Future<SimklListSyncMode?> getListSyncMode() async {
-    final raw = await _prefsRead(_keyListSyncMode);
-    return switch (raw) {
-      'keepLocal' => SimklListSyncMode.keepLocal,
-      'useSimkl' => SimklListSyncMode.useSimkl,
-      'merge' => SimklListSyncMode.merge,
-      _ => null,
-    };
+    return listSyncModeFromStorage(await _prefsRead(_keyListSyncMode));
   }
 
   Future<void> setListSyncMode(SimklListSyncMode? mode) async {
     if (mode == null) {
       final prefs = await SharedPreferences.getInstance();
       await prefs.remove(LocalDataScope.storageKey(_keyListSyncMode));
+      onListSyncPrefsWrite?.call();
       return;
     }
     final v = switch (mode) {
@@ -140,6 +138,7 @@ class SimklService {
       SimklListSyncMode.merge => 'merge',
     };
     await _prefsWrite(_keyListSyncMode, v);
+    onListSyncPrefsWrite?.call();
   }
 
   Future<bool> getAutoSyncLists() async {
@@ -150,7 +149,25 @@ class SimklService {
   Future<void> setAutoSyncLists(bool enabled) async {
     await _prefsWrite(_keyAutoSyncLists, enabled ? '1' : '0');
     if (!enabled) _listAutoSyncAt = null;
+    onListSyncPrefsWrite?.call();
   }
+
+  /// Cloud / prefs wire: `keepLocal` · `useSimkl` · `merge` · null = no sync.
+  static String? listSyncModeToStorage(SimklListSyncMode? mode) =>
+      switch (mode) {
+        SimklListSyncMode.keepLocal => 'keepLocal',
+        SimklListSyncMode.useSimkl => 'useSimkl',
+        SimklListSyncMode.merge => 'merge',
+        null => null,
+      };
+
+  static SimklListSyncMode? listSyncModeFromStorage(String? raw) =>
+      switch (raw) {
+        'keepLocal' => SimklListSyncMode.keepLocal,
+        'useSimkl' => SimklListSyncMode.useSimkl,
+        'merge' => SimklListSyncMode.merge,
+        _ => null,
+      };
 
   bool _initialSyncDone = false;
   Future<void>? _syncInProgress;
