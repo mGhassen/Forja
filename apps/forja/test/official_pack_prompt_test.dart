@@ -36,7 +36,10 @@ void main() {
       );
 
       expect(candidates, hasLength(1));
-      expect(candidates.single.manifestUrl, 'https://example.test/b/manifest.json');
+      expect(
+        candidates.single.manifestUrl,
+        'https://example.test/b/manifest.json',
+      );
       expect(candidates.single.displayName, 'Pack B');
       expect(candidates.single.description, 'What Pack B does');
       expect(candidates.single.tags, ['anime']);

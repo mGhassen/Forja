@@ -488,6 +488,19 @@ class _SettingsTvExpandableSideRowState
     ctx.visitChildElements(visit);
   }
 
+  /// Details chevron is a narrow right hit target — spatial ↑/↓ from it often
+  /// misses (same class as issue 262). Walk from the full-width header rect
+  /// instead, and always claim the edge so KeyRepeat does not storm
+  /// focusInDirection on a stuck chevron (issue 490).
+  void _navVerticalFromHeader(TraversalDirection direction) {
+    final steps = ShellTvHoldAccel.lastStep;
+    var n = _headerFocus;
+    for (var i = 0; i < steps; i++) {
+      if (!shellTvTryFocusInDirection(n, direction)) break;
+      n = FocusManager.instance.primaryFocus ?? n;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final activate = widget.onHeaderActivate;
@@ -574,6 +587,8 @@ class _SettingsTvExpandableSideRowState
               _headerFocus.requestFocus();
             },
             onRightEdge: hasTrailing ? _focusFirstTrailing : null,
+            onUpEdge: () => _navVerticalFromHeader(TraversalDirection.up),
+            onDownEdge: () => _navVerticalFromHeader(TraversalDirection.down),
             child: SizedBox(
               width: SettingsTokens.expandChevronHitSizeOf(context),
               height: SettingsTokens.expandChevronHitSizeOf(context),

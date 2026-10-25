@@ -7,6 +7,7 @@ import 'package:flutter/services.dart';
 import 'package:forja_foundation/components/button.dart';
 import 'package:forja_foundation/components/checkbox.dart';
 import 'package:forja/shared/engine/store/list_follow.dart';
+import 'package:forja/shared/engine/store/list_open_bind_chrome.dart';
 import 'package:forja/shared/engine/store/list_open_binding.dart';
 import 'package:forja/shared/engine/store/list_open_picker.dart';
 import 'package:forja/shared/engine/store/list_open_title_rank.dart';
@@ -54,9 +55,9 @@ class ListOpenBindResult {
   final MetaItem? hit;
 }
 
-enum _ListOpenBindMode { openWith, simkl }
+enum _ListOpenBindMode { openWith, tracker }
 
-/// One sheet: Open with (hub) and optional Simkl TMDB link modes.
+/// One sheet: hub open bind + optional pack-declared tracker / pin chrome.
 Future<ListOpenBindResult?> showListOpenBindSheet(
   BuildContext context, {
   required List<ListOpenCandidate> candidates,
@@ -64,15 +65,16 @@ Future<ListOpenBindResult?> showListOpenBindSheet(
   String title = 'Open in…',
   String? initialPluginId,
   bool pickFilm = false,
-  bool simklLinkEnabled = false,
-  bool initialSimklMode = false,
+  bool trackerModeEnabled = false,
+  bool initialTrackerMode = false,
   String? openHubLabel,
-  ListOpenCandidate? simklSearchCandidate,
-  bool hasSimklLink = false,
+  ListOpenCandidate? trackerSearchCandidate,
+  bool hasTrackerLink = false,
   ListFollowTarget? listPinTarget,
   String? knownListStatus,
+  ListOpenBindChrome chrome = ListOpenBindChrome.empty,
   Future<bool> Function(ListOpenBindResult result)? onSave,
-  Future<bool> Function(MetaItem hit)? onSimklSave,
+  Future<bool> Function(MetaItem hit)? onTrackerSave,
 }) {
   if (candidates.isEmpty) return Future.value(null);
   return showDialog<ListOpenBindResult>(
@@ -87,15 +89,16 @@ Future<ListOpenBindResult?> showListOpenBindSheet(
           title: title,
           initialPluginId: initialPluginId,
           pickFilm: pickFilm,
-          simklLinkEnabled: simklLinkEnabled,
-          initialSimklMode: initialSimklMode,
+          trackerModeEnabled: trackerModeEnabled,
+          initialTrackerMode: initialTrackerMode,
           openHubLabel: openHubLabel,
-          simklSearchCandidate: simklSearchCandidate,
-          hasSimklLink: hasSimklLink,
+          trackerSearchCandidate: trackerSearchCandidate,
+          hasTrackerLink: hasTrackerLink,
           listPinTarget: listPinTarget,
           knownListStatus: knownListStatus,
+          chrome: chrome,
           onSave: onSave,
-          onSimklSave: onSimklSave,
+          onTrackerSave: onTrackerSave,
         ),
       );
     },
@@ -109,15 +112,16 @@ class _ListOpenBindSheet extends StatefulWidget {
     required this.title,
     this.initialPluginId,
     this.pickFilm = false,
-    this.simklLinkEnabled = false,
-    this.initialSimklMode = false,
+    this.trackerModeEnabled = false,
+    this.initialTrackerMode = false,
     this.openHubLabel,
-    this.simklSearchCandidate,
-    this.hasSimklLink = false,
+    this.trackerSearchCandidate,
+    this.hasTrackerLink = false,
     this.listPinTarget,
     this.knownListStatus,
+    this.chrome = ListOpenBindChrome.empty,
     this.onSave,
-    this.onSimklSave,
+    this.onTrackerSave,
   });
 
   final List<ListOpenCandidate> candidates;
@@ -128,21 +132,24 @@ class _ListOpenBindSheet extends StatefulWidget {
   /// Right-click rebind: search every hub, check a title to save it.
   final bool pickFilm;
 
-  final bool simklLinkEnabled;
-  final bool initialSimklMode;
+  final bool trackerModeEnabled;
+  final bool initialTrackerMode;
   final String? openHubLabel;
-  final ListOpenCandidate? simklSearchCandidate;
-  final bool hasSimklLink;
+  final ListOpenCandidate? trackerSearchCandidate;
+  final bool hasTrackerLink;
 
-  /// My List status pin (TV cards hide pin — change status here).
+  /// Status pin when pack `openBind.pin` (TV cards omit overlay pin).
   final ListFollowTarget? listPinTarget;
   final String? knownListStatus;
+
+  /// Pack-emitted labels / icon keys for tracker + open pills.
+  final ListOpenBindChrome chrome;
 
   /// Save the checked title and stay on the sheet. Null pops and opens.
   final Future<bool> Function(ListOpenBindResult result)? onSave;
 
-  /// Persist TMDB for Simkl only; stay on the sheet.
-  final Future<bool> Function(MetaItem hit)? onSimklSave;
+  /// Persist tracker TMDB link only; stay on the sheet.
+  final Future<bool> Function(MetaItem hit)? onTrackerSave;
 
   @override
   State<_ListOpenBindSheet> createState() => _ListOpenBindSheetState();
@@ -151,13 +158,13 @@ class _ListOpenBindSheet extends StatefulWidget {
 class _ListOpenBindSheetState extends State<_ListOpenBindSheet> {
   late ListOpenCandidate _hub;
   late _ListOpenBindMode _mode;
-  late bool _simklLinked;
+  late bool _trackerLinked;
   late final TextEditingController _query;
   late final List<FocusNode> _chipNodes;
   final FocusNode _queryFocus = FocusNode();
   final FocusNode _openFocus = FocusNode();
   final FocusNode _openWithBtnFocus = FocusNode();
-  final FocusNode _simklBtnFocus = FocusNode();
+  final FocusNode _trackerBtnFocus = FocusNode();
   final FocusNode _listPinFocus = FocusNode();
   final List<FocusNode> _hitNodes = [];
   Timer? _debounce;
@@ -172,13 +179,13 @@ class _ListOpenBindSheetState extends State<_ListOpenBindSheet> {
 
   MetaItem get _headerMeta => _preview ?? widget.sourceMeta;
 
-  bool get _simklMode =>
-      _mode == _ListOpenBindMode.simkl &&
-      widget.simklLinkEnabled &&
-      widget.simklSearchCandidate != null;
+  bool get _trackerMode =>
+      _mode == _ListOpenBindMode.tracker &&
+      widget.trackerModeEnabled &&
+      widget.trackerSearchCandidate != null;
 
   ListOpenCandidate get _activeHub =>
-      _simklMode ? widget.simklSearchCandidate! : _hub;
+      _trackerMode ? widget.trackerSearchCandidate! : _hub;
 
   String get _yearHint {
     final r = widget.sourceMeta.releaseInfo.trim();
@@ -196,9 +203,9 @@ class _ListOpenBindSheetState extends State<_ListOpenBindSheet> {
   void initState() {
     super.initState();
     _hub = _pickInitialHub();
-    _simklLinked = widget.hasSimklLink;
-    _mode = widget.initialSimklMode && widget.simklLinkEnabled
-        ? _ListOpenBindMode.simkl
+    _trackerLinked = widget.hasTrackerLink;
+    _mode = widget.initialTrackerMode && widget.trackerModeEnabled
+        ? _ListOpenBindMode.tracker
         : _ListOpenBindMode.openWith;
     _chipNodes = List.generate(
       widget.candidates.length,
@@ -209,8 +216,8 @@ class _ListOpenBindSheetState extends State<_ListOpenBindSheet> {
       if (!mounted) return;
       _onHubReady();
       if (!ShellScope.inputPolicyOf(context).useFocusableMoodChips) return;
-      if (_simklMode) {
-        _simklBtnFocus.requestFocus();
+      if (_trackerMode) {
+        _trackerBtnFocus.requestFocus();
         return;
       }
       final i = widget.candidates.indexWhere(
@@ -240,7 +247,7 @@ class _ListOpenBindSheetState extends State<_ListOpenBindSheet> {
     _queryFocus.dispose();
     _openFocus.dispose();
     _openWithBtnFocus.dispose();
-    _simklBtnFocus.dispose();
+    _trackerBtnFocus.dispose();
     _listPinFocus.dispose();
     for (final node in _chipNodes) {
       node.dispose();
@@ -275,8 +282,8 @@ class _ListOpenBindSheetState extends State<_ListOpenBindSheet> {
   }
 
   void _focusSelectedChip() {
-    if (_simklMode) {
-      _simklBtnFocus.requestFocus();
+    if (_trackerMode) {
+      _trackerBtnFocus.requestFocus();
       return;
     }
     final i = widget.candidates.indexWhere((c) => c.pluginId == _hub.pluginId);
@@ -288,9 +295,9 @@ class _ListOpenBindSheetState extends State<_ListOpenBindSheet> {
 
   void _focusModeIcons() {
     // Prefer selected mode; pin is leftmost for D-pad entry from chips.
-    if (widget.simklLinkEnabled) {
-      if (_simklMode) {
-        _simklBtnFocus.requestFocus();
+    if (widget.trackerModeEnabled) {
+      if (_trackerMode) {
+        _trackerBtnFocus.requestFocus();
         return;
       }
       _openWithBtnFocus.requestFocus();
@@ -300,7 +307,7 @@ class _ListOpenBindSheetState extends State<_ListOpenBindSheet> {
   }
 
   void _focusBelowModeIcons() {
-    if (_simklMode) {
+    if (_trackerMode) {
       _focusBelowHubs();
       return;
     }
@@ -308,7 +315,7 @@ class _ListOpenBindSheetState extends State<_ListOpenBindSheet> {
   }
 
   bool get _usesSearch {
-    if (_simklMode) return widget.simklSearchCandidate!.hasSearch;
+    if (_trackerMode) return widget.trackerSearchCandidate!.hasSearch;
     return listOpenBindUsesHubSearch(
       pickFilm: widget.pickFilm,
       compatible: _hub.compatible,
@@ -318,7 +325,7 @@ class _ListOpenBindSheetState extends State<_ListOpenBindSheet> {
 
   /// Rebind on a hub that cannot search: the current title, unchecked.
   bool get _filmOnly =>
-      !_simklMode && widget.pickFilm && _hub.compatible && !_hub.hasSearch;
+      !_trackerMode && widget.pickFilm && _hub.compatible && !_hub.hasSearch;
 
   void _focusBelowHubs() {
     if (_usesSearch || widget.pickFilm) {
@@ -361,7 +368,7 @@ class _ListOpenBindSheetState extends State<_ListOpenBindSheet> {
       return;
     }
     final hub = _activeHub;
-    if (!_usesSearch && hub.compatible && !widget.pickFilm && !_simklMode) {
+    if (!_usesSearch && hub.compatible && !widget.pickFilm && !_trackerMode) {
       return;
     }
     if (!hub.hasSearch) {
@@ -427,9 +434,9 @@ class _ListOpenBindSheetState extends State<_ListOpenBindSheet> {
 
   Future<void> _savePick(ListOpenBindResult result, String key) async {
     if (_closed || _saving || _pickedKey == key) return;
-    if (_simklMode) {
+    if (_trackerMode) {
       final hit = result.hit;
-      final save = widget.onSimklSave;
+      final save = widget.onTrackerSave;
       if (hit == null || save == null) return;
       _saving = true;
       final ok = await save(hit);
@@ -437,7 +444,7 @@ class _ListOpenBindSheetState extends State<_ListOpenBindSheet> {
       if (!mounted || !ok) return;
       setState(() {
         _pickedKey = key;
-        _simklLinked = true;
+        _trackerLinked = true;
         _preview = widget.sourceMeta;
       });
       return;
@@ -529,7 +536,7 @@ class _ListOpenBindSheetState extends State<_ListOpenBindSheet> {
                 children: [
                   Expanded(
                     child: Text(
-                      _simklMode ? 'Match on Simkl' : widget.title,
+                      _trackerMode ? widget.chrome.trackerTitle : widget.title,
                       style: GoogleFonts.plusJakartaSans(
                         color: ForjaShellColors.textPrimary,
                         fontSize: type(18),
@@ -582,19 +589,21 @@ class _ListOpenBindSheetState extends State<_ListOpenBindSheet> {
                             ),
                           ),
                         ],
-                        if (widget.simklLinkEnabled || _hasListPin) ...[
+                        if (widget.trackerModeEnabled || _hasListPin) ...[
                           SizedBox(height: px(8)),
                           _BindSheetActionPills(
                             listPinTarget: widget.listPinTarget,
                             knownListStatus: widget.knownListStatus,
-                            simklLinkEnabled: widget.simklLinkEnabled,
-                            simklLinked: _simklLinked,
-                            simklMode: _simklMode,
+                            chrome: widget.chrome,
+                            trackerModeEnabled: widget.trackerModeEnabled,
+                            trackerLinked: _trackerLinked,
+                            trackerMode: _trackerMode,
                             openHubLabel: widget.openHubLabel,
                             pinFocus: _listPinFocus,
-                            simklFocus: _simklBtnFocus,
+                            trackerFocus: _trackerBtnFocus,
                             openWithFocus: _openWithBtnFocus,
-                            onSimkl: () => _setMode(_ListOpenBindMode.simkl),
+                            onTracker: () =>
+                                _setMode(_ListOpenBindMode.tracker),
                             onOpenWith: () =>
                                 _setMode(_ListOpenBindMode.openWith),
                             onDownEdge: dpad ? _focusBelowModeIcons : null,
@@ -613,8 +622,8 @@ class _ListOpenBindSheetState extends State<_ListOpenBindSheet> {
                               Flexible(
                                 child: Text(
                                   (widget.openHubLabel ?? '').trim().isNotEmpty
-                                      ? 'Open with ${widget.openHubLabel!.trim()}'
-                                      : 'Open with…',
+                                      ? '${widget.chrome.openLabel} ${widget.openHubLabel!.trim()}'
+                                      : '${widget.chrome.openLabel}…',
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                   style: TextStyle(
@@ -632,7 +641,7 @@ class _ListOpenBindSheetState extends State<_ListOpenBindSheet> {
                   ),
                 ],
               ),
-              if (!_simklMode) ...[
+              if (!_trackerMode) ...[
                 SizedBox(height: px(14)),
                 Text(
                   'Hub',
@@ -670,7 +679,7 @@ class _ListOpenBindSheetState extends State<_ListOpenBindSheet> {
                             : () => _chipNodes[i + 1].requestFocus(),
                         onDownEdge: dpad ? _focusBelowHubs : null,
                         onUpEdge: dpad
-                            ? (widget.simklLinkEnabled || _hasListPin
+                            ? (widget.trackerModeEnabled || _hasListPin
                                   ? _focusModeIcons
                                   : () {})
                             : null,
@@ -680,7 +689,7 @@ class _ListOpenBindSheetState extends State<_ListOpenBindSheet> {
               ] else ...[
                 SizedBox(height: px(14)),
                 Text(
-                  'Search ${widget.simklSearchCandidate!.label} for the Simkl title',
+                  'Search ${widget.trackerSearchCandidate!.label}',
                   style: TextStyle(
                     color: ForjaShellColors.textSecondary,
                     fontSize: type(11),
@@ -701,7 +710,7 @@ class _ListOpenBindSheetState extends State<_ListOpenBindSheet> {
                   onUp: _focusSelectedChip,
                 ),
                 const Spacer(),
-              ] else if (!_simklMode &&
+              ] else if (!_trackerMode &&
                   _hub.compatible &&
                   !widget.pickFilm) ...[
                 _CompatibleOpenBody(
@@ -750,7 +759,7 @@ class _ListOpenBindSheetState extends State<_ListOpenBindSheet> {
                     hits: _hits,
                     isBest: _isBest,
                     onPick: _confirmHit,
-                    pickFilm: widget.pickFilm || _simklMode,
+                    pickFilm: widget.pickFilm || _trackerMode,
                     pickedKey: _pickedKey,
                     hitKey: _hitKey,
                     dpad: dpad,
@@ -1298,16 +1307,17 @@ class _HitsBody extends StatelessWidget {
   }
 }
 
-/// Match / Pin / Open with — same expand-on-focus labels as hero pills.
+/// Pin / tracker / open — same expand-on-focus labels as hero pills.
 class _BindSheetActionPills extends StatefulWidget {
   const _BindSheetActionPills({
-    required this.simklLinkEnabled,
-    required this.simklLinked,
-    required this.simklMode,
-    required this.onSimkl,
+    required this.chrome,
+    required this.trackerModeEnabled,
+    required this.trackerLinked,
+    required this.trackerMode,
+    required this.onTracker,
     required this.onOpenWith,
     required this.pinFocus,
-    required this.simklFocus,
+    required this.trackerFocus,
     required this.openWithFocus,
     this.listPinTarget,
     this.knownListStatus,
@@ -1316,16 +1326,17 @@ class _BindSheetActionPills extends StatefulWidget {
     this.onDownEdge,
   });
 
+  final ListOpenBindChrome chrome;
   final ListFollowTarget? listPinTarget;
   final String? knownListStatus;
-  final bool simklLinkEnabled;
-  final bool simklLinked;
-  final bool simklMode;
+  final bool trackerModeEnabled;
+  final bool trackerLinked;
+  final bool trackerMode;
   final String? openHubLabel;
   final FocusNode pinFocus;
-  final FocusNode simklFocus;
+  final FocusNode trackerFocus;
   final FocusNode openWithFocus;
-  final VoidCallback onSimkl;
+  final VoidCallback onTracker;
   final VoidCallback onOpenWith;
   final VoidCallback? onUpEdge;
   final VoidCallback? onDownEdge;
@@ -1519,29 +1530,33 @@ class _BindSheetActionPillsState extends State<_BindSheetActionPills> {
         );
       }
 
-      if (widget.simklLinkEnabled) {
+      if (widget.trackerModeEnabled) {
+        final iconKey = (widget.chrome.trackerIcon ?? '').trim();
+        final trackerImage = iconKey.isEmpty
+            ? null
+            : trackerMarkImage({'icon': iconKey});
         slots.add(
           HeroPillIconSlot(
-            focusNode: widget.simklFocus,
-            label: 'Match',
-            onTap: widget.onSimkl,
+            focusNode: widget.trackerFocus,
+            label: widget.chrome.trackerLabel,
+            onTap: widget.onTracker,
             iconWidget: LetterLinkMark(
               letter: 'S',
-              linked: widget.simklLinked,
+              linked: widget.trackerLinked,
               size: iconSize,
-              image: const AssetImage(kSimklLogoAsset),
-              color: widget.simklMode
+              image: trackerImage,
+              color: widget.trackerMode
                   ? ForjaShellColors.textPrimary
                   : ForjaShellColors.iconMuted,
             ),
           ),
         );
+        final openBase = widget.chrome.openLabel;
+        final hub = (widget.openHubLabel ?? '').trim();
         slots.add(
           HeroPillIconSlot(
             focusNode: widget.openWithFocus,
-            label: (widget.openHubLabel ?? '').trim().isNotEmpty
-                ? 'Open with ${widget.openHubLabel!.trim()}'
-                : 'Open with',
+            label: hub.isNotEmpty ? '$openBase $hub' : openBase,
             onTap: widget.onOpenWith,
             icon: Icons.link_rounded,
           ),

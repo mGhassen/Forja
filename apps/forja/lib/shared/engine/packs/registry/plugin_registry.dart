@@ -12,6 +12,7 @@ import 'package:forja/shared/engine/packs/registry/plugin_contract.dart';
 import 'package:forja/shared/engine/packs/install/plugin_install_validator.dart';
 import 'package:forja/shared/engine/packs/registry/pack_http.dart';
 import 'package:forja/shared/engine/packs/registry/pack_source_url_policy.dart';
+import 'package:forja/shared/engine/packs/forja_packs_root.dart';
 import 'package:forja/shared/engine/packs/registry/plugin_script_disk_store.dart';
 import 'package:forja/shared/engine/packs/install/remote_pack_intent_store.dart';
 import 'package:forja/shared/playback/cache/catalog_sources_session_cache.dart';
@@ -1024,6 +1025,29 @@ class PluginRegistry {
     return explicit.isEmpty ? null : explicit;
   }
 
+  /// Debug: hub pack JS from [FORJA_PACKS_ROOT] even when installed via remote URL.
+  ///
+  /// Slot from [forjaHqSlot] → `hubs/<slot>/manifest.json`. Local file installs
+  /// already hot-reload; GitHub-installed My List / Home / … did not.
+  @visibleForTesting
+  static String? devHubManifestUrl(String sourceUrl) {
+    if (!kDebugMode) return null;
+    final localInstall = _asLocalFile(sourceUrl)?.path;
+    if (localInstall != null) return localInstall;
+    final slot = forjaHqSlot(sourceUrl);
+    if (slot == null) return null;
+    const nonHub = {
+      'providers',
+      'catalog',
+      'live',
+      'torrent',
+      'debrid',
+      'iptv-vod',
+    };
+    if (nonHub.contains(slot)) return null;
+    return ForjaPacksRoot.manifest('hubs/$slot/manifest.json');
+  }
+
   /// Hydrate lean stubs and refresh remote packs when needed.
   Future<void> ensureOfficialInstalled({bool force = false}) async {
     if (_officialEnsureFuture != null) {
@@ -1841,7 +1865,7 @@ class PluginRegistry {
           plugin.supportsLiveResolve) {
         devUrl = devLiveManifestUrl();
       } else if (plugin.isKitPlugin) {
-        devUrl = _asLocalFile(sourceUrl)?.path;
+        devUrl = devHubManifestUrl(sourceUrl);
       } else {
         devUrl = devCatalogManifestUrl();
       }

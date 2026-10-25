@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:forja/shared/engine/store/legacy_list_item.dart';
+import 'package:forja/shared/engine/store/list_open_bind_chrome.dart';
 import 'package:forja/shared/engine/store/list_open_bind_sheet.dart';
 import 'package:forja/shared/engine/store/list_open_binding.dart';
 import 'package:forja/shared/engine/store/list_open_flow.dart';
@@ -461,6 +462,41 @@ void main() {
       expect(item['tmdbId'], 9001);
       expect(BookmarkStore().items.single['tmdbId'], 9001);
       expect(item['pluginId'], 'hub-b');
+    });
+  });
+
+  group('ListOpenBindChrome', () {
+    test('fromRow reads pack openBind product chrome', () {
+      final chrome = ListOpenBindChrome.fromRow({
+        'openBind': {
+          'pin': true,
+          'trackerLabel': 'Match',
+          'trackerTitle': 'Match on Simkl',
+          'openLabel': 'Open with',
+          'trackerIcon': 'simkl',
+        },
+      });
+      expect(chrome.pin, isTrue);
+      expect(chrome.trackerLabel, 'Match');
+      expect(chrome.trackerTitle, 'Match on Simkl');
+      expect(chrome.openLabel, 'Open with');
+      expect(chrome.trackerIcon, 'simkl');
+    });
+
+    test('fromRow empty when pack omits openBind', () {
+      expect(ListOpenBindChrome.fromRow({}).pin, isFalse);
+    });
+
+    test('fromRow reads openBind nested under paint.props', () {
+      final chrome = ListOpenBindChrome.fromRow({
+        'paint': {
+          'props': {
+            'openBind': {'pin': true, 'trackerLabel': 'Match'},
+          },
+        },
+      });
+      expect(chrome.pin, isTrue);
+      expect(chrome.trackerLabel, 'Match');
     });
   });
 

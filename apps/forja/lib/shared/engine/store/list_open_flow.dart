@@ -5,6 +5,7 @@ import 'package:forja/shared/engine/runtime/nav/plugin_nav.dart';
 import 'package:forja/shared/engine/runtime/open/catalog_open.dart';
 import 'package:forja/shared/engine/store/legacy_list_item.dart';
 import 'package:forja/shared/engine/store/list_follow.dart';
+import 'package:forja/shared/engine/store/list_open_bind_chrome.dart';
 import 'package:forja/shared/engine/store/list_open_bind_sheet.dart';
 import 'package:forja/shared/engine/store/list_open_binding.dart';
 import 'package:forja/shared/engine/store/list_providers.dart';
@@ -58,18 +59,26 @@ Map<String, dynamic> kitListOpenRow(Map<String, dynamic> item) {
   } else {
     row['open'] ??= item['metaOpen'] ?? item['catalogOpen'];
   }
-  // Lift pack trackerMark / trackerLink onto the bind row.
+  // Lift pack trackerMark / trackerLink / openBind onto the bind row.
   final paint = item['paint'];
   if (paint is Map) {
     final p = paint['props'];
-    if (p is Map && p['trackerMark'] is Map) {
-      row['trackerLink'] ??= true;
-      final mark = Map<String, dynamic>.from(p['trackerMark'] as Map);
-      if (mark['linked'] == true) row['trackerLinked'] ??= true;
+    if (p is Map) {
+      if (p['trackerMark'] is Map) {
+        row['trackerLink'] ??= true;
+        final mark = Map<String, dynamic>.from(p['trackerMark'] as Map);
+        if (mark['linked'] == true) row['trackerLinked'] ??= true;
+      }
+      if (p['openBind'] is Map && row['openBind'] == null) {
+        row['openBind'] = Map<String, dynamic>.from(p['openBind'] as Map);
+      }
     }
   }
   if (item['trackerLink'] == true) row['trackerLink'] = true;
   if (item['trackerLinked'] == true) row['trackerLinked'] = true;
+  if (item['openBind'] is Map) {
+    row['openBind'] = Map<String, dynamic>.from(item['openBind'] as Map);
+  }
   return row;
 }
 
@@ -242,31 +251,36 @@ Future<void> openListItemWithBinding(
     invalidateListHubFeeds(container);
   }
 
-  final trackerUi = simklOn && simklHub != null;
-  final listPin = listPinTargetForBindSheet(
-    row: row,
-    meta: meta,
-    fallbackPluginId: candidates.isNotEmpty
-        ? candidates.first.pluginId
-        : simklHub?.pluginId,
-  );
+  final chrome = ListOpenBindChrome.fromRow(row);
+  final trackerUi = simklOn && simklHub != null && packTrackerLink;
   final knownStatus = (row['listStatus'] ?? '').toString().trim();
+  // Pin only when pack emits openBind.pin — host does not invent.
+  final listPin = chrome.pin
+      ? listPinTargetForBindSheet(
+          row: row,
+          meta: meta,
+          fallbackPluginId: candidates.isNotEmpty
+              ? candidates.first.pluginId
+              : simklHub?.pluginId,
+        )
+      : null;
   if (forcePick || simklLinkMode) {
     await showListOpenBindSheet(
       context,
       candidates: candidates,
       sourceMeta: meta,
-      title: simklLinkMode ? 'Link Simkl…' : 'Open with…',
+      title: simklLinkMode ? chrome.trackerTitle : '${chrome.openLabel}…',
       initialPluginId: row['pluginId']?.toString(),
       pickFilm: true,
-      simklLinkEnabled: trackerUi,
-      initialSimklMode: simklLinkMode && trackerUi,
+      trackerModeEnabled: trackerUi,
+      initialTrackerMode: simklLinkMode && trackerUi,
       openHubLabel: resolvedOpenLabel,
-      simklSearchCandidate: simklHub,
-      hasSimklLink:
+      trackerSearchCandidate: simklHub,
+      hasTrackerLink:
           legacyListTmdbId(row) != null || row['trackerLinked'] == true,
       listPinTarget: listPin,
       knownListStatus: knownStatus.isEmpty ? null : knownStatus,
+      chrome: chrome,
       onSave: (bound) async {
         final saved = await persistListOpenBinding(
           row: row,
@@ -278,7 +292,7 @@ Future<void> openListItemWithBinding(
         invalidateFeeds();
         return true;
       },
-      onSimklSave: (hit) async {
+      onTrackerSave: (hit) async {
         final ok = await ListOpenBinding.persistSimklTmdbLink(
           item: row,
           hit: hit,
@@ -299,15 +313,17 @@ Future<void> openListItemWithBinding(
     context,
     candidates: candidates,
     sourceMeta: meta,
-    title: 'Open in…',
+    title: '${chrome.openLabel}…',
     initialPluginId: row['pluginId']?.toString(),
-    simklLinkEnabled: trackerUi,
+    trackerModeEnabled: trackerUi,
     openHubLabel: resolvedOpenLabel,
-    simklSearchCandidate: simklHub,
-    hasSimklLink: legacyListTmdbId(row) != null || row['trackerLinked'] == true,
+    trackerSearchCandidate: simklHub,
+    hasTrackerLink:
+        legacyListTmdbId(row) != null || row['trackerLinked'] == true,
     listPinTarget: listPin,
     knownListStatus: knownStatus.isEmpty ? null : knownStatus,
-    onSimklSave: (hit) async {
+    chrome: chrome,
+    onTrackerSave: (hit) async {
       final ok = await ListOpenBinding.persistSimklTmdbLink(
         item: row,
         hit: hit,
