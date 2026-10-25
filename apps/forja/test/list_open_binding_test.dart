@@ -463,4 +463,34 @@ void main() {
       expect(item['pluginId'], 'hub-b');
     });
   });
+
+  group('listPinTargetForBindSheet', () {
+    test('synthesizes pin when pluginId missing using fallback hub', () {
+      final row = {
+        'mediaType': 'movie',
+        'tmdbId': 603,
+        'listStatus': 'watching',
+        'title': 'The Matrix',
+        'uniqueId': 'movie:603',
+        'open': {
+          'surface': 'tmdb',
+          'id': '603',
+          'extract': {
+            'resolveType': 'movie',
+            'panelCategory': 'movie',
+            'ctx': {'tmdbId': 603},
+          },
+        },
+      };
+      final meta = metaItemFromLegacyListItem(row);
+      final pin = listPinTargetForBindSheet(
+        row: row,
+        meta: meta,
+        fallbackPluginId: 'hub-fallback',
+      );
+      expect(pin, isNotNull);
+      expect(pin!.pluginId, 'hub-fallback');
+      expect(pin.tmdbId, 603);
+    });
+  });
 }

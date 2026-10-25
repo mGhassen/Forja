@@ -11,6 +11,7 @@ import 'package:forja/shared/engine/store/list_providers.dart';
 import 'package:forja/shared/services/tracker/simkl_service.dart';
 import 'package:forja/shell/feedback/forja_toast.dart';
 import 'package:forja_foundation/protocol/protocol.dart';
+import 'package:rust/rust.dart';
 
 /// Feed-only kits (no `details`) use hub binding; details hubs open meta as-is.
 @visibleForTesting
@@ -242,7 +243,13 @@ Future<void> openListItemWithBinding(
   }
 
   final trackerUi = simklOn && simklHub != null;
-  final listPin = listPinTargetForBindSheet(row: row, meta: meta);
+  final listPin = listPinTargetForBindSheet(
+    row: row,
+    meta: meta,
+    fallbackPluginId: candidates.isNotEmpty
+        ? candidates.first.pluginId
+        : simklHub?.pluginId,
+  );
   final knownStatus = (row['listStatus'] ?? '').toString().trim();
   if (forcePick || simklLinkMode) {
     await showListOpenBindSheet(
@@ -449,10 +456,55 @@ Future<MetaItem?> persistListOpenBinding({
 ListFollowTarget? listPinTargetForBindSheet({
   required Map<String, dynamic> row,
   required MetaItem meta,
+  String? fallbackPluginId,
 }) {
   final legacy = listFollowTargetFromLegacyItemSync(row);
   if (legacy != null) return legacy;
-  final pid = (row['pluginId'] ?? '').toString().trim();
-  if (pid.isEmpty) return null;
-  return ListFollowTarget.fromMeta(pluginId: pid, meta: meta);
+
+  ListFollowTarget? fromRow(String pluginId, Map<String, dynamic> src) {
+    final merged = Map<String, dynamic>.from(src)..['pluginId'] = pluginId;
+    if (legacyListStoredOpenRaw(merged) == null && meta.open != null) {
+      merged['open'] = meta.open!.toJson();
+    }
+    final sync = listFollowTargetFromLegacyItemSync(merged);
+    if (sync != null) return sync;
+    return ListFollowTarget.fromMeta(
+      pluginId: pluginId,
+      meta: metaItemFromLegacyListItem(merged),
+    );
+  }
+
+  // My List rows often lack pluginId until Open with saves — use fallback hub.
+  var pid = (row['pluginId'] ?? '').toString().trim();
+  if (pid.isEmpty) pid = (fallbackPluginId ?? '').trim();
+  if (pid.isNotEmpty) {
+    final hit = fromRow(pid, row);
+    if (hit != null) return hit;
+  }
+
+  final uid = (row['uniqueId'] ?? '').toString().trim();
+  Map<String, dynamic>? stored;
+  if (uid.isNotEmpty) {
+    stored =
+        BookmarkStore().itemOf(uid) ?? BookmarkStore().resolve(uniqueId: uid);
+  }
+  if (stored == null) {
+    final tmdb = legacyListTmdbId(row) ?? meta.numericId('tmdb');
+    final mt =
+        (row['tmdbMediaType'] ?? row['mediaType'] ?? meta.tmdbMediaType ?? '')
+            .toString();
+    if (tmdb != null) {
+      final movieUid = BookmarkStore.movieId(
+        tmdb,
+        BookmarkStore.normalizeTmdbMediaType(mt) ?? 'movie',
+      );
+      stored =
+          BookmarkStore().itemOf(movieUid) ??
+          BookmarkStore().resolve(uniqueId: movieUid, tmdbId: tmdb);
+    }
+  }
+  if (stored == null) return null;
+  final storedPid = (stored['pluginId'] ?? pid).toString().trim();
+  if (storedPid.isEmpty) return null;
+  return fromRow(storedPid, {...stored, ...row});
 }

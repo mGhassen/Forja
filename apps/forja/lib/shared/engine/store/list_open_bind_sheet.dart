@@ -1404,7 +1404,7 @@ class _HitsBody extends StatelessWidget {
   }
 }
 
-/// Icon-only mode hit — color to green on select/focus/hover; no circle, no scale.
+/// Icon-only mode hit — selected = white + underline; focus/hover = green; no circle/scale.
 class _ModeIcon extends StatefulWidget {
   const _ModeIcon({
     required this.selected,
@@ -1441,9 +1441,9 @@ class _ModeIconState extends State<_ModeIcon> {
   bool _hovered = false;
 
   Color get _color {
-    if (widget.selected || _focused || _hovered) {
-      return ForjaShellColors.brandGreen;
-    }
+    // Focus/hover wins green; selected stays white with underline.
+    if (_focused || _hovered) return ForjaShellColors.brandGreen;
+    if (widget.selected) return ForjaShellColors.textPrimary;
     return widget.idleColor;
   }
 
@@ -1474,7 +1474,22 @@ class _ModeIconState extends State<_ModeIcon> {
         child: SizedBox(
           width: widget.size,
           height: widget.size,
-          child: Center(child: widget.icon(_color)),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Expanded(child: Center(child: widget.icon(_color))),
+              Container(
+                height: 2,
+                width: widget.size * 0.55,
+                decoration: BoxDecoration(
+                  color: widget.selected
+                      ? ForjaShellColors.brandGreen
+                      : Colors.transparent,
+                  borderRadius: BorderRadius.circular(1),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

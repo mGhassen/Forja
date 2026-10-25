@@ -84,9 +84,11 @@ class _ImageMark extends StatelessWidget {
     return Stack(
       fit: StackFit.expand,
       children: [
-        ColorFiltered(
-          colorFilter: ColorFilter.mode(tint, BlendMode.srcIn),
-          child: Image(image: image, fit: BoxFit.contain),
+        Image(
+          image: image,
+          fit: BoxFit.contain,
+          color: tint,
+          colorBlendMode: BlendMode.srcIn,
         ),
         if (!linked)
           CustomPaint(painter: _RedCrossPainter(stroke: size * 0.12)),
