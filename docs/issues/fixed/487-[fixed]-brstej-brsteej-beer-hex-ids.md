@@ -10,7 +10,7 @@
 
 | | |
 |--|--|
-| **Progress** | **5 / 5** fix · **0 / 2** acceptance |
+| **Progress** | **6 / 6** fix · **0 / 2** acceptance |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -39,6 +39,7 @@ Pack parsers required `\d+` series ids and `watch.php` only → **0 cards**. Pro
 | 3 | I487-T03 | Details + provider referer use `video.php`; bump aflem `1.0.28` / providers `1.6.72` | ✅ |
 | 4 | I487-T04 | Config origin = `https://brstej.com`; pin live host from first `res.url` (aflem `1.0.29` / providers `1.6.73`) | ✅ |
 | 5 | I487-T05 | Details: story plot (not SEO meta), genres from الأقسام, year/runtime releaseInfo, episode `overview` (aflem `1.0.30`) | ✅ |
+| 6 | I487-T06 | Series details: `pca-person` cast + `pds-series-facts` / JSON-LD (premiere, country, original title, genre) (aflem `1.0.31`) | ✅ |
 
 ## Acceptance
 
