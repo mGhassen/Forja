@@ -100,9 +100,7 @@ class WatchHistoryService {
     // duration 0 is not a real save — never replace a good row with a poison
     // handoff (external player / early lifecycle).
     if (duration <= 0) {
-      debugPrint(
-        '[WatchHistory] Skip save for $title — duration=$duration',
-      );
+      debugPrint('[WatchHistory] Skip save for $title — duration=$duration');
       return;
     }
 
@@ -110,36 +108,11 @@ class WatchHistoryService {
         ? '${tmdbId}_S${season}_E$episode'
         : '$tmdbId';
 
-    final entry = {
-      'uniqueId': uniqueId,
-      'tmdbId': tmdbId,
-      'imdbId': imdbId,
-      'title': title,
-      'posterPath': posterPath,
-      if (backdropPath != null && backdropPath.isNotEmpty)
-        'backdropPath': backdropPath,
-      'method': method,
-      'sourceId': sourceId,
-      'position': position,
-      'duration': duration,
-      'season': season,
-      'episode': episode,
-      'episodeTitle': episodeTitle,
-      'magnetLink': magnetLink,
-      'fileIndex': fileIndex,
-      'streamUrl': streamUrl,
-      if (streamRowKey != null && streamRowKey.isNotEmpty)
-        'streamRowKey': streamRowKey,
-      'stremioId': stremioId,
-      'stremioAddonBaseUrl': stremioAddonBaseUrl,
-      'stremioType': stremioType,
-      'mediaType': mediaType,
-      'updatedAt': DateTime.now().millisecondsSinceEpoch,
-    };
-
     try {
       final list = await getHistory();
-      final existingIdx = list.indexWhere((item) => item['uniqueId'] == uniqueId);
+      final existingIdx = list.indexWhere(
+        (item) => item['uniqueId'] == uniqueId,
+      );
       if (existingIdx >= 0) {
         final existing = list[existingIdx];
         final existingPos = watchHistoryInt(existing['position']);
@@ -152,6 +125,56 @@ class WatchHistoryService {
           return;
         }
       }
+
+      final finished = isWatchFinished(position, duration);
+      final inProgress = isInProgressResume(position, duration);
+      var showStarted = false;
+      if (!finished) {
+        if (inProgress) {
+          showStarted = true;
+        } else {
+          for (final item in list) {
+            if (watchHistoryInt(item['tmdbId'], -1) != tmdbId) continue;
+            if (isContinueWatchingEligible(
+              watchHistoryInt(item['position']),
+              watchHistoryInt(item['duration']),
+              upNext: isUpNextContinueFlag(item['upNext']),
+              showStarted: isShowStartedContinueFlag(item['showStarted']),
+            )) {
+              showStarted = true;
+              break;
+            }
+          }
+        }
+      }
+
+      final entry = {
+        'uniqueId': uniqueId,
+        'tmdbId': tmdbId,
+        'imdbId': imdbId,
+        'title': title,
+        'posterPath': posterPath,
+        if (backdropPath != null && backdropPath.isNotEmpty)
+          'backdropPath': backdropPath,
+        'method': method,
+        'sourceId': sourceId,
+        'position': position,
+        'duration': duration,
+        'season': season,
+        'episode': episode,
+        'episodeTitle': episodeTitle,
+        'magnetLink': magnetLink,
+        'fileIndex': fileIndex,
+        'streamUrl': streamUrl,
+        if (streamRowKey != null && streamRowKey.isNotEmpty)
+          'streamRowKey': streamRowKey,
+        'stremioId': stremioId,
+        'stremioAddonBaseUrl': stremioAddonBaseUrl,
+        'stremioType': stremioType,
+        'mediaType': mediaType,
+        if (showStarted) 'showStarted': true,
+        'updatedAt': DateTime.now().millisecondsSinceEpoch,
+      };
       list.removeWhere((item) => item['uniqueId'] == uniqueId);
       list.insert(0, entry);
       if (list.length > 50) {
@@ -208,6 +231,7 @@ class WatchHistoryService {
       'episodeTitle': 'Episode $episode',
       'mediaType': mediaType ?? 'tv',
       'upNext': true,
+      'showStarted': true,
       'updatedAt': DateTime.now().millisecondsSinceEpoch,
     };
     try {
@@ -225,9 +249,7 @@ class WatchHistoryService {
         await _writeJsonStringList(_dismissedKey, dismissed);
       }
 
-      debugPrint(
-        '[WatchHistory] Seeded up-next $title ($uniqueId)',
-      );
+      debugPrint('[WatchHistory] Seeded up-next $title ($uniqueId)');
       _current = list;
       _controller.add(_current);
     } catch (e) {
@@ -331,7 +353,10 @@ class WatchHistoryService {
     return _mapsFromStore(map, legacyKey);
   }
 
-  Future<void> _writeJsonList(String key, List<Map<String, dynamic>> list) async {
+  Future<void> _writeJsonList(
+    String key,
+    List<Map<String, dynamic>> list,
+  ) async {
     if (Engine.isReady) {
       await kvSetJsonList(key, list);
       return;
@@ -360,9 +385,9 @@ class WatchHistoryService {
   }
 
   Future<String> _storePath() => Engine.storagePathForIdentity(
-        accountId: LocalDataScope.accountId,
-        profileId: LocalDataScope.profileId,
-      );
+    accountId: LocalDataScope.accountId,
+    profileId: LocalDataScope.profileId,
+  );
 
   Future<Map<String, dynamic>> _readStoreFile() async {
     try {
@@ -393,7 +418,10 @@ class WatchHistoryService {
     } catch (_) {}
   }
 
-  List<Map<String, dynamic>> _mapsFromStore(Map<String, dynamic> map, String key) {
+  List<Map<String, dynamic>> _mapsFromStore(
+    Map<String, dynamic> map,
+    String key,
+  ) {
     final v = map[key];
     if (v is! List) return [];
     return [

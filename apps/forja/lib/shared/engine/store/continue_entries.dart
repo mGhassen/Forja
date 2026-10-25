@@ -26,7 +26,9 @@ String _coverUrl(String? path) {
   return normalizeCoverUrl(raw);
 }
 
-Map<String, dynamic> catalogEntryFromHomeWatchHistory(Map<String, dynamic> item) {
+Map<String, dynamic> catalogEntryFromHomeWatchHistory(
+  Map<String, dynamic> item,
+) {
   final tmdbId = watchHistoryInt(item['tmdbId']);
   // Engine-store JSON / older rows may store season/episode as double or string.
   // A hard `as int?` cast threw and wiped the whole Continue Watching row.
@@ -66,6 +68,7 @@ Map<String, dynamic> catalogEntryFromHomeWatchHistory(Map<String, dynamic> item)
     'durationMs': watchHistoryInt(item['duration']),
     'updatedAt': watchHistoryInt(item['updatedAt']),
     if (isUpNextContinueFlag(item['upNext'])) 'upNext': true,
+    if (isShowStartedContinueFlag(item['showStarted'])) 'showStarted': true,
     'homeHistory': item,
     'meta': meta.toJson(),
   };
@@ -105,9 +108,7 @@ List<Map<String, dynamic>> _mergeContinueEntriesByShow(
     }
   }
   final out = byShow.values.toList()
-    ..sort(
-      (a, b) => _continueEntryUpdatedAt(b) - _continueEntryUpdatedAt(a),
-    );
+    ..sort((a, b) => _continueEntryUpdatedAt(b) - _continueEntryUpdatedAt(a));
   return out.take(10).toList();
 }
 
@@ -119,7 +120,15 @@ Future<List<Map<String, dynamic>>> _catalogPackContinueEntries(
     final pos = (entry['positionMs'] as num?)?.toInt() ?? 0;
     final dur = (entry['durationMs'] as num?)?.toInt() ?? 0;
     final upNext = isUpNextContinueFlag(entry['upNext']);
-    if (!isContinueWatchingEligible(pos, dur, upNext: upNext)) continue;
+    final showStarted = isShowStartedContinueFlag(entry['showStarted']);
+    if (!isContinueWatchingEligible(
+      pos,
+      dur,
+      upNext: upNext,
+      showStarted: showStarted,
+    )) {
+      continue;
+    }
     out.add(entry);
   }
   return out;
@@ -128,9 +137,9 @@ Future<List<Map<String, dynamic>>> _catalogPackContinueEntries(
 Future<List<Map<String, dynamic>>> _homeTabContinueEntries() async {
   final history = await WatchHistoryService().getHistory();
   final homeRows = history.where(isHomeTabWatchHistoryEntry).toList();
-  return inProgressPoolByShow(homeRows)
-      .map(catalogEntryFromHomeWatchHistory)
-      .toList();
+  return inProgressPoolByShow(
+    homeRows,
+  ).map(catalogEntryFromHomeWatchHistory).toList();
 }
 
 /// In-progress rows for layout widget type `continue`.

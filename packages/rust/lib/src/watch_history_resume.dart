@@ -18,13 +18,23 @@ bool isContinueWatchingRowEntry(int position, int duration) {
 /// True when history was advanced to the next episode after a finish (≥85%).
 bool isUpNextContinueFlag(Object? value) => value == true;
 
-/// CW pool: in-progress (2–85%) **or** an explicit up-next seed.
+/// True when this show already joined Continue Watching (any episode).
+///
+/// Once set, later episodes stay on CW without waiting for the 2% floor.
+bool isShowStartedContinueFlag(Object? value) => value == true;
+
+/// CW pool: in-progress (2–85%), up-next seed, or show already started.
 bool isContinueWatchingEligible(
   int position,
   int duration, {
   bool upNext = false,
+  bool showStarted = false,
 }) {
   if (upNext) return true;
+  if (showStarted) {
+    if (duration > 0 && isWatchFinished(position, duration)) return false;
+    return true;
+  }
   return isContinueWatchingRowEntry(position, duration);
 }
 
@@ -119,7 +129,15 @@ Map<String, dynamic>? latestInProgressForShow(
     final pos = watchHistoryInt(item['position']);
     final dur = watchHistoryInt(item['duration']);
     final upNext = isUpNextContinueFlag(item['upNext']);
-    if (!isContinueWatchingEligible(pos, dur, upNext: upNext)) continue;
+    final showStarted = isShowStartedContinueFlag(item['showStarted']);
+    if (!isContinueWatchingEligible(
+      pos,
+      dur,
+      upNext: upNext,
+      showStarted: showStarted,
+    )) {
+      continue;
+    }
     final ts = watchHistoryInt(item['updatedAt']);
     final bestTs = best == null ? -1 : watchHistoryInt(best['updatedAt'], -1);
     if (ts > bestTs) best = item;
@@ -151,13 +169,22 @@ List<Map<String, dynamic>> inProgressPoolByShow(
     final pos = watchHistoryInt(item['position']);
     final dur = watchHistoryInt(item['duration']);
     final upNext = isUpNextContinueFlag(item['upNext']);
-    if (!isContinueWatchingEligible(pos, dur, upNext: upNext)) continue;
+    final showStarted = isShowStartedContinueFlag(item['showStarted']);
+    if (!isContinueWatchingEligible(
+      pos,
+      dur,
+      upNext: upNext,
+      showStarted: showStarted,
+    )) {
+      continue;
+    }
     final tmdbId = watchHistoryInt(item['tmdbId'], -1);
     if (tmdbId < 0) continue;
     final existing = byShow[tmdbId];
     final ts = watchHistoryInt(item['updatedAt']);
-    final existingTs =
-        existing == null ? -1 : watchHistoryInt(existing['updatedAt'], -1);
+    final existingTs = existing == null
+        ? -1
+        : watchHistoryInt(existing['updatedAt'], -1);
     if (ts > existingTs) byShow[tmdbId] = item;
   }
   return byShow.values.toList();

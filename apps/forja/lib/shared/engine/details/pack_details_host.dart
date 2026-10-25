@@ -529,8 +529,14 @@ class _PackDetailsHostState extends ConsumerState<PackDetailsHost> {
         final hubDur = (hit?['durationMs'] as num?)?.toInt() ?? 0;
         // Seed-only hub rows (pos 0) must not hide real Home resume progress.
         final hubUpNext = hit != null && hit['upNext'] == true;
+        final hubShowStarted = hit != null && hit['showStarted'] == true;
         if (hit == null ||
-            !isContinueWatchingEligible(hubPos, hubDur, upNext: hubUpNext)) {
+            !isContinueWatchingEligible(
+              hubPos,
+              hubDur,
+              upNext: hubUpNext,
+              showStarted: hubShowStarted,
+            )) {
           final home = await _homeWatchHistoryProgress();
           if (home != null) hit = home;
         }
