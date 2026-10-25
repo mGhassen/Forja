@@ -263,6 +263,8 @@ class _SettingsSimklPanelState extends ConsumerState<SettingsSimklPanel> {
                 value: _modeLabel(_listSyncMode),
                 options: [..._kModeLabels.keys, _kNoSync],
                 onChanged: _isSyncing ? (_) {} : _onModePicked,
+                // Real Material dropdown on TV too — not the centered dialog.
+                inlineDropdown: true,
               ),
               const SizedBox(height: 8),
               SettingsToggleRow(

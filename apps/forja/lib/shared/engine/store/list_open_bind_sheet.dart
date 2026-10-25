@@ -264,6 +264,23 @@ class _ListOpenBindSheetState extends State<_ListOpenBindSheet> {
     _chipNodes[i].requestFocus();
   }
 
+  void _focusModeIcons() {
+    if (!widget.simklLinkEnabled) return;
+    if (_simklMode) {
+      _simklBtnFocus.requestFocus();
+      return;
+    }
+    _openWithBtnFocus.requestFocus();
+  }
+
+  void _focusBelowModeIcons() {
+    if (_simklMode) {
+      _focusBelowHubs();
+      return;
+    }
+    _focusSelectedChip();
+  }
+
   bool get _usesSearch {
     if (_simklMode) return widget.simklSearchCandidate!.hasSearch;
     return listOpenBindUsesHubSearch(
@@ -549,6 +566,12 @@ class _ListOpenBindSheetState extends State<_ListOpenBindSheet> {
                                 tooltip: 'Match on Simkl',
                                 size: px(28),
                                 onTap: () => _setMode(_ListOpenBindMode.simkl),
+                                onDownEdge: dpad ? _focusBelowModeIcons : null,
+                                onRightEdge: dpad
+                                    ? () => _openWithBtnFocus.requestFocus()
+                                    : null,
+                                onLeftEdge: dpad ? () {} : null,
+                                onUpEdge: dpad ? () {} : null,
                                 child: LetterLinkMark(
                                   letter: 'S',
                                   linked: _simklLinked,
@@ -565,6 +588,12 @@ class _ListOpenBindSheetState extends State<_ListOpenBindSheet> {
                                 size: px(28),
                                 onTap: () =>
                                     _setMode(_ListOpenBindMode.openWith),
+                                onDownEdge: dpad ? _focusBelowModeIcons : null,
+                                onLeftEdge: dpad
+                                    ? () => _simklBtnFocus.requestFocus()
+                                    : null,
+                                onRightEdge: dpad ? () {} : null,
+                                onUpEdge: dpad ? () {} : null,
                                 child: Icon(
                                   Icons.link_rounded,
                                   size: px(20),
@@ -662,7 +691,11 @@ class _ListOpenBindSheetState extends State<_ListOpenBindSheet> {
                             ? () {}
                             : () => _chipNodes[i + 1].requestFocus(),
                         onDownEdge: dpad ? _focusBelowHubs : null,
-                        onUpEdge: dpad ? () {} : null,
+                        onUpEdge: dpad
+                            ? (widget.simklLinkEnabled
+                                  ? _focusModeIcons
+                                  : () {})
+                            : null,
                       ),
                   ],
                 ),
@@ -1296,6 +1329,10 @@ class _ModeIcon extends StatelessWidget {
     required this.size,
     required this.child,
     this.focusNode,
+    this.onUpEdge,
+    this.onDownEdge,
+    this.onLeftEdge,
+    this.onRightEdge,
   });
 
   final bool selected;
@@ -1304,6 +1341,10 @@ class _ModeIcon extends StatelessWidget {
   final double size;
   final Widget child;
   final FocusNode? focusNode;
+  final VoidCallback? onUpEdge;
+  final VoidCallback? onDownEdge;
+  final VoidCallback? onLeftEdge;
+  final VoidCallback? onRightEdge;
 
   @override
   Widget build(BuildContext context) {
@@ -1337,6 +1378,10 @@ class _ModeIcon extends StatelessWidget {
         scaleOnFocus: 1,
         suppressInkHover: true,
         showFocusBorder: true,
+        onUpEdge: onUpEdge,
+        onDownEdge: onDownEdge,
+        onLeftEdge: onLeftEdge,
+        onRightEdge: onRightEdge,
         child: icon,
       ),
     );

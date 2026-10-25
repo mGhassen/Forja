@@ -1408,6 +1408,11 @@ class SettingsSelectRow extends StatelessWidget {
     required this.options,
     required this.onChanged,
     this.adminOnly = false,
+
+    /// Always use Material [DropdownButton] (TV + phone + desktop).
+    /// Default TV path opens a centered select dialog — set true when the
+    /// product must be a real dropdown menu, not that dialog.
+    this.inlineDropdown = false,
   });
 
   final String title;
@@ -1416,6 +1421,7 @@ class SettingsSelectRow extends StatelessWidget {
   final List<String> options;
   final ValueChanged<String?> onChanged;
   final bool adminOnly;
+  final bool inlineDropdown;
 
   Future<void> _openPicker(BuildContext context) async {
     if (options.isEmpty) return;
@@ -1429,9 +1435,49 @@ class SettingsSelectRow extends StatelessWidget {
     onChanged(picked);
   }
 
+  Widget _dropdown(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: ForjaShellColors.sectionIconBg,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: ForjaShellColors.borderSubtle),
+      ),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<String>(
+          value: options.contains(value) ? value : null,
+          hint: Text(
+            value,
+            style: TextStyle(
+              color: ForjaShellColors.textPrimary,
+              fontWeight: FontWeight.w600,
+              fontSize: SettingsTokens.typeSizeOf(context, 13),
+            ),
+          ),
+          dropdownColor: ForjaShellColors.cinematic.menuSurface,
+          icon: Icon(
+            Icons.keyboard_arrow_down_rounded,
+            color: ForjaShellColors.brandGreen,
+            size: SettingsTokens.iconButtonIconSizeOf(context),
+          ),
+          style: TextStyle(
+            color: ForjaShellColors.textPrimary,
+            fontWeight: FontWeight.w600,
+            fontSize: SettingsTokens.typeSizeOf(context, 13),
+          ),
+          items: options
+              .map((o) => DropdownMenuItem(value: o, child: Text(o)))
+              .toList(),
+          onChanged: onChanged,
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final tv = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
+    final useDropdown = inlineDropdown || !tv;
     final content = Padding(
       padding: SettingsTokens.rowPaddingOf(context),
       child: Row(
@@ -1463,82 +1509,57 @@ class SettingsSelectRow extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 12),
-          ExcludeFocus(
-            excluding: tv,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-              decoration: BoxDecoration(
-                color: ForjaShellColors.sectionIconBg,
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: ForjaShellColors.borderSubtle),
-              ),
-              child: tv
-                  ? Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        ConstrainedBox(
-                          constraints: const BoxConstraints(maxWidth: 220),
-                          child: Text(
-                            value,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              color: ForjaShellColors.textPrimary,
-                              fontWeight: FontWeight.w600,
-                              fontSize: SettingsTokens.typeSizeOf(context, 13),
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 4),
-                        Icon(
-                          Icons.keyboard_arrow_down_rounded,
-                          color: ForjaShellColors.brandGreen,
-                          size: SettingsTokens.iconButtonIconSizeOf(context),
-                        ),
-                      ],
-                    )
-                  : DropdownButtonHideUnderline(
-                      child: DropdownButton<String>(
-                        value: options.contains(value) ? value : null,
-                        hint: Text(
-                          value,
-                          style: TextStyle(
-                            color: ForjaShellColors.textPrimary,
-                            fontWeight: FontWeight.w600,
-                            fontSize: SettingsTokens.typeSizeOf(context, 13),
-                          ),
-                        ),
-                        dropdownColor: ForjaShellColors.cinematic.menuSurface,
-                        icon: Icon(
-                          Icons.keyboard_arrow_down_rounded,
-                          color: ForjaShellColors.brandGreen,
-                          size: SettingsTokens.iconButtonIconSizeOf(context),
-                        ),
+          if (useDropdown)
+            _dropdown(context)
+          else
+            ExcludeFocus(
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 6,
+                ),
+                decoration: BoxDecoration(
+                  color: ForjaShellColors.sectionIconBg,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: ForjaShellColors.borderSubtle),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 220),
+                      child: Text(
+                        value,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                         style: TextStyle(
                           color: ForjaShellColors.textPrimary,
                           fontWeight: FontWeight.w600,
                           fontSize: SettingsTokens.typeSizeOf(context, 13),
                         ),
-                        items: options
-                            .map(
-                              (o) => DropdownMenuItem(value: o, child: Text(o)),
-                            )
-                            .toList(),
-                        onChanged: onChanged,
                       ),
                     ),
+                    const SizedBox(width: 4),
+                    Icon(
+                      Icons.keyboard_arrow_down_rounded,
+                      color: ForjaShellColors.brandGreen,
+                      size: SettingsTokens.iconButtonIconSizeOf(context),
+                    ),
+                  ],
+                ),
+              ),
             ),
-          ),
         ],
       ),
     );
 
-    // Desktop already has a DropdownButton. Opening the dialog on the same
-    // press pushes a second route; closing both pops the shell (black window).
+    // Inline / desktop: DropdownButton owns the menu — never open the
+    // centered dialog (double-route pops the shell on desktop).
+    // Legacy TV path: row activate → select dialog.
     return shellFocusableTap(
       context: context,
-      onTap: tv ? () => _openPicker(context) : null,
-      onKeyEvent: tv
+      onTap: (!useDropdown && tv) ? () => _openPicker(context) : null,
+      onKeyEvent: (!useDropdown && tv)
           ? (node, event) {
               if (shellTvIsActivateKey(event)) {
                 _openPicker(context);

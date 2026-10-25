@@ -10,7 +10,7 @@
 
 | | |
 |--|--|
-| **Progress** | **5 / 5** fix · **0 / 4** acceptance |
+| **Progress** | **6 / 6** fix · **0 / 4** acceptance |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -35,6 +35,7 @@ Open with binds hub open and TMDB from the same checked hit. A title opened in A
 | 3 | I485-T03 | PosterCard `subtitleTrailing` + My List Simkl S mark when logged in | ✅ |
 | 4 | I485-T04 | Feature + changelog copy | ✅ |
 | 5 | I485-T05 | Unit tests for persist split / stamp | ✅ |
+| 6 | I485-T06 | Bind sheet D-pad: chips ↔ Match / Open with icons | ✅ |
 
 ---
 
