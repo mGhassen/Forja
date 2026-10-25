@@ -382,27 +382,22 @@ abstract final class PortalsHost {
     return '${inv.activeKey}|${keys.join(';')}';
   }
 
-  /// Favorites first, then newest [addedAt] (insert date). Missing → oldest.
+  /// Favorites first; **stable** — vault/source order otherwise (pack unshifts
+  /// new inserts). Never re-sort by addedAt / name (that reshuffled siblings).
   @visibleForTesting
-  static int comparePortalListItems(
-    PortalListItem a,
-    PortalListItem b, {
-    required Map<String, int> addedAtMs,
-  }) {
-    if (a.favorite != b.favorite) return a.favorite ? -1 : 1;
-    final am = addedAtMs[a.id] ?? 0;
-    final bm = addedAtMs[b.id] ?? 0;
-    if (am != bm) return bm.compareTo(am);
-    return 0;
-  }
-
-  static int _addedAtMillis(Object? raw) {
-    final s = (raw ?? '').toString().trim();
-    if (s.isEmpty) return 0;
-    final parsed = DateTime.tryParse(s);
-    if (parsed != null) return parsed.toUtc().millisecondsSinceEpoch;
-    final asInt = int.tryParse(s);
-    return asInt ?? 0;
+  static List<PortalListItem> favoritesFirstStable(List<PortalListItem> items) {
+    if (items.length < 2) return items;
+    final fav = <PortalListItem>[];
+    final rest = <PortalListItem>[];
+    for (final p in items) {
+      if (p.favorite) {
+        fav.add(p);
+      } else {
+        rest.add(p);
+      }
+    }
+    if (fav.isEmpty) return items;
+    return [...fav, ...rest];
   }
 
   static PortalsInventory _inventoryFromRows({
@@ -414,7 +409,6 @@ abstract final class PortalsHost {
   }) {
     final items = <PortalListItem>[];
     final formValues = <String, Map<String, String>>{};
-    final addedAtMs = <String, int>{};
 
     for (final m in source) {
       final key = (m['key'] ?? m['id'] ?? m['portalKey'] ?? '')
@@ -439,7 +433,6 @@ abstract final class PortalsHost {
       final expiryFmt = PortalExpiry.format(expiryRaw);
       final selectedFlag = m['selected'];
       final fav = favs.any((f) => samePortalKey(f, resolvedKey));
-      addedAtMs[resolvedKey] = _addedAtMillis(m['addedAt']);
       items.add(
         PortalListItem(
           id: resolvedKey,
@@ -473,9 +466,9 @@ abstract final class PortalsHost {
         };
       }
     }
-    items.sort((a, b) => comparePortalListItems(a, b, addedAtMs: addedAtMs));
+    final ordered = favoritesFirstStable(items);
     return PortalsInventory(
-      portals: items,
+      portals: ordered,
       activeKey: active,
       pluginId: pluginId,
       title: chrome?.title ?? '',

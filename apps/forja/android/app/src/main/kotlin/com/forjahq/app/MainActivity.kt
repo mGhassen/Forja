@@ -6,6 +6,7 @@ import android.content.Intent
 import android.content.IntentFilter
 import android.graphics.Color
 import android.media.AudioManager
+import android.net.wifi.WifiManager
 import android.os.Build
 import android.os.Bundle
 import android.view.KeyEvent
@@ -17,6 +18,7 @@ class MainActivity : AudioServiceActivity() {
     private val exoPlugin = ForjaExoPlayerPlugin()
     private var screenOffReceiver: BroadcastReceiver? = null
     private var exiting = false
+    private var wifiMulticastLock: WifiManager.MulticastLock? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -50,6 +52,7 @@ class MainActivity : AudioServiceActivity() {
             this,
             flutterEngine.dartExecutor.binaryMessenger,
             flutterEngine.platformViewsController.registry,
+            flutterEngine.renderer,
         )
         MethodChannel(
             flutterEngine.dartExecutor.binaryMessenger,
@@ -94,8 +97,40 @@ class MainActivity : AudioServiceActivity() {
                     playTvSoundEffect(call.argument<String>("kind"))
                     result.success(null)
                 }
+                // LAN mDNS browse (Settings → LAN Discover) — Wi‑Fi drops
+                // multicast without an held MulticastLock (issue 481).
+                "acquireWifiMulticastLock" -> {
+                    acquireWifiMulticastLock()
+                    result.success(null)
+                }
+                "releaseWifiMulticastLock" -> {
+                    releaseWifiMulticastLock()
+                    result.success(null)
+                }
                 else -> result.notImplemented()
             }
+        }
+    }
+
+    private fun acquireWifiMulticastLock() {
+        val lock = wifiMulticastLock ?: run {
+            val wifi = applicationContext.getSystemService(WIFI_SERVICE) as? WifiManager
+                ?: return
+            wifi.createMulticastLock("forja-mdns").also {
+                it.setReferenceCounted(true)
+                wifiMulticastLock = it
+            }
+        }
+        lock.acquire()
+    }
+
+    private fun releaseWifiMulticastLock() {
+        val lock = wifiMulticastLock ?: return
+        if (!lock.isHeld) return
+        try {
+            lock.release()
+        } catch (_: RuntimeException) {
+            // Extra release vs acquire — ignore.
         }
     }
 

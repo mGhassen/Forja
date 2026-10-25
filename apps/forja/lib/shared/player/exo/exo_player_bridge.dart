@@ -36,7 +36,8 @@ class ExoTrackInfo {
   /// CEA-608/708 without a language tag — often empty on VOD HLS (issue 230).
   bool get isAnonymousClosedCaption {
     final mime = mimeType.toLowerCase();
-    final isCea = mime.contains('cea-608') ||
+    final isCea =
+        mime.contains('cea-608') ||
         mime.contains('cea-708') ||
         mime.contains('cea608') ||
         mime.contains('cea708');
@@ -145,9 +146,7 @@ class ExoTracksSnapshot {
       textOff: map['textOff'] == true,
       rate: (map['rate'] as num?)?.toDouble() ?? 1.0,
       playback: ExoPlaybackStats.fromMap(
-        playbackRaw is Map
-            ? Map<dynamic, dynamic>.from(playbackRaw)
-            : null,
+        playbackRaw is Map ? Map<dynamic, dynamic>.from(playbackRaw) : null,
       ),
     );
   }
@@ -157,9 +156,12 @@ class ExoTracksSnapshot {
 class ExoPlayerBridge {
   ExoPlayerBridge._();
 
-  static const MethodChannel _channel = MethodChannel('com.forjahq.app/exoplayer');
-  static const EventChannel _events =
-      EventChannel('com.forjahq.app/exoplayer_events');
+  static const MethodChannel _channel = MethodChannel(
+    'com.forjahq.app/exoplayer',
+  );
+  static const EventChannel _events = EventChannel(
+    'com.forjahq.app/exoplayer_events',
+  );
 
   /// Process-lifetime: physical ATV prefers TextureView after SurfaceView
   /// failed to paint (audio-only). [ExoPlayerView] listens and remounts.
@@ -218,10 +220,27 @@ class ExoPlayerBridge {
   }
 
   static Stream<Map<dynamic, dynamic>> eventsFor(int viewId) {
-    return _events.receiveBroadcastStream().where((event) {
-      if (event is! Map) return false;
-      return event['viewId'] == viewId;
-    }).map((e) => Map<dynamic, dynamic>.from(e as Map));
+    return _events
+        .receiveBroadcastStream()
+        .where((event) {
+          if (event is! Map) return false;
+          return event['viewId'] == viewId;
+        })
+        .map((e) => Map<dynamic, dynamic>.from(e as Map));
+  }
+
+  /// Allocate a Flutter [SurfaceProducer] for this host and return its
+  /// texture id for [Texture]. Call once per [viewId] before [open]
+  /// (issue 479 — replaces PlatformView TextureView).
+  static Future<int> create(int viewId) async {
+    if (defaultTargetPlatform != TargetPlatform.android) {
+      throw UnsupportedError('ExoPlayer is Android-only');
+    }
+    final id = await _channel.invokeMethod<int>('create', {'viewId': viewId});
+    if (id == null || id < 0) {
+      throw StateError('ExoPlayer create returned no textureId');
+    }
+    return id;
   }
 
   static Future<void> open({
@@ -230,12 +249,16 @@ class ExoPlayerBridge {
     Map<String, String>? headers,
     Duration startPosition = Duration.zero,
     List<Map<String, String>> subtitles = const [],
+
     /// IPTV live: larger buffers + live offset. No automatic quality cap.
     bool live = false,
+
     /// Explicit opt-in from Settings → IPTV live max quality. `0` = no cap.
     int maxVideoHeight = 0,
+
     /// Soft bitrate companion when [maxVideoHeight] is set. `0` = none.
     int maxVideoBitrate = 0,
+
     /// Widevine / ClearKey license (Android Exo — RFC-101).
     Map<String, dynamic>? drm,
   }) async {
@@ -281,11 +304,8 @@ class ExoPlayerBridge {
       });
 
   /// [mode]: `fit` | `fill` | `zoom`
-  static Future<void> setResizeMode(int viewId, String mode) =>
-      _channel.invokeMethod<void>('setResizeMode', {
-        'viewId': viewId,
-        'mode': mode,
-      });
+  static Future<void> setResizeMode(int viewId, String mode) => _channel
+      .invokeMethod<void>('setResizeMode', {'viewId': viewId, 'mode': mode});
 
   static Future<ExoTracksSnapshot> getTracks(int viewId) async {
     final raw = await _channel.invokeMethod<Map<dynamic, dynamic>>(
@@ -301,12 +321,11 @@ class ExoPlayerBridge {
     int viewId, {
     required String type,
     String? trackId,
-  }) =>
-      _channel.invokeMethod<void>('selectTrack', {
-        'viewId': viewId,
-        'type': type,
-        'trackId': trackId,
-      });
+  }) => _channel.invokeMethod<void>('selectTrack', {
+    'viewId': viewId,
+    'type': type,
+    'trackId': trackId,
+  });
 
   /// Soft-reload external SRT/VTT sideloads on the current media (keeps
   /// position). Returns how many sideloads Media3 accepted; 0 means nothing
@@ -331,16 +350,15 @@ class ExoPlayerBridge {
     required double bottomPaddingPx,
     required bool bold,
     String font = 'Default',
-  }) =>
-      _channel.invokeMethod<void>('setSubtitleStyle', {
-        'viewId': viewId,
-        'sizeSp': sizeSp,
-        'textColorArgb': textColorArgb,
-        'backgroundOpacity': backgroundOpacity.clamp(0.0, 1.0),
-        'bottomPaddingPx': bottomPaddingPx,
-        'bold': bold,
-        'font': font,
-      });
+  }) => _channel.invokeMethod<void>('setSubtitleStyle', {
+    'viewId': viewId,
+    'sizeSp': sizeSp,
+    'textColorArgb': textColorArgb,
+    'backgroundOpacity': backgroundOpacity.clamp(0.0, 1.0),
+    'bottomPaddingPx': bottomPaddingPx,
+    'bold': bold,
+    'font': font,
+  });
 
   static Future<void> stop(int viewId) =>
       _channel.invokeMethod<void>('stop', {'viewId': viewId});

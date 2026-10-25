@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| **Progress** | **11 / 11** fix · **0 / 4** acceptance |
+| **Progress** | **12 / 12** fix · **0 / 4** acceptance |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -30,6 +30,7 @@
 | 9 | I130-T09 | Exo/MediaKit/trailer top **Player**: `playerOnDownEdge` + ← to Back (IPTV already had ↓); ↑ from transport falls back to Back when seek is unfocusable | ✅ |
 | 10 | I130-T10 | Widget test: ↓ from `PlayerTopBarActions` Player reaches seek/transport across the title gap | ✅ |
 | 11 | I130-T11 | Stop transport ↑ teleport to Back: keep a focusable middle progress/seek row while chrome is up (ATV Exo live included); Exo/MediaKit/IPTV/live-sports ↑ → seek/progress only | ✅ |
+| 12 | I130-T12 | IPTV / Live Sports seek/progress ↑/↓/←/→: sync + retry claim (Back/Play/right cluster) — deferred-only left focus stuck on `iptv-player-seek` while keys returned handled | ✅ |
 
 ---
 
@@ -69,6 +70,10 @@ On **Android TV**, player chrome often looked stuck: focus sat on **Play** (`exo
 ### Follow-up — ↑ jumped seek to Back (T11)
 
 Transport ↑ fell through to Back whenever `_seekFocus` was off-tree (ATV Exo live hid progress chrome; loading/failed races). **Fix:** `showProgressChrome` always true; LIVE/EPG/waiting rows attach `_seekFocus`; Exo/MediaKit/IPTV/live-sports transport ↑ requests seek only (no Back teleport).
+
+### Follow-up — stuck on seek/progress (T12)
+
+Live Sports / IPTV: Play ↑ landed on `iptv-player-seek`, then ↑/↓/←/→ stayed on the bar (logs: many Arrow * with no `[TV-FOCUS]` change) until idle hide parked on `player-tv-keys`. Seek key handler always returned `handled` while `_claimBackFocus` / `_claimPlayFocus` / `_focusRightFromSeekbar` only scheduled a post-frame claim that could silent-no-op — unlike Play ↑ → seek, which sync-`requestFocus`s. **Fix:** same sync + one-frame retry as top-bar `claim` on IPTV + Live Sports.
 
 **Not verified on device.** `I130-A02` / `I130-A03` / `I130-A04` remain the on-device gate.
 

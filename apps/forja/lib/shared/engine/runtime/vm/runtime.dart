@@ -121,6 +121,7 @@ class EngineRuntime {
   final Map<int, int> _fetchGens = {};
   bool _acceptingFetches = false;
   int _activeExtract = 0;
+
   /// Abort asked to drop the VM while [_activeExtract] > 0. Dispose runs in
   /// [_extractUnlocked]'s `finally` after the pump exits — never mid-evaluate
   /// (macOS JSC SIGSEGV in JSValueToStringCopy / JSLockHolder).
@@ -329,13 +330,15 @@ class EngineRuntime {
             ? Map<String, dynamic>.from(paramsRaw)
             : <String, dynamic>{};
         final gen = _fetchGeneration;
-        unawaited(_dispatchPluginRun(
-          id: id,
-          pluginId: pluginId,
-          action: action,
-          params: params,
-          gen: gen,
-        ));
+        unawaited(
+          _dispatchPluginRun(
+            id: id,
+            pluginId: pluginId,
+            action: action,
+            params: params,
+            gen: gen,
+          ),
+        );
       } catch (_) {}
       return null;
     });
@@ -438,9 +441,7 @@ class EngineRuntime {
             ? Map<String, dynamic>.from(dataRaw)
             : <String, dynamic>{};
         final gen = _fetchGeneration;
-        unawaited(
-          _dispatchStoreUpsert(id: id, key: key, data: data, gen: gen),
-        );
+        unawaited(_dispatchStoreUpsert(id: id, key: key, data: data, gen: gen));
       } catch (_) {}
       return null;
     });
@@ -483,6 +484,17 @@ class EngineRuntime {
       return null;
     });
 
+    br('SimklSyncListsIfAutoStart', (args) {
+      try {
+        if (!_acceptingFetches || _activeExtract <= 0) return null;
+        final m = _bridgeMap(args);
+        final id = (m['id'] as num).toInt();
+        final gen = _fetchGeneration;
+        unawaited(_dispatchSimklSyncListsIfAuto(id: id, gen: gen));
+      } catch (_) {}
+      return null;
+    });
+
     br('VaultGetStart', (args) {
       try {
         if (!_acceptingFetches || _activeExtract <= 0) return null;
@@ -503,9 +515,7 @@ class EngineRuntime {
         final key = (m['key'] ?? '').toString();
         final value = (m['value'] ?? '').toString();
         final gen = _fetchGeneration;
-        unawaited(
-          _dispatchVaultSet(id: id, key: key, value: value, gen: gen),
-        );
+        unawaited(_dispatchVaultSet(id: id, key: key, value: value, gen: gen));
       } catch (_) {}
       return null;
     });
@@ -596,7 +606,8 @@ class EngineRuntime {
         final m = _bridgeMap(args);
         final id = (m['id'] as num).toInt();
         final url = (m['url'] ?? '').toString().trim();
-        final timeoutMs = (m['timeoutMs'] as num?)?.toInt() ??
+        final timeoutMs =
+            (m['timeoutMs'] as num?)?.toInt() ??
             (m['timeout_ms'] as num?)?.toInt() ??
             8000;
         final gen = _fetchGeneration;
@@ -624,12 +635,7 @@ class EngineRuntime {
             : <String, dynamic>{};
         final gen = _fetchGeneration;
         unawaited(
-          _dispatchEngineRequest(
-            id: id,
-            kind: kind,
-            body: body,
-            gen: gen,
-          ),
+          _dispatchEngineRequest(id: id, kind: kind, body: body, gen: gen),
         );
       } catch (_) {}
       return null;
@@ -859,8 +865,11 @@ class EngineRuntime {
     final rt = _runtime;
     if (rt == null || _deferredDrop || !_acceptingFetches) return;
     if (!repeat) _activeTimers.remove(id);
-    _evalOn(rt, 'try { globalThis.__engineTimerFire($id); } catch (e) {}',
-        sourceUrl: 'engine://timer/$id');
+    _evalOn(
+      rt,
+      'try { globalThis.__engineTimerFire($id); } catch (e) {}',
+      sourceUrl: 'engine://timer/$id',
+    );
   }
 
   /// Evaluate only if [rt] is still the live heap. Never call evaluate on a
@@ -1556,6 +1565,17 @@ class EngineRuntime {
               query: query == null ? {} : query
             }));
           });
+        },
+        // Generic: when Settings auto-sync is on, run saved list mode + refresh
+        // library cache. Packs that opt in call this before composing a list feed.
+        syncListsIfAuto: function() {
+          return new Promise(function(resolve) {
+            var id = ++globalThis.__engineSimklSeq;
+            globalThis.__engineSimklPending[id] = function(env) {
+              resolve(env == null ? { synced: false } : env);
+            };
+            sendMessage('SimklSyncListsIfAutoStart', JSON.stringify({ id: id }));
+          });
         }
       };
       h.http = {
@@ -1903,8 +1923,9 @@ class EngineRuntime {
       req.followRedirects = true;
       req.maxRedirects = 8;
       req.headers.addAll(headers);
-      final contentType = (headers['Content-Type'] ?? headers['content-type'] ?? '')
-          .toLowerCase();
+      final contentType =
+          (headers['Content-Type'] ?? headers['content-type'] ?? '')
+              .toLowerCase();
       final canHaveBody =
           method != 'GET' && method != 'HEAD' && method != 'OPTIONS';
       if (canHaveBody && bodyB64.isNotEmpty) {
@@ -1938,15 +1959,15 @@ class EngineRuntime {
       if (text.length > maxLen) text = text.substring(0, maxLen);
       final respHeaders = <String, dynamic>{};
       streamed.headers.forEach((k, v) => respHeaders[k.toLowerCase()] = v);
-      final respCt =
-          (streamed.headers['content-type'] ?? '').toLowerCase();
+      final respCt = (streamed.headers['content-type'] ?? '').toLowerCase();
       final respGoat = streamed.headers['goat'];
       final respIsland = streamed.headers['island'];
       // goat (embed.st) / island (embedindia) mark encrypted unlock bodies —
       // must stay raw bytes (bodyB64), never UTF-8-mangled text.
       // Mislabelled protobuf (application/json + binary) must too — UTF-8
       // mangling empties TCPWE / FCTV33 catalog parses.
-      final binaryResp = respCt.contains('application/octet-stream') ||
+      final binaryResp =
+          respCt.contains('application/octet-stream') ||
           respCt.contains('protobuf') ||
           respCt.contains('application/grpc') ||
           !_isValidUtf8(bytes) ||
@@ -2013,8 +2034,10 @@ class EngineRuntime {
         final type = (query['type'] ?? query['types'] ?? 'live_sport')
             .toString()
             .trim();
-        final capability =
-            (query['capability'] ?? 'catalog').toString().trim().toLowerCase();
+        final capability = (query['capability'] ?? 'catalog')
+            .toString()
+            .trim()
+            .toLowerCase();
         final listed = <Map<String, dynamic>>[];
         if (type == 'iptv') {
           final hubs = await EngineService.instance.listHubCatalogPlugins();
@@ -2031,8 +2054,8 @@ class EngineRuntime {
           return listed;
         }
         if (type == 'live_sport' || type == 'live' || type.isEmpty) {
-          final enabled =
-              await EngineService.instance.listEnabledLiveFeedPlugins();
+          final enabled = await EngineService.instance
+              .listEnabledLiveFeedPlugins();
           for (final p in enabled) {
             if (capability == 'catalog' &&
                 !p.supportsLiveFeed &&
@@ -2253,6 +2276,26 @@ class EngineRuntime {
     _resolveSimkl(id: id, gen: gen, envelope: {'rows': rows});
   }
 
+  Future<void> _dispatchSimklSyncListsIfAuto({
+    required int id,
+    required int gen,
+  }) async {
+    if (gen != _fetchGeneration) return;
+    Map<String, dynamic> envelope = const {'synced': false};
+    try {
+      envelope = await SimklService().syncListsIfAuto();
+      if (envelope['synced'] == true) {
+        // Bust stale composed feeds without bumping epoch mid-extract
+        // (avoids a re-entrant layout/feed storm).
+        EngineCache.instance.wipeAction('feed');
+      }
+    } catch (e, st) {
+      _forjaRuntimeLog('simkl.syncListsIfAuto failed: $e\n$st');
+    }
+    if (gen != _fetchGeneration) return;
+    _resolveSimkl(id: id, gen: gen, envelope: envelope);
+  }
+
   Future<void> _dispatchVaultGet({
     required int id,
     required String key,
@@ -2266,11 +2309,7 @@ class EngineRuntime {
       _forjaRuntimeLog('vault.get failed: $e\n$st');
     }
     if (gen != _fetchGeneration) return;
-    _resolveVault(
-      id: id,
-      gen: gen,
-      envelope: {'value': value},
-    );
+    _resolveVault(id: id, gen: gen, envelope: {'value': value});
   }
 
   Future<void> _dispatchVaultSet({
@@ -2713,8 +2752,22 @@ class EngineRuntime {
 
   // Miruro pipe XOR key. `miruro.js` calls `ctx.crypto.decodePipe`.
   static const _pipeObfKey = <int>[
-    0x71, 0x95, 0x10, 0x34, 0xf8, 0xfb, 0xcf, 0x53,
-    0xd8, 0x9d, 0xb5, 0x2c, 0xeb, 0x3d, 0xc2, 0x2c,
+    0x71,
+    0x95,
+    0x10,
+    0x34,
+    0xf8,
+    0xfb,
+    0xcf,
+    0x53,
+    0xd8,
+    0x9d,
+    0xb5,
+    0x2c,
+    0xeb,
+    0x3d,
+    0xc2,
+    0x2c,
   ];
 
   String _encodePipe(String json) {
@@ -2783,7 +2836,10 @@ class EngineRuntime {
     final n = int.tryParse('${m['n']}') ?? 0;
     final r = int.tryParse('${m['r']}') ?? 0;
     final p = int.tryParse('${m['p']}') ?? 0;
-    final dkLen = (int.tryParse('${m['dkLen'] ?? m['dklen']}') ?? 32).clamp(1, 64);
+    final dkLen = (int.tryParse('${m['dkLen'] ?? m['dklen']}') ?? 32).clamp(
+      1,
+      64,
+    );
     if (password.isEmpty || n <= 0 || r <= 0 || p <= 0 || (n & (n - 1)) != 0) {
       return '';
     }

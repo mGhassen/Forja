@@ -157,6 +157,11 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
   static int _nextViewId = 1;
 
   late final int _viewId = _nextViewId++;
+
+  /// Flutter Texture id from [ExoPlayerBridge.create] (issue 479).
+  int? _textureId;
+  int _videoWidth = 0;
+  int _videoHeight = 0;
   late final PlayerStatusController _statusController =
       PlayerStatusController();
   late final ValueNotifier<bool> _isBufferingNotifier = ValueNotifier<bool>(
@@ -462,8 +467,11 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
     if (mounted) setState(() {});
     trace.mark('sources-ranked', detail: 'n=${_sources.length}');
     _eventSub = ExoPlayerBridge.eventsFor(_viewId).listen(_onNativeEvent);
-    // Let Positioned.fill / AndroidView settle before open — opening over a
-    // zero-sized TextureView leaves a zoomed crop on ATV (issue 129 A02).
+    // SurfaceProducer before open — MediaCodec paints into Flutter Texture
+    // (issue 479). End-of-frame so Texture is mounted before prepare.
+    _textureId = await ExoPlayerBridge.create(_viewId);
+    if (!mounted || _disposed) return;
+    if (mounted) setState(() {});
     await Future<void>.delayed(Duration.zero);
     await WidgetsBinding.instance.endOfFrame;
     if (!mounted || _disposed) return;
@@ -872,6 +880,20 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
         PlaybackStartTrace.instance.finish('exo-first-frame');
         _maybeRemountFitOnce();
         break;
+      case 'videoSize':
+        final w = (event['width'] as num?)?.toInt() ?? 0;
+        final h = (event['height'] as num?)?.toInt() ?? 0;
+        final ratio = (event['pixelRatio'] as num?)?.toDouble() ?? 1.0;
+        if (w <= 0 || h <= 0) break;
+        final adjW = (w * ratio).round().clamp(1, 1 << 15);
+        if (adjW == _videoWidth && h == _videoHeight) break;
+        if (mounted) {
+          setState(() {
+            _videoWidth = adjW;
+            _videoHeight = h;
+          });
+        }
+        break;
       case 'cues':
         // Avoid setState — ValueListenableBuilder only (issue 151 / 230).
         final raw = event['texts'];
@@ -1154,21 +1176,32 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
 
   void _claimPlayFocus() {
     if (!_isTv) return;
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    // Sync + one-frame retry — deferred-only left seek ↑/↓ stuck (issue 130).
+    void tryClaim() {
       if (!mounted || !_playFocus.canRequestFocus) return;
       // Menu/panel owns the remote - don't yank focus back to Play.
       if (playerChromeOverlayBlocksFocusClaim()) return;
       _playFocus.requestFocus();
-    });
+    }
+
+    tryClaim();
+    if (!_playFocus.hasFocus) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => tryClaim());
+    }
   }
 
   void _claimBackFocus() {
     if (!_isTv) return;
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    void tryClaim() {
       if (!mounted || !_backFocus.canRequestFocus) return;
       if (playerChromeOverlayBlocksFocusClaim()) return;
       _backFocus.requestFocus();
-    });
+    }
+
+    tryClaim();
+    if (!_backFocus.hasFocus) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => tryClaim());
+    }
   }
 
   void _focusDownFromTopBar() {
@@ -2884,11 +2917,14 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
                   child: ExoPlayerView(
                     key: ValueKey<String>('exo-$_viewId-$_platformMountGen'),
                     viewId: _viewId,
+                    textureId: _textureId,
+                    resizeMode: _resizeMode,
+                    videoWidth: _videoWidth,
+                    videoHeight: _videoHeight,
                   ),
                 ),
               ),
-              // Flutter cue paint — native SubtitleView is GONE inside the
-              // PlatformView (issue 230 / Xiaomi ATV VirtualDisplay).
+              // Flutter cue paint — native SubtitleView unused (issue 230).
               Positioned.fill(
                 child: IgnorePointer(
                   child: ValueListenableBuilder<List<String>>(

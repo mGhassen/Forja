@@ -2143,6 +2143,18 @@ abstract final class ShellTvFocusCoordinator {
     }
     return false;
   }
+
+  /// True when any attached item in [tabId]/[rowId] currently has focus.
+  static bool rowHasFocus(String tabId, String rowId) {
+    final prefix = '$tabId:$rowId:';
+    for (final e in _itemNodes.entries) {
+      if (!e.key.startsWith(prefix)) continue;
+      try {
+        if (e.value.hasFocus) return true;
+      } catch (_) {}
+    }
+    return false;
+  }
 }
 
 /// Metadata attached to TV focusable widgets.

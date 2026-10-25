@@ -51,3 +51,5 @@ Finish ep N → if a next aired episode exists, CW becomes that episode (up-next
 ## Fix
 
 On ≥85%, seed the next aired episode into hub `WatchHistory` / Home `WatchHistoryService` with `upNext: true` **before** writing finished progress into the CW row. Seed runs even when the episode was already auto-marked. Continue Watching eligibility includes those seeds. Finished last episode still drops off.
+
+Follow-up: [476](476-[fixed]-continue-watching-drops-show-under-2-percent.md) — starting the next ep under 2% must not drop the show (`showStarted`).

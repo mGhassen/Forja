@@ -35,6 +35,7 @@ class InteractivePosterCard extends StatefulWidget {
     this.onLongPress,
     this.longPressDuration = const Duration(milliseconds: 2000),
     this.subtitle,
+    this.subtitleTrailing,
     this.rating,
     this.rank,
     this.badge,
@@ -60,6 +61,7 @@ class InteractivePosterCard extends StatefulWidget {
   final String imageUrl;
   final String title;
   final String? subtitle;
+  final Widget? subtitleTrailing;
   final double? rating;
   final int? rank;
   final String? badge;
@@ -274,6 +276,7 @@ class _InteractivePosterCardState extends State<InteractivePosterCard> {
         imageUrl: widget.imageUrl,
         title: widget.title,
         subtitle: widget.subtitle,
+        subtitleTrailing: widget.subtitleTrailing,
         rating: widget.rating,
         badge: widget.badge,
         listPin: pin,

@@ -1398,11 +1398,13 @@ class SyncDomainBridge {
     final localFav = await PortalStore.loadFavorites();
 
     // Cloud is master for *which* portals are assigned. Existing local rows
-    // keep probe fields (name / seats / expiry) — only append new keys and
-    // drop unassigned; never wipe local account probes on a re-pull.
-    final portals = <VerifiedPortal>[];
-    final favoriteKeys = <String>{};
-    for (final row in rows) {
+    // keep probe fields + **local list order** — only prepend newly assigned
+    // keys and drop unassigned. Never re-sort by cloud created_at (that
+    // reshuffled siblings on every soft-pull after Add — issue 464).
+    final cloudByKey = <String, ({VerifiedPortal portal, bool favorite})>{};
+    // rows are created_at ascending — walk newest-first for new assigns.
+    for (final raw in rows.reversed) {
+      final row = Map<String, dynamic>.from(raw as Map);
       final portal = row['portal'];
       if (portal is! Map) continue;
       final g = Map<String, dynamic>.from(portal);
@@ -1419,49 +1421,60 @@ class SyncDomainBridge {
         platform: PortalPlatform.fromString(g['platform'] as String?),
       );
       final key = cloudPortal.key;
+      if (key.isEmpty || cloudByKey.containsKey(key)) continue;
       final existing = localByKey[key];
+      final VerifiedPortal merged;
       if (existing != null) {
         final kept = cloudLabel.isNotEmpty && cloudLabel != existing.label
             ? existing.withLabel(cloudLabel)
             : existing;
-        portals.add(
-          kept.addedAt.trim().isNotEmpty || cloudAddedAt.isEmpty
-              ? kept
-              : VerifiedPortal(
-                  portal: kept.portal,
-                  label: kept.label,
-                  name: kept.name,
-                  expiry: kept.expiry,
-                  maxConnections: kept.maxConnections,
-                  activeConnections: kept.activeConnections,
-                  addedAt: cloudAddedAt,
-                ),
-        );
+        merged = kept.addedAt.trim().isNotEmpty || cloudAddedAt.isEmpty
+            ? kept
+            : VerifiedPortal(
+                portal: kept.portal,
+                label: kept.label,
+                name: kept.name,
+                expiry: kept.expiry,
+                maxConnections: kept.maxConnections,
+                activeConnections: kept.activeConnections,
+                addedAt: cloudAddedAt,
+              );
       } else {
-        portals.add(
-          VerifiedPortal(
-            portal: cloudPortal,
-            label: cloudLabel,
-            name: '',
-            expiry: g['expiry'] as String? ?? '',
-            maxConnections: g['max_connections'] as String? ?? '1',
-            activeConnections: '0',
-            addedAt: cloudAddedAt.isNotEmpty
-                ? cloudAddedAt
-                : DateTime.now().toUtc().toIso8601String(),
-          ),
+        merged = VerifiedPortal(
+          portal: cloudPortal,
+          label: cloudLabel,
+          name: '',
+          expiry: g['expiry'] as String? ?? '',
+          maxConnections: g['max_connections'] as String? ?? '1',
+          activeConnections: '0',
+          addedAt: cloudAddedAt.isNotEmpty
+              ? cloudAddedAt
+              : DateTime.now().toUtc().toIso8601String(),
         );
       }
-      if (row['favorite'] == true) {
-        favoriteKeys.add(key);
-      }
+      cloudByKey[key] = (portal: merged, favorite: row['favorite'] == true);
     }
-    // Newest insert first in store/vault array (panel also sorts by addedAt).
-    portals.sort((a, b) {
-      final am = DateTime.tryParse(a.addedAt)?.millisecondsSinceEpoch ?? 0;
-      final bm = DateTime.tryParse(b.addedAt)?.millisecondsSinceEpoch ?? 0;
-      return bm.compareTo(am);
-    });
+
+    final portals = <VerifiedPortal>[];
+    final favoriteKeys = <String>{};
+    final seen = <String>{};
+
+    // Newly assigned (not in local) — newest first.
+    for (final entry in cloudByKey.entries) {
+      if (localByKey.containsKey(entry.key)) continue;
+      portals.add(entry.value.portal);
+      seen.add(entry.key);
+      if (entry.value.favorite) favoriteKeys.add(entry.key);
+    }
+
+    // Keep local relative order for portals still assigned.
+    for (final v in local) {
+      final hit = cloudByKey[v.key];
+      if (hit == null) continue;
+      if (!seen.add(v.key)) continue;
+      portals.add(hit.portal);
+      if (hit.favorite) favoriteKeys.add(v.key);
+    }
 
     final localKeys = local.map((v) => v.key).toSet();
     final nextKeys = portals.map((v) => v.key).toSet();
@@ -1471,7 +1484,14 @@ class SyncDomainBridge {
         localFav.length == favoriteKeys.length &&
         localFav.containsAll(favoriteKeys);
     var labelChanged = false;
+    var orderChanged = false;
     if (keysSame) {
+      for (var i = 0; i < local.length; i++) {
+        if (i >= portals.length || local[i].key != portals[i].key) {
+          orderChanged = true;
+          break;
+        }
+      }
       for (final p in portals) {
         final prev = localByKey[p.key];
         if (prev != null && prev.label != p.label) {
@@ -1480,7 +1500,8 @@ class SyncDomainBridge {
         }
       }
     }
-    if (keysSame && favSame && !labelChanged) return true;
+    // Same keys/favs/labels/order — skip rewrite (keeps vault paint stable).
+    if (keysSame && favSame && !labelChanged && !orderChanged) return true;
 
     // Cloud → local cache only; never schedule a push that could race-wipe.
     await PortalStore.save(portals, scheduleSync: false);

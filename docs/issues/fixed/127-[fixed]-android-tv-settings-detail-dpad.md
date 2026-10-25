@@ -54,4 +54,4 @@ On **Android TV**, Settings uses a left category rail and a right category page.
 
 **Fix (T08):** spatial D-pad inside each page (`ContainDpad` + `FocusScope`); **↑** never pageBack; packs rows at `sortOrder` 100+ with ↑ traps.
 
-**Related:** [RFC-033](../rfc/033-[open]-settings-ux-redesign.md) · [settings overview](../features/settings/overview.md)
+**Related:** [RFC-033](../rfc/033-[open]-settings-ux-redesign.md) · [settings overview](../features/settings/overview.md) · follow-up [483](483-[fixed]-android-tv-settings-back-skips-menu.md) (pageBack without detail scope hasFocus)

@@ -9,7 +9,10 @@ void main() {
     });
 
     test('returns true when updatedAt is missing', () {
-      expect(isStaleResume({'position': 60_000, 'duration': 3_600_000}), isTrue);
+      expect(
+        isStaleResume({'position': 60_000, 'duration': 3_600_000}),
+        isTrue,
+      );
     });
 
     test('returns false for recent progress', () {
@@ -70,19 +73,31 @@ void main() {
   group('resumeStartPositionFromProgress', () {
     test('uses in-progress position only inside 2–85% window', () {
       expect(
-        resumeStartPositionFromProgress({'position': 3_999, 'duration': 200_000}),
+        resumeStartPositionFromProgress({
+          'position': 3_999,
+          'duration': 200_000,
+        }),
         Duration.zero,
       );
       expect(
-        resumeStartPositionFromProgress({'position': 10_000, 'duration': 200_000}),
+        resumeStartPositionFromProgress({
+          'position': 10_000,
+          'duration': 200_000,
+        }),
         const Duration(milliseconds: 10_000),
       );
       expect(
-        resumeStartPositionFromProgress({'position': 10_000, 'duration': 100_000}),
+        resumeStartPositionFromProgress({
+          'position': 10_000,
+          'duration': 100_000,
+        }),
         const Duration(milliseconds: 10_000),
       );
       expect(
-        resumeStartPositionFromProgress({'position': 85_000, 'duration': 100_000}),
+        resumeStartPositionFromProgress({
+          'position': 85_000,
+          'duration': 100_000,
+        }),
         Duration.zero,
       );
       expect(
@@ -111,6 +126,18 @@ void main() {
       expect(isContinueWatchingEligible(20_000, 100_000), isTrue);
     });
 
+    test('showStarted keeps under-floor progress until finished', () {
+      expect(isContinueWatchingEligible(0, 0, showStarted: true), isTrue);
+      expect(
+        isContinueWatchingEligible(1_000, 100_000, showStarted: true),
+        isTrue,
+      );
+      expect(
+        isContinueWatchingEligible(90_000, 100_000, showStarted: true),
+        isFalse,
+      );
+    });
+
     test('inProgressPoolByShow includes up-next rows', () {
       final pool = inProgressPoolByShow([
         {
@@ -132,6 +159,21 @@ void main() {
       expect(pool, hasLength(1));
       expect(pool.first['episode'], 3);
       expect(pool.first['upNext'], isTrue);
+    });
+
+    test('inProgressPoolByShow includes showStarted under 2%', () {
+      final pool = inProgressPoolByShow([
+        {
+          'tmdbId': 2,
+          'position': 1_000,
+          'duration': 100_000,
+          'updatedAt': 300,
+          'episode': 4,
+          'showStarted': true,
+        },
+      ]);
+      expect(pool, hasLength(1));
+      expect(pool.first['episode'], 4);
     });
   });
 
@@ -166,10 +208,7 @@ void main() {
       final hit = latestHistoryForShow(1, history);
       expect(hit?['episode'], 3);
       expect(latestInProgressForShow(1, history)?['episode'], 3);
-      expect(
-        latestInProgressForShow(1, [history[0], history[2]]),
-        isNull,
-      );
+      expect(latestInProgressForShow(1, [history[0], history[2]]), isNull);
     });
   });
 }

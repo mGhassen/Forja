@@ -19,7 +19,7 @@
 
 | # | ID | Description | Status |
 |--:|----|-------------|--------|
-| 1 | I27-A01 | R22-A01 — mDNS discover; no typed IP | ⬜ |
+| 1 | I27-A01 | R22-A01 — mDNS discover; no typed IP (see [481](fixed/481-[fixed]-android-tv-lan-discover-mdns.md) ATV MulticastLock) | ⬜ |
 | 2 | I27-A02 | R22-A02 — manual IP:port pair when mDNS blocked | ⬜ |
 | 3 | I27-A03 | R22-A03 — one-time code; reuse rejected | ⬜ |
 | 4 | I27-A04 | R22-A04 — reconnect without code prompt | ⬜ |

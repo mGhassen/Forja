@@ -4,10 +4,13 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:forja_foundation/components/forja_image_cache.dart';
 import 'package:flutter/material.dart' hide Checkbox;
 import 'package:flutter/services.dart';
+import 'package:forja_foundation/components/button.dart';
 import 'package:forja_foundation/components/checkbox.dart';
 import 'package:forja/shared/engine/store/list_open_binding.dart';
 import 'package:forja/shared/engine/store/list_open_picker.dart';
 import 'package:forja/shared/engine/store/list_open_title_rank.dart';
+import 'package:forja/shared/engine/runtime/kit/pack_tracker_mark.dart';
+import 'package:forja_foundation/widgets/catalog/letter_link_mark.dart';
 import 'package:forja_foundation/widgets/chrome/shell_chip.dart';
 import 'package:forja/shell/core/forja_shell_scope.dart';
 import 'package:forja/shell/focus/shell_focusable_tap.dart';
@@ -43,7 +46,9 @@ class ListOpenBindResult {
   final MetaItem? hit;
 }
 
-/// One sheet: hub chips + optional title search + ranked hits.
+enum _ListOpenBindMode { openWith, simkl }
+
+/// One sheet: Open with (hub) and optional Simkl TMDB link modes.
 Future<ListOpenBindResult?> showListOpenBindSheet(
   BuildContext context, {
   required List<ListOpenCandidate> candidates,
@@ -51,7 +56,13 @@ Future<ListOpenBindResult?> showListOpenBindSheet(
   String title = 'Open in…',
   String? initialPluginId,
   bool pickFilm = false,
+  bool simklLinkEnabled = false,
+  bool initialSimklMode = false,
+  String? openHubLabel,
+  ListOpenCandidate? simklSearchCandidate,
+  bool hasSimklLink = false,
   Future<bool> Function(ListOpenBindResult result)? onSave,
+  Future<bool> Function(MetaItem hit)? onSimklSave,
 }) {
   if (candidates.isEmpty) return Future.value(null);
   return showDialog<ListOpenBindResult>(
@@ -66,7 +77,13 @@ Future<ListOpenBindResult?> showListOpenBindSheet(
           title: title,
           initialPluginId: initialPluginId,
           pickFilm: pickFilm,
+          simklLinkEnabled: simklLinkEnabled,
+          initialSimklMode: initialSimklMode,
+          openHubLabel: openHubLabel,
+          simklSearchCandidate: simklSearchCandidate,
+          hasSimklLink: hasSimklLink,
           onSave: onSave,
+          onSimklSave: onSimklSave,
         ),
       );
     },
@@ -80,7 +97,13 @@ class _ListOpenBindSheet extends StatefulWidget {
     required this.title,
     this.initialPluginId,
     this.pickFilm = false,
+    this.simklLinkEnabled = false,
+    this.initialSimklMode = false,
+    this.openHubLabel,
+    this.simklSearchCandidate,
+    this.hasSimklLink = false,
     this.onSave,
+    this.onSimklSave,
   });
 
   final List<ListOpenCandidate> candidates;
@@ -91,8 +114,17 @@ class _ListOpenBindSheet extends StatefulWidget {
   /// Right-click rebind: search every hub, check a title to save it.
   final bool pickFilm;
 
+  final bool simklLinkEnabled;
+  final bool initialSimklMode;
+  final String? openHubLabel;
+  final ListOpenCandidate? simklSearchCandidate;
+  final bool hasSimklLink;
+
   /// Save the checked title and stay on the sheet. Null pops and opens.
   final Future<bool> Function(ListOpenBindResult result)? onSave;
+
+  /// Persist TMDB for Simkl only; stay on the sheet.
+  final Future<bool> Function(MetaItem hit)? onSimklSave;
 
   @override
   State<_ListOpenBindSheet> createState() => _ListOpenBindSheetState();
@@ -100,10 +132,14 @@ class _ListOpenBindSheet extends StatefulWidget {
 
 class _ListOpenBindSheetState extends State<_ListOpenBindSheet> {
   late ListOpenCandidate _hub;
+  late _ListOpenBindMode _mode;
+  late bool _simklLinked;
   late final TextEditingController _query;
   late final List<FocusNode> _chipNodes;
   final FocusNode _queryFocus = FocusNode();
   final FocusNode _openFocus = FocusNode();
+  final FocusNode _openWithBtnFocus = FocusNode();
+  final FocusNode _simklBtnFocus = FocusNode();
   final List<FocusNode> _hitNodes = [];
   Timer? _debounce;
   int _searchGen = 0;
@@ -116,6 +152,14 @@ class _ListOpenBindSheetState extends State<_ListOpenBindSheet> {
   bool _saving = false;
 
   MetaItem get _headerMeta => _preview ?? widget.sourceMeta;
+
+  bool get _simklMode =>
+      _mode == _ListOpenBindMode.simkl &&
+      widget.simklLinkEnabled &&
+      widget.simklSearchCandidate != null;
+
+  ListOpenCandidate get _activeHub =>
+      _simklMode ? widget.simklSearchCandidate! : _hub;
 
   String get _yearHint {
     final r = widget.sourceMeta.releaseInfo.trim();
@@ -133,6 +177,10 @@ class _ListOpenBindSheetState extends State<_ListOpenBindSheet> {
   void initState() {
     super.initState();
     _hub = _pickInitialHub();
+    _simklLinked = widget.hasSimklLink;
+    _mode = widget.initialSimklMode && widget.simklLinkEnabled
+        ? _ListOpenBindMode.simkl
+        : _ListOpenBindMode.openWith;
     _chipNodes = List.generate(
       widget.candidates.length,
       (i) => FocusNode(debugLabel: 'list-open-hub-$i'),
@@ -142,6 +190,10 @@ class _ListOpenBindSheetState extends State<_ListOpenBindSheet> {
       if (!mounted) return;
       _onHubReady();
       if (!ShellScope.inputPolicyOf(context).useFocusableMoodChips) return;
+      if (_simklMode) {
+        _simklBtnFocus.requestFocus();
+        return;
+      }
       final i = widget.candidates.indexWhere(
         (c) => c.pluginId == _hub.pluginId,
       );
@@ -168,6 +220,8 @@ class _ListOpenBindSheetState extends State<_ListOpenBindSheet> {
     _query.dispose();
     _queryFocus.dispose();
     _openFocus.dispose();
+    _openWithBtnFocus.dispose();
+    _simklBtnFocus.dispose();
     for (final node in _chipNodes) {
       node.dispose();
     }
@@ -175,6 +229,20 @@ class _ListOpenBindSheetState extends State<_ListOpenBindSheet> {
       node.dispose();
     }
     super.dispose();
+  }
+
+  void _setMode(_ListOpenBindMode mode) {
+    if (_mode == mode) return;
+    setState(() {
+      _mode = mode;
+      _pickedKey = null;
+      _preview = null;
+      _fitHitFocus(0);
+      _hits = const [];
+      _error = null;
+      _searching = false;
+    });
+    _onHubReady();
   }
 
   void _fitHitFocus(int count) {
@@ -187,19 +255,27 @@ class _ListOpenBindSheetState extends State<_ListOpenBindSheet> {
   }
 
   void _focusSelectedChip() {
+    if (_simklMode) {
+      _simklBtnFocus.requestFocus();
+      return;
+    }
     final i = widget.candidates.indexWhere((c) => c.pluginId == _hub.pluginId);
     if (i < 0 || i >= _chipNodes.length) return;
     _chipNodes[i].requestFocus();
   }
 
-  bool get _usesSearch => listOpenBindUsesHubSearch(
-    pickFilm: widget.pickFilm,
-    compatible: _hub.compatible,
-    hasSearch: _hub.hasSearch,
-  );
+  bool get _usesSearch {
+    if (_simklMode) return widget.simklSearchCandidate!.hasSearch;
+    return listOpenBindUsesHubSearch(
+      pickFilm: widget.pickFilm,
+      compatible: _hub.compatible,
+      hasSearch: _hub.hasSearch,
+    );
+  }
 
   /// Rebind on a hub that cannot search: the current title, unchecked.
-  bool get _filmOnly => widget.pickFilm && _hub.compatible && !_hub.hasSearch;
+  bool get _filmOnly =>
+      !_simklMode && widget.pickFilm && _hub.compatible && !_hub.hasSearch;
 
   void _focusBelowHubs() {
     if (_usesSearch || widget.pickFilm) {
@@ -220,6 +296,7 @@ class _ListOpenBindSheetState extends State<_ListOpenBindSheet> {
   void _selectHub(ListOpenCandidate hub) {
     if (_hub.pluginId == hub.pluginId) return;
     setState(() {
+      _mode = _ListOpenBindMode.openWith;
       _hub = hub;
       _pickedKey = null;
       _preview = null;
@@ -240,10 +317,13 @@ class _ListOpenBindSheetState extends State<_ListOpenBindSheet> {
       });
       return;
     }
-    if (!_usesSearch && _hub.compatible && !widget.pickFilm) return;
-    if (!_hub.hasSearch) {
+    final hub = _activeHub;
+    if (!_usesSearch && hub.compatible && !widget.pickFilm && !_simklMode) {
+      return;
+    }
+    if (!hub.hasSearch) {
       setState(() {
-        _error = '${_hub.label} has no search';
+        _error = '${hub.label} has no search';
         _hits = const [];
       });
       return;
@@ -273,8 +353,9 @@ class _ListOpenBindSheetState extends State<_ListOpenBindSheet> {
       _searching = true;
       _error = null;
     });
+    final hub = _activeHub;
     final hits = await listOpenSearchHub(
-      pluginId: _hub.pluginId,
+      pluginId: hub.pluginId,
       query: q,
       yearHint: _yearHint,
     );
@@ -283,7 +364,7 @@ class _ListOpenBindSheetState extends State<_ListOpenBindSheet> {
       _searching = false;
       _fitHitFocus(hits.length);
       _hits = hits;
-      _error = hits.isEmpty ? 'No matches in ${_hub.label}' : null;
+      _error = hits.isEmpty ? 'No matches in ${hub.label}' : null;
     });
   }
 
@@ -303,6 +384,21 @@ class _ListOpenBindSheetState extends State<_ListOpenBindSheet> {
 
   Future<void> _savePick(ListOpenBindResult result, String key) async {
     if (_closed || _saving || _pickedKey == key) return;
+    if (_simklMode) {
+      final hit = result.hit;
+      final save = widget.onSimklSave;
+      if (hit == null || save == null) return;
+      _saving = true;
+      final ok = await save(hit);
+      _saving = false;
+      if (!mounted || !ok) return;
+      setState(() {
+        _pickedKey = key;
+        _simklLinked = true;
+        _preview = widget.sourceMeta;
+      });
+      return;
+    }
     final save = widget.onSave;
     if (!widget.pickFilm || save == null) {
       setState(() => _pickedKey = key);
@@ -320,12 +416,15 @@ class _ListOpenBindSheetState extends State<_ListOpenBindSheet> {
   }
 
   void _confirmCompatible() {
-    unawaited(_savePick(ListOpenBindResult(candidate: _hub), 'source'));
+    unawaited(_savePick(ListOpenBindResult(candidate: _activeHub), 'source'));
   }
 
   void _confirmHit(MetaItem hit) {
     unawaited(
-      _savePick(ListOpenBindResult(candidate: _hub, hit: hit), _hitKey(hit)),
+      _savePick(
+        ListOpenBindResult(candidate: _activeHub, hit: hit),
+        _hitKey(hit),
+      ),
     );
   }
 
@@ -387,7 +486,7 @@ class _ListOpenBindSheetState extends State<_ListOpenBindSheet> {
                 children: [
                   Expanded(
                     child: Text(
-                      widget.title,
+                      _simklMode ? 'Match on Simkl' : widget.title,
                       style: GoogleFonts.plusJakartaSans(
                         color: ForjaShellColors.textPrimary,
                         fontSize: type(18),
@@ -395,24 +494,16 @@ class _ListOpenBindSheetState extends State<_ListOpenBindSheet> {
                       ),
                     ),
                   ),
-                  TextButton(
+                  Button(
+                    variant: ButtonVariant.plainIcon,
+                    size: ButtonSize.icon,
+                    icon: Icons.close_rounded,
+                    compact: true,
+                    color: ForjaShellColors.iconMuted,
+                    iconSize: px(18),
+                    height: px(32),
+                    tooltip: 'Close',
                     onPressed: () => Navigator.of(context).pop(),
-                    style: TextButton.styleFrom(
-                      visualDensity: VisualDensity.compact,
-                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                      padding: EdgeInsets.symmetric(
-                        horizontal: px(8),
-                        vertical: px(4),
-                      ),
-                      minimumSize: Size(px(48), px(28)),
-                    ),
-                    child: Text(
-                      'Cancel',
-                      style: TextStyle(
-                        color: ForjaShellColors.textSecondary,
-                        fontSize: type(14),
-                      ),
-                    ),
                   ),
                 ],
               ),
@@ -448,50 +539,145 @@ class _ListOpenBindSheetState extends State<_ListOpenBindSheet> {
                             ),
                           ),
                         ],
+                        if (widget.simklLinkEnabled) ...[
+                          SizedBox(height: px(8)),
+                          Row(
+                            children: [
+                              _ModeIcon(
+                                focusNode: _simklBtnFocus,
+                                selected: _simklMode,
+                                tooltip: 'Match on Simkl',
+                                size: px(28),
+                                onTap: () => _setMode(_ListOpenBindMode.simkl),
+                                child: LetterLinkMark(
+                                  letter: 'S',
+                                  linked: _simklLinked,
+                                  selected: _simklMode,
+                                  size: px(20),
+                                  image: const AssetImage(kSimklLogoAsset),
+                                ),
+                              ),
+                              SizedBox(width: px(6)),
+                              _ModeIcon(
+                                focusNode: _openWithBtnFocus,
+                                selected: !_simklMode,
+                                tooltip: 'Open with',
+                                size: px(28),
+                                onTap: () =>
+                                    _setMode(_ListOpenBindMode.openWith),
+                                child: Icon(
+                                  Icons.link_rounded,
+                                  size: px(20),
+                                  color: !_simklMode
+                                      ? ForjaShellColors.textPrimary
+                                      : ForjaShellColors.iconMuted,
+                                ),
+                              ),
+                              if (!_simklMode &&
+                                  (widget.openHubLabel ?? '')
+                                      .trim()
+                                      .isNotEmpty) ...[
+                                SizedBox(width: px(8)),
+                                Flexible(
+                                  child: Text(
+                                    widget.openHubLabel!.trim(),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                      color: ForjaShellColors.textSecondary,
+                                      fontSize: type(12),
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
+                        ] else ...[
+                          SizedBox(height: px(8)),
+                          Row(
+                            children: [
+                              Icon(
+                                Icons.link_rounded,
+                                size: px(16),
+                                color: ForjaShellColors.iconMuted,
+                              ),
+                              SizedBox(width: px(6)),
+                              Flexible(
+                                child: Text(
+                                  (widget.openHubLabel ?? '').trim().isNotEmpty
+                                      ? 'Open with ${widget.openHubLabel!.trim()}'
+                                      : 'Open with…',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    color: ForjaShellColors.textSecondary,
+                                    fontSize: type(13),
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
                       ],
                     ),
                   ),
                 ],
               ),
-              SizedBox(height: px(14)),
-              Text(
-                'Hub',
-                style: TextStyle(
-                  color: ForjaShellColors.textSecondary,
-                  fontSize: type(11),
-                  fontWeight: FontWeight.w600,
-                  letterSpacing: 0.4,
+              if (!_simklMode) ...[
+                SizedBox(height: px(14)),
+                Text(
+                  'Hub',
+                  style: TextStyle(
+                    color: ForjaShellColors.textSecondary,
+                    fontSize: type(11),
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: 0.4,
+                  ),
                 ),
-              ),
-              SizedBox(height: px(8)),
-              Wrap(
-                spacing: px(8),
-                runSpacing: px(8),
-                children: [
-                  for (var i = 0; i < widget.candidates.length; i++)
-                    ForjaShellChip(
-                      label: widget.candidates[i].label,
-                      selected: widget.candidates[i].pluginId == _hub.pluginId,
-                      focusNode: _chipNodes[i],
-                      onTap: () => _selectHub(widget.candidates[i]),
-                      loading:
-                          _searching &&
-                          widget.candidates[i].pluginId == _hub.pluginId,
-                      onLeftEdge: !dpad
-                          ? null
-                          : i == 0
-                          ? () {}
-                          : () => _chipNodes[i - 1].requestFocus(),
-                      onRightEdge: !dpad
-                          ? null
-                          : i == widget.candidates.length - 1
-                          ? () {}
-                          : () => _chipNodes[i + 1].requestFocus(),
-                      onDownEdge: dpad ? _focusBelowHubs : null,
-                      onUpEdge: dpad ? () {} : null,
-                    ),
-                ],
-              ),
+                SizedBox(height: px(8)),
+                Wrap(
+                  spacing: px(8),
+                  runSpacing: px(8),
+                  children: [
+                    for (var i = 0; i < widget.candidates.length; i++)
+                      ForjaShellChip(
+                        label: widget.candidates[i].label,
+                        selected:
+                            widget.candidates[i].pluginId == _hub.pluginId,
+                        focusNode: _chipNodes[i],
+                        onTap: () => _selectHub(widget.candidates[i]),
+                        loading:
+                            _searching &&
+                            widget.candidates[i].pluginId == _hub.pluginId,
+                        onLeftEdge: !dpad
+                            ? null
+                            : i == 0
+                            ? () {}
+                            : () => _chipNodes[i - 1].requestFocus(),
+                        onRightEdge: !dpad
+                            ? null
+                            : i == widget.candidates.length - 1
+                            ? () {}
+                            : () => _chipNodes[i + 1].requestFocus(),
+                        onDownEdge: dpad ? _focusBelowHubs : null,
+                        onUpEdge: dpad ? () {} : null,
+                      ),
+                  ],
+                ),
+              ] else ...[
+                SizedBox(height: px(14)),
+                Text(
+                  'Search ${widget.simklSearchCandidate!.label} for the Simkl title',
+                  style: TextStyle(
+                    color: ForjaShellColors.textSecondary,
+                    fontSize: type(11),
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: 0.4,
+                  ),
+                ),
+              ],
               SizedBox(height: px(14)),
               if (_filmOnly) ...[
                 _FilmCheckRow(
@@ -504,7 +690,9 @@ class _ListOpenBindSheetState extends State<_ListOpenBindSheet> {
                   onUp: _focusSelectedChip,
                 ),
                 const Spacer(),
-              ] else if (_hub.compatible && !widget.pickFilm) ...[
+              ] else if (!_simklMode &&
+                  _hub.compatible &&
+                  !widget.pickFilm) ...[
                 _CompatibleOpenBody(
                   hubLabel: _hub.label,
                   onOpen: _confirmCompatible,
@@ -551,7 +739,7 @@ class _ListOpenBindSheetState extends State<_ListOpenBindSheet> {
                     hits: _hits,
                     isBest: _isBest,
                     onPick: _confirmHit,
-                    pickFilm: widget.pickFilm,
+                    pickFilm: widget.pickFilm || _simklMode,
                     pickedKey: _pickedKey,
                     hitKey: _hitKey,
                     dpad: dpad,
@@ -1095,6 +1283,62 @@ class _HitsBody extends StatelessWidget {
       separatorBuilder: (_, _) =>
           Divider(height: 1, color: ForjaShellColors.borderSubtle),
       itemBuilder: (_, i) => hitTile(i),
+    );
+  }
+}
+
+/// Icon-only mode hit — no pill chrome, no hover/focus scale.
+class _ModeIcon extends StatelessWidget {
+  const _ModeIcon({
+    required this.selected,
+    required this.onTap,
+    required this.tooltip,
+    required this.size,
+    required this.child,
+    this.focusNode,
+  });
+
+  final bool selected;
+  final VoidCallback onTap;
+  final String tooltip;
+  final double size;
+  final Widget child;
+  final FocusNode? focusNode;
+
+  @override
+  Widget build(BuildContext context) {
+    final icon = SizedBox(
+      width: size,
+      height: size,
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Expanded(child: Center(child: child)),
+          Container(
+            height: 2,
+            width: size * 0.55,
+            decoration: BoxDecoration(
+              color: selected
+                  ? ForjaShellColors.brandGreen
+                  : Colors.transparent,
+              borderRadius: BorderRadius.circular(1),
+            ),
+          ),
+        ],
+      ),
+    );
+    return Tooltip(
+      message: tooltip,
+      child: shellFocusableTap(
+        context: context,
+        focusNode: focusNode,
+        onTap: onTap,
+        borderRadius: size / 2,
+        scaleOnFocus: 1,
+        suppressInkHover: true,
+        showFocusBorder: true,
+        child: icon,
+      ),
     );
   }
 }

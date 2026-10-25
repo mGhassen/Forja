@@ -9,7 +9,9 @@ import 'package:forja/features/account/profile_chooser_screen.dart';
 import 'package:forja/features/account/profile_switch_splash.dart';
 import 'package:forja/features/account/tv_account_link_screen.dart';
 import 'package:forja/shell/bus/shell_bus.dart';
+import 'package:forja/shell/main_screen.dart';
 import 'package:forja/shared/platform/platform_info.dart';
+import 'package:forja/shared/services/tracker/simkl_service.dart';
 import 'package:forja/shared/services/update/app_update_auto_check.dart';
 import 'package:forja/shared/services/update/app_updater_service.dart';
 import 'package:forja/shared/supabase/forja_supabase.dart';
@@ -69,9 +71,9 @@ enum _StartupStage { account, profiles, packs, profileSplash, splash }
 /// Restored sessions skip Who's watching and land on the logo [SplashScreen]
 /// with last-active profile settings from local cache — unless packs onboarding
 /// is still pending (`!onboarded`). Fresh sign-in → Who's watching → soft-pull
-/// cloud `onboarded` → packs (when needed) → avatar [ProfileSwitchSplash] →
-/// app (no second logo intro). Guest → packs (when needed, device-local flag)
-/// → logo splash → app.
+/// cloud `onboarded` → packs (when needed) → avatar [ProfileSwitchSplash] with
+/// Offstage [MainScreen] under the same Stack (issue 478; reveal flips
+/// `offstage` like intro splash). Guest → packs (when needed) → logo splash.
 /// Sign-out returns to account without re-running the update check.
 class DesktopStartupGate extends ConsumerStatefulWidget {
   const DesktopStartupGate({super.key, required this.splash});
@@ -89,6 +91,23 @@ class _DesktopStartupGateState extends ConsumerState<DesktopStartupGate> {
 
   /// Restored-session or guest packs path: packs done → shell (no profile splash).
   bool _packsSkipProfileSplash = false;
+
+  /// Stable under avatar Offstage → reveal (same Stack parent, issue 478).
+  final GlobalKey _shellKey = GlobalKey();
+
+  /// Set when [ProfileSwitchSplash.onShellMount] fires — after selectProfile.
+  bool _shellUnderlay = false;
+
+  /// Avatar overlay on [profileSplash]; false after warm → show [MainScreen].
+  bool _profileOverlay = true;
+
+  bool get _profileShellRevealed =>
+      _stage == _StartupStage.profileSplash && !_profileOverlay;
+
+  bool get _inActiveAppShell =>
+      _stage == _StartupStage.splash || _profileShellRevealed;
+
+  Widget get _shell => MainScreen(key: _shellKey);
 
   bool get _isDesktopOs =>
       Platform.isMacOS || Platform.isWindows || Platform.isLinux;
@@ -272,7 +291,7 @@ class _DesktopStartupGateState extends ConsumerState<DesktopStartupGate> {
     assert(
       shouldReturnToAccountOnSignOut(
         reason: state.signOutReason,
-        inActiveAppShell: _stage == _StartupStage.splash,
+        inActiveAppShell: _inActiveAppShell,
       ),
     );
     unawaited(_returnToAccountAfterSignOut());
@@ -294,19 +313,38 @@ class _DesktopStartupGateState extends ConsumerState<DesktopStartupGate> {
     ShellBus.selectDefaultTabOnNextNavLoad = false;
     _splashProfile = null;
     _packsSkipProfileSplash = false;
+    _shellUnderlay = false;
+    _profileOverlay = true;
 
     setState(() => _stage = _StartupStage.account);
   }
 
-  /// After [ProfileSwitchSplash] (avatar fly + intro-style warm) — open the shell
-  /// without a second logo intro splash.
-  void _enterShellAfterProfileSplash() {
-    ShellBus.splashDismissed.value = true;
-    // Packs-skip / gate dismiss can race ahead of ProfileSwitchSplash arming.
-    // MainScreen consumes this on the next navbar load (issue 253).
+  /// Guest / packs-skip: logo [SplashScreen] owns Offstage warm (not profile).
+  void _enterIntroSplash() {
     ShellBus.selectDefaultTabOnNextNavLoad = true;
     _splashProfile = null;
+    _shellUnderlay = false;
+    _profileOverlay = true;
     setState(() => _stage = _StartupStage.splash);
+  }
+
+  /// Flip Offstage under the same Stack — do not remount or re-arm default tab
+  /// (that would wipe the Offstage-warmed tab cache, issue 478).
+  void _revealShellAfterProfileSplash() {
+    ShellBus.splashDismissed.value = true;
+    _splashProfile = null;
+    setState(() {
+      _shellUnderlay = true;
+      _profileOverlay = false;
+    });
+    unawaited(_postProfileShellServices());
+  }
+
+  /// Simkl + any post-dismiss work intro [SplashScreen] would have started.
+  /// Play sources already kicked off from [ProfileSwitchSplash].
+  Future<void> _postProfileShellServices() async {
+    await Future<void>.delayed(const Duration(milliseconds: 400));
+    unawaited(SimklService().fullSync());
   }
 
   Future<void> _afterProfileReady(SyncProfile profile) async {
@@ -342,8 +380,11 @@ class _DesktopStartupGateState extends ConsumerState<DesktopStartupGate> {
       }
     }
     // Avatar splash immediately — it owns selectProfile + settings merge.
+    // Offstage MainScreen mounts later via onShellMount (issue 478).
     setState(() {
       _splashProfile = profile;
+      _shellUnderlay = false;
+      _profileOverlay = true;
       _stage = _StartupStage.profileSplash;
     });
   }
@@ -353,11 +394,13 @@ class _DesktopStartupGateState extends ConsumerState<DesktopStartupGate> {
         _splashProfile ?? await SyncService.instance.activeProfile();
     if (!mounted) return;
     if (profile == null) {
-      _enterShellAfterProfileSplash();
+      _enterIntroSplash();
       return;
     }
     setState(() {
       _splashProfile = profile;
+      _shellUnderlay = false;
+      _profileOverlay = true;
       _stage = _StartupStage.profileSplash;
     });
   }
@@ -381,17 +424,22 @@ class _DesktopStartupGateState extends ConsumerState<DesktopStartupGate> {
     if (!mounted) return;
     if (_packsSkipProfileSplash || !SyncService.instance.isSignedIn) {
       _packsSkipProfileSplash = false;
-      _enterShellAfterProfileSplash();
+      _enterIntroSplash();
       return;
     }
     await _goToProfileSplash();
   }
 
+  void _onShellMountFromProfileSplash() {
+    if (!mounted || _shellUnderlay) return;
+    setState(() => _shellUnderlay = true);
+  }
+
   @override
   Widget build(BuildContext context) {
-    // Splash → MainScreen owns its own caption. Pre-shell stages need chrome
-    // here - title bar is hidden app-wide, and WindowCaption only lives in
-    // DesktopWindowChrome.wrapShell.
+    // Splash / revealed shell own their own caption. Pre-shell stages need
+    // chrome here - title bar is hidden app-wide, and WindowCaption only lives
+    // in DesktopWindowChrome.wrapShell.
     final child = switch (_stage) {
       _StartupStage.account =>
         (_isAndroidTv || !kShowDesktopEmailAuth)
@@ -415,23 +463,37 @@ class _DesktopStartupGateState extends ConsumerState<DesktopStartupGate> {
       _StartupStage.packs => PacksOnboardingScreen(
         onFinished: () => unawaited(_onPacksFinished()),
       ),
-      _StartupStage.profileSplash =>
-        _splashProfile == null
-            ? const SizedBox.shrink()
-            : ProfileSwitchSplash(
-                profile: _splashProfile!,
-                prepareCurrent: false,
-                onCompleted: (ok) {
-                  if (ok) {
-                    _enterShellAfterProfileSplash();
-                  } else if (mounted) {
-                    setState(() => _stage = _StartupStage.profiles);
-                  }
-                },
-              ),
+      _StartupStage.profileSplash => Stack(
+        fit: StackFit.expand,
+        clipBehavior: Clip.hardEdge,
+        children: [
+          // Intro pattern: flip [offstage] under the same parent (issue 478).
+          if (_shellUnderlay || !_profileOverlay)
+            Offstage(offstage: _profileOverlay, child: _shell),
+          if (_profileOverlay && _splashProfile != null)
+            ProfileSwitchSplash(
+              profile: _splashProfile!,
+              prepareCurrent: false,
+              onShellMount: _onShellMountFromProfileSplash,
+              onCompleted: (ok) {
+                if (ok) {
+                  _revealShellAfterProfileSplash();
+                } else if (mounted) {
+                  setState(() {
+                    _shellUnderlay = false;
+                    _profileOverlay = true;
+                    _stage = _StartupStage.profiles;
+                  });
+                }
+              },
+            ),
+        ],
+      ),
       _StartupStage.splash => widget.splash,
     };
-    if (_stage == _StartupStage.splash) return child;
+    if (_stage == _StartupStage.splash || _profileShellRevealed) {
+      return child;
+    }
     if (_isAndroidTv) return child;
     return DesktopWindowChrome.wrapShell(child: child);
   }

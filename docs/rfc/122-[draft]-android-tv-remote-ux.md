@@ -112,4 +112,5 @@ Marks come from `[play-trace]` lines (debug/profile builds only).
 - [Issue 171](../issues/171-[open]-android-tv-details-focus-after-player.md) — ATV details empty focus after player
 - [Issue 180](../issues/180-[open]-android-tv-details-back-loses-catalog-focus.md) — ATV details Back lands on Home top menu
 - [Issue 457](../issues/457-[open]-security-hardening-pack-trust-sandbox-proxy-stream-logs.md) — Security hardening from the T12 review: pack install trust, sandbox limits, proxy token, stream URL allowlist, log redaction
+- [Issue 484](../issues/484-[open]-android-tv-details-episode-ok-hold-mark-watched.md) — details episode OK-hold marks watched (same hold / MENU contract as catalog posters)
 - [Navigation guide](../features/getting-started/navigation.md) — documented TV Back policy

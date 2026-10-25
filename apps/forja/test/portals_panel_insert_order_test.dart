@@ -4,34 +4,35 @@ import 'package:forja_foundation/widgets/chrome/portal_list_panel.dart';
 
 void main() {
   tearDown(() {
-    // Clear session NEW keys between tests (mark every known id seen).
     for (final id in ['a', 'b', 'c', 'new', 'old', 'fav']) {
       PortalsHost.markPortalSeen(id);
     }
   });
 
-  group('PortalsHost.comparePortalListItems', () {
-    test('favorites first, then newest addedAt', () {
-      const a = PortalListItem(id: 'old', label: 'Old');
-      const b = PortalListItem(id: 'new', label: 'New');
-      const fav = PortalListItem(id: 'fav', label: 'Fav', favorite: true);
-      final ms = <String, int>{'old': 1000, 'new': 2000, 'fav': 500};
-      final list = [a, b, fav]
-        ..sort(
-          (x, y) => PortalsHost.comparePortalListItems(x, y, addedAtMs: ms),
-        );
-      expect(list.map((e) => e.id).toList(), ['fav', 'new', 'old']);
-    });
-
-    test('missing addedAt sorts oldest', () {
+  group('PortalsHost.favoritesFirstStable', () {
+    test('favorites float up; sibling order unchanged', () {
       const a = PortalListItem(id: 'a', label: 'A');
       const b = PortalListItem(id: 'b', label: 'B');
-      final ms = <String, int>{'b': 1000};
-      final list = [a, b]
-        ..sort(
-          (x, y) => PortalsHost.comparePortalListItems(x, y, addedAtMs: ms),
-        );
-      expect(list.map((e) => e.id).toList(), ['b', 'a']);
+      const fav = PortalListItem(id: 'fav', label: 'Fav', favorite: true);
+      final out = PortalsHost.favoritesFirstStable([a, fav, b]);
+      expect(out.map((e) => e.id).toList(), ['fav', 'a', 'b']);
+    });
+
+    test('no favorites keeps source order', () {
+      const a = PortalListItem(id: 'a', label: 'A');
+      const b = PortalListItem(id: 'b', label: 'B');
+      const c = PortalListItem(id: 'c', label: 'C');
+      final out = PortalsHost.favoritesFirstStable([a, b, c]);
+      expect(out.map((e) => e.id).toList(), ['a', 'b', 'c']);
+    });
+
+    test('new unshifted portal stays ahead of older siblings', () {
+      // Vault after pack unshift: newest, then previous order.
+      const neu = PortalListItem(id: 'new', label: 'New', isNew: true);
+      const a = PortalListItem(id: 'a', label: 'A');
+      const b = PortalListItem(id: 'b', label: 'B');
+      final out = PortalsHost.favoritesFirstStable([neu, a, b]);
+      expect(out.map((e) => e.id).toList(), ['new', 'a', 'b']);
     });
   });
 

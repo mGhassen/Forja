@@ -107,20 +107,20 @@ mixin _LiveSportsPlayerEngine on _LiveSportsPlayerEngineCore {
 
   Future<void> _bootExoPlayer() async {
     _s._exoViewId = _LiveSportsPlayerScreenState._nextExoViewId++;
+    _s._exoVideoWidth = 0;
+    _s._exoVideoHeight = 0;
     _s._exoSurfaceFallback?.dispose();
     _s._exoSurfaceFallback = ExoAtvSurfaceFallback(
-      // IPTV Exo is TextureView now (issue 133) — TextureView cannot bind dead,
-      // so the SurfaceView watchdog would only fire pointless reopens on a slow
-      // first frame. Kept wired for a possible per-device SurfaceView opt-in.
+      // SurfaceProducer path (issue 479) — SurfaceView watchdog unused.
       enabled: false,
       onFallback: _reopenAfterExoSurfaceFallback,
     );
     _s._exoEventSub = ExoPlayerBridge.eventsFor(
       _s._exoViewId!,
     ).listen(_onExoEvent);
+    _s._exoTextureId = await ExoPlayerBridge.create(_s._exoViewId!);
+    if (_s._disposed || !mounted) return;
     if (mounted) setState(() => _s._playerReady = true);
-    // Let ExoPlayerView attach + layout before open() — opening over a
-    // zero-sized TextureView leaves a zoomed crop (issue 129).
     await Future<void>.delayed(Duration.zero);
     await WidgetsBinding.instance.endOfFrame;
     if (!mounted || _s._disposed) return;
@@ -428,6 +428,20 @@ mixin _LiveSportsPlayerEngine on _LiveSportsPlayerEngineCore {
         _noteVideoFrame(reason: 'exo first frame');
         _maybeRemountExoFitOnce();
         break;
+      case 'videoSize':
+        final w = (event['width'] as num?)?.toInt() ?? 0;
+        final h = (event['height'] as num?)?.toInt() ?? 0;
+        final ratio = (event['pixelRatio'] as num?)?.toDouble() ?? 1.0;
+        if (w <= 0 || h <= 0) break;
+        final adjW = (w * ratio).round().clamp(1, 1 << 15);
+        if (adjW == _s._exoVideoWidth && h == _s._exoVideoHeight) break;
+        if (mounted) {
+          setState(() {
+            _s._exoVideoWidth = adjW;
+            _s._exoVideoHeight = h;
+          });
+        }
+        break;
       case 'cues':
         final raw = event['texts'];
         if (raw is! List) {
@@ -529,8 +543,7 @@ mixin _LiveSportsPlayerEngine on _LiveSportsPlayerEngineCore {
   }
 
   Future<void> _enginePlay({bool allowCast = true}) async {
-    if (allowCast &&
-        await CastingService.instance.setPlayingIfCasting(true)) {
+    if (allowCast && await CastingService.instance.setPlayingIfCasting(true)) {
       if (!_s._disposed) {
         _s._playing = true;
         if (mounted) setState(() {});
@@ -551,8 +564,7 @@ mixin _LiveSportsPlayerEngine on _LiveSportsPlayerEngineCore {
   }
 
   Future<void> _enginePause({bool allowCast = true}) async {
-    if (allowCast &&
-        await CastingService.instance.setPlayingIfCasting(false)) {
+    if (allowCast && await CastingService.instance.setPlayingIfCasting(false)) {
       if (!_s._disposed) {
         _s._playing = false;
         if (mounted) setState(() {});
@@ -647,7 +659,8 @@ mixin _LiveSportsPlayerEngine on _LiveSportsPlayerEngineCore {
         ...candidate.headers,
       };
       final kind = _liveSourceKindFor(candidate);
-      final useProxy = _livePlaybackProfile &&
+      final useProxy =
+          _livePlaybackProfile &&
           !_s.widget.vodPlayback &&
           (_s._mediaKitBackend || _s._exoBackend) &&
           liveSportsShouldUseContinuityProxy(kind: kind, url: candidate.url);
@@ -1143,8 +1156,7 @@ mixin _LiveSportsPlayerEngine on _LiveSportsPlayerEngineCore {
               text.contains('vt decoder cb') ||
               text.contains('output image buffer is null'))) {
         final until = _s._ignoreHwDecodeFailUntil;
-        final insideIgnore =
-            until != null && DateTime.now().isBefore(until);
+        final insideIgnore = until != null && DateTime.now().isBefore(until);
         // Desktop live: a moving clock is not frames. Reopen once on
         // software decode. Android cold-open blip → hold; past cold open
         // → grace→goLive (keep MediaCodec).
@@ -1195,7 +1207,9 @@ mixin _LiveSportsPlayerEngine on _LiveSportsPlayerEngineCore {
           _logHealthyHold('hw decode fail');
           return;
         }
-        debugPrint('[Live Sports Player] hw decode failed - falling back to software');
+        debugPrint(
+          '[Live Sports Player] hw decode failed - falling back to software',
+        );
         unawaited(_forceSoftwareDecode());
         return;
       }
@@ -1418,6 +1432,8 @@ mixin _LiveSportsPlayerEngine on _LiveSportsPlayerEngineCore {
       );
       if (_s._disposed || !mounted) return;
       _s._exoViewId = _LiveSportsPlayerScreenState._nextExoViewId++;
+      _s._exoVideoWidth = 0;
+      _s._exoVideoHeight = 0;
       _s._exoSurfaceFallback?.dispose();
       _s._exoSurfaceFallback = ExoAtvSurfaceFallback(
         enabled: false,
@@ -1426,6 +1442,8 @@ mixin _LiveSportsPlayerEngine on _LiveSportsPlayerEngineCore {
       _s._exoEventSub = ExoPlayerBridge.eventsFor(
         _s._exoViewId!,
       ).listen(_onExoEvent);
+      _s._exoTextureId = await ExoPlayerBridge.create(_s._exoViewId!);
+      if (_s._disposed || !mounted) return;
       if (mounted) setState(() => _s._playerReady = true);
       await Future<void>.delayed(Duration.zero);
       return;

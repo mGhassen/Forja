@@ -839,6 +839,89 @@ void main() {
       },
     );
 
+    testWidgets('I483: pageBack page→menu without detail FocusScope.hasFocus', (
+      tester,
+    ) async {
+      // Regression: pageBack used to require _detailScope.hasFocus; page
+      // controls outside that scope skipped the menu and Back jumped to nav.
+      const tab = 'settings';
+      ShellTvFocus.currentNavTabId = tab;
+      ShellTvFocusCoordinator.setNavOrder([tab, 'home']);
+      final cat = FocusNode(debugLabel: 'cat');
+      final page = FocusNode(debugLabel: 'page-outside-scope');
+      addTearDown(() {
+        cat.dispose();
+        page.dispose();
+        ShellTvFocusCoordinator.clearTab(tab);
+      });
+
+      await tester.pumpWidget(
+        _wrapTv(
+          tab,
+          Column(
+            children: [
+              TvKitRow(
+                tabId: tab,
+                rowId: 'settings-categories',
+                sortOrder: 0,
+                itemCount: 1,
+                orientation: ShellTvRowOrientation.vertical,
+                child: _rowItem(
+                  tabId: tab,
+                  rowId: 'settings-categories',
+                  index: 0,
+                  node: cat,
+                ),
+              ),
+              // Intentionally NOT under a FocusScope — mirrors page controls
+              // that did not set _detailScope.hasFocus.
+              FocusableControl(
+                focusNode: page,
+                autoFocus: true,
+                scaleOnFocus: 1.0,
+                tvMeta: const ShellTvFocusMeta(
+                  tabId: tab,
+                  zone: ShellTvZone.settings,
+                ),
+                onTap: () {},
+                child: const SizedBox(width: 200, height: 40),
+              ),
+            ],
+          ),
+        ),
+      );
+      await tester.pump();
+      expect(page.hasFocus, isTrue);
+      expect(
+        ShellTvFocusCoordinator.rowHasFocus(tab, 'settings-categories'),
+        isFalse,
+      );
+
+      TvHeroActions.bind(
+        tab,
+        pageBack: () {
+          if (ShellTvFocusCoordinator.rowHasFocus(tab, 'settings-categories')) {
+            return false;
+          }
+          return ShellTvFocusCoordinator.focusRowItem(
+            tab,
+            'settings-categories',
+            0,
+          );
+        },
+      );
+
+      expect(ShellTvFocusCoordinator.tryPageBack(tab), isTrue);
+      await tester.pump();
+      expect(cat.hasFocus, isTrue, reason: 'page Back must land on menu');
+
+      expect(
+        ShellTvFocusCoordinator.tryPageBack(tab),
+        isFalse,
+        reason: 'menu Back yields to shell nav',
+      );
+    });
+
     testWidgets('A01: → enters detail; ↑ stays; ← exits', (tester) async {
       final category = FocusNode(debugLabel: 'cat');
       final detailA = FocusNode(debugLabel: 'detail-a');

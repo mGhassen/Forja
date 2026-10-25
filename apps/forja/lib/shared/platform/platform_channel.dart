@@ -13,8 +13,10 @@ abstract final class PlatformChannel {
   static const MethodChannel _channel = MethodChannel('forja/platform');
 
   /// Debug / CI: `flutter run --dart-define=FORJA_ANDROID_TV=true` on Android.
-  static const bool forceAndroidTv =
-      bool.fromEnvironment('FORJA_ANDROID_TV', defaultValue: false);
+  static const bool forceAndroidTv = bool.fromEnvironment(
+    'FORJA_ANDROID_TV',
+    defaultValue: false,
+  );
 
   static PlatformProfile? _debugOverride;
 
@@ -57,8 +59,7 @@ abstract final class PlatformChannel {
   static Future<void> initialize() async {
     final profile = await detectProfile();
     SettingsService.configurePlatformProfile(profile);
-    ShellTokens.nativeAndroidTvDetected =
-        profile == PlatformProfile.androidTv;
+    ShellTokens.nativeAndroidTvDetected = profile == PlatformProfile.androidTv;
     PlatformInfo.isAndroidEmulator = await _detectAndroidEmulator();
     // Platform defaults seed after Engine.init() - see bootstrapForja.
     unawaited(DeviceCapabilitiesService.detect(platformProfile: profile));
@@ -129,9 +130,7 @@ abstract final class PlatformChannel {
   static Future<void> applyDisplayFrameRate(double fps) async {
     if (!Platform.isAndroid || fps <= 0) return;
     try {
-      await _channel.invokeMethod<void>('applyDisplayFrameRate', {
-        'fps': fps,
-      });
+      await _channel.invokeMethod<void>('applyDisplayFrameRate', {'fps': fps});
     } catch (e) {
       debugPrint('[PlatformChannel] applyDisplayFrameRate failed: $e');
     }
@@ -156,6 +155,27 @@ abstract final class PlatformChannel {
       await _channel.invokeMethod<void>('playSoundEffect', {'kind': kind});
     } catch (e) {
       debugPrint('[PlatformChannel] playSoundEffect failed: $e');
+    }
+  }
+
+  /// Hold [WifiManager.MulticastLock] while browsing mDNS (LAN Discover).
+  /// No-op off Android. Pair with [releaseWifiMulticastLock].
+  static Future<void> acquireWifiMulticastLock() async {
+    if (!Platform.isAndroid) return;
+    try {
+      await _channel.invokeMethod<void>('acquireWifiMulticastLock');
+    } catch (e) {
+      debugPrint('[PlatformChannel] acquireWifiMulticastLock failed: $e');
+    }
+  }
+
+  /// Release one [acquireWifiMulticastLock] hold (refcount).
+  static Future<void> releaseWifiMulticastLock() async {
+    if (!Platform.isAndroid) return;
+    try {
+      await _channel.invokeMethod<void>('releaseWifiMulticastLock');
+    } catch (e) {
+      debugPrint('[PlatformChannel] releaseWifiMulticastLock failed: $e');
     }
   }
 }

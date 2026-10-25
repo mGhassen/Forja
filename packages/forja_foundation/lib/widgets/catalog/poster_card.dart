@@ -20,6 +20,7 @@ class PosterCard extends StatelessWidget {
     required this.width,
     required this.height,
     this.subtitle,
+    this.subtitleTrailing,
     this.rating,
     this.rank,
     this.badge,
@@ -36,6 +37,9 @@ class PosterCard extends StatelessWidget {
   final String imageUrl;
   final String title;
   final String? subtitle;
+
+  /// Right-aligned footer mark next to [subtitle] (host-owned chrome).
+  final Widget? subtitleTrailing;
   final double? rating;
   final int? rank;
   final String? badge;
@@ -184,19 +188,33 @@ class PosterCard extends StatelessWidget {
                   ),
                   // Always paint subtitle when present — compact used to hide
                   // year • type once the poster grid stretched cells under 85px.
-                  if (subtitle != null && subtitle!.isNotEmpty) ...[
+                  if ((subtitle != null && subtitle!.isNotEmpty) ||
+                      subtitleTrailing != null) ...[
                     const SizedBox(height: 4),
-                    CrossfadeSwap(
-                      child: Text(
-                        subtitle!,
-                        key: ValueKey(subtitle),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          color: Colors.white.withValues(alpha: 0.5),
-                          fontSize: metaFontSize,
-                        ),
-                      ),
+                    Row(
+                      children: [
+                        if (subtitle != null && subtitle!.isNotEmpty)
+                          Expanded(
+                            child: CrossfadeSwap(
+                              child: Text(
+                                subtitle!,
+                                key: ValueKey(subtitle),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  color: Colors.white.withValues(alpha: 0.5),
+                                  fontSize: metaFontSize,
+                                ),
+                              ),
+                            ),
+                          )
+                        else
+                          const Spacer(),
+                        if (subtitleTrailing != null) ...[
+                          const SizedBox(width: 4),
+                          subtitleTrailing!,
+                        ],
+                      ],
                     ),
                   ],
                 ],

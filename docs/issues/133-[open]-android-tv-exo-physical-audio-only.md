@@ -75,6 +75,7 @@ Reported again on a **released** build: physical ATV, IPTV, Player menu **MediaK
 
 - [102](102-[open]-android-tv-exoplayer-tiled-frames.md) — SurfaceView tiling / hybrid composition
 - [108](108-[open]-android-tv-iptv-exo-choppy-fps.md) — ATV SurfaceView for live FPS; emulator TextureView
+- [479](479-[open]-android-tv-exo-vod-mottled-surfaceproducer.md) — Exo → Flutter SurfaceProducer (replaces TextureView video plane)
 - [129](129-[open]-android-tv-exo-vod-cropped-after-mediakit.md) — VOD MediaKit → Exo over a half-dead surface (same swap gate)
 - [128](128-[open]-android-tv-iptv-mediakit-exit-anr.md) — why the MediaKit dispose wait is capped
 - [114](114-[open]-android-tv-movie-mediakit-audio-only.md) — MediaKit Impeller audio-only (separate)

@@ -153,6 +153,24 @@ void main() {
     expect(PlatformPlayback.capabilities.playSourceNuvio, isTrue);
   });
 
+  test('Nuvio stays on when Direct torrent turns off', () async {
+    final service = SettingsService();
+    await service.setPlaySourceTorrentEnabled(true);
+    await service.setPlaySourceNuvioEnabled(true);
+    await service.setPlaySourceTorrentEnabled(false);
+
+    expect(await service.isPlaySourceTorrentEnabled(), isFalse);
+    expect(await service.isPlaySourceNuvioEnabled(), isTrue);
+  });
+
+  test('Nuvio without key uses platform default, not torrent', () async {
+    final service = SettingsService();
+    await service.setPlaySourceTorrentEnabled(true);
+
+    expect(await service.isPlaySourceNuvioStored(), isFalse);
+    expect(await service.isPlaySourceNuvioEnabled(), isFalse);
+  });
+
   test('P2P acknowledgement defaults off and persists', () async {
     final service = SettingsService();
     expect(await service.isP2pStreamingAcknowledged(), isFalse);

@@ -5,16 +5,17 @@ import 'package:forja_foundation/tokens/forja_details_tokens.dart';
 import 'package:forja_foundation/tokens/forja_motion_theme.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
+import 'package:forja_foundation/widgets/catalog/home_loading_skeleton.dart';
 import 'package:forja_foundation/widgets/chrome/horizontal_scroller.dart';
 import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 import 'package:forja_foundation/widgets/chrome/shell_section_title.dart';
+import 'package:forja_foundation/widgets/chrome/tv_ok_hold.dart';
 import 'package:forja_foundation/widgets/chrome/view_button_group.dart';
 import 'package:forja_foundation/widgets/details/details_body.dart';
 import 'package:forja_foundation/widgets/details/episode_air_date.dart';
 import 'package:forja_foundation/widgets/details/episode_range_bar.dart';
 import 'package:forja_foundation/widgets/details/watch_progress_bar.dart';
 import 'package:forja_foundation/widgets/feedback/card_play_overlay.dart';
-import 'package:forja_foundation/widgets/catalog/home_loading_skeleton.dart';
 
 typedef SeasonSelectCallback = void Function(int season);
 typedef EpisodeSelectCallback = void Function(int episode);
@@ -915,9 +916,16 @@ class _EpisodeNumberChip extends StatefulWidget {
 class _EpisodeNumberChipState extends State<_EpisodeNumberChip> {
   bool _focused = false;
   final ValueNotifier<bool> _hoveredN = ValueNotifier(false);
+  late final TvOkHold _okHold = TvOkHold(
+    onHold: () {
+      if (!mounted) return;
+      widget.onToggleWatched();
+    },
+  );
 
   @override
   void dispose() {
+    _okHold.dispose();
     _hoveredN.dispose();
     super.dispose();
   }
@@ -925,6 +933,7 @@ class _EpisodeNumberChipState extends State<_EpisodeNumberChip> {
   @override
   Widget build(BuildContext context) {
     final cinematic = ForjaShellColors.cinematic;
+    final shortTap = widget.onTap;
 
     Widget face = ValueListenableBuilder<bool>(
       valueListenable: _hoveredN,
@@ -1010,10 +1019,11 @@ class _EpisodeNumberChipState extends State<_EpisodeNumberChip> {
     face = GestureDetector(
       onSecondaryTap: widget.onToggleWatched,
       onDoubleTap: widget.onToggleWatched,
+      onLongPress: _okHold.fireFromPointer,
       child: face,
     );
 
-    if (!widget.tvFocus && widget.onTap == null) {
+    if (!widget.tvFocus && shortTap == null) {
       return MouseRegion(
         onEnter: (_) => _hoveredN.value = true,
         onExit: (_) => _hoveredN.value = false,
@@ -1026,7 +1036,7 @@ class _EpisodeNumberChipState extends State<_EpisodeNumberChip> {
       onExit: (_) => _hoveredN.value = false,
       child: ShellPaintScope.focusableTap(
         context: context,
-        onTap: widget.onTap,
+        onTap: shortTap == null ? null : _okHold.wrapTap(shortTap),
         mouseDownActivates: false,
         borderRadius: widget.radius,
         showFocusBorder: false,
@@ -1037,6 +1047,9 @@ class _EpisodeNumberChipState extends State<_EpisodeNumberChip> {
         tvRowId: widget.tvRowId,
         tvItemIndex: widget.gridIndex,
         tvZone: ShellPaintTvZone.grid,
+        onKeyEvent: widget.tvFocus && shortTap != null
+            ? (_, event) => _okHold.onKeyEvent(event, onShort: shortTap)
+            : null,
         onFocusChange: (focused) {
           setState(() => _focused = focused);
           widget.onFocusChange?.call(focused);
@@ -1157,9 +1170,36 @@ class _SeasonCard extends StatefulWidget {
 class _SeasonCardState extends State<_SeasonCard> {
   final ValueNotifier<bool> _hoveredN = ValueNotifier(false);
   bool _focused = false;
+  TvOkHold? _okHold;
+
+  @override
+  void initState() {
+    super.initState();
+    _syncOkHold();
+  }
+
+  @override
+  void didUpdateWidget(covariant _SeasonCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.onDoubleTap != widget.onDoubleTap) _syncOkHold();
+  }
+
+  void _syncOkHold() {
+    _okHold?.dispose();
+    final toggle = widget.onDoubleTap;
+    _okHold = toggle == null
+        ? null
+        : TvOkHold(
+            onHold: () {
+              if (!mounted) return;
+              toggle();
+            },
+          );
+  }
 
   @override
   void dispose() {
+    _okHold?.dispose();
     _hoveredN.dispose();
     super.dispose();
   }
@@ -1182,6 +1222,7 @@ class _SeasonCardState extends State<_SeasonCard> {
         : ForjaShellColors.cinematic.borderSubtle;
     final borderWidth = widget.selected || active ? 2.0 : 1.0;
     final liftActive = active && !widget.selected;
+    final hold = _okHold;
 
     return ForjaMotionScale(
       preset: ForjaMotionPreset.chipLift,
@@ -1189,6 +1230,7 @@ class _SeasonCardState extends State<_SeasonCard> {
       child: GestureDetector(
         onSecondaryTap: widget.onDoubleTap,
         onDoubleTap: widget.onDoubleTap,
+        onLongPress: hold?.fireFromPointer,
         behavior: HitTestBehavior.opaque,
         child: SizedBox(
           width: _SeasonCard.cardWidthOf(context),
@@ -1271,10 +1313,15 @@ class _SeasonCardState extends State<_SeasonCard> {
 
   @override
   Widget build(BuildContext context) {
+    final hold = _okHold;
+    final shortTap = widget.onTap;
+    final tvFocus = ShellPaintScope.useTvFocusOf(context);
     return ShellPaintScope.focusableTap(
       context: context,
-      onTap: widget.onTap,
-      mouseDownActivates: widget.onDoubleTap == null,
+      onTap: hold == null || shortTap == null
+          ? shortTap
+          : hold.wrapTap(shortTap),
+      mouseDownActivates: hold == null,
       borderRadius: _SeasonCard.radius,
       motion: ForjaMotionPreset.fillOnly,
       onFocusChange: (focused) => setState(() => _focused = focused),
@@ -1283,6 +1330,9 @@ class _SeasonCardState extends State<_SeasonCard> {
       listIndex: widget.listIndex,
       tvItemIndex: widget.listIndex,
       tvZone: ShellPaintTvZone.row,
+      onKeyEvent: hold == null || !tvFocus
+          ? null
+          : (_, event) => hold.onKeyEvent(event, onShort: shortTap ?? () {}),
       child: ListenableBuilder(
         listenable: _hoveredN,
         builder: (context, _) => _buildCard(_hoveredN.value),
@@ -1390,9 +1440,16 @@ class _EpisodeCard extends StatefulWidget {
 class _EpisodeCardState extends State<_EpisodeCard> {
   final ValueNotifier<bool> _hoveredN = ValueNotifier(false);
   bool _focused = false;
+  late final TvOkHold _okHold = TvOkHold(
+    onHold: () {
+      if (!mounted || widget.dateNotShippedYet) return;
+      widget.onToggleWatched();
+    },
+  );
 
   @override
   void dispose() {
+    _okHold.dispose();
     _hoveredN.dispose();
     super.dispose();
   }
@@ -1432,16 +1489,14 @@ class _EpisodeCardState extends State<_EpisodeCard> {
         ? Colors.white
         : ForjaShellColors.chipSelectedBorder;
 
+    final canToggleWatched = enabled && !widget.dateNotShippedYet;
     return ForjaMotionScale(
       preset: ForjaMotionPreset.cardLift,
       active: liftActive,
       child: GestureDetector(
-        onSecondaryTap: enabled && !widget.dateNotShippedYet
-            ? widget.onToggleWatched
-            : null,
-        onDoubleTap: enabled && !widget.dateNotShippedYet
-            ? widget.onToggleWatched
-            : null,
+        onSecondaryTap: canToggleWatched ? widget.onToggleWatched : null,
+        onDoubleTap: canToggleWatched ? widget.onToggleWatched : null,
+        onLongPress: canToggleWatched ? _okHold.fireFromPointer : null,
         behavior: HitTestBehavior.opaque,
         child: SizedBox(
           width: cardWidth,
@@ -1585,9 +1640,12 @@ class _EpisodeCardState extends State<_EpisodeCard> {
 
   @override
   Widget build(BuildContext context) {
+    final shortTap = widget.onTap;
+    final tvFocus = ShellPaintScope.useTvFocusOf(context);
+    final holdOk = tvFocus && shortTap != null && !widget.dateNotShippedYet;
     return ShellPaintScope.focusableTap(
       context: context,
-      onTap: widget.onTap,
+      onTap: shortTap == null ? null : _okHold.wrapTap(shortTap),
       mouseDownActivates: false,
       borderRadius: _EpisodeCard.thumbRadius,
       motion: ForjaMotionPreset.fillOnly,
@@ -1600,6 +1658,9 @@ class _EpisodeCardState extends State<_EpisodeCard> {
       listIndex: widget.listIndex,
       tvItemIndex: widget.listIndex,
       tvZone: ShellPaintTvZone.row,
+      onKeyEvent: holdOk
+          ? (_, event) => _okHold.onKeyEvent(event, onShort: shortTap)
+          : null,
       child: ListenableBuilder(
         listenable: _hoveredN,
         builder: (context, _) => _buildCard(_hoveredN.value),

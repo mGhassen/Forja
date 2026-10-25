@@ -17,16 +17,14 @@ import 'package:forja/shell/focus/shell_focusable_tap.dart';
 import 'package:forja_foundation/widgets/chrome/shell_chip.dart';
 import 'package:forja_foundation/tokens/forja_settings_tokens.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
+
 /// Renders pack-declared settings fields (RFC-089 / RFC-093).
 ///
 /// Pass [addonId] for host Addon detail pages, or [plugins] for Forja Packs
 /// expand rows. Prefer [plugins] when embedding under a pack.
 class PackAddonSettingsSection extends StatefulWidget {
-  const PackAddonSettingsSection({
-    super.key,
-    this.addonId,
-    this.plugins,
-  }) : assert(addonId != null || plugins != null);
+  const PackAddonSettingsSection({super.key, this.addonId, this.plugins})
+    : assert(addonId != null || plugins != null);
 
   /// Host Addon id — loads enabled plugins contributing `settings.addon`.
   final String? addonId;
@@ -46,6 +44,7 @@ class _PackAddonSettingsSectionState extends State<PackAddonSettingsSection> {
   final Map<String, Timer> _hubDebounce = {};
   List<PackAddonSettingsOption> _pluginLanguageOptions = const [];
   bool _loading = true;
+  int _reloadGen = 0;
 
   @override
   void initState() {
@@ -60,10 +59,22 @@ class _PackAddonSettingsSectionState extends State<PackAddonSettingsSection> {
   @override
   void didUpdateWidget(covariant PackAddonSettingsSection oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (widget.plugins != oldWidget.plugins ||
-        widget.addonId != oldWidget.addonId) {
+    // Packs rebuilds allocate a fresh plugins list every frame — compare ids,
+    // not list identity, or a stale _reload stomps an in-flight select write
+    // (Live Sports matchOpen snaps back to Detail page).
+    if (widget.addonId != oldWidget.addonId ||
+        !_samePluginIds(widget.plugins, oldWidget.plugins)) {
       unawaited(_reload());
     }
+  }
+
+  static bool _samePluginIds(List<EnginePlugin>? a, List<EnginePlugin>? b) {
+    if (identical(a, b)) return true;
+    if (a == null || b == null || a.length != b.length) return false;
+    for (var i = 0; i < a.length; i++) {
+      if (a[i].id != b[i].id) return false;
+    }
+    return true;
   }
 
   @override
@@ -86,6 +97,7 @@ class _PackAddonSettingsSectionState extends State<PackAddonSettingsSection> {
   }
 
   Future<void> _reload() async {
+    final gen = ++_reloadGen;
     final List<PackAddonSettingsSpec> specs;
     final plugins = widget.plugins;
     if (plugins != null) {
@@ -93,6 +105,7 @@ class _PackAddonSettingsSectionState extends State<PackAddonSettingsSection> {
       specs = PackAddonSettingsSpec.listForPlugins(plugins);
     } else {
       final packs = await EngineService.instance.listPacks();
+      if (!mounted || gen != _reloadGen) return;
       specs = PackAddonSettingsSpec.listForAddon(
         activePluginsFromPacks(packs),
         addonId: widget.addonId!,
@@ -101,17 +114,17 @@ class _PackAddonSettingsSectionState extends State<PackAddonSettingsSection> {
     final values = <String, dynamic>{};
     for (final spec in specs) {
       for (final field in spec.fields) {
+        if (!mounted || gen != _reloadGen) return;
         final k = _valueKey(spec.pluginId, field.id);
         values[k] = switch (field.type) {
           PackAddonSettingsFieldType.toggle => await PackSettingsStore.getBool(
-              spec.pluginId,
-              field.id,
-              defaultValue: field.defaultBool,
-            ),
+            spec.pluginId,
+            field.id,
+            defaultValue: field.defaultBool,
+          ),
           PackAddonSettingsFieldType.select ||
           PackAddonSettingsFieldType.hubSelect ||
-          PackAddonSettingsFieldType.text =>
-            await _loadString(spec, field),
+          PackAddonSettingsFieldType.text => await _loadString(spec, field),
           PackAddonSettingsFieldType.password =>
             await PackSettingsStore.getSecret(
               spec.pluginId,
@@ -136,6 +149,7 @@ class _PackAddonSettingsSectionState extends State<PackAddonSettingsSection> {
     var langOptions = const <PackAddonSettingsOption>[];
     if (langFields.isNotEmpty) {
       final packs = await EngineService.instance.listSourcesPanelPacks();
+      if (!mounted || gen != _reloadGen) return;
       // Union across every pluginLanguages field on this settings page.
       final typeSet = <String>{};
       final kindSet = <String>{};
@@ -161,7 +175,7 @@ class _PackAddonSettingsSectionState extends State<PackAddonSettingsSection> {
           PackAddonSettingsOption(id: l.key, label: l.label),
       ];
     }
-    if (!mounted) return;
+    if (!mounted || gen != _reloadGen) return;
     setState(() {
       _specs = specs;
       _pluginLanguageOptions = langOptions;
@@ -242,8 +256,9 @@ class _PackAddonSettingsSectionState extends State<PackAddonSettingsSection> {
     if (field.type == PackAddonSettingsFieldType.hubSelect &&
         field.listOpenDefault &&
         field.hubTypes.isNotEmpty) {
-      final fromPrefs =
-          await ListOpenPrefs.defaultPluginId(field.hubTypes.first);
+      final fromPrefs = await ListOpenPrefs.defaultPluginId(
+        field.hubTypes.first,
+      );
       if (fromPrefs != null && fromPrefs.isNotEmpty) return fromPrefs;
     }
     return PackSettingsStore.getString(
@@ -253,19 +268,25 @@ class _PackAddonSettingsSectionState extends State<PackAddonSettingsSection> {
     );
   }
 
+  void _paintLocal(String key, Object? value) {
+    if (!mounted) return;
+    // Drop in-flight reloads that may still hold the previous prefs snapshot.
+    _reloadGen++;
+    setState(() => _values[key] = value);
+  }
+
   Future<void> _setBool(
     PackAddonSettingsSpec spec,
     PackAddonSettingsField field,
     bool value,
   ) async {
+    _paintLocal(_valueKey(spec.pluginId, field.id), value);
     await PackSettingsStore.setBool(
       spec.pluginId,
       field.id,
       value,
       reloadHub: field.reloadHub,
     );
-    if (!mounted) return;
-    setState(() => _values[_valueKey(spec.pluginId, field.id)] = value);
   }
 
   Future<void> _setString(
@@ -273,6 +294,7 @@ class _PackAddonSettingsSectionState extends State<PackAddonSettingsSection> {
     PackAddonSettingsField field,
     String value,
   ) async {
+    _paintLocal(_valueKey(spec.pluginId, field.id), value);
     await PackSettingsStore.setString(
       spec.pluginId,
       field.id,
@@ -283,14 +305,9 @@ class _PackAddonSettingsSectionState extends State<PackAddonSettingsSection> {
         field.listOpenDefault) {
       final id = value.trim();
       for (final t in field.hubTypes) {
-        await ListOpenPrefs.setDefaultPluginId(
-          t,
-          id.isEmpty ? null : id,
-        );
+        await ListOpenPrefs.setDefaultPluginId(t, id.isEmpty ? null : id);
       }
     }
-    if (!mounted) return;
-    setState(() => _values[_valueKey(spec.pluginId, field.id)] = value);
   }
 
   Future<void> _setStringList(
@@ -298,14 +315,13 @@ class _PackAddonSettingsSectionState extends State<PackAddonSettingsSection> {
     PackAddonSettingsField field,
     List<String> value,
   ) async {
+    _paintLocal(_valueKey(spec.pluginId, field.id), value);
     await PackSettingsStore.setStringList(
       spec.pluginId,
       field.id,
       value,
       reloadHub: field.reloadHub,
     );
-    if (!mounted) return;
-    setState(() => _values[_valueKey(spec.pluginId, field.id)] = value);
   }
 
   @override
@@ -317,9 +333,7 @@ class _PackAddonSettingsSectionState extends State<PackAddonSettingsSection> {
         if (spec.fields.isNotEmpty)
           SettingsGroup(
             label: spec.group,
-            children: [
-              for (final field in spec.fields) _fieldRow(spec, field),
-            ],
+            children: [for (final field in spec.fields) _fieldRow(spec, field)],
           ),
     ];
     if (groups.isEmpty) return const SizedBox.shrink();
@@ -330,10 +344,7 @@ class _PackAddonSettingsSectionState extends State<PackAddonSettingsSection> {
     );
   }
 
-  Widget _fieldRow(
-    PackAddonSettingsSpec spec,
-    PackAddonSettingsField field,
-  ) {
+  Widget _fieldRow(PackAddonSettingsSpec spec, PackAddonSettingsField field) {
     final key = _valueKey(spec.pluginId, field.id);
     switch (field.type) {
       case PackAddonSettingsFieldType.toggle:
@@ -561,8 +572,8 @@ class _ActionListFieldState extends State<_ActionListField> {
           message.isNotEmpty
               ? message
               : err.isNotEmpty
-                  ? err
-                  : 'Could not ${row.actionId} ${row.title}',
+              ? err
+              : 'Could not ${row.actionId} ${row.title}',
         );
       }
     } finally {
@@ -629,8 +640,8 @@ class _ActionListFieldState extends State<_ActionListField> {
       final copy = _empty.isNotEmpty
           ? _empty
           : widget.field.emptyText.isNotEmpty
-              ? widget.field.emptyText
-              : widget.field.subtitle;
+          ? widget.field.emptyText
+          : widget.field.subtitle;
       if (copy.isEmpty) return const SizedBox.shrink();
       return Padding(
         padding: const EdgeInsets.fromLTRB(2, 8, 2, 12),
@@ -648,10 +659,7 @@ class _ActionListFieldState extends State<_ActionListField> {
     final footerRow = footer == null ? null : _row(footer);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        for (final row in _rows) _row(row),
-        ?footerRow,
-      ],
+      children: [for (final row in _rows) _row(row), ?footerRow],
     );
   }
 }
@@ -702,8 +710,7 @@ class _MultiSelectChipsField extends StatelessWidget {
               _allNoneButton(
                 context,
                 label: 'All',
-                onPressed: () =>
-                    onChanged([for (final o in options) o.id]),
+                onPressed: () => onChanged([for (final o in options) o.id]),
               ),
               _allNoneButton(
                 context,

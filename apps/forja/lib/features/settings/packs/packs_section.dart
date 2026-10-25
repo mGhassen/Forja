@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart' hide Switch;
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja/features/settings/providers/settings_panel_providers.dart';
 import 'package:forja/features/settings/shell/catalog.dart';
@@ -14,14 +13,12 @@ import 'package:forja/features/settings/ui/settings_ui.dart';
 import 'package:forja/shared/engine/engine.dart';
 import 'package:forja/shared/engine/packs/registry/pack_hub_features.dart';
 import 'package:forja/shared/engine/runtime/nav/plugin_nav.dart';
-import 'package:forja/shared/platform/platform_info.dart';
 import 'package:forja/shared/sync/sync.dart';
 import 'package:forja/shell/tv/shell_tv_coordinator.dart';
 import 'package:forja/shell/tv/shell_tv_focus.dart';
 import 'package:forja/features/settings/packs/pack_prompt_pane.dart';
 import 'package:forja/shared/engine/packs/install/pack_install_refs.dart';
 import 'package:forja/features/settings/packs/forja_pack_choice_cards.dart';
-import 'package:url_launcher/url_launcher.dart';
 import 'package:forja/shell/bus/shell_bus.dart';
 import 'package:forja/shell/core/forja_shell_scope.dart';
 import 'package:forja/shell/feedback/forja_toast.dart';
@@ -238,8 +235,7 @@ class _SettingsForjaPacksSectionState
               padding: const EdgeInsets.fromLTRB(2, 0, 2, 8),
               child: Text(
                 'Each pack is a manifest.json URL. Forja downloads the manifest, '
-                'then every plugin script, before the pack is fully usable.\n'
-                '$kCommunityPacksUrl',
+                'then every plugin script, before the pack is fully usable.',
                 style: TextStyle(
                   color: ForjaShellColors.textSecondary.withValues(alpha: 0.85),
                   fontSize: SettingsTokens.rowSubtitleSizeOf(context),
@@ -252,11 +248,8 @@ class _SettingsForjaPacksSectionState
               child: ForjaPackChoiceCards(
                 compact: true,
                 settingsTvFocus: true,
-                showOfficial: false,
-                communitySubtitle: PlatformInfo.isAndroidTv
-                    ? 'Choose packs on your phone'
-                    : 'Browse packs on the web',
-                onBrowseCommunity: () => unawaited(_browseCommunityPacks()),
+                showCommunity: false,
+                onInstallOfficial: () => unawaited(_installOfficialBundle()),
               ),
             ),
             SettingsTextField(
@@ -520,19 +513,25 @@ class _SettingsForjaPacksSectionState
     }
   }
 
-  Future<void> _browseCommunityPacks() async {
-    if (PlatformInfo.isAndroidTv) {
-      await Clipboard.setData(const ClipboardData(text: kCommunityPacksUrl));
+  Future<void> _installOfficialBundle() async {
+    if (_engineInstalling || _engineReloading) return;
+    setState(() => _engineInstalling = true);
+    try {
+      final outcome = await promptRecommendedBundleInstall();
       if (!mounted) return;
-      ForjaToast.success('Community Packs URL copied');
-      return;
-    }
-    final ok = await launchUrl(
-      Uri.parse(kCommunityPacksUrl),
-      mode: LaunchMode.externalApplication,
-    );
-    if (!ok && mounted) {
-      ForjaToast.error('Could not open Community Packs');
+      switch (outcome) {
+        case OfficialPackPromptOutcome.alreadyInstalled:
+          ForjaToast.success('Recommended packs already installed');
+        case OfficialPackPromptOutcome.busy:
+          ForjaToast.info('Finish the current pack prompt first');
+        case OfficialPackPromptOutcome.prompted:
+          break;
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ForjaToast.error('Official pack install failed: $e');
+    } finally {
+      if (mounted) setState(() => _engineInstalling = false);
     }
   }
 

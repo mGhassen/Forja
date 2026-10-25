@@ -8,6 +8,7 @@ import 'package:forja/shared/engine/runtime/kit/pack_opaque_run.dart';
 import 'package:forja/shared/engine/runtime/nav/chrome_filters.dart';
 import 'package:forja/shared/engine/runtime/open/catalog_open.dart';
 import 'package:forja/shared/engine/store/list_follow.dart';
+import 'package:forja/shared/engine/runtime/kit/pack_tracker_mark.dart';
 import 'package:forja/shell/core/forja_shell_layout.dart';
 import 'package:forja/shell/tv/tv_focus_graph.dart';
 import 'package:forja_foundation/blocks/catalog/catalog_cards_grid.dart';
@@ -236,6 +237,7 @@ abstract final class PackPaintArtifact {
     required Map<String, dynamic> paint,
     Object? open,
     Object? meta,
+    Map<String, dynamic>? listItem,
     int? listIndex,
     int? fallbackRank,
     String? fallbackAspect,
@@ -287,6 +289,12 @@ abstract final class PackPaintArtifact {
           imageUrl: (props['imageUrl'] ?? props['posterUrl'] ?? '').toString(),
           title: (props['title'] ?? '').toString(),
           subtitle: props['subtitle']?.toString(),
+          subtitleTrailing: packTrackerMarkTrailing(
+            context: context,
+            pluginId: pluginId,
+            props: props,
+            listItem: listItem,
+          ),
           rating: props['rating'] is num
               ? (props['rating'] as num).toDouble()
               : null,
@@ -745,6 +753,7 @@ class _PackPosterRailState extends State<_PackPosterRail> {
         paint: paintMap,
         open: item['open'] ?? paint['open'],
         meta: item['meta'] ?? paint['meta'],
+        listItem: item,
         listIndex: i,
         fallbackRank: ranked ? i + 1 : null,
         fallbackAspect: aspectFallback,
@@ -759,6 +768,7 @@ class _PackPosterRailState extends State<_PackPosterRail> {
       paint: {'type': 'posterCard', 'props': props},
       open: item['open'],
       meta: item['meta'],
+      listItem: item,
       listIndex: i,
       fallbackRank: ranked ? i + 1 : null,
       fallbackAspect: aspectFallback,

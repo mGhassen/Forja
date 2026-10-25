@@ -109,20 +109,31 @@ mixin _MobilePlayerUi on ConsumerState<MobilePlayerScreen> {
 
   void _claimPlayFocus() {
     if (!widget.tvRemoteEnabled) return;
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    // Sync + one-frame retry — deferred-only left seek ↑/↓ stuck (issue 130).
+    void tryClaim() {
       if (!mounted || !_s._playFocus.canRequestFocus) return;
       if (playerChromeOverlayBlocksFocusClaim()) return;
       _s._playFocus.requestFocus();
-    });
+    }
+
+    tryClaim();
+    if (!_s._playFocus.hasFocus) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => tryClaim());
+    }
   }
 
   void _claimBackFocus() {
     if (!widget.tvRemoteEnabled) return;
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    void tryClaim() {
       if (!mounted || !_s._backFocus.canRequestFocus) return;
       if (playerChromeOverlayBlocksFocusClaim()) return;
       _s._backFocus.requestFocus();
-    });
+    }
+
+    tryClaim();
+    if (!_s._backFocus.hasFocus) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => tryClaim());
+    }
   }
 
   void _toggleLock() {

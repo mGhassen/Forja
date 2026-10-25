@@ -16,7 +16,28 @@ Specialists: [host tests](../../rules/forja-host-tests-no-pack-contracts.mdc) ·
 
 **One-liner:** Empty shell + engines. Packs are product. Foundation is a design system (paint only). Host **validates + paints** pack JSON — it never invents product fields or product verbs.
 
+**PRIORITY:** Before writing Flutter for a hub / My List / Simkl / Sources UX, answer pack vs host vs foundation in one line. Product UX starts in `forja-packs`. Host only gets generic engines + prop paint. Wrong layer = stop and move — do not ship host product and “fix later.”
+
 Local/dev packs: `FORJA_PACKS_ROOT` or sibling [forja-packs](https://github.com/mGhassen/forja-packs). Treat every pack as replaceable, renameable, absent.
+
+---
+
+## Separation — pack vs host (explain once, apply always)
+
+| Owns | Pack | Host |
+|------|------|------|
+| What the user sees for **this hub** (marks, copy, feed shaping, when Simkl chrome appears) | Yes | No |
+| Bookmark / Simkl / open-hub **APIs** and persist | No | Yes |
+| Kit painter inventing product when props are absent | Forbidden | Forbidden — paint only if pack emitted props |
+| Uninstall pack | Gone | Host code still valid as generic |
+
+**Example (issue 485):** My List pack emits `trackerMark` / `trackerLink` on feed paint. Host mounts `LetterLinkMark` from props and runs generic TMDB-attach persist. Host must **not** watch Simkl login and stamp S on every poster.
+
+```
+Pack feed/paint  →  props.trackerMark / row.trackerLink
+Host             →  if props present → DS mark; if row.trackerLink → optional tracker bind mode
+Foundation       →  LetterLinkMark(letter, linked) — no “Simkl” product name required
+```
 
 ---
 

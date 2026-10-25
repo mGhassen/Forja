@@ -50,7 +50,7 @@ Asked "what should Forja do?" → recommend the best answer, then verify, then i
 
 ### Scope — [forja-feature-scope.mdc](.cursor/rules/forja-feature-scope.mdc) · [forja-pack-product-host.mdc](.cursor/rules/forja-pack-product-host.mdc)
 
-In-scope tabs: Search, Home, Anime, Asian Drama, IPTV, Live Sports, Lists, Settings, plus the player/shell/sources they share. Empty shell + engines; packs (sibling repo `forja-packs`) are product; foundation paints. Live Sports: native play URL or nothing ([no-embed-playback.mdc](.cursor/rules/no-embed-playback.mdc)), catalog rows carry schedule only ([live-catalog-schedule-only.mdc](.cursor/rules/live-catalog-schedule-only.mdc)).
+In-scope tabs: Search, Home, Anime, Asian Drama, IPTV, Live Sports, Lists, Settings, plus the player/shell/sources they share. **Pack vs host first:** packs (`forja-packs`) own product UX; host owns generic engines + paints pack props only — never invent My List / Simkl / hub chrome in host (see pack-product-host sniff tests). Live Sports: native play URL or nothing ([no-embed-playback.mdc](.cursor/rules/no-embed-playback.mdc)), catalog rows carry schedule only ([live-catalog-schedule-only.mdc](.cursor/rules/live-catalog-schedule-only.mdc)).
 
 ### Git — [git-attribution.mdc](.cursor/rules/git-attribution.mdc)
 
@@ -66,7 +66,7 @@ No Cursor attribution trailers in commits, PRs, or code comments.
 
 | Touching | Read first |
 |----------|-----------|
-| Any Dart paint / widget / tokens / colors | [forja-design-system.mdc](.cursor/rules/forja-design-system.mdc) · [forja-foundation-no-hardcode.mdc](.cursor/rules/forja-foundation-no-hardcode.mdc) |
+| Any Dart paint / widget / tokens / colors | [forja-design-system.mdc](.cursor/rules/forja-design-system.mdc) (incl. **no hover size-grow on chrome icons**) · [forja-foundation-no-hardcode.mdc](.cursor/rules/forja-foundation-no-hardcode.mdc) |
 | D-pad, focus, TV, **any text or search field** | [forja-tv-scope.mdc](.cursor/rules/forja-tv-scope.mdc) · skill `/forja-tv-dpad` |
 | Shared hero / media-details components | [forja-shared-ui.mdc](.cursor/rules/forja-shared-ui.mdc) |
 | Pack vs host vs foundation placement, kit painter | [forja-pack-product-host.mdc](.cursor/rules/forja-pack-product-host.mdc) · skill `forja-pack-product-host` |

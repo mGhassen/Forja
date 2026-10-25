@@ -35,6 +35,7 @@ Opening IPTV **Portals**, the list reorder jumps (favorites / cloud pull). Newly
 | 2 | I464-T02 | Panel sort: favorites first, then `addedAt` desc (newest insert on top) | ✅ |
 | 3 | I464-T03 | Session NEW keys + `isNew` paint; clear on desktop hover / select (not TV skim) | ✅ |
 | 4 | I464-T04 | Changelog + feature note; host unit test for sort / isNew | ✅ |
+| 5 | I464-T05 | Stop cloud soft-pull / panel paint from re-sorting siblings by created_at/addedAt — vault order + favorites-first stable only | ✅ |
 
 ---
 

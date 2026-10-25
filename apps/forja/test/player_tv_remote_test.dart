@@ -962,6 +962,121 @@ void main() {
     back.dispose();
   });
 
+  testWidgets('live progress seek ↑/↓ leaves the bar (sync claim)', (
+    tester,
+  ) async {
+    // Mirrors IPTV / Live Sports `_wrapProgressTvFocus`: seek must sync-claim
+    // Back/Play. Deferred-only requestFocus left D-pad stuck on the bar.
+    final play = FocusNode(debugLabel: 'iptv-player-play');
+    final seek = FocusNode(debugLabel: 'iptv-player-seek');
+    final back = FocusNode(debugLabel: 'iptv-player-back');
+
+    void claimPlay() {
+      if (play.canRequestFocus) play.requestFocus();
+    }
+
+    void claimBack() {
+      if (back.canRequestFocus) back.requestFocus();
+    }
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: MediaQuery(
+          data: const MediaQueryData(size: Size(1920, 1080)),
+          child: ShellScope(
+            profile: ShellProfile.tv,
+            config: shellPlatformConfigFor(ShellProfile.tv),
+            child: Scaffold(
+              body: FocusScope(
+                debugLabel: 'player-chrome',
+                child: SizedBox.expand(
+                  child: Stack(
+                    children: [
+                      Positioned(
+                        top: 8,
+                        left: 16,
+                        child: FocusableControl(
+                          focusNode: back,
+                          scaleOnFocus: 1.0,
+                          onTap: () {},
+                          child: const SizedBox(
+                            width: 48,
+                            height: 48,
+                            child: Icon(Icons.arrow_back),
+                          ),
+                        ),
+                      ),
+                      Positioned(
+                        bottom: 80,
+                        left: 16,
+                        right: 16,
+                        child: Focus(
+                          focusNode: seek,
+                          onKeyEvent: (node, event) {
+                            if (event is! KeyDownEvent &&
+                                event is! KeyRepeatEvent) {
+                              return KeyEventResult.ignored;
+                            }
+                            final key = event.logicalKey;
+                            if (key == LogicalKeyboardKey.arrowUp) {
+                              claimBack();
+                              return KeyEventResult.handled;
+                            }
+                            if (key == LogicalKeyboardKey.arrowDown) {
+                              claimPlay();
+                              return KeyEventResult.handled;
+                            }
+                            return KeyEventResult.ignored;
+                          },
+                          child: const SizedBox(height: 24),
+                        ),
+                      ),
+                      Positioned(
+                        bottom: 16,
+                        left: 16,
+                        child: FocusableControl(
+                          focusNode: play,
+                          scaleOnFocus: 1.0,
+                          onTap: () {},
+                          child: const SizedBox(
+                            width: 48,
+                            height: 48,
+                            child: Icon(Icons.play_arrow),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    seek.requestFocus();
+    await tester.pump();
+    expect(seek.hasFocus, isTrue);
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowUp);
+    await tester.pump();
+    expect(back.hasFocus, isTrue, reason: '↑ from seek must reach Back');
+    expect(seek.hasFocus, isFalse);
+
+    seek.requestFocus();
+    await tester.pump();
+    expect(seek.hasFocus, isTrue);
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+    await tester.pump();
+    expect(play.hasFocus, isTrue, reason: '↓ from seek must reach Play');
+    expect(seek.hasFocus, isFalse);
+
+    play.dispose();
+    seek.dispose();
+    back.dispose();
+  });
+
   testWidgets(
     'PlayerTvKeyScope does not steal focus when popup is open and chrome hides',
     (tester) async {

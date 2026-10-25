@@ -10,7 +10,8 @@ import 'package:forja/shared/engine/unlock/match_event.dart';
 import 'package:forja/shared/engine/unlock/schedule_sport_filter.dart';
 import 'package:forja/shared/player/live/hooks/live_play.dart';
 import 'package:forja/shared/player/live/pt_player_screen.dart';
-import 'package:rust/rust.dart' show BuiltInPlayerContext, SettingsService, StremioService;
+import 'package:rust/rust.dart'
+    show BuiltInPlayerContext, SettingsService, StremioService;
 
 /// Live resolve + Stremio providers + native play (RFC-091).
 /// Live TV portal channels: hub `liveTv` → IPTV `searchChannels`.
@@ -55,6 +56,12 @@ abstract final class LiveResolveStreams {
 
     await LivePluginEngine.warmPluginMeta();
 
+    // Free the flutter_js queue from schedule scrapes so Providers can paint
+    // without waiting behind mid-flight catalog JSC (Android TV freeze).
+    if (!handoffOnly) {
+      EngineService.instance.cancelLiveCatalog();
+    }
+
     // Stremio Catalog chip row — direct /stream only.
     if (match.isStremio) {
       List<LivePlaySource> stremioOnly = const [];
@@ -94,8 +101,9 @@ abstract final class LiveResolveStreams {
       onPartial?.call(rows);
     }
 
-    final stremioFuture =
-        handoffOnly ? Future.value(const <LivePlaySource>[]) : _loadStremioProviders(match);
+    final stremioFuture = handoffOnly
+        ? Future.value(const <LivePlaySource>[])
+        : _loadStremioProviders(match);
     try {
       forja = await _loadForjaLiveProviders(
         match,
@@ -162,7 +170,8 @@ abstract final class LiveResolveStreams {
       title: title,
       subtitle: subtitle ?? picked.pickerSubtitle ?? '',
       logoUrl: picked.logoUrl,
-      engineContext: kind == PortalLiveSourceKind.iptvXtream ||
+      engineContext:
+          kind == PortalLiveSourceKind.iptvXtream ||
               kind == PortalLiveSourceKind.iptvStalker
           ? BuiltInPlayerContext.iptv
           : BuiltInPlayerContext.live,
@@ -173,7 +182,10 @@ abstract final class LiveResolveStreams {
     );
   }
 
-  static void _noteChannelHints(MatchEvent match, List<LivePlaySource> sources) {
+  static void _noteChannelHints(
+    MatchEvent match,
+    List<LivePlaySource> sources,
+  ) {
     if (sources.isEmpty) return;
     LiveBroadcastHints.remember(
       title: match.title,
@@ -192,18 +204,36 @@ abstract final class LiveResolveStreams {
     return 'providers:$mode:${matchEventViewerKey(match)}:a$addonRev';
   }
 
+  /// Soft deadline per pack so one empty/slow resolve cannot hold the
+  /// flutter_js / EngineJS slot for tens of seconds (Providers freeze).
+  static const _discoverPackTimeout = Duration(seconds: 3);
+
   /// Fan-out every enabled resolve pack — pack searches its own upstream.
   ///
   /// [handoffOnly]: only packs that own a `sources[]` ref on the row (no
   /// fixtureSearch across unrelated resolvers).
+  ///
+  /// Order: packs that own a card `sources[]` slot run first so the first
+  /// mirror can paint via [onPartial] before fixture-search fan-out.
   static Future<List<LivePlaySource>> _loadForjaLiveProviders(
     MatchEvent match, {
     void Function(List<LivePlaySource> partial)? onPartial,
     bool handoffOnly = false,
   }) async {
-    final plugins =
-        await EngineService.instance.listEnabledLiveResolvePlugins();
+    final plugins = await EngineService.instance
+        .listEnabledLiveResolvePlugins();
     if (plugins.isEmpty) return const [];
+
+    final owned = <EnginePlugin>[];
+    final rest = <EnginePlugin>[];
+    for (final plugin in plugins) {
+      if (_ownedSourceRef(match, plugin) != null) {
+        owned.add(plugin);
+      } else if (!handoffOnly) {
+        rest.add(plugin);
+      }
+    }
+    if (owned.isEmpty && rest.isEmpty) return const [];
 
     final choices = <_StreamChoice>[];
     final seenUrls = <String>{};
@@ -211,43 +241,49 @@ abstract final class LiveResolveStreams {
     List<LivePlaySource> snapshot() {
       final sorted = List<_StreamChoice>.from(choices)
         ..sort(
-          (a, b) => effectiveMatchStreamViewers(b.stream, b.match).compareTo(
-            effectiveMatchStreamViewers(a.stream, a.match),
-          ),
+          (a, b) => effectiveMatchStreamViewers(
+            b.stream,
+            b.match,
+          ).compareTo(effectiveMatchStreamViewers(a.stream, a.match)),
         );
       return [for (final c in sorted) _choiceToPanelSource(c)];
     }
 
     void publish() => onPartial?.call(snapshot());
 
-    await Future.wait(
-      plugins.map((plugin) async {
-        try {
-          if (handoffOnly) {
-            final owned = _ownedSourceRef(match, plugin);
-            if (owned == null) return;
-          }
-          final streams = await _discoverFromResolvePlugin(
-            match,
-            plugin,
-            handoffOnly: handoffOnly,
-          );
-          final pluginMatch = match.copyWith(livePluginId: plugin.id);
-          var added = false;
-          for (final stream in streams) {
-            final url = stream.embedUrl.trim();
-            if (url.isEmpty || !seenUrls.add(url)) continue;
-            choices.add(_StreamChoice(match: pluginMatch, stream: stream));
-            added = true;
-          }
-          if (added) publish();
-        } catch (e) {
-          debugPrint(
-            '[LiveResolveStreams] resolve ${plugin.id}: $e',
-          );
+    Future<void> runOne(EnginePlugin plugin) async {
+      try {
+        // Timeout lives inside runLivePlugin so the resolve slot releases.
+        final streams = await _discoverFromResolvePlugin(
+          match,
+          plugin,
+          handoffOnly: handoffOnly,
+        );
+        final pluginMatch = match.copyWith(livePluginId: plugin.id);
+        var added = false;
+        for (final stream in streams) {
+          final url = stream.embedUrl.trim();
+          if (url.isEmpty || !seenUrls.add(url)) continue;
+          choices.add(_StreamChoice(match: pluginMatch, stream: stream));
+          added = true;
         }
-      }),
-    );
+        if (added) {
+          publish();
+          // Let setState flush a frame before the next pack grabs the slot.
+          await Future<void>.delayed(Duration.zero);
+        }
+      } catch (e) {
+        debugPrint('[LiveResolveStreams] resolve ${plugin.id}: $e');
+      }
+    }
+
+    // Owned packs first (serial via engine slot) — paint ASAP; then fan-out.
+    for (final plugin in owned) {
+      await runOne(plugin);
+    }
+    if (rest.isNotEmpty) {
+      await Future.wait(rest.map(runOne));
+    }
 
     return snapshot();
   }
@@ -257,8 +293,9 @@ abstract final class LiveResolveStreams {
     MatchEvent match,
     EnginePlugin plugin,
   ) {
-    final token =
-        LivePluginEngine.cachedResolveSourceToken(plugin.id).toLowerCase();
+    final token = LivePluginEngine.cachedResolveSourceToken(
+      plugin.id,
+    ).toLowerCase();
     final norm = EngineService.normalizeLiveSportPluginId(plugin.id);
     MatchSourceRef? firstOwned;
     for (final ref in match.sources) {
@@ -284,10 +321,7 @@ abstract final class LiveResolveStreams {
       }
       final id = LivePluginEngine.cachedResolveRefId(match.id, plugin.id);
       if (id.isNotEmpty) {
-        return MatchSourceRef(
-          source: token.isNotEmpty ? token : norm,
-          id: id,
-        );
+        return MatchSourceRef(source: token.isNotEmpty ? token : norm, id: id);
       }
     }
     return null;
@@ -340,6 +374,8 @@ abstract final class LiveResolveStreams {
       rows = await EngineService.instance.runLivePlugin(
         pluginId: pluginId,
         action: 'resolve',
+        // Providers discover — short timeout; unlock-on-play keeps its own budget.
+        timeout: _discoverPackTimeout,
         params: {
           if (!fixtureOnly && source.id.trim().isNotEmpty)
             'matchId': source.id.trim(),
@@ -396,28 +432,26 @@ abstract final class LiveResolveStreams {
     required int index,
   }) {
     final rowViewers = parseLiveViewerCount(row['viewers']);
-    final nameRaw =
-        (row['name'] ?? row['title'] ?? meta?.language ?? '').toString();
+    final nameRaw = (row['name'] ?? row['title'] ?? meta?.language ?? '')
+        .toString();
     final fields = forjaLiveStreamFieldsFromRowName(nameRaw);
     final langFromRow = (row['language'] ?? '').toString().trim();
     final language = langFromRow.isNotEmpty
         ? langFromRow
         : (fields.language.isNotEmpty
-            ? fields.language
-            : (meta?.language ?? ''));
+              ? fields.language
+              : (meta?.language ?? ''));
     final hd = row['hd'] == true || meta?.hd == true || fields.hd;
     final metaViewers = meta?.viewers ?? 0;
-    final viewers = rowViewers > 0
-        ? rowViewers
-        : metaViewers;
+    final viewers = rowViewers > 0 ? rowViewers : metaViewers;
     final url = (row['url'] ?? '').toString().trim();
     final rowSource = (row['source'] ?? '').toString().trim();
     final rowId = (row['id'] ?? '').toString().trim();
     final sourceToken = meta?.source.trim().isNotEmpty == true
         ? meta!.source
         : (rowSource.isNotEmpty
-            ? rowSource
-            : (pluginSource.isNotEmpty ? pluginSource : source.source));
+              ? rowSource
+              : (pluginSource.isNotEmpty ? pluginSource : source.source));
     final streamId = rowId.isNotEmpty
         ? rowId
         : (source.id.trim().isNotEmpty ? source.id.trim() : match.id);
@@ -454,13 +488,15 @@ abstract final class LiveResolveStreams {
     final playUrl = pending
         ? 'pending:${match.id}:${stream.id}:${stream.streamNo}'
         : embed;
-    final directPlayback = !pending &&
+    final directPlayback =
+        !pending &&
         (stream.directPlayback || iptvLiveEnginePlayUrlReady(embed));
     return LivePlaySource(
       url: playUrl,
       label: title,
       detail: _streamDetail(stream),
-      headers: (!pending &&
+      headers:
+          (!pending &&
               (stream.directPlayback || iptvLiveEnginePlayUrlReady(embed)))
           ? (stream.resolvedHeaders ?? const {})
           : const {},
@@ -554,7 +590,9 @@ abstract final class LiveResolveStreams {
       debugPrint('[LiveResolveStreams] Stremio catalog error: $e');
       return const [];
     }
-    final hits = catalog.where((m) => _stremioCatalogEventMatch(match, m)).toList();
+    final hits = catalog
+        .where((m) => _stremioCatalogEventMatch(match, m))
+        .toList();
     if (hits.isEmpty) return const [];
     final batches = await Future.wait(
       hits.take(3).map((hit) async {
@@ -685,8 +723,7 @@ abstract final class LiveResolveStreams {
     final isMut = params['isMut'] == true;
     var pluginId = (params['livePluginId'] ?? '').toString().trim();
     if (pluginId.isEmpty && params['isIframeCatalog'] == true) {
-      pluginId =
-          LivePluginEngine.cachedIframeProviderResolvePluginId() ?? '';
+      pluginId = LivePluginEngine.cachedIframeProviderResolvePluginId() ?? '';
     }
     return MatchEvent(
       id: (params['eventId'] ?? '').toString(),
@@ -766,18 +803,20 @@ abstract final class LiveResolveStreams {
       if (iframe.isNotEmpty) embed = iframe;
     }
 
-    final ready = embed.isNotEmpty &&
+    final ready =
+        embed.isNotEmpty &&
         (stream.directPlayback || iptvLiveEnginePlayUrlReady(embed));
     final skipReuse =
         forceRefresh || (ready && iptvLiveEngineUrlVolatile(embed));
     if (ready && !skipReuse) {
-      final headers = stream.resolvedHeaders ??
-            _liveEmbedStreamHeaders(
-              embed,
-              catalogReferer: match.isForjaLive
-                  ? _forjaLiveCdnReferer(embed)
-                  : null,
-            );
+      final headers =
+          stream.resolvedHeaders ??
+          _liveEmbedStreamHeaders(
+            embed,
+            catalogReferer: match.isForjaLive
+                ? _forjaLiveCdnReferer(embed)
+                : null,
+          );
       final direct = liveEngineOpenDirect(
         embed,
         pluginDirect: stream.directPlayback,
@@ -785,10 +824,7 @@ abstract final class LiveResolveStreams {
       if (!direct) onProgress?.call('Preparing playback…');
       final playUrl = direct
           ? embed
-          : await LivePluginEngine.proxyPlayUrl(
-              url: embed,
-              headers: headers,
-            );
+          : await LivePluginEngine.proxyPlayUrl(url: embed, headers: headers);
       if (playUrl == null || playUrl.isEmpty) return null;
       return _liveEnginePlaySource(
         match: match,
@@ -803,36 +839,34 @@ abstract final class LiveResolveStreams {
       embed = '';
     }
 
-    final iframeCatalog =
-        LivePluginEngine.cachedIsIframeLive(match.livePluginId);
+    final iframeCatalog = LivePluginEngine.cachedIsIframeLive(
+      match.livePluginId,
+    );
     final catalogReferer = iframeCatalog
         ? await LivePluginEngine.iframeLiveWebReferer()
         : (embed.isNotEmpty
-            ? (_forjaLiveCdnReferer(embed) ??
-                await LivePluginEngine.pluginReferer(
-                  match.livePluginId,
-                  embedUrl: embed,
-                ))
-            : await LivePluginEngine.pluginReferer(match.livePluginId));
+              ? (_forjaLiveCdnReferer(embed) ??
+                    await LivePluginEngine.pluginReferer(
+                      match.livePluginId,
+                      embedUrl: embed,
+                    ))
+              : await LivePluginEngine.pluginReferer(match.livePluginId));
 
     if (embed.isNotEmpty &&
         RegExp(r'\.m3u8|\.mp4', caseSensitive: false).hasMatch(embed)) {
       final headers = iframeCatalog
-            ? _tokenizedEmbedStreamHeaders(embed)
-            : _liveEmbedStreamHeaders(
-                embed,
-                catalogReferer: match.isForjaLive
-                    ? _forjaLiveCdnReferer(embed)
-                    : null,
-              );
+          ? _tokenizedEmbedStreamHeaders(embed)
+          : _liveEmbedStreamHeaders(
+              embed,
+              catalogReferer: match.isForjaLive
+                  ? _forjaLiveCdnReferer(embed)
+                  : null,
+            );
       final direct = liveEngineOpenDirect(embed);
       if (!direct) onProgress?.call('Preparing playback…');
       final playUrl = direct
           ? embed
-          : await LivePluginEngine.proxyPlayUrl(
-              url: embed,
-              headers: headers,
-            );
+          : await LivePluginEngine.proxyPlayUrl(url: embed, headers: headers);
       if (playUrl == null || playUrl.isEmpty) return null;
       return _liveEnginePlaySource(
         match: match,
@@ -848,8 +882,7 @@ abstract final class LiveResolveStreams {
       match.livePluginId,
     );
     if (pluginId.isEmpty && iframeCatalog) {
-      pluginId =
-          LivePluginEngine.cachedIframeProviderResolvePluginId() ?? '';
+      pluginId = LivePluginEngine.cachedIframeProviderResolvePluginId() ?? '';
     }
     LiveEngineResolveResult? result;
     if (pluginId.isNotEmpty) {
@@ -878,15 +911,10 @@ abstract final class LiveResolveStreams {
     }
 
     final headers = result.headers.isNotEmpty
-          ? result.headers
-          : iframeCatalog
-              ? _tokenizedEmbedStreamHeaders(
-                  embed.isNotEmpty ? embed : result.url,
-                )
-              : _liveEmbedStreamHeaders(
-                  result.url,
-                  catalogReferer: catalogReferer,
-                );
+        ? result.headers
+        : iframeCatalog
+        ? _tokenizedEmbedStreamHeaders(embed.isNotEmpty ? embed : result.url)
+        : _liveEmbedStreamHeaders(result.url, catalogReferer: catalogReferer);
     final direct = liveEngineOpenDirect(
       result.url,
       pluginDirect: result.directPlayback,
@@ -997,9 +1025,7 @@ abstract final class LiveResolveStreams {
       url: url,
       label: title.isNotEmpty
           ? title
-          : (sourceLabel.isNotEmpty
-              ? sourceLabel
-              : _serverLabelFor(match)),
+          : (sourceLabel.isNotEmpty ? sourceLabel : _serverLabelFor(match)),
       detail: _streamDetail(stream),
       headers: headers,
       liveSourceKind: PortalLiveSourceKind.liveEngine,
@@ -1041,8 +1067,9 @@ abstract final class LiveResolveStreams {
     final catalogRoot = catalog.isEmpty
         ? null
         : (catalog.endsWith('/') ? catalog : '$catalog/');
-    final catalogOrigin =
-        catalogRoot == null ? null : Uri.tryParse(catalogRoot)?.origin;
+    final catalogOrigin = catalogRoot == null
+        ? null
+        : Uri.tryParse(catalogRoot)?.origin;
     final referer = catalogRoot ?? (origin.isNotEmpty ? '$origin/' : embedUrl);
     final headerOrigin = catalogOrigin ?? (origin.isNotEmpty ? origin : null);
     return {
@@ -1059,14 +1086,10 @@ abstract final class LiveResolveStreams {
     // Pack resolve owns playback Referer/Origin (incl. sportsembed ↔ wfty).
     return '${uri.origin}/';
   }
-
 }
 
 class _ProvidersCacheEntry {
-  const _ProvidersCacheEntry({
-    required this.expiresAt,
-    required this.sources,
-  });
+  const _ProvidersCacheEntry({required this.expiresAt, required this.sources});
   final DateTime expiresAt;
   final List<LivePlaySource> sources;
 }

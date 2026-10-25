@@ -50,6 +50,7 @@ class WatchHistory {
     Duration? duration,
     String? sourceId,
     String? streamUrl,
+
     /// After finishing an ep — keep the show on CW as the next episode.
     bool upNext = false,
   }) async {
@@ -61,6 +62,7 @@ class WatchHistory {
     String? prevStreamUrl;
     int? prevPositionMs;
     int? prevDurationMs;
+    var priorEligible = false;
     // Heartbeat after ≥85% must not clobber an up-next seed for a later ep.
     if (!upNext &&
         position != null &&
@@ -85,6 +87,12 @@ class WatchHistory {
           prevStreamUrl = m['streamUrl']?.toString();
           prevPositionMs = (m['positionMs'] as num?)?.toInt();
           prevDurationMs = (m['durationMs'] as num?)?.toInt();
+          priorEligible = isContinueWatchingEligible(
+            prevPositionMs ?? 0,
+            prevDurationMs ?? 0,
+            upNext: isUpNextContinueFlag(m['upNext']),
+            showStarted: isShowStartedContinueFlag(m['showStarted']),
+          );
           return true;
         }
         return false;
@@ -103,6 +111,10 @@ class WatchHistory {
     final durMs = upNext
         ? 0
         : (duration?.inMilliseconds ?? prevDurationMs ?? 0);
+    final finished = durMs > 0 && isWatchFinished(posMs, durMs);
+    final inProgress = isInProgressResume(posMs, durMs);
+    // Show-scoped: once on CW, later eps stay without waiting for 2%.
+    final showStarted = !finished && (upNext || priorEligible || inProgress);
     list.insert(
       0,
       jsonEncode({
@@ -121,6 +133,7 @@ class WatchHistory {
         'positionMs': posMs,
         'durationMs': durMs,
         if (upNext) 'upNext': true,
+        if (showStarted) 'showStarted': true,
         'updatedAt': DateTime.now().millisecondsSinceEpoch,
         'meta': meta.toJson(),
       }),

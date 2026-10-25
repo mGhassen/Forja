@@ -111,11 +111,28 @@ class _SettingsHubScaffoldState extends ConsumerState<SettingsHubScaffold> {
     final categories = settingsCategories(visibility);
     final index = categories.indexWhere((c) => c.id == widget.selectedId);
     if (index < 0) return false;
-    return ShellTvFocusCoordinator.focusRowItem(
+    if (ShellTvFocusCoordinator.focusRowItem(
       'settings',
       _categoryRowId,
       index,
-    );
+    )) {
+      return true;
+    }
+    // Lazy ListView may not have registered the selected tile yet — the
+    // hub always pins [firstTileFocusNode] on the selected category.
+    final pinned = widget.firstTileFocusNode;
+    if (pinned != null && pinned.canRequestFocus && pinned.context != null) {
+      pinned.requestFocus();
+      return pinned.hasPrimaryFocus || pinned.hasFocus;
+    }
+    return false;
+  }
+
+  /// True when D-pad is on the left settings menu (category rail).
+  bool _isFocusOnCategoryRail() {
+    if (_detailScope.hasFocus) return false;
+    if (widget.firstTileFocusNode?.hasFocus == true) return true;
+    return ShellTvFocusCoordinator.rowHasFocus('settings', _categoryRowId);
   }
 
   /// OK / → from the category rail: bump [SettingsDetailEnter] so the detail
@@ -213,6 +230,7 @@ class _SettingsHubScaffoldState extends ConsumerState<SettingsHubScaffold> {
     if (!SettingsTokens.useSplitLayout(context)) return false;
     if (!ShellScope.inputPolicyOf(context).useFocusableMoodChips) return false;
 
+    // Ladder: detail drill → settings page → settings menu → shell nav.
     if (SettingsAddonDrill.current.value != null) {
       // Host restores focus onto the control that opened the drill.
       SettingsAddonDrill.close();
@@ -234,19 +252,21 @@ class _SettingsHubScaffoldState extends ConsumerState<SettingsHubScaffold> {
       return true;
     }
 
+    // Menu already focused → shell nav (profile / Settings rail icon).
+    if (_isFocusOnCategoryRail()) return false;
+
+    // Page (or any non-menu focus in the hub): land on the selected category.
+    // Do not require [_detailScope.hasFocus] — some page controls sit outside
+    // that scope in the focus tree; requiring it skipped the menu and Back
+    // jumped straight to the shell nav.
     if (_detailScope.hasFocus) {
-      // Remember the exact detail control so OK/→ re-enters there.
       _detailReturnFocus = ShellTvFocusCoordinator.memoryFor('settings');
       _detailReturnCategoryId = widget.selectedId;
-      if (_detailEnterToken != 0) {
-        setState(() => _detailEnterToken = 0);
-      }
-      return _focusSelectedCategory();
     }
-
-    // On the category rail (any index): let the shell focus the nav item.
-    // Do not hop to Profile / index 0 — selection must stay where it was.
-    return false;
+    if (_detailEnterToken != 0) {
+      setState(() => _detailEnterToken = 0);
+    }
+    return _focusSelectedCategory();
   }
 
   bool _restoreMemory(ShellTvFocusMemory snap) {

@@ -151,7 +151,7 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [127-[fixed]-…](fixed/127-[fixed]-android-tv-settings-detail-dpad.md) | ATV Settings page D-pad escapes category / Addons ↑ / spatial | P1 | High | fixed | Complete · 8/8 · A 7/7 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [128-[open]-…](128-[open]-android-tv-iptv-mediakit-exit-anr.md) | ATV IPTV MediaKit exit ANR after Player menu switch | P1 | High | open | 13/13 · A 0/4 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [129-[open]-…](129-[open]-android-tv-exo-vod-cropped-after-mediakit.md) | ATV Exo VOD cropped after MediaKit → Exo | P1 | High | open | 13/13 · A 0/2 | [1.0.1](../backlog/1.0.1-[open].md) |
-| [130-[open]-…](130-[open]-android-tv-player-dpad-stuck-on-play.md) | ATV player D-pad stuck on Play (full-screen FocusScope) | P1 | High | open | 11/11 · A 0/4 | [1.0.1](../backlog/1.0.1-[open].md) |
+| [130-[open]-…](130-[open]-android-tv-player-dpad-stuck-on-play.md) | ATV player D-pad stuck on Play (full-screen FocusScope) | P1 | High | open | 12/12 · A 0/4 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [131-[open]-…](131-[open]-android-tv-live-matches-exo-dpad-dead.md) | ATV Live Matches Exo player D-pad dead after handoff | P1 | High | open | 3/3 · A 0/2 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [132-[open]-…](132-[open]-android-tv-exo-auto-subtitle-merging-crash.md) | ATV Exo auto subtitle select crashes / pops player | P1 | High | open | 3/3 · A 0/1 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [133-[open]-…](133-[open]-android-tv-exo-physical-audio-only.md) | ATV physical Exo audio-only (SurfaceView fail) | P1 | High | open | 10/10 · A 0/3 | [1.0.1](../backlog/1.0.1-[open].md) |
@@ -512,10 +512,21 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [473-[fixed]-…](fixed/473-[fixed]-my-list-open-with-size-persist-card.md) | My List Open with… size + persist/card update | P1 | High | fixed | Complete · 3/3 · A 0/2 | [400](400-[open]-my-list-open-with-hub-checkbox.md) |
 | [474-[fixed]-…](fixed/474-[fixed]-mediakit-hls-instream-subtitle-menu-twins.md) | MediaKit HLS in-stream subtitle menu twins on pick | P1 | High | fixed | Complete · 4/4 · A 1/3 | [458](fixed/458-[fixed]-exo-online-subtitle-pick-no-op-and-menu-twins.md) |
 | [475-[fixed]-…](fixed/475-[fixed]-release-tv-login-shows-dev-forjahq.md) | Release TV login shows `dev.forjahq.xyz` | P0 | High | fixed | Complete · 3/3 · A 1/2 | — |
+| [476-[fixed]-…](fixed/476-[fixed]-continue-watching-drops-show-under-2-percent.md) | Continue Watching drops show when next ep under 2% | P1 | High | fixed | Complete · 4/4 · A 0/2 | [454](fixed/454-[fixed]-continue-watching-drops-finished-episode.md) |
+| [477-[fixed]-…](fixed/477-[fixed]-live-sports-matchopen-settings-resets.md) | Live Sports Open matches in resets to Detail page | P1 | High | fixed | Complete · 3/3 · A 0/2 | — |
+| [478-[open]-…](478-[open]-profile-splash-skips-offstage-shell-paint.md) | Profile splash skips Offstage shell paint (TV freeze) | P1 | High | open | 0/3 · A 0/2 | [018](../rfc/018-[draft]-startup-splash-home.md) |
+| [479-[open]-…](479-[open]-android-tv-exo-vod-mottled-surfaceproducer.md) | ATV Exo VOD mottled picture → SurfaceProducer | P1 | High | open | 4/4 · A 0/2 | [108](108-[open]-android-tv-iptv-exo-choppy-fps.md) · [133](133-[open]-android-tv-exo-physical-audio-only.md) |
+| [480-[fixed]-…](fixed/480-[fixed]-shelf-selected-focus-invert.md) | Shelf selected+focus invert missing (IPTV / Live Sports) | P1 | Medium | fixed | Complete · 2/2 · A 0/1 | — |
+| [481-[fixed]-…](fixed/481-[fixed]-android-tv-lan-discover-mdns.md) | Android TV LAN Discover finds no desktop | P1 | High | fixed | Complete · 3/3 · A 0/2 | [RFC-022](../rfc/022-[open]-lan-server-client.md) |
+| [482-[fixed]-…](fixed/482-[fixed]-live-sports-providers-resolve-freezes-tv.md) | Live Sports Providers resolve freezes Android TV | P0 | Critical | fixed | Complete · 4/4 · A 0/2 | [237](fixed/237-[fixed]-live-sports-catalog-resolve-jsc-crash.md) |
+| [483-[fixed]-…](fixed/483-[fixed]-android-tv-settings-back-skips-menu.md) | ATV Settings ←/Back skips category menu → profile nav | P1 | High | fixed | Complete · 2/2 · A 1/2 | [127](fixed/127-[fixed]-android-tv-settings-detail-dpad.md) |
+| [484-[open]-…](484-[open]-android-tv-details-episode-ok-hold-mark-watched.md) | ATV details: hold OK marks episode watched | P1 | Medium | open | 3/3 · A 1/2 | [RFC-122](../rfc/122-[draft]-android-tv-remote-ux.md) · [459](459-[open]-android-tv-series-journey-search-space-episode-ok-next-season.md) |
+| [485-[open]-…](485-[open]-my-list-open-vs-simkl-link.md) | My List Open with ≠ Simkl TMDB link | P1 | High | open | 5/5 · A 0/4 | [RFC-108](../rfc/fixed/108-[fixed]-my-list-open-hub-binding.md) · [RFC-059](../rfc/fixed/059-[fixed]-hub-list-follow.md) |
+| [486-[open]-…](486-[open]-simkl-auto-sync-lists-on-my-list-open.md) | Simkl auto sync lists on My List open | P1 | High | open | 4/4 · A 0/3 | [206](fixed/206-[fixed]-simkl-smart-sync-delta-cw-cap.md) |
 
 **Migration parity (draft):** [018](018-[draft]-migration-playback-parity-unverified.md) → [019](019-[draft]-webstreamr-enginejobs-e2e-test-gap.md)–[022](022-[draft]-playback-widget-integration-tests.md).
 
-**LAN (RFC-022):** [026](026-[open]-lan-stream-playback-bearer-token.md) blocks playback · [027](027-[draft]-lan-server-client-manual-qa.md)–[030](030-[draft]-lan-hdr-passthrough-unverified.md) verification / gaps.
+**LAN (RFC-022):** [026](026-[open]-lan-stream-playback-bearer-token.md) blocks playback · [027](027-[draft]-lan-server-client-manual-qa.md)–[030](030-[draft]-lan-hdr-passthrough-unverified.md) verification / gaps · [481](fixed/481-[fixed]-android-tv-lan-discover-mdns.md) ATV Discover mDNS.
 
 ## Related
 

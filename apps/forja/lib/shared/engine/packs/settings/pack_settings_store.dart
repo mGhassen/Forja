@@ -119,7 +119,9 @@ abstract final class PackSettingsStore {
     if (reloadHub) {
       _bumpUser(pluginId, reloadHub: true);
     } else {
+      // Paint-only fields (e.g. matchOpen) still sync — just skip hub scrape.
       _bump(pluginId, reloadHub: false);
+      onNonSecretUserWrite?.call();
     }
   }
 
@@ -147,7 +149,9 @@ abstract final class PackSettingsStore {
     if (reloadHub) {
       _bumpUser(pluginId, reloadHub: true);
     } else {
+      // Paint-only fields (e.g. matchOpen) still sync — just skip hub scrape.
       _bump(pluginId, reloadHub: false);
+      onNonSecretUserWrite?.call();
     }
   }
 

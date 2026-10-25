@@ -16,8 +16,7 @@ class SettingsSimklPanel extends ConsumerStatefulWidget {
   const SettingsSimklPanel({super.key});
 
   @override
-  ConsumerState<SettingsSimklPanel> createState() =>
-      _SettingsSimklPanelState();
+  ConsumerState<SettingsSimklPanel> createState() => _SettingsSimklPanelState();
 }
 
 class _SettingsSimklPanelState extends ConsumerState<SettingsSimklPanel> {
@@ -26,6 +25,26 @@ class _SettingsSimklPanelState extends ConsumerState<SettingsSimklPanel> {
   String? _verifyUrl;
   Timer? _pollTimer;
   bool _isSyncing = false;
+  bool _autoSyncLists = false;
+  SimklListSyncMode? _listSyncMode;
+  bool _prefsLoaded = false;
+
+  @override
+  void initState() {
+    super.initState();
+    unawaited(_loadPrefs());
+  }
+
+  Future<void> _loadPrefs() async {
+    final auto = await _service.getAutoSyncLists();
+    final mode = await _service.getListSyncMode();
+    if (!mounted) return;
+    setState(() {
+      _autoSyncLists = auto;
+      _listSyncMode = mode;
+      _prefsLoaded = true;
+    });
+  }
 
   @override
   void dispose() {
@@ -72,9 +91,7 @@ class _SettingsSimklPanelState extends ConsumerState<SettingsSimklPanel> {
     }
 
     _pollTimer?.cancel();
-    _pollTimer = Timer.periodic(Duration(seconds: interval), (
-      timer,
-    ) async {
+    _pollTimer = Timer.periodic(Duration(seconds: interval), (timer) async {
       final token = await _service.pollForToken(userCode);
       if (token != null) {
         timer.cancel();
@@ -119,16 +136,18 @@ class _SettingsSimklPanelState extends ConsumerState<SettingsSimklPanel> {
 
   Future<void> _sync() async {
     if (_isSyncing || !mounted) return;
-    final mode = await showSimklSyncModeDialog(context);
+    final mode = await showSimklSyncModeDialog(context, current: _listSyncMode);
     // Back / dismiss / No sync → do nothing.
     if (mode == null || !mounted) return;
 
     setState(() => _isSyncing = true);
     try {
+      await _service.setListSyncMode(mode);
       final result = await _service.syncWithMode(mode);
       ref.invalidate(externalListsGateProvider);
       ref.invalidate(simklWatchlistProvider);
       if (mounted) {
+        setState(() => _listSyncMode = mode);
         ForjaToast.success(
           _syncToast(result),
           duration: const Duration(seconds: 4),
@@ -142,6 +161,31 @@ class _SettingsSimklPanelState extends ConsumerState<SettingsSimklPanel> {
       if (mounted) setState(() => _isSyncing = false);
     }
   }
+
+  Future<void> _onAutoSyncChanged(bool enabled) async {
+    if (enabled) {
+      var mode = _listSyncMode;
+      if (mode == null) {
+        if (!mounted) return;
+        mode = await showSimklSyncModeDialog(context, current: null);
+        if (mode == null || !mounted) return;
+        await _service.setListSyncMode(mode);
+        setState(() => _listSyncMode = mode);
+      }
+      await _service.setAutoSyncLists(true);
+      if (mounted) setState(() => _autoSyncLists = true);
+      return;
+    }
+    await _service.setAutoSyncLists(false);
+    if (mounted) setState(() => _autoSyncLists = false);
+  }
+
+  String _modeLabel(SimklListSyncMode? mode) => switch (mode) {
+    SimklListSyncMode.keepLocal => 'Keep local',
+    SimklListSyncMode.useSimkl => 'Use Simkl',
+    SimklListSyncMode.merge => 'Merge',
+    null => 'not set — Sync Now first',
+  };
 
   String _syncToast(SimklSyncResult r) {
     final modeLabel = switch (r.mode) {
@@ -181,6 +225,17 @@ class _SettingsSimklPanelState extends ConsumerState<SettingsSimklPanel> {
               subtitle: 'Simkl',
             ),
             const SizedBox(height: 12),
+            if (_prefsLoaded)
+              SettingsToggleRow(
+                title: 'Auto sync lists on My List',
+                subtitle:
+                    'When you open My List, sync with ${_modeLabel(_listSyncMode)} '
+                    'and refresh the cached library',
+                value: _autoSyncLists,
+                onChanged: _isSyncing ? (_) {} : _onAutoSyncChanged,
+                enabled: !_isSyncing,
+              ),
+            if (_prefsLoaded) const SizedBox(height: 12),
             SettingsFilledButton(
               label: _isSyncing ? 'Syncing...' : 'Sync Now',
               icon: Icons.sync,
@@ -253,17 +308,26 @@ class _SettingsSimklPanelState extends ConsumerState<SettingsSimklPanel> {
   }
 }
 
-Future<SimklListSyncMode?> showSimklSyncModeDialog(BuildContext context) async {
+Future<SimklListSyncMode?> showSimklSyncModeDialog(
+  BuildContext context, {
+  SimklListSyncMode? current,
+}) async {
   const noSync = 'No sync';
   const labels = <String, SimklListSyncMode>{
     'Keep local': SimklListSyncMode.keepLocal,
     'Use Simkl': SimklListSyncMode.useSimkl,
     'Merge': SimklListSyncMode.merge,
   };
+  final currentLabel = switch (current) {
+    SimklListSyncMode.keepLocal => 'Keep local',
+    SimklListSyncMode.useSimkl => 'Use Simkl',
+    SimklListSyncMode.merge => 'Merge',
+    null => noSync,
+  };
   final picked = await showSettingsSelectDialog(
     context: context,
     title: 'How should lists sync?',
-    value: noSync,
+    value: currentLabel,
     options: [...labels.keys, noSync],
   );
   if (picked == null || picked == noSync) return null;
