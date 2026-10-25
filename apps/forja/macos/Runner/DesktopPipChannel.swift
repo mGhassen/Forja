@@ -22,6 +22,8 @@ final class DesktopPipController: NSObject {
   private var floatChannel: FlutterMethodChannel?
   private var pendingOpen: [String: Any]?
   private var floatReady = false
+  /// Cancels a prior float-engine shutdown when destroy/create races.
+  private var pendingShutdownWork: DispatchWorkItem?
 
   init(window: NSWindow, messenger: FlutterBinaryMessenger) {
     self.mainWindow = window
@@ -186,24 +188,40 @@ final class DesktopPipController: NSObject {
   }
 
   private func destroyFloat() {
+    pendingShutdownWork?.cancel()
+    pendingShutdownWork = nil
+
     floatChannel?.invokeMethod("teardown", arguments: nil)
     floatChannel?.setMethodCallHandler(nil)
     floatChannel = nil
+
+    // Hold FVC until after shutdown so the engine is not messaged mid-detach.
+    let fvc = floatViewController
+    let engine = floatEngine
     floatWindow?.orderOut(nil)
     floatWindow?.contentViewController = nil
     floatWindow = nil
     floatViewController = nil
-    // Do not shutDownEngine synchronously — teardown is async and racing
-    // shutDown produces "Invalid engine handle" lifecycle spam.
-    let engine = floatEngine
     floatEngine = nil
     pendingOpen = nil
     floatReady = false
-    if let engine {
-      DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
-        engine.shutDownEngine()
-      }
+
+    guard let engine else { return }
+
+    // FlutterEngine.shutDownEngine nulls the embedder handle but leaves this
+    // object on AppDelegate's lifecycle registrar until dealloc. Resign /
+    // occlusion then hits setApplicationState → flutter/lifecycle →
+    // "Invalid engine handle". Unregister before shutdown (issue 489).
+    if let provider = NSApp.delegate as? FlutterAppLifecycleProvider {
+      provider.removeApplicationLifecycleDelegate(engine)
     }
+
+    let work = DispatchWorkItem {
+      _ = fvc
+      engine.shutDownEngine()
+    }
+    pendingShutdownWork = work
+    DispatchQueue.main.async(execute: work)
   }
 
   private func handleFloatCall(
