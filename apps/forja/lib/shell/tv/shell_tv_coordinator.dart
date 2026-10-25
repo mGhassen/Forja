@@ -515,12 +515,22 @@ abstract final class ShellTvFocusCoordinator {
   ///
   /// Retries across frames when hub heroes are still on shimmer; falls back to
   /// [restoreTabFocusAfterNav] so focus does not stay on the rail silently.
+  ///
+  /// Catalog hubs that omit pack `focus.enter` (hero owns land) also try
+  /// [_restoreDefault] each frame — otherwise empty enter retries burn the
+  /// budget while spotlight/rails are still painting, and focus stays on nav.
   static void enterTabFromNav(String tabId) {
     _clearFocusBeforeNav();
     void attempt({required int remaining}) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (focusTabEnterFromNav(tabId) && _pageHasContentFocus(tabId)) {
           return;
+        }
+        // No pack enter → hero / first content / chrome each frame (slow feeds).
+        if (!_tabEnterFocus.containsKey(tabId)) {
+          _restoreDefault(tabId);
+          FocusManager.instance.applyFocusChangesIfNeeded();
+          if (_pageHasContentFocus(tabId)) return;
         }
         if (remaining > 0) {
           attempt(remaining: remaining - 1);
@@ -538,7 +548,8 @@ abstract final class ShellTvFocusCoordinator {
       });
     }
 
-    attempt(remaining: 6);
+    // ~400ms at 60fps — hub spotlight / rail paint often exceeds the old ~100ms.
+    attempt(remaining: 24);
   }
 
   // --- Nav order ---
@@ -1311,11 +1322,42 @@ abstract final class ShellTvFocusCoordinator {
         }
         if (remaining > 0) {
           scheduleAttempt(remaining: remaining - 1);
+          return;
+        }
+        // Only when there is no live row/grid memory to wait on — otherwise
+        // late default would yank RIGHT restore onto hero (issue 158 class).
+        // Empty catalog enter (no enter, no memory) keeps polling for rails.
+        if (!trackingMemory) {
+          _scheduleLateNavEnterLand(tabId, remaining: 30);
         }
       });
     }
 
     scheduleAttempt(remaining: 4);
+  }
+
+  /// Poll [_restoreDefault] until page focus lands or [remaining] hits 0.
+  static void _scheduleLateNavEnterLand(
+    String tabId, {
+    required int remaining,
+  }) {
+    if (tabId.isEmpty || remaining <= 0) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_pageHasFocus()) {
+        _clearFocusBeforeNav();
+        return;
+      }
+      // Drop rail focus before land — requestFocus alone can lose to a sticky
+      // nav primary when the hero was missing for many frames.
+      unfocusShellNav();
+      _restoreDefault(tabId);
+      FocusManager.instance.applyFocusChangesIfNeeded();
+      if (_pageHasFocus()) {
+        _clearFocusBeforeNav();
+        return;
+      }
+      _scheduleLateNavEnterLand(tabId, remaining: remaining - 1);
+    });
   }
 
   static bool _pageHasFocus() {
@@ -1438,13 +1480,17 @@ abstract final class ShellTvFocusCoordinator {
   }
 
   static bool _restoreDefault(String tabId) {
-    _revealHeroForTab(tabId);
     final node =
         _tabDefaultFocus[tabId]?.call() ?? defaultFocusForTab?.call(tabId);
     if (node != null && node.canRequestFocus) {
+      _revealHeroForTab(tabId);
       return _request(node);
     }
-    return focusHero(revealFull: false, tabId: tabId);
+    if (focusHero(revealFull: false, tabId: tabId)) return true;
+    // Hero unbound / empty spotlight — still leave the rail (first rail or
+    // chrome shelf). Same miss class as IPTV portal cover without enter.
+    if (focusFirstContentRow(tabId)) return true;
+    return focusChromeRow(tabId);
   }
 
   static bool focusHero({bool revealFull = true, String? tabId}) {

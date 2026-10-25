@@ -2058,6 +2058,71 @@ void main() {
     ShellTvFocusCoordinator.clearTab('settings');
   });
 
+  testWidgets(
+    'enterTabFromNav lands first content when hero defaultFocus missing',
+    (tester) async {
+      // Catalog hubs omit pack focus.enter and rely on hero CTA — when the
+      // hero is unbound/empty, land must still leave the nav rail.
+      const tab = 'hub_catalog';
+      final nav = FocusNode(debugLabel: 'nav-$tab');
+      final card = FocusNode(debugLabel: 'rail-card');
+      ShellTvFocus.registerNav(tab, nav);
+      ShellTvFocus.currentNavTabId = tab;
+      ShellTvFocusCoordinator.setNavOrder(['home', tab]);
+      // No enterFromNavFocus / defaultFocus — same as Asian Drama layout omit.
+
+      shellTvRegisterRow(
+        tabId: tab,
+        rowId: 'latest',
+        sortOrder: 1,
+        itemCount: 1,
+      );
+      ShellTvFocusCoordinator.registerItemNode(
+        tabId: tab,
+        rowId: 'latest',
+        index: 0,
+        node: card,
+      );
+
+      await tester.pumpWidget(
+        _wrapTv(
+          Row(
+            children: [
+              Focus(
+                focusNode: nav,
+                child: const SizedBox(width: 40, height: 40),
+              ),
+              Focus(
+                focusNode: card,
+                child: const SizedBox(width: 40, height: 40),
+              ),
+            ],
+          ),
+        ),
+      );
+      await tester.pump();
+      nav.requestFocus();
+      await tester.pump();
+      expect(nav.hasFocus, isTrue);
+
+      ShellTvFocusCoordinator.enterTabFromNav(tab);
+      for (var i = 0; i < 8; i++) {
+        await tester.pump();
+      }
+      expect(
+        card.hasFocus,
+        isTrue,
+        reason:
+            'nav=${nav.hasFocus} primary=${FocusManager.instance.primaryFocus?.debugLabel} anyNav=${ShellTvFocus.anyNavFocused} row=${ShellTvFocusCoordinator.rowHandle(tab, 'latest')?.itemCount}',
+      );
+      expect(nav.hasFocus, isFalse);
+
+      nav.dispose();
+      card.dispose();
+      ShellTvFocusCoordinator.clearTab(tab);
+    },
+  );
+
   test('clearTabPageBack drops a stale Back ladder', () {
     var calls = 0;
     ShellTvFocusCoordinator.registerTabDefaults(

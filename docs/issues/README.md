@@ -521,7 +521,7 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [482-[fixed]-…](fixed/482-[fixed]-live-sports-providers-resolve-freezes-tv.md) | Live Sports Providers resolve freezes Android TV | P0 | Critical | fixed | Complete · 4/4 · A 0/2 | [237](fixed/237-[fixed]-live-sports-catalog-resolve-jsc-crash.md) |
 | [483-[fixed]-…](fixed/483-[fixed]-android-tv-settings-back-skips-menu.md) | ATV Settings ←/Back skips category menu → profile nav | P1 | High | fixed | Complete · 2/2 · A 1/2 | [127](fixed/127-[fixed]-android-tv-settings-detail-dpad.md) |
 | [484-[open]-…](484-[open]-android-tv-details-episode-ok-hold-mark-watched.md) | ATV details: hold OK marks episode watched | P1 | Medium | open | 3/3 · A 1/2 | [RFC-122](../rfc/122-[draft]-android-tv-remote-ux.md) · [459](459-[open]-android-tv-series-journey-search-space-episode-ok-next-season.md) |
-| [485-[open]-…](485-[open]-my-list-open-vs-simkl-link.md) | My List Open with ≠ Simkl TMDB link | P1 | High | open | 8/8 · A 0/4 | [RFC-108](../rfc/fixed/108-[fixed]-my-list-open-hub-binding.md) · [RFC-059](../rfc/fixed/059-[fixed]-hub-list-follow.md) |
+| [485-[open]-…](485-[open]-my-list-open-vs-simkl-link.md) | My List Open with ≠ Simkl TMDB link | P1 | High | open | 9/9 · A 0/4 | [RFC-108](../rfc/fixed/108-[fixed]-my-list-open-hub-binding.md) · [RFC-059](../rfc/fixed/059-[fixed]-hub-list-follow.md) |
 | [486-[open]-…](486-[open]-simkl-auto-sync-lists-on-my-list-open.md) | Simkl auto sync lists on My List open | P1 | High | open | 4/4 · A 0/3 | [206](fixed/206-[fixed]-simkl-smart-sync-delta-cw-cap.md) |
 | [487-[fixed]-…](fixed/487-[fixed]-brstej-brsteej-beer-hex-ids.md) | Brstej / Aflem empty after brsteej.beer + hex ids | P1 | High | fixed | Complete · 6/6 · A 0/2 | [419](419-[open]-aflem-hub-home-page-only.md) |
 | [488-[fixed]-…](fixed/488-[fixed]-ppv-taifood-gasm-substreams.md) | PPV dead after taifood-blog.asia + language substreams | P1 | High | fixed | Complete · 5/5 · A 0/2 | — |
@@ -529,6 +529,7 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [490-[fixed]-…](fixed/490-[fixed]-android-tv-forja-packs-details-down-freeze.md) | ATV Forja Packs: ↓ on details chevron freezes | P1 | High | fixed | Complete · 2/2 · A 0/1 | [262](fixed/262-[fixed]-android-tv-forja-packs-last-pack-clipped.md) |
 | [491-[fixed]-…](fixed/491-[fixed]-android-tv-simkl-sync-select-dpad.md) | ATV Simkl sync mode select won’t open on D-pad | P1 | High | fixed | Complete · 1/1 · A 0/1 | — |
 | [492-[fixed]-…](fixed/492-[fixed]-simkl-list-sync-prefs-cloud-profile.md) | Simkl list sync prefs not in cloud profile | P2 | Medium | fixed | Complete · 3/3 · A 0/1 | [486](486-[open]-simkl-auto-sync-lists-on-my-list-open.md) |
+| [493-[fixed]-…](fixed/493-[fixed]-android-tv-hub-nav-enter-stuck-on-rail.md) | ATV catalog hub OK leaves focus on navbar | P1 | High | fixed | Complete · 3/3 · A 0/1 | [460](fixed/460-[fixed]-android-tv-iptv-nav-enter-shelf-while-loading.md) |
 
 **Migration parity (draft):** [018](018-[draft]-migration-playback-parity-unverified.md) → [019](019-[draft]-webstreamr-enginejobs-e2e-test-gap.md)–[022](022-[draft]-playback-widget-integration-tests.md).
 

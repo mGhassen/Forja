@@ -10,7 +10,7 @@
 
 | | |
 |--|--|
-| **Progress** | **8 / 8** fix · **0 / 4** acceptance |
+| **Progress** | **9 / 9** fix · **0 / 4** acceptance |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -38,6 +38,7 @@ Open with binds hub open and TMDB from the same checked hit. A title opened in A
 | 6 | I485-T06 | Bind sheet D-pad: chips ↔ Match / Open with icons | ✅ |
 | 7 | I485-T07 | Bind sheet list-status pin + dropdown (TV cards omit pin) | ✅ |
 | 8 | I485-T08 | Pack `openBind` chrome → host mounts labels/pin/tracker (no My List invent) | ✅ |
+| 9 | I485-T09 | `CatalogCardsGrid` kitList posters mount pack `trackerMark` via `itemSubtitleTrailing` (paint_artifact path already did) | ✅ |
 
 ---
 

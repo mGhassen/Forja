@@ -135,6 +135,7 @@ class CatalogCardsGrid extends StatelessWidget {
     this.titleFontSize,
     this.metaFontSize,
     this.itemAccessory,
+    this.itemSubtitleTrailing,
     this.itemHealth,
     this.itemHealthListenable,
     this.onItemInteractiveActive,
@@ -195,6 +196,10 @@ class CatalogCardsGrid extends StatelessWidget {
     required bool active,
   })?
   itemAccessory;
+
+  /// Optional bottom-row trailing (e.g. pack `trackerMark`). Null → omit.
+  final Widget? Function(BuildContext context, Map<String, dynamic> item)?
+  itemSubtitleTrailing;
 
   /// Live channel stream health (`null` unknown).
   final bool? Function(Map<String, dynamic> item)? itemHealth;
@@ -592,6 +597,7 @@ class CatalogCardsGrid extends StatelessWidget {
                       ? null
                       : ({required bool active}) =>
                             itemAccessory!(context, item, active: active),
+                  subtitleTrailing: itemSubtitleTrailing?.call(context, item),
                   onTap: () => onItemTap?.call(item),
                   onLongPress: onItemLongPress == null
                       ? null

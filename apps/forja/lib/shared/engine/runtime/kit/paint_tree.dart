@@ -34,6 +34,7 @@ import 'package:forja/shared/engine/runtime/kit/pack_chrome_feed.dart';
 import 'package:forja/shared/engine/unlock/schedule_sport_filter.dart';
 import 'package:forja/shared/engine/runtime/kit/pack_load_paint.dart';
 import 'package:forja/shared/engine/runtime/kit/pack_opaque_run.dart';
+import 'package:forja/shared/engine/runtime/kit/pack_tracker_mark.dart';
 import 'package:forja/shared/engine/runtime/kit/paint_artifact.dart';
 import 'package:forja/shared/engine/runtime/kit/paint_foundation_mount.dart';
 import 'package:forja/shared/engine/runtime/kit/focus_edge.dart';
@@ -2193,6 +2194,14 @@ class PackPaintTree extends StatelessWidget {
                   : (liveChannels
                         ? _liveFavoriteAccessory
                         : _listPosterPinAccessory),
+              itemSubtitleTrailing: liveChannels
+                  ? null
+                  : (ctx, item) => packTrackerMarkTrailing(
+                      context: ctx,
+                      pluginId: pluginId,
+                      props: catalogItemProps(item),
+                      listItem: item,
+                    ),
               itemHealthListenable: healthListenableFor,
               onItemInteractiveActive: onInteractiveActive,
               loadEpgProgrammes: loadEpgProgrammes,
