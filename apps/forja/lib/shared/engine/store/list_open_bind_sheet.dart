@@ -9,6 +9,7 @@ import 'package:forja_foundation/components/checkbox.dart';
 import 'package:forja/shared/engine/store/list_open_binding.dart';
 import 'package:forja/shared/engine/store/list_open_picker.dart';
 import 'package:forja/shared/engine/store/list_open_title_rank.dart';
+import 'package:forja/shared/engine/runtime/kit/pack_tracker_mark.dart';
 import 'package:forja_foundation/widgets/catalog/letter_link_mark.dart';
 import 'package:forja_foundation/widgets/chrome/shell_chip.dart';
 import 'package:forja/shell/core/forja_shell_scope.dart';
@@ -485,7 +486,7 @@ class _ListOpenBindSheetState extends State<_ListOpenBindSheet> {
                 children: [
                   Expanded(
                     child: Text(
-                      _simklMode ? 'Link Simkl…' : widget.title,
+                      _simklMode ? 'Match on Simkl' : widget.title,
                       style: GoogleFonts.plusJakartaSans(
                         color: ForjaShellColors.textPrimary,
                         fontSize: type(18),
@@ -516,39 +517,17 @@ class _ListOpenBindSheetState extends State<_ListOpenBindSheet> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Expanded(
-                              child: Text(
-                                _headerMeta.name.trim().isEmpty
-                                    ? 'Untitled'
-                                    : _headerMeta.name.trim(),
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                                style: GoogleFonts.plusJakartaSans(
-                                  color: ForjaShellColors.textPrimary,
-                                  fontSize: type(15),
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ),
-                            if (widget.simklLinkEnabled) ...[
-                              SizedBox(width: px(8)),
-                              shellFocusableTap(
-                                context: context,
-                                focusNode: _simklBtnFocus,
-                                onTap: () => _setMode(_ListOpenBindMode.simkl),
-                                borderRadius: px(14),
-                                child: LetterLinkMark(
-                                  letter: 'S',
-                                  linked: _simklLinked,
-                                  selected: _simklMode,
-                                  size: px(28),
-                                ),
-                              ),
-                            ],
-                          ],
+                        Text(
+                          _headerMeta.name.trim().isEmpty
+                              ? 'Untitled'
+                              : _headerMeta.name.trim(),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: GoogleFonts.plusJakartaSans(
+                            color: ForjaShellColors.textPrimary,
+                            fontSize: type(15),
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
                         if (release.isNotEmpty) ...[
                           SizedBox(height: px(4)),
@@ -560,53 +539,86 @@ class _ListOpenBindSheetState extends State<_ListOpenBindSheet> {
                             ),
                           ),
                         ],
-                        SizedBox(height: px(8)),
-                        shellFocusableTap(
-                          context: context,
-                          focusNode: _openWithBtnFocus,
-                          onTap: () => _setMode(_ListOpenBindMode.openWith),
-                          borderRadius: px(8),
-                          child: Padding(
-                            padding: EdgeInsets.symmetric(
-                              vertical: px(4),
-                              horizontal: px(2),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(
-                                  Icons.link_rounded,
-                                  size: px(16),
-                                  color: !_simklMode
-                                      ? ForjaShellColors.textPrimary
-                                      : ForjaShellColors.iconMuted,
+                        if (widget.simklLinkEnabled) ...[
+                          SizedBox(height: px(10)),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: _ModeToggleButton(
+                                  focusNode: _simklBtnFocus,
+                                  selected: _simklMode,
+                                  density: density,
+                                  onTap: () =>
+                                      _setMode(_ListOpenBindMode.simkl),
+                                  leading: LetterLinkMark(
+                                    letter: 'S',
+                                    linked: _simklLinked,
+                                    selected: _simklMode,
+                                    size: px(18),
+                                    image: const AssetImage(kSimklLogoAsset),
+                                  ),
+                                  label: 'Match',
                                 ),
-                                SizedBox(width: px(6)),
-                                Flexible(
-                                  child: Text(
-                                    () {
-                                      final hub = (widget.openHubLabel ?? '')
-                                          .trim();
-                                      if (hub.isNotEmpty) {
-                                        return 'Open with $hub';
-                                      }
-                                      return 'Open with…';
-                                    }(),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: TextStyle(
-                                      color: !_simklMode
-                                          ? ForjaShellColors.textPrimary
-                                          : ForjaShellColors.textSecondary,
-                                      fontSize: type(13),
-                                      fontWeight: FontWeight.w600,
-                                    ),
+                              ),
+                              SizedBox(width: px(8)),
+                              Expanded(
+                                child: _ModeToggleButton(
+                                  focusNode: _openWithBtnFocus,
+                                  selected: !_simklMode,
+                                  density: density,
+                                  onTap: () =>
+                                      _setMode(_ListOpenBindMode.openWith),
+                                  leading: Icon(
+                                    Icons.link_rounded,
+                                    size: px(16),
+                                    color: !_simklMode
+                                        ? ForjaShellColors.textPrimary
+                                        : ForjaShellColors.iconMuted,
+                                  ),
+                                  label: 'Open with',
+                                ),
+                              ),
+                            ],
+                          ),
+                          if (!_simklMode &&
+                              (widget.openHubLabel ?? '').trim().isNotEmpty)
+                            Padding(
+                              padding: EdgeInsets.only(top: px(4)),
+                              child: Text(
+                                'Current hub: ${widget.openHubLabel!.trim()}',
+                                style: TextStyle(
+                                  color: ForjaShellColors.textSecondary,
+                                  fontSize: type(11),
+                                ),
+                              ),
+                            ),
+                        ] else ...[
+                          SizedBox(height: px(8)),
+                          Row(
+                            children: [
+                              Icon(
+                                Icons.link_rounded,
+                                size: px(16),
+                                color: ForjaShellColors.iconMuted,
+                              ),
+                              SizedBox(width: px(6)),
+                              Flexible(
+                                child: Text(
+                                  (widget.openHubLabel ?? '').trim().isNotEmpty
+                                      ? 'Open with ${widget.openHubLabel!.trim()}'
+                                      : 'Open with…',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    color: ForjaShellColors.textSecondary,
+                                    fontSize: type(13),
+                                    fontWeight: FontWeight.w600,
                                   ),
                                 ),
-                              ],
-                            ),
+                              ),
+                            ],
                           ),
-                        ),
+                        ],
                       ],
                     ),
                   ),
@@ -656,7 +668,7 @@ class _ListOpenBindSheetState extends State<_ListOpenBindSheet> {
               ] else ...[
                 SizedBox(height: px(14)),
                 Text(
-                  'Match on ${widget.simklSearchCandidate!.label}',
+                  'Search ${widget.simklSearchCandidate!.label} for the Simkl title',
                   style: TextStyle(
                     color: ForjaShellColors.textSecondary,
                     fontSize: type(11),
@@ -1270,6 +1282,74 @@ class _HitsBody extends StatelessWidget {
       separatorBuilder: (_, _) =>
           Divider(height: 1, color: ForjaShellColors.borderSubtle),
       itemBuilder: (_, i) => hitTile(i),
+    );
+  }
+}
+
+class _ModeToggleButton extends StatelessWidget {
+  const _ModeToggleButton({
+    required this.selected,
+    required this.onTap,
+    required this.leading,
+    required this.label,
+    required this.density,
+    this.focusNode,
+  });
+
+  final bool selected;
+  final VoidCallback onTap;
+  final Widget leading;
+  final String label;
+  final bool density;
+  final FocusNode? focusNode;
+
+  @override
+  Widget build(BuildContext context) {
+    double px(double desktop) =>
+        density ? desktop * ShellTokens.tvChromeScale : desktop;
+    double type(double desktop) =>
+        density ? ShellTokens.tvTypeSize(desktop) : desktop;
+    final border = selected
+        ? ForjaShellColors.textPrimary
+        : ForjaShellColors.borderSubtle;
+    final bg = selected
+        ? ForjaShellColors.textPrimary.withValues(alpha: 0.12)
+        : Colors.transparent;
+    return shellFocusableTap(
+      context: context,
+      focusNode: focusNode,
+      onTap: onTap,
+      borderRadius: px(10),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 160),
+        padding: EdgeInsets.symmetric(horizontal: px(10), vertical: px(8)),
+        decoration: BoxDecoration(
+          color: bg,
+          borderRadius: BorderRadius.circular(px(10)),
+          border: Border.all(color: border, width: selected ? 1.5 : 1),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            leading,
+            SizedBox(width: px(6)),
+            Flexible(
+              child: Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: selected
+                      ? ForjaShellColors.textPrimary
+                      : ForjaShellColors.textSecondary,
+                  fontSize: type(12),
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

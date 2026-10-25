@@ -66,11 +66,20 @@ class SimklService {
   static const String _keyLastActivity = 'simkl_last_activity';
   static const String _keyLastSyncMs = 'simkl_last_sync_ms';
 
+  /// Prefs (SharedPreferences @account:profile) — last "How should lists sync?"
+  static const String _keyListSyncMode = 'simkl_list_sync_mode';
+
+  /// Prefs — when true, My List hub open runs [syncListBuckets] with saved mode.
+  static const String _keyAutoSyncLists = 'simkl_auto_sync_lists';
+
   /// Max synthetic continue-watching seeds per background sync (newest first).
   static const int _resumeImportCap = 20;
 
   /// Skip background fullSync if we synced this recently (Simkl guidance).
   static const Duration _minSyncInterval = Duration(minutes: 15);
+
+  /// Skip auto list sync on every status-tab flip while browsing My List.
+  static const Duration _minListAutoSyncInterval = Duration(minutes: 2);
 
   // ── Runtime state ──────────────────────────────────────────────────────
   Future<String?> _secureRead(String baseKey) async {
@@ -93,11 +102,55 @@ class SimklService {
   Future<void> _onScopeChanged() async {
     _initialSyncDone = false;
     _syncInProgress = null;
+    _listAutoSyncAt = null;
+    _listAutoSyncFlight = null;
     clearWatchlistCache();
+  }
+
+  Future<String?> _prefsRead(String baseKey) async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(LocalDataScope.storageKey(baseKey));
+  }
+
+  Future<void> _prefsWrite(String baseKey, String value) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(LocalDataScope.storageKey(baseKey), value);
+  }
+
+  /// Last chosen Keep local / Use Simkl / Merge (null until Sync Now / connect).
+  Future<SimklListSyncMode?> getListSyncMode() async {
+    final raw = await _prefsRead(_keyListSyncMode);
+    return switch (raw) {
+      'keepLocal' => SimklListSyncMode.keepLocal,
+      'useSimkl' => SimklListSyncMode.useSimkl,
+      'merge' => SimklListSyncMode.merge,
+      _ => null,
+    };
+  }
+
+  Future<void> setListSyncMode(SimklListSyncMode mode) async {
+    final v = switch (mode) {
+      SimklListSyncMode.keepLocal => 'keepLocal',
+      SimklListSyncMode.useSimkl => 'useSimkl',
+      SimklListSyncMode.merge => 'merge',
+    };
+    await _prefsWrite(_keyListSyncMode, v);
+  }
+
+  Future<bool> getAutoSyncLists() async {
+    final raw = await _prefsRead(_keyAutoSyncLists);
+    return raw == '1' || raw == 'true';
+  }
+
+  Future<void> setAutoSyncLists(bool enabled) async {
+    await _prefsWrite(_keyAutoSyncLists, enabled ? '1' : '0');
+    if (!enabled) _listAutoSyncAt = null;
   }
 
   bool _initialSyncDone = false;
   Future<void>? _syncInProgress;
+  DateTime? _listAutoSyncAt;
+  Future<SimklSyncResult?>? _listAutoSyncFlight;
 
   // ═══════════════════════════════════════════════════════════════════════
   //  A U T H   -   P I N   F L O W
@@ -907,8 +960,8 @@ class SimklService {
     return ok ? total : 0;
   }
 
-  /// List + history sync for connect / Sync Now after the user picks a mode.
-  Future<SimklSyncResult> syncWithMode(SimklListSyncMode mode) async {
+  /// List buckets only (no history) — My List auto-open + Sync Now list pass.
+  Future<SimklSyncResult> syncListBuckets(SimklListSyncMode mode) async {
     var watchlistImported = 0;
     var watchlistExported = 0;
 
@@ -922,16 +975,87 @@ class SimklService {
         watchlistImported = await importWatchlistToBookmarks();
     }
 
-    final history = await syncHistoryOnly();
+    clearWatchlistCache();
+    await setListSyncMode(mode);
     return SimklSyncResult(
       mode: mode,
       watchlistImported: watchlistImported,
       watchlistExported: watchlistExported,
+      watchingImported: 0,
+      moviesImported: 0,
+      episodesImported: 0,
+      episodesExported: 0,
+    );
+  }
+
+  /// List + history sync for connect / Sync Now after the user picks a mode.
+  Future<SimklSyncResult> syncWithMode(SimklListSyncMode mode) async {
+    final lists = await syncListBuckets(mode);
+    final history = await syncHistoryOnly();
+    return SimklSyncResult(
+      mode: mode,
+      watchlistImported: lists.watchlistImported,
+      watchlistExported: lists.watchlistExported,
       watchingImported: history.watchingImported,
       moviesImported: history.moviesImported,
       episodesImported: history.episodesImported,
       episodesExported: history.episodesExported,
     );
+  }
+
+  /// Pack My List feed: when auto-sync is on, run saved list mode (throttled).
+  /// Always refreshes the in-memory Simkl library cache when a sync runs so
+  /// the following `watchlist` read hits the network / new bookmarks.
+  Future<Map<String, dynamic>> syncListsIfAuto() async {
+    final flight = _listAutoSyncFlight;
+    if (flight != null) {
+      final r = await flight;
+      return {
+        'synced': r != null,
+        'imported': r?.watchlistImported ?? 0,
+        'exported': r?.watchlistExported ?? 0,
+      };
+    }
+
+    if (!await isLoggedIn()) {
+      return {'synced': false, 'reason': 'not_logged_in'};
+    }
+    if (!await getAutoSyncLists()) {
+      return {'synced': false, 'reason': 'auto_off'};
+    }
+    final mode = await getListSyncMode();
+    if (mode == null) {
+      return {'synced': false, 'reason': 'no_mode'};
+    }
+    final at = _listAutoSyncAt;
+    if (at != null &&
+        DateTime.now().difference(at) < _minListAutoSyncInterval) {
+      return {'synced': false, 'reason': 'throttle'};
+    }
+
+    final completer = Completer<SimklSyncResult?>();
+    _listAutoSyncFlight = completer.future;
+    SimklSyncResult? result;
+    try {
+      debugPrint('[Simkl] Auto list sync ($mode)…');
+      result = await syncListBuckets(mode);
+      _listAutoSyncAt = DateTime.now();
+      debugPrint(
+        '[Simkl] Auto list sync done ↑${result.watchlistExported} '
+        '↓${result.watchlistImported}',
+      );
+    } catch (e) {
+      debugPrint('[Simkl] Auto list sync error: $e');
+      result = null;
+    } finally {
+      completer.complete(result);
+      _listAutoSyncFlight = null;
+    }
+    return {
+      'synced': result != null,
+      'imported': result?.watchlistImported ?? 0,
+      'exported': result?.watchlistExported ?? 0,
+    };
   }
 
   /// Progress / completed / episodes only (no bookmark bucket push/pull).

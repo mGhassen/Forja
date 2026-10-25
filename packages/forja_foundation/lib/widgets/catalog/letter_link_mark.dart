@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 
-/// Generic letter mark (linked vs crossed). Pack chooses the letter / meaning.
+/// Tracker / link mark: optional logo image, else letter. Crossed when not linked.
 class LetterLinkMark extends StatelessWidget {
   const LetterLinkMark({
     super.key,
@@ -10,6 +10,7 @@ class LetterLinkMark extends StatelessWidget {
     this.selected = false,
     this.size = 16,
     this.onTap,
+    this.image,
   });
 
   final String letter;
@@ -18,18 +19,28 @@ class LetterLinkMark extends StatelessWidget {
   final double size;
   final VoidCallback? onTap;
 
+  /// Pack/host-supplied logo (asset or network). Falls back to [letter].
+  final ImageProvider? image;
+
   @override
   Widget build(BuildContext context) {
     final mark = SizedBox(
       width: size,
       height: size,
-      child: CustomPaint(
-        painter: _LetterLinkPainter(
-          letter: letter,
-          linked: linked,
-          selected: selected,
-        ),
-      ),
+      child: image != null
+          ? _ImageMark(
+              image: image!,
+              linked: linked,
+              selected: selected,
+              size: size,
+            )
+          : CustomPaint(
+              painter: _LetterLinkPainter(
+                letter: letter,
+                linked: linked,
+                selected: selected,
+              ),
+            ),
     );
     if (onTap == null) return mark;
     return GestureDetector(
@@ -38,6 +49,80 @@ class LetterLinkMark extends StatelessWidget {
       child: mark,
     );
   }
+}
+
+class _ImageMark extends StatelessWidget {
+  const _ImageMark({
+    required this.image,
+    required this.linked,
+    required this.selected,
+    required this.size,
+  });
+
+  final ImageProvider image;
+  final bool linked;
+  final bool selected;
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        DecoratedBox(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(size * 0.2),
+            border: selected
+                ? Border.all(color: const Color(0xFF22C55E), width: 1.5)
+                : null,
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(size * 0.2),
+            child: linked
+                ? Image(image: image, fit: BoxFit.cover)
+                : ColorFiltered(
+                    colorFilter: const ColorFilter.mode(
+                      Colors.white54,
+                      BlendMode.modulate,
+                    ),
+                    child: Image(image: image, fit: BoxFit.cover),
+                  ),
+          ),
+        ),
+        if (!linked)
+          CustomPaint(painter: _RedCrossPainter(stroke: size * 0.12)),
+      ],
+    );
+  }
+}
+
+class _RedCrossPainter extends CustomPainter {
+  _RedCrossPainter({required this.stroke});
+
+  final double stroke;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final c = Offset(size.width / 2, size.height / 2);
+    final inset = size.shortestSide * 0.22;
+    final x = Paint()
+      ..color = const Color(0xFFEF4444)
+      ..strokeWidth = stroke
+      ..strokeCap = StrokeCap.round;
+    canvas.drawLine(
+      Offset(c.dx - inset, c.dy - inset),
+      Offset(c.dx + inset, c.dy + inset),
+      x,
+    );
+    canvas.drawLine(
+      Offset(c.dx + inset, c.dy - inset),
+      Offset(c.dx - inset, c.dy + inset),
+      x,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant _RedCrossPainter old) => old.stroke != stroke;
 }
 
 class _LetterLinkPainter extends CustomPainter {
@@ -74,21 +159,7 @@ class _LetterLinkPainter extends CustomPainter {
     )..layout();
     tp.paint(canvas, Offset(c.dx - tp.width / 2, c.dy - tp.height / 2));
     if (!linked) {
-      final x = Paint()
-        ..color = const Color(0xFFEF4444)
-        ..strokeWidth = size.shortestSide * 0.14
-        ..strokeCap = StrokeCap.round;
-      final inset = r * 0.35;
-      canvas.drawLine(
-        Offset(c.dx - inset, c.dy - inset),
-        Offset(c.dx + inset, c.dy + inset),
-        x,
-      );
-      canvas.drawLine(
-        Offset(c.dx + inset, c.dy - inset),
-        Offset(c.dx - inset, c.dy + inset),
-        x,
-      );
+      _RedCrossPainter(stroke: size.shortestSide * 0.14).paint(canvas, size);
     }
   }
 
