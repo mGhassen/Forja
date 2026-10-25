@@ -130,6 +130,7 @@ class HeroPillIconSlot {
     this.tooltip,
     this.label,
     this.suppressActive = false,
+    this.focusNode,
   });
 
   final IconData? icon;
@@ -140,6 +141,9 @@ class HeroPillIconSlot {
 
   /// Menu open on desktop — keep the trigger idle while hovering menu rows.
   final bool suppressActive;
+
+  /// Optional per-slot focus (e.g. Open with… Match / Pin / Open with).
+  final FocusNode? focusNode;
 }
 
 /// Horizontal hero CTA cluster - spatial ←/→ on TV, no escape to catalog.
@@ -217,7 +221,7 @@ class HeroPillIconGroup extends StatelessWidget {
             onDownEdge: onDownEdge,
             onLeftEdge: i == 0 ? onLeftEdge : null,
             onRightEdge: i == slots.length - 1 ? onRightEdge : null,
-            focusNode: i == 0 ? focusNode : null,
+            focusNode: slots[i].focusNode ?? (i == 0 ? focusNode : null),
             tvRowId: tvRowId,
             tvItemIndex: tvItemIndexStart != null
                 ? tvItemIndexStart! + i

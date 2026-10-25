@@ -10,20 +10,26 @@ import 'package:forja/shared/engine/store/list_follow.dart';
 import 'package:forja/shared/engine/store/list_open_binding.dart';
 import 'package:forja/shared/engine/store/list_open_picker.dart';
 import 'package:forja/shared/engine/store/list_open_title_rank.dart';
-import 'package:forja/shared/engine/runtime/kit/hosts/kit_list_status_button.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:forja/shared/engine/runtime/kit/hosts/hero_pill_buttons.dart';
 import 'package:forja/shared/engine/runtime/kit/pack_tracker_mark.dart';
 import 'package:forja_foundation/widgets/catalog/letter_link_mark.dart';
 import 'package:forja_foundation/widgets/chrome/shell_chip.dart';
+import 'package:forja_foundation/widgets/details/list_status_pin.dart';
 import 'package:forja/shell/core/forja_shell_scope.dart';
+import 'package:forja/shell/feedback/forja_toast.dart';
 import 'package:forja/shell/focus/shell_focusable_tap.dart';
+import 'package:forja/shell/tv/shell_tv_coordinator.dart';
 import 'package:forja/shell/tv/shell_tv_focus.dart';
 import 'package:forja/shell/tv/tv_browse_text_field.dart';
+import 'package:forja/shell/tv/tv_focus_graph.dart';
 import 'package:forja_foundation/protocol/protocol.dart';
 import 'package:forja_foundation/tokens/forja_settings_tokens.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:rust/rust.dart';
 
 /// Open with rebind searches every hub that can search.
 /// A compatible hub is not a pre-checked direct open.
@@ -299,28 +305,6 @@ class _ListOpenBindSheetState extends State<_ListOpenBindSheet> {
       return;
     }
     _focusSelectedChip();
-  }
-
-  void _focusRightOfPin() {
-    if (widget.simklLinkEnabled) {
-      _simklBtnFocus.requestFocus();
-      return;
-    }
-  }
-
-  void _focusLeftOfSimkl() {
-    if (_hasListPin) {
-      _listPinFocus.requestFocus();
-      return;
-    }
-  }
-
-  void _focusLeftOfOpenWith() {
-    if (widget.simklLinkEnabled) {
-      _simklBtnFocus.requestFocus();
-      return;
-    }
-    if (_hasListPin) _listPinFocus.requestFocus();
   }
 
   bool get _usesSearch {
@@ -600,102 +584,21 @@ class _ListOpenBindSheetState extends State<_ListOpenBindSheet> {
                         ],
                         if (widget.simklLinkEnabled || _hasListPin) ...[
                           SizedBox(height: px(8)),
-                          Row(
-                            children: [
-                              if (_hasListPin) ...[
-                                KitListStatusButton.follow(
-                                  followTarget: widget.listPinTarget!,
-                                  knownStatus: widget.knownListStatus,
-                                  excludeFromTvTraversal: false,
-                                  noHoverScale: true,
-                                  iconSize: px(20),
-                                  focusNode: _listPinFocus,
-                                  onUpEdge: dpad ? () {} : null,
-                                  onDownEdge: dpad
-                                      ? _focusBelowModeIcons
-                                      : null,
-                                  onLeftEdge: dpad ? () {} : null,
-                                  onRightEdge: dpad ? _focusRightOfPin : null,
-                                ),
-                                SizedBox(width: px(6)),
-                              ],
-                              if (widget.simklLinkEnabled) ...[
-                                _ModeIcon(
-                                  focusNode: _simklBtnFocus,
-                                  selected: _simklMode,
-                                  idleColor: _simklLinked
-                                      ? ForjaShellColors.textPrimary
-                                      : ForjaShellColors.iconMuted,
-                                  tooltip: 'Match on Simkl',
-                                  size: px(28),
-                                  onTap: () =>
-                                      _setMode(_ListOpenBindMode.simkl),
-                                  onDownEdge: dpad
-                                      ? _focusBelowModeIcons
-                                      : null,
-                                  onRightEdge: dpad
-                                      ? () => _openWithBtnFocus.requestFocus()
-                                      : null,
-                                  onLeftEdge: dpad ? _focusLeftOfSimkl : null,
-                                  onUpEdge: dpad ? () {} : null,
-                                  icon: (color) => LetterLinkMark(
-                                    letter: 'S',
-                                    linked: _simklLinked,
-                                    size: px(20),
-                                    image: const AssetImage(kSimklLogoAsset),
-                                    color: color,
-                                  ),
-                                ),
-                                SizedBox(width: px(6)),
-                                _ModeIcon(
-                                  focusNode: _openWithBtnFocus,
-                                  selected: !_simklMode,
-                                  idleColor: ForjaShellColors.iconMuted,
-                                  tooltip: 'Open with',
-                                  size: px(28),
-                                  onTap: () =>
-                                      _setMode(_ListOpenBindMode.openWith),
-                                  onDownEdge: dpad
-                                      ? _focusBelowModeIcons
-                                      : null,
-                                  onLeftEdge: dpad
-                                      ? _focusLeftOfOpenWith
-                                      : null,
-                                  onRightEdge: dpad ? () {} : null,
-                                  onUpEdge: dpad ? () {} : null,
-                                  icon: (color) => Icon(
-                                    Icons.link_rounded,
-                                    size: px(20),
-                                    color: color,
-                                  ),
-                                ),
-                              ] else
-                                Icon(
-                                  Icons.link_rounded,
-                                  size: px(16),
-                                  color: ForjaShellColors.iconMuted,
-                                ),
-                              if (!_simklMode &&
-                                  (widget.openHubLabel ?? '')
-                                      .trim()
-                                      .isNotEmpty) ...[
-                                SizedBox(width: px(8)),
-                                Flexible(
-                                  child: Text(
-                                    widget.simklLinkEnabled
-                                        ? widget.openHubLabel!.trim()
-                                        : 'Open with ${widget.openHubLabel!.trim()}',
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: TextStyle(
-                                      color: ForjaShellColors.textSecondary,
-                                      fontSize: type(12),
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ],
+                          _BindSheetActionPills(
+                            listPinTarget: widget.listPinTarget,
+                            knownListStatus: widget.knownListStatus,
+                            simklLinkEnabled: widget.simklLinkEnabled,
+                            simklLinked: _simklLinked,
+                            simklMode: _simklMode,
+                            openHubLabel: widget.openHubLabel,
+                            pinFocus: _listPinFocus,
+                            simklFocus: _simklBtnFocus,
+                            openWithFocus: _openWithBtnFocus,
+                            onSimkl: () => _setMode(_ListOpenBindMode.simkl),
+                            onOpenWith: () =>
+                                _setMode(_ListOpenBindMode.openWith),
+                            onDownEdge: dpad ? _focusBelowModeIcons : null,
+                            onUpEdge: dpad ? () {} : null,
                           ),
                         ] else ...[
                           SizedBox(height: px(8)),
@@ -1395,94 +1298,276 @@ class _HitsBody extends StatelessWidget {
   }
 }
 
-/// Icon-only mode hit — selected = white + underline; focus/hover = green; no circle/scale.
-class _ModeIcon extends StatefulWidget {
-  const _ModeIcon({
-    required this.selected,
-    required this.idleColor,
-    required this.onTap,
-    required this.tooltip,
-    required this.size,
-    required this.icon,
-    this.focusNode,
+/// Match / Pin / Open with — same expand-on-focus labels as hero pills.
+class _BindSheetActionPills extends StatefulWidget {
+  const _BindSheetActionPills({
+    required this.simklLinkEnabled,
+    required this.simklLinked,
+    required this.simklMode,
+    required this.onSimkl,
+    required this.onOpenWith,
+    required this.pinFocus,
+    required this.simklFocus,
+    required this.openWithFocus,
+    this.listPinTarget,
+    this.knownListStatus,
+    this.openHubLabel,
     this.onUpEdge,
     this.onDownEdge,
-    this.onLeftEdge,
-    this.onRightEdge,
   });
 
-  final bool selected;
-  final Color idleColor;
-  final VoidCallback onTap;
-  final String tooltip;
-  final double size;
-  final Widget Function(Color color) icon;
-  final FocusNode? focusNode;
+  final ListFollowTarget? listPinTarget;
+  final String? knownListStatus;
+  final bool simklLinkEnabled;
+  final bool simklLinked;
+  final bool simklMode;
+  final String? openHubLabel;
+  final FocusNode pinFocus;
+  final FocusNode simklFocus;
+  final FocusNode openWithFocus;
+  final VoidCallback onSimkl;
+  final VoidCallback onOpenWith;
   final VoidCallback? onUpEdge;
   final VoidCallback? onDownEdge;
-  final VoidCallback? onLeftEdge;
-  final VoidCallback? onRightEdge;
 
   @override
-  State<_ModeIcon> createState() => _ModeIconState();
+  State<_BindSheetActionPills> createState() => _BindSheetActionPillsState();
 }
 
-class _ModeIconState extends State<_ModeIcon> {
-  bool _focused = false;
-  bool _hovered = false;
+class _BindSheetActionPillsState extends State<_BindSheetActionPills> {
+  final LayerLink _pinLink = LayerLink();
+  OverlayEntry? _pinMenu;
+  FocusNode? _pinReturnFocus;
+  bool _pinBusy = false;
 
-  Color get _color {
-    // Focus/hover wins green; selected stays white with underline.
-    if (_focused || _hovered) return ForjaShellColors.brandGreen;
-    if (widget.selected) return ForjaShellColors.textPrimary;
-    return widget.idleColor;
+  bool get _pinOpen => _pinMenu != null;
+  bool get _hasPin => widget.listPinTarget != null;
+
+  @override
+  void dispose() {
+    _clearTvDismiss();
+    _removePinMenu();
+    super.dispose();
+  }
+
+  void _removePinMenu() {
+    final entry = _pinMenu;
+    if (entry == null) return;
+    _pinMenu = null;
+    entry.remove();
+  }
+
+  void _registerTvDismiss() {
+    ShellTvFocusCoordinator.setTransientOverlayDismiss(() {
+      if (_pinMenu == null) return false;
+      _closePinMenu();
+      return true;
+    });
+  }
+
+  void _clearTvDismiss() {
+    ShellTvFocusCoordinator.setTransientOverlayDismiss(null);
+  }
+
+  void _closePinMenu() {
+    if (_pinMenu == null) return;
+    _clearTvDismiss();
+    _removePinMenu();
+    final back = _pinReturnFocus;
+    _pinReturnFocus = null;
+    if (mounted) setState(() {});
+    if (back == null) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (back.canRequestFocus) back.requestFocus();
+    });
+  }
+
+  Future<void> _setPinStatus(String to) async {
+    final target = widget.listPinTarget;
+    if (target == null || _pinBusy) return;
+    setState(() => _pinBusy = true);
+    _pinMenu?.markNeedsBuild();
+    ProviderContainer? container;
+    try {
+      container = ProviderScope.containerOf(context, listen: false);
+    } catch (_) {}
+    final ok = await ListFollow.setStatus(target, to, container: container);
+    if (!mounted) return;
+    setState(() => _pinBusy = false);
+    _closePinMenu();
+    if (to.isEmpty) {
+      if (ok) {
+        ForjaToast.success(
+          'Removed from My List',
+          duration: const Duration(seconds: 1),
+        );
+      } else {
+        ForjaToast.error('Removed locally · Simkl failed');
+      }
+      return;
+    }
+    final label = listStatusLabel(to, fallback: to);
+    if (ok) {
+      ForjaToast.success(label, duration: const Duration(seconds: 1));
+    } else {
+      ForjaToast.error('Saved locally · Simkl failed');
+    }
+  }
+
+  void _openPinMenu() {
+    if (_pinMenu != null || _pinBusy || !_hasPin) return;
+    final overlay = Overlay.of(context, rootOverlay: true);
+    final policy = ShellScope.inputPolicyOf(context);
+    _pinReturnFocus = FocusManager.instance.primaryFocus;
+    late OverlayEntry entry;
+    entry = OverlayEntry(
+      builder: (ctx) {
+        return ShellScope.rehost(
+          context,
+          TvOverlayScope(
+            enabled: policy.useFocusableMoodChips,
+            linear: true,
+            onDismiss: _closePinMenu,
+            debugLabel: 'bind-sheet-list-status',
+            child: Stack(
+              children: [
+                Positioned.fill(
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTap: _closePinMenu,
+                    child: const ColoredBox(color: Colors.transparent),
+                  ),
+                ),
+                CompositedTransformFollower(
+                  link: _pinLink,
+                  showWhenUnlinked: false,
+                  targetAnchor: listStatusMenuTargetAnchor,
+                  followerAnchor: listStatusMenuFollowerAnchor,
+                  offset: listStatusMenuGapOffset(context),
+                  child: Material(
+                    color: Colors.transparent,
+                    child: ValueListenableBuilder<int>(
+                      valueListenable: BookmarkStore.changeNotifier,
+                      builder: (context, _, _) {
+                        final t = widget.listPinTarget!;
+                        final status =
+                            BookmarkStore().resolvedStatus(
+                              uniqueId: t.uniqueId,
+                              tmdbId: t.tmdbId,
+                              mediaType: t.tmdbMediaType ?? t.resolvedMediaType,
+                            ) ??
+                            widget.knownListStatus;
+                        return ListStatusPopupPanel(
+                          currentStatus: status,
+                          busy: _pinBusy,
+                          tvFocus: policy.leanbackOnly,
+                          autoFocusSelected: policy.leanbackOnly,
+                          onSelect: _setPinStatus,
+                        );
+                      },
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+    _pinMenu = entry;
+    overlay.insert(entry);
+    if (policy.useFocusableMoodChips) _registerTvDismiss();
+    setState(() {});
+  }
+
+  void _togglePin() {
+    if (_pinOpen) {
+      _closePinMenu();
+    } else {
+      _openPinMenu();
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    return Tooltip(
-      message: widget.tooltip,
-      child: shellFocusableTap(
-        context: context,
-        focusNode: widget.focusNode,
-        onTap: widget.onTap,
-        borderRadius: widget.size / 2,
-        scaleOnFocus: 1,
-        suppressInkHover: true,
-        showFocusBorder: false,
-        onFocusChange: (f) {
-          if (_focused == f) return;
-          setState(() => _focused = f);
-        },
-        onHoverChange: (h) {
-          if (_hovered == h) return;
-          setState(() => _hovered = h);
-        },
+    final iconSize = ShellPaintScope.iconOf(context, 20);
+
+    Widget buildPills() {
+      final slots = <HeroPillIconSlot>[];
+
+      if (_hasPin) {
+        final t = widget.listPinTarget!;
+        final status =
+            BookmarkStore().resolvedStatus(
+              uniqueId: t.uniqueId,
+              tmdbId: t.tmdbId,
+              mediaType: t.tmdbMediaType ?? t.resolvedMediaType,
+            ) ??
+            widget.knownListStatus;
+        slots.add(
+          HeroPillIconSlot(
+            focusNode: widget.pinFocus,
+            label: listStatusLabel(status),
+            suppressActive: _pinOpen,
+            onTap: _pinBusy ? null : _togglePin,
+            iconWidget: Icon(
+              listStatusPinIcon(status),
+              size: iconSize,
+              color: listStatusPinColor(status),
+            ),
+          ),
+        );
+      }
+
+      if (widget.simklLinkEnabled) {
+        slots.add(
+          HeroPillIconSlot(
+            focusNode: widget.simklFocus,
+            label: 'Match',
+            onTap: widget.onSimkl,
+            iconWidget: LetterLinkMark(
+              letter: 'S',
+              linked: widget.simklLinked,
+              size: iconSize,
+              image: const AssetImage(kSimklLogoAsset),
+              color: widget.simklMode
+                  ? ForjaShellColors.textPrimary
+                  : ForjaShellColors.iconMuted,
+            ),
+          ),
+        );
+        slots.add(
+          HeroPillIconSlot(
+            focusNode: widget.openWithFocus,
+            label: (widget.openHubLabel ?? '').trim().isNotEmpty
+                ? 'Open with ${widget.openHubLabel!.trim()}'
+                : 'Open with',
+            onTap: widget.onOpenWith,
+            icon: Icons.link_rounded,
+          ),
+        );
+      }
+
+      if (slots.isEmpty) return const SizedBox.shrink();
+
+      return HeroPillIconGroup(
+        slots: slots,
+        focusNode: slots.first.focusNode,
         onUpEdge: widget.onUpEdge,
         onDownEdge: widget.onDownEdge,
-        onLeftEdge: widget.onLeftEdge,
-        onRightEdge: widget.onRightEdge,
-        child: SizedBox(
-          width: widget.size,
-          height: widget.size,
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Expanded(child: Center(child: widget.icon(_color))),
-              Container(
-                height: 2,
-                width: widget.size * 0.55,
-                decoration: BoxDecoration(
-                  color: widget.selected
-                      ? ForjaShellColors.brandGreen
-                      : Colors.transparent,
-                  borderRadius: BorderRadius.circular(1),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
+        onLeftEdge: () {},
+        onRightEdge: () {},
+      );
+    }
+
+    final pills = _hasPin
+        ? ValueListenableBuilder<int>(
+            valueListenable: BookmarkStore.changeNotifier,
+            builder: (context, _, _) => buildPills(),
+          )
+        : buildPills();
+
+    if (!_hasPin) return pills;
+    return CompositedTransformTarget(link: _pinLink, child: pills);
   }
 }
