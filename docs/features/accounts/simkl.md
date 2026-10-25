@@ -14,11 +14,12 @@ Simkl is the tracker everyone can connect. Log in via PIN and sync what you watc
 
 - Connect with a Simkl PIN (opens simkl.com/pin)
 - View logged-in username
-- On connect or **Sync Now**, choose how My List buckets sync (saved for later):
+- **How should lists sync?** dropdown (saved):
   - **Keep local** — push this device’s statuses to Simkl
   - **Use Simkl** — overwrite this device from Simkl
   - **Merge** — combine both; same title with different status keeps the device
-  - **No sync** — do nothing (Back / dismiss also does nothing)
+  - **No sync** — Sync Now / Auto sync do nothing for list buckets
+- **Sync Now** runs the saved mode (list + history) — no chooser dialog
 - Toggle **Auto sync lists on My List** — when on, opening My List runs that saved mode and refreshes the cached Simkl library (throttled a couple of minutes so flipping status tabs does not re-sync)
 - Browse Plan to Watch / Watching / On Hold / Completed / Dropped on the **My List** tab (Films / TV Shows / Anime filter like Home; Simkl lists while connected)
 - Set Plan to Watch / Watching / On Hold / Completed / Dropped from details glass **+**, Home / Anime / Asian Drama poster **+**, or Home poster bookmark (same floating menu; always writes local; Simkl when connected) — movies/TV, Anime (AniList id), and Asian Drama (TMDB id when the KissKH title matches). Click the active status again to remove it from My List
@@ -36,9 +37,9 @@ Simkl is the tracker everyone can connect. Log in via PIN and sync what you watc
 
 1. Tap **Login with Simkl**
 2. Enter the displayed code at the verification URL (copied + opened automatically)
-3. When login succeeds, pick Keep local / Use Simkl / Merge — or **No sync** / Back to skip entirely
-4. Optionally turn on **Auto sync lists on My List** (asks for a mode if you have not picked one yet)
-5. Use **Sync Now** anytime to choose again (and re-run list + history)
+3. Set **How should lists sync?** (Keep local / Use Simkl / Merge / No sync)
+4. Optionally turn on **Auto sync lists on My List**
+5. Tap **Sync Now** to run the saved mode (list + history)
 
 The app must be built with `SIMKL_CLIENT_ID` (repo-root `.env` for local `flutter run --dart-define-from-file`, GitHub secret for release). Register at [simkl.com/settings/developer](https://simkl.com/settings/developer). Full-restart after adding the key — hot reload will not pick it up.
 

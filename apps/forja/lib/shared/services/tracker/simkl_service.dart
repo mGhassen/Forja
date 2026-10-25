@@ -128,7 +128,12 @@ class SimklService {
     };
   }
 
-  Future<void> setListSyncMode(SimklListSyncMode mode) async {
+  Future<void> setListSyncMode(SimklListSyncMode? mode) async {
+    if (mode == null) {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove(LocalDataScope.storageKey(_keyListSyncMode));
+      return;
+    }
     final v = switch (mode) {
       SimklListSyncMode.keepLocal => 'keepLocal',
       SimklListSyncMode.useSimkl => 'useSimkl',
