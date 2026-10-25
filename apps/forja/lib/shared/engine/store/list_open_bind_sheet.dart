@@ -281,6 +281,7 @@ class _ListOpenBindSheetState extends State<_ListOpenBindSheet> {
   bool get _hasListPin => widget.listPinTarget != null;
 
   void _focusModeIcons() {
+    // Prefer selected mode; pin is leftmost for D-pad entry from chips.
     if (widget.simklLinkEnabled) {
       if (_simklMode) {
         _simklBtnFocus.requestFocus();
@@ -289,9 +290,7 @@ class _ListOpenBindSheetState extends State<_ListOpenBindSheet> {
       _openWithBtnFocus.requestFocus();
       return;
     }
-    if (_hasListPin) {
-      _listPinFocus.requestFocus();
-    }
+    if (_hasListPin) _listPinFocus.requestFocus();
   }
 
   void _focusBelowModeIcons() {
@@ -302,22 +301,26 @@ class _ListOpenBindSheetState extends State<_ListOpenBindSheet> {
     _focusSelectedChip();
   }
 
-  void _focusRightOfSimkl() {
+  void _focusRightOfPin() {
+    if (widget.simklLinkEnabled) {
+      _simklBtnFocus.requestFocus();
+      return;
+    }
+  }
+
+  void _focusLeftOfSimkl() {
     if (_hasListPin) {
       _listPinFocus.requestFocus();
       return;
     }
-    _openWithBtnFocus.requestFocus();
   }
 
   void _focusLeftOfOpenWith() {
-    if (_hasListPin) {
-      _listPinFocus.requestFocus();
-      return;
-    }
     if (widget.simklLinkEnabled) {
       _simklBtnFocus.requestFocus();
+      return;
     }
+    if (_hasListPin) _listPinFocus.requestFocus();
   }
 
   bool get _usesSearch {
@@ -599,6 +602,23 @@ class _ListOpenBindSheetState extends State<_ListOpenBindSheet> {
                           SizedBox(height: px(8)),
                           Row(
                             children: [
+                              if (_hasListPin) ...[
+                                KitListStatusButton.follow(
+                                  followTarget: widget.listPinTarget!,
+                                  knownStatus: widget.knownListStatus,
+                                  excludeFromTvTraversal: false,
+                                  noHoverScale: true,
+                                  iconSize: px(20),
+                                  focusNode: _listPinFocus,
+                                  onUpEdge: dpad ? () {} : null,
+                                  onDownEdge: dpad
+                                      ? _focusBelowModeIcons
+                                      : null,
+                                  onLeftEdge: dpad ? () {} : null,
+                                  onRightEdge: dpad ? _focusRightOfPin : null,
+                                ),
+                                SizedBox(width: px(6)),
+                              ],
                               if (widget.simklLinkEnabled) ...[
                                 _ModeIcon(
                                   focusNode: _simklBtnFocus,
@@ -613,8 +633,10 @@ class _ListOpenBindSheetState extends State<_ListOpenBindSheet> {
                                   onDownEdge: dpad
                                       ? _focusBelowModeIcons
                                       : null,
-                                  onRightEdge: dpad ? _focusRightOfSimkl : null,
-                                  onLeftEdge: dpad ? () {} : null,
+                                  onRightEdge: dpad
+                                      ? () => _openWithBtnFocus.requestFocus()
+                                      : null,
+                                  onLeftEdge: dpad ? _focusLeftOfSimkl : null,
                                   onUpEdge: dpad ? () {} : null,
                                   icon: (color) => LetterLinkMark(
                                     letter: 'S',
@@ -625,37 +647,6 @@ class _ListOpenBindSheetState extends State<_ListOpenBindSheet> {
                                   ),
                                 ),
                                 SizedBox(width: px(6)),
-                              ],
-                              if (_hasListPin) ...[
-                                KitListStatusButton.follow(
-                                  followTarget: widget.listPinTarget!,
-                                  knownStatus: widget.knownListStatus,
-                                  excludeFromTvTraversal: false,
-                                  noHoverScale: true,
-                                  iconSize: px(20),
-                                  focusNode: _listPinFocus,
-                                  onUpEdge: dpad ? () {} : null,
-                                  onDownEdge: dpad
-                                      ? _focusBelowModeIcons
-                                      : null,
-                                  onLeftEdge: dpad
-                                      ? () {
-                                          if (widget.simklLinkEnabled) {
-                                            _simklBtnFocus.requestFocus();
-                                          }
-                                        }
-                                      : null,
-                                  onRightEdge: dpad
-                                      ? () {
-                                          if (widget.simklLinkEnabled) {
-                                            _openWithBtnFocus.requestFocus();
-                                          }
-                                        }
-                                      : null,
-                                ),
-                                SizedBox(width: px(6)),
-                              ],
-                              if (widget.simklLinkEnabled)
                                 _ModeIcon(
                                   focusNode: _openWithBtnFocus,
                                   selected: !_simklMode,
@@ -677,8 +668,8 @@ class _ListOpenBindSheetState extends State<_ListOpenBindSheet> {
                                     size: px(20),
                                     color: color,
                                   ),
-                                )
-                              else
+                                ),
+                              ] else
                                 Icon(
                                   Icons.link_rounded,
                                   size: px(16),

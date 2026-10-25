@@ -13,7 +13,7 @@ import 'package:forja/shared/theme/app_theme.dart';
 import 'package:rust/rust.dart';
 import 'package:forja/shell/feedback/forja_toast.dart';
 import 'package:forja/shell/core/forja_shell_scope.dart';
-import 'package:forja_foundation/tokens/forja_motion_theme.dart';
+import 'package:forja/shell/focus/shell_focusable_tap.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
@@ -263,6 +263,21 @@ class _WiredStatusPin extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (noHoverScale) {
+      return _DialogStatusPin(
+        uniqueId: uniqueId,
+        tmdbId: tmdbId,
+        mediaType: mediaType,
+        knownStatus: knownStatus,
+        iconSize: iconSize,
+        focusNode: focusNode,
+        onUpEdge: onUpEdge,
+        onDownEdge: onDownEdge,
+        onLeftEdge: onLeftEdge,
+        onRightEdge: onRightEdge,
+        onSetStatus: onSetStatus,
+      );
+    }
     return ValueListenableBuilder<int>(
       valueListenable: BookmarkStore.changeNotifier,
       builder: (context, _, _) {
@@ -280,9 +295,6 @@ class _WiredStatusPin extends StatelessWidget {
           excludeFromTvTraversal: excludeFromTvTraversal,
           useFocusableChips: policy.useFocusableMoodChips,
           scaleOnHover: policy.scaleOnHover,
-          motion: noHoverScale
-              ? ForjaMotionPreset.fillOnly
-              : ForjaMotionPreset.chipLift,
           focusNode: focusNode,
           onUpEdge: onUpEdge,
           onDownEdge: onDownEdge,
@@ -294,6 +306,228 @@ class _WiredStatusPin extends StatelessWidget {
           },
         );
       },
+    );
+  }
+}
+
+/// Open with… chrome pin — green on focus, TV dropdown via [TvOverlayScope].
+class _DialogStatusPin extends StatefulWidget {
+  const _DialogStatusPin({
+    required this.uniqueId,
+    required this.onSetStatus,
+    this.tmdbId,
+    this.mediaType,
+    this.knownStatus,
+    this.iconSize,
+    this.focusNode,
+    this.onUpEdge,
+    this.onDownEdge,
+    this.onLeftEdge,
+    this.onRightEdge,
+  });
+
+  final String uniqueId;
+  final int? tmdbId;
+  final String? mediaType;
+  final String? knownStatus;
+  final double? iconSize;
+  final FocusNode? focusNode;
+  final VoidCallback? onUpEdge;
+  final VoidCallback? onDownEdge;
+  final VoidCallback? onLeftEdge;
+  final VoidCallback? onRightEdge;
+  final Future<bool> Function(String to) onSetStatus;
+
+  @override
+  State<_DialogStatusPin> createState() => _DialogStatusPinState();
+}
+
+class _DialogStatusPinState extends State<_DialogStatusPin> {
+  final LayerLink _link = LayerLink();
+  OverlayEntry? _entry;
+  FocusNode? _returnFocus;
+  bool _busy = false;
+  bool _focused = false;
+  bool _hovered = false;
+
+  bool get _open => _entry != null;
+
+  @override
+  void dispose() {
+    _clearTvDismiss();
+    _removeOverlay();
+    super.dispose();
+  }
+
+  void _removeOverlay() {
+    final entry = _entry;
+    if (entry == null) return;
+    _entry = null;
+    entry.remove();
+  }
+
+  void _registerTvDismiss() {
+    ShellTvFocusCoordinator.setTransientOverlayDismiss(() {
+      if (_entry == null) return false;
+      _close();
+      return true;
+    });
+  }
+
+  void _clearTvDismiss() {
+    ShellTvFocusCoordinator.setTransientOverlayDismiss(null);
+  }
+
+  void _close() {
+    if (_entry == null) return;
+    _clearTvDismiss();
+    _removeOverlay();
+    final back = _returnFocus;
+    _returnFocus = null;
+    if (mounted) setState(() {});
+    if (back == null) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (back.canRequestFocus) back.requestFocus();
+    });
+  }
+
+  Future<void> _setStatus(String to) async {
+    if (_busy) return;
+    setState(() => _busy = true);
+    _entry?.markNeedsBuild();
+    final ok = await widget.onSetStatus(to);
+    if (!mounted) return;
+    setState(() => _busy = false);
+    _close();
+    _toastStatusWrite(ok, to);
+  }
+
+  void _openMenu() {
+    if (_entry != null || _busy) return;
+    final overlay = Overlay.of(context, rootOverlay: true);
+    final policy = ShellScope.inputPolicyOf(context);
+    _returnFocus = FocusManager.instance.primaryFocus;
+    late OverlayEntry entry;
+    entry = OverlayEntry(
+      builder: (ctx) {
+        return ShellScope.rehost(
+          context,
+          TvOverlayScope(
+            enabled: policy.useFocusableMoodChips,
+            linear: true,
+            onDismiss: _close,
+            debugLabel: 'bind-sheet-list-status',
+            child: Stack(
+              children: [
+                Positioned.fill(
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.opaque,
+                    onTap: _close,
+                    child: const ColoredBox(color: Colors.transparent),
+                  ),
+                ),
+                CompositedTransformFollower(
+                  link: _link,
+                  showWhenUnlinked: false,
+                  targetAnchor: listStatusMenuTargetAnchor,
+                  followerAnchor: listStatusMenuFollowerAnchor,
+                  offset: listStatusMenuGapOffset(context),
+                  child: Material(
+                    color: Colors.transparent,
+                    child: ValueListenableBuilder<int>(
+                      valueListenable: BookmarkStore.changeNotifier,
+                      builder: (context, _, _) {
+                        final status = _pinDisplayStatus(
+                          uniqueId: widget.uniqueId,
+                          tmdbId: widget.tmdbId,
+                          mediaType: widget.mediaType,
+                          knownStatus: widget.knownStatus,
+                        );
+                        return ListStatusPopupPanel(
+                          currentStatus: status,
+                          busy: _busy,
+                          tvFocus: policy.leanbackOnly,
+                          autoFocusSelected: policy.leanbackOnly,
+                          onSelect: _setStatus,
+                        );
+                      },
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+    _entry = entry;
+    overlay.insert(entry);
+    if (policy.useFocusableMoodChips) _registerTvDismiss();
+    setState(() {});
+  }
+
+  void _toggle() {
+    if (_open) {
+      _close();
+    } else {
+      _openMenu();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final policy = ShellScope.inputPolicyOf(context);
+    final size = widget.iconSize ?? ShellPaintScope.iconOf(context, 20);
+    return CompositedTransformTarget(
+      link: _link,
+      child: ValueListenableBuilder<int>(
+        valueListenable: BookmarkStore.changeNotifier,
+        builder: (context, _, _) {
+          final status = _pinDisplayStatus(
+            uniqueId: widget.uniqueId,
+            tmdbId: widget.tmdbId,
+            mediaType: widget.mediaType,
+            knownStatus: widget.knownStatus,
+          );
+          final engaged = _focused || _hovered;
+          final color = engaged
+              ? ForjaShellColors.brandGreen
+              : listStatusPinColor(status);
+          final icon = Icon(
+            listStatusPinIcon(status),
+            size: size,
+            color: color,
+          );
+          return shellFocusableTap(
+            context: context,
+            focusNode: widget.focusNode,
+            onTap: _busy ? null : _toggle,
+            borderRadius: size / 2,
+            scaleOnFocus: 1,
+            suppressInkHover: true,
+            showFocusBorder: false,
+            onFocusChange: (f) {
+              if (_focused == f) return;
+              setState(() => _focused = f);
+            },
+            onHoverChange: policy.scaleOnHover
+                ? (h) {
+                    if (_hovered == h) return;
+                    setState(() => _hovered = h);
+                  }
+                : null,
+            onUpEdge: widget.onUpEdge,
+            onDownEdge: widget.onDownEdge,
+            onLeftEdge: widget.onLeftEdge,
+            onRightEdge: widget.onRightEdge,
+            child: SizedBox(
+              width: size + 8,
+              height: size + 8,
+              child: Center(child: icon),
+            ),
+          );
+        },
+      ),
     );
   }
 }
