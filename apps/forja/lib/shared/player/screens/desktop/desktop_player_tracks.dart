@@ -202,9 +202,32 @@ mixin _DesktopPlayerTracks
     return false;
   }
 
+  /// Sources panel switched the catalog row — pull that row's `subtitles`
+  /// (KissKh Sub API, PlayIMDb default_subs, …). Green Play only seeds the
+  /// race winner; switching must re-seed or the menu stays on Wyzie-only.
+  void _applyProviderSubtitlesFromStream(Map<String, dynamic> stream) {
+    final merged = mergeStreamProviderSubtitles(
+      currentExternal: _s._externalSubtitles,
+      previousProviderUrls: _s._providerExternalSubUrls,
+      stream: stream,
+    );
+    if (!mounted) return;
+    setState(() {
+      _s._userPickedExternalSubtitle = false;
+      _s._selectedExternalSubUrl = null;
+      _s._providerExternalSubUrls = merged.providerUrls;
+      _s._externalSubtitles = merged.external;
+    });
+    debugPrint(
+      '[DesktopPlayer] provider subtitle apply n=${merged.providerUrls.length}',
+    );
+    unawaited(_maybeAutoPickExternalSubtitle());
+  }
+
   Future<void> _fetchSubtitles() async {
     // Pre-populate with Jellyfin / hub-provided subtitles if present.
     final jellyfinSubs = widget.externalSubtitles ?? [];
+    debugPrint('[DesktopPlayer] subtitle seed provider=${jellyfinSubs.length}');
     _s._providerExternalSubUrls = providerExternalSubtitleUrls(jellyfinSubs);
     if (jellyfinSubs.isNotEmpty) {
       if (mounted) {

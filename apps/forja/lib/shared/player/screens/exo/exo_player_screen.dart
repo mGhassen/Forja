@@ -252,6 +252,7 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
   List<Map<String, String>>? _lateSubsQueue;
   int _lateSubsGen = -1;
   String? _selectedExternalSubUrl;
+  bool _userPickedExternalSubtitle = false;
 
   /// Bumped per online subtitle pick; a download that finishes after a newer
   /// pick started is dropped.
@@ -592,6 +593,7 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
     _preferredSubtitleApplied = false;
     _exoReady = false;
     _selectedExternalSubUrl = null;
+    _userPickedExternalSubtitle = false;
     // A late batch belongs to one open — never attach it to the next one.
     _lateSubsQueue = null;
     _lateSubsGen = -1;

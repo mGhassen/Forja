@@ -1304,6 +1304,25 @@ List<Map<String, dynamic>>? catalogStreamExternalSubtitles(
   return out.isEmpty ? null : out;
 }
 
+/// Replace provider-attached rows from [stream]; keep scraped sideloads
+/// (Wyzie / Levrx / …). Used when Sources switches the playing catalog row —
+/// green Play only seeds the race winner, so KissKh Sub API (etc.) must land
+/// here when you pick that row later.
+({List<Map<String, dynamic>> external, Set<String> providerUrls})
+mergeStreamProviderSubtitles({
+  required List<Map<String, dynamic>> currentExternal,
+  required Set<String> previousProviderUrls,
+  required Map<String, dynamic> stream,
+}) {
+  final incoming = catalogStreamExternalSubtitles(stream) ?? const [];
+  final nextUrls = providerExternalSubtitleUrls(incoming);
+  final scraped = <Map<String, dynamic>>[
+    for (final s in currentExternal)
+      if (!previousProviderUrls.contains((s['url'] ?? '').toString())) s,
+  ];
+  return (external: [...incoming, ...scraped], providerUrls: nextUrls);
+}
+
 /// Provider already decrypted / inlined subtitle text — write a temp file for mpv/Exo.
 bool hasInlineSubtitleContent(Map<String, dynamic> s) {
   final content = (s['content'] ?? s['text'])?.toString();

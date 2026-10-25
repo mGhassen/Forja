@@ -1225,6 +1225,13 @@ Future<void> _playFromProbedSources({
     season: season,
     preferredPluginId: EngineIds.pluginIdFromChip(activeChip),
   );
+  final providerSubs = catalogStreamExternalSubtitles(stream);
+  debugPrint(
+    '[Player] open providerSubtitles=${providerSubs?.length ?? 0} '
+    'streamHasSubsKey=${stream['subtitles'] is List} '
+    'rawSubsLen=${stream['subtitles'] is List ? (stream['subtitles'] as List).length : 0}',
+  );
+
   Future<void> openPlayer() async {
     await seedEngineWatchHistory(
       session: enginePlaySession,
@@ -1273,7 +1280,7 @@ Future<void> _playFromProbedSources({
           stremioId: stremioId,
         ),
       ),
-      externalSubtitles: catalogStreamExternalSubtitles(stream),
+      externalSubtitles: providerSubs,
       stremioId: stremioId,
       stremioAddonBaseUrl: stremioAddonBaseUrl,
       enginePlaySession: enginePlaySession,

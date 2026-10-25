@@ -191,6 +191,26 @@ mixin _MobilePlayerTracks on ConsumerState<MobilePlayerScreen> {
     return false;
   }
 
+  /// Sources switch: seed this row's provider `subtitles` (see desktop).
+  void _applyProviderSubtitlesFromStream(Map<String, dynamic> stream) {
+    final merged = mergeStreamProviderSubtitles(
+      currentExternal: _s._externalSubtitles,
+      previousProviderUrls: _s._providerExternalSubUrls,
+      stream: stream,
+    );
+    if (!mounted) return;
+    setState(() {
+      _s._userPickedExternalSubtitle = false;
+      _s._selectedExternalSubUrl = null;
+      _s._providerExternalSubUrls = merged.providerUrls;
+      _s._externalSubtitles = merged.external;
+    });
+    debugPrint(
+      '[MobilePlayer] provider subtitle apply n=${merged.providerUrls.length}',
+    );
+    unawaited(_maybeAutoPickExternalSubtitle());
+  }
+
   Future<void> _fetchSubtitles() async {
     // Pre-populate with Jellyfin / hub-provided subtitles if present.
     final jellyfinSubs = widget.externalSubtitles ?? [];

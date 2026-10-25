@@ -927,6 +927,7 @@ mixin _DesktopPlayerEpisodes
                   : 'stremio');
         _s._currentProvider = catalogHttpPlayProviderId(stream);
       });
+      _s._applyProviderSubtitlesFromStream(stream);
       _s._markPlaybackConfirmed(true);
       syncPlayerProgressNotifiers(
         _s._player,

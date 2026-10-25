@@ -7,9 +7,7 @@ mixin _ExoPlayerSources on ConsumerState<ExoPlayerScreen> {
     if (widget.movie == null) return false;
     final magnet = _s._activeMagnet ?? widget.magnetLink;
     if (magnet != null && magnet.isNotEmpty) return true;
-    return isCatalogSourcesMode(
-      _s._currentProvider ?? widget.activeProvider,
-    );
+    return isCatalogSourcesMode(_s._currentProvider ?? widget.activeProvider);
   }
 
   String? _initialCatalogSourceKind() {
@@ -111,8 +109,7 @@ mixin _ExoPlayerSources on ConsumerState<ExoPlayerScreen> {
 
   void _seedSourceSession(List<_ExoSource> ranked) {
     _s._currentProvider = widget.activeProvider;
-    _s._currentUrl =
-        ranked.isNotEmpty ? ranked.first.url : widget.mediaPath;
+    _s._currentUrl = ranked.isNotEmpty ? ranked.first.url : widget.mediaPath;
     if (widget.sources != null && widget.sources!.isNotEmpty) {
       _s._currentSources = dedupeStreamSources(widget.sources!);
     } else if (ranked.isNotEmpty) {
@@ -184,9 +181,8 @@ mixin _ExoPlayerSources on ConsumerState<ExoPlayerScreen> {
         providers: widget.providers!,
         providerId: providerId,
         season: widget.selectedSeason ?? 1,
-        episode: widget.hubEpisodeNumber?.toInt() ??
-            widget.selectedEpisode ??
-            1,
+        episode:
+            widget.hubEpisodeNumber?.toInt() ?? widget.selectedEpisode ?? 1,
         isCancelled: () =>
             _s._disposed || (_s._providerLoadGens[providerId] ?? 0) != gen,
         bypassDiskCache: forceRefresh,
@@ -196,9 +192,9 @@ mixin _ExoPlayerSources on ConsumerState<ExoPlayerScreen> {
       }
       if (hit != null && hit.streamSources.isNotEmpty) {
         if (hit.providerId.isNotEmpty && hit.providerId != providerId) {
-          _s.ref.read(playerResolveStatusProvider.notifier).setError(
-                'No streams found',
-              );
+          _s.ref
+              .read(playerResolveStatusProvider.notifier)
+              .setError('No streams found');
           return null;
         }
         final sources = sourcesOwnedByProvider(
@@ -206,9 +202,9 @@ mixin _ExoPlayerSources on ConsumerState<ExoPlayerScreen> {
           dedupeStreamSources(hit.streamSources),
         );
         if (sources.isEmpty) {
-          _s.ref.read(playerResolveStatusProvider.notifier).setError(
-                'No streams found',
-              );
+          _s.ref
+              .read(playerResolveStatusProvider.notifier)
+              .setError('No streams found');
           return null;
         }
         _s._providerSourcesCache.value = {
@@ -223,15 +219,15 @@ mixin _ExoPlayerSources on ConsumerState<ExoPlayerScreen> {
         _s.ref.read(playerResolveStatusProvider.notifier).setReady();
         return sources;
       }
-      _s.ref.read(playerResolveStatusProvider.notifier).setError(
-            'No streams found',
-          );
+      _s.ref
+          .read(playerResolveStatusProvider.notifier)
+          .setError('No streams found');
       return null;
     } catch (_) {
       if (!_s._disposed && (_s._providerLoadGens[providerId] ?? 0) == gen) {
-        _s.ref.read(playerResolveStatusProvider.notifier).setError(
-              'Failed to load sources',
-            );
+        _s.ref
+            .read(playerResolveStatusProvider.notifier)
+            .setError('Failed to load sources');
       }
       return null;
     }
@@ -452,10 +448,9 @@ mixin _ExoPlayerSources on ConsumerState<ExoPlayerScreen> {
       episode: ep,
       currentMagnet: _s._activeMagnet ?? widget.magnetLink,
       currentStreamUrl: _s._currentUrl ?? widget.mediaPath,
-      currentPlayingCatalogUrl: _s._currentPlayingCatalogUrl ??
-          durableStreamCatalogUrl(
-            playUrl: _s._currentUrl ?? widget.mediaPath,
-          ),
+      currentPlayingCatalogUrl:
+          _s._currentPlayingCatalogUrl ??
+          durableStreamCatalogUrl(playUrl: _s._currentUrl ?? widget.mediaPath),
       currentPlayingRowKey: _s._catalogStreamRowKey,
       playbackConfirmed: _s._playbackStartedNotified,
       preferredKind: _s._catalogSourceKind,
@@ -511,12 +506,13 @@ mixin _ExoPlayerSources on ConsumerState<ExoPlayerScreen> {
         // Claim chrome away from the previous CDN before resolve finishes.
         // A saved file stays the play URL so Sources keeps the offline state.
         final filePlay = stream['url']?.toString() ?? '';
-        _s._currentUrl =
-            filePlay.startsWith('file:') ? filePlay : pick.catalogUrl;
+        _s._currentUrl = filePlay.startsWith('file:')
+            ? filePlay
+            : pick.catalogUrl;
       }
       _s._catalogAddonBaseUrl = pick.addonBase;
-      _s._catalogAddonName = pick.addonName ??
-          StreamProviderDisplay.playerLabel(pick.providerId);
+      _s._catalogAddonName =
+          pick.addonName ?? StreamProviderDisplay.playerLabel(pick.providerId);
       _s._catalogSourceKind = pick.kind;
       _s._currentProvider = pick.providerId;
     });
@@ -599,18 +595,20 @@ mixin _ExoPlayerSources on ConsumerState<ExoPlayerScreen> {
         _s._catalogAddonBaseUrl = base;
         _s._catalogAddonName = catalogStreamAddonIdentity(stream);
         final magnet = resolved.magnetLink;
-        final localTorrent = magnet != null &&
+        final localTorrent =
+            magnet != null &&
             magnet.isNotEmpty &&
             isLocalTorrentStreamUrl(resolved.streamUrl);
         _s._catalogSourceKind = localTorrent
             ? 'torrents'
             : ((base != null && base.startsWith('nuvio:'))
-                ? 'nuvio'
-                : (base != null && base.startsWith('engine:'))
-                    ? 'engine'
-                    : 'stremio');
+                  ? 'nuvio'
+                  : (base != null && base.startsWith('engine:'))
+                  ? 'engine'
+                  : 'stremio');
         _s._currentProvider = catalogHttpPlayProviderId(stream);
       });
+      _s._applyProviderSubtitlesFromStream(stream);
       _s._statusController.complete();
       widget.onPlaybackStarted?.call();
       _s._startHideTimer();
@@ -658,15 +656,17 @@ mixin _ExoPlayerSources on ConsumerState<ExoPlayerScreen> {
     if (!mounted) return;
 
     var cancelled = false;
-    final loadingMovie =
-        movieForStreamLoading(movie: widget.movie, title: widget.title);
+    final loadingMovie = movieForStreamLoading(
+      movie: widget.movie,
+      title: widget.title,
+    );
     final session = showStreamLoadingOverlay(
       context,
       movie: loadingMovie,
       kind: StreamLoadingKind.torrent,
       initialTorrentStatus: initialTorrentResolveStatus(
-      debridLabel: DebridPackBridge.activePluginLabel?.call(),
-    ),
+        debridLabel: DebridPackBridge.activePluginLabel?.call(),
+      ),
       onCancel: () => cancelled = true,
     );
     await Future<void>.delayed(Duration.zero);
@@ -696,8 +696,8 @@ mixin _ExoPlayerSources on ConsumerState<ExoPlayerScreen> {
       if (resolved is! StremioPlayable || resolved.streamUrl.isEmpty) {
         final msg =
             resolved is StremioResolveFailure && resolved.message.isNotEmpty
-                ? resolved.message
-                : 'Failed to resolve stream';
+            ? resolved.message
+            : 'Failed to resolve stream';
         debugPrint(
           '[ExoPlayer] ${catalogStreamKindLabel(stream)} switch failed: $msg',
         );
@@ -712,7 +712,8 @@ mixin _ExoPlayerSources on ConsumerState<ExoPlayerScreen> {
 
       final season = widget.selectedSeason;
       final episode = widget.selectedEpisode;
-      final nextTitle = widget.movie != null && season != null && episode != null
+      final nextTitle =
+          widget.movie != null && season != null && episode != null
           ? '${widget.movie!.title} - S$season E$episode'
           : widget.title;
       final base = stream['_addonBaseUrl']?.toString();
@@ -769,15 +770,17 @@ mixin _ExoPlayerSources on ConsumerState<ExoPlayerScreen> {
     if (!mounted) return;
 
     var cancelled = false;
-    final loadingMovie =
-        movieForStreamLoading(movie: widget.movie, title: widget.title);
+    final loadingMovie = movieForStreamLoading(
+      movie: widget.movie,
+      title: widget.title,
+    );
     final session = showStreamLoadingOverlay(
       context,
       movie: loadingMovie,
       kind: StreamLoadingKind.torrent,
       initialTorrentStatus: initialTorrentResolveStatus(
-      debridLabel: DebridPackBridge.activePluginLabel?.call(),
-    ),
+        debridLabel: DebridPackBridge.activePluginLabel?.call(),
+      ),
       onCancel: () => cancelled = true,
     );
     await Future<void>.delayed(Duration.zero);
@@ -816,7 +819,8 @@ mixin _ExoPlayerSources on ConsumerState<ExoPlayerScreen> {
 
       final season = widget.selectedSeason;
       final episode = widget.selectedEpisode;
-      final nextTitle = widget.movie != null && season != null && episode != null
+      final nextTitle =
+          widget.movie != null && season != null && episode != null
           ? '${widget.movie!.title} - S$season E$episode'
           : widget.title;
 
@@ -910,8 +914,8 @@ mixin _ExoPlayerSources on ConsumerState<ExoPlayerScreen> {
         currentUrl: _s._currentUrl,
         currentPlayingCatalogUrl: _s._currentPlayingCatalogUrl,
         current111477FileUrl: null,
-        is111477: (_s._currentProvider ?? widget.activeProvider) ==
-            'service111477',
+        is111477:
+            (_s._currentProvider ?? widget.activeProvider) == 'service111477',
         playbackConfirmed: _s._playbackConfirmedAt != null,
         mediaPlaying: _s._isPlaying,
       ),
@@ -959,7 +963,8 @@ mixin _ExoPlayerSources on ConsumerState<ExoPlayerScreen> {
         return sources;
       },
       onSelectSource: (source, index) async {
-        final pid = source.providerId ??
+        final pid =
+            source.providerId ??
             _s._currentProvider ??
             widget.activeProvider ??
             '';

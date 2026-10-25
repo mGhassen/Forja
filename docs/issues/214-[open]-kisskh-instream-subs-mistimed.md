@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| **Progress** | **6 / 6** fix tasks · **0 / 2** acceptance |
+| **Progress** | **7 / 7** fix tasks · **0 / 2** acceptance |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -25,6 +25,7 @@
 | 4 | I214-T04 | Move cue AES decrypt into `plugins/providers/kisskh.js`; emit plaintext `content` | ✅ |
 | 5 | I214-T05 | Host: generic inline `content` → temp file; remove `sourceName == kisskh` branch | ✅ |
 | 6 | I214-T06 | Delete Rust `kisskh_subtitle` / `kisskh_fetch_decrypt` / Dart decryptor + FFI | ✅ |
+| 7 | I214-T07 | On in-player Sources switch, seed provider `stream.subtitles` into the subtitle menu (not only green-Play race winner) | ✅ |
 
 ---
 

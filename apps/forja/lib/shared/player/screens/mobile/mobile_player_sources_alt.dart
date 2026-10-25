@@ -85,16 +85,21 @@ mixin _MobilePlayerSourcesAlt on ConsumerState<MobilePlayerScreen> {
       if (pick.catalogUrl != null && pick.catalogUrl!.isNotEmpty) {
         _s._currentPlayingCatalogUrl = pick.catalogUrl;
         final filePlay = stream['url']?.toString() ?? '';
-        _s._currentUrl =
-            filePlay.startsWith('file:') ? filePlay : pick.catalogUrl;
+        _s._currentUrl = filePlay.startsWith('file:')
+            ? filePlay
+            : pick.catalogUrl;
       }
       _s._catalogAddonBaseUrl = pick.addonBase;
-      _s._catalogAddonName = pick.addonName ??
-          StreamProviderDisplay.playerLabel(pick.providerId);
+      _s._catalogAddonName =
+          pick.addonName ?? StreamProviderDisplay.playerLabel(pick.providerId);
       _s._catalogSourceKind = pick.kind;
       _s._currentProvider = pick.providerId;
     });
-    _s._statusController.upsert(statusId, title, kind: StatusRouletteKind.loading);
+    _s._statusController.upsert(
+      statusId,
+      title,
+      kind: StatusRouletteKind.loading,
+    );
     // Let the overlay paint before heavy resolve work.
     await Future<void>.delayed(Duration.zero);
     if (!mounted || _s._fallbackAborted(switchGen)) {
@@ -169,9 +174,7 @@ mixin _MobilePlayerSourcesAlt on ConsumerState<MobilePlayerScreen> {
       _s._player.setVolume(_s._mpvVolume);
 
       if (openedUrl == null) {
-        abortCatalogSwitch(
-          message: 'switch failed: ${resolved.streamUrl}',
-        );
+        abortCatalogSwitch(message: 'switch failed: ${resolved.streamUrl}');
         return;
       }
 
@@ -190,18 +193,20 @@ mixin _MobilePlayerSourcesAlt on ConsumerState<MobilePlayerScreen> {
         _s._catalogAddonBaseUrl = base;
         _s._catalogAddonName = catalogStreamAddonIdentity(stream);
         final magnet = resolved.magnetLink;
-        final localTorrent = magnet != null &&
+        final localTorrent =
+            magnet != null &&
             magnet.isNotEmpty &&
             isLocalTorrentStreamUrl(resolved.streamUrl);
         _s._catalogSourceKind = localTorrent
             ? 'torrents'
             : ((base != null && base.startsWith('nuvio:'))
-                ? 'nuvio'
-                : (base != null && base.startsWith('engine:'))
-                    ? 'engine'
-                    : 'stremio');
+                  ? 'nuvio'
+                  : (base != null && base.startsWith('engine:'))
+                  ? 'engine'
+                  : 'stremio');
         _s._currentProvider = catalogHttpPlayProviderId(stream);
       });
+      _s._applyProviderSubtitlesFromStream(stream);
       _s._markPlaybackConfirmed(true);
       syncPlayerProgressNotifiers(
         _s._player,
@@ -214,7 +219,9 @@ mixin _MobilePlayerSourcesAlt on ConsumerState<MobilePlayerScreen> {
       _s._startHideTimer();
     } catch (e) {
       if (!mounted || _s._fallbackAborted(switchGen)) return;
-      debugPrint('[Player] ${catalogStreamKindLabel(stream)} switch failed: $e');
+      debugPrint(
+        '[Player] ${catalogStreamKindLabel(stream)} switch failed: $e',
+      );
       _s._statusController.upsert(
         statusId,
         title,
@@ -252,15 +259,17 @@ mixin _MobilePlayerSourcesAlt on ConsumerState<MobilePlayerScreen> {
     if (!mounted) return;
 
     var cancelled = false;
-    final loadingMovie =
-        movieForStreamLoading(movie: widget.movie, title: widget.title);
+    final loadingMovie = movieForStreamLoading(
+      movie: widget.movie,
+      title: widget.title,
+    );
     final session = showStreamLoadingOverlay(
       context,
       movie: loadingMovie,
       kind: StreamLoadingKind.torrent,
       initialTorrentStatus: initialTorrentResolveStatus(
-      debridLabel: DebridPackBridge.activePluginLabel?.call(),
-    ),
+        debridLabel: DebridPackBridge.activePluginLabel?.call(),
+      ),
       onCancel: () => cancelled = true,
     );
     await Future<void>.delayed(Duration.zero);
@@ -288,7 +297,8 @@ mixin _MobilePlayerSourcesAlt on ConsumerState<MobilePlayerScreen> {
         return;
       }
       if (resolved is! StremioPlayable || resolved.streamUrl.isEmpty) {
-        final msg = resolved is StremioResolveFailure && resolved.message.isNotEmpty
+        final msg =
+            resolved is StremioResolveFailure && resolved.message.isNotEmpty
             ? resolved.message
             : 'Failed to resolve stream';
         debugPrint(
@@ -305,7 +315,8 @@ mixin _MobilePlayerSourcesAlt on ConsumerState<MobilePlayerScreen> {
 
       final season = widget.selectedSeason;
       final episode = widget.selectedEpisode;
-      final nextTitle = widget.movie != null && season != null && episode != null
+      final nextTitle =
+          widget.movie != null && season != null && episode != null
           ? '${widget.movie!.title} - S$season E$episode'
           : widget.title;
       final base = stream['_addonBaseUrl']?.toString();
@@ -343,7 +354,9 @@ mixin _MobilePlayerSourcesAlt on ConsumerState<MobilePlayerScreen> {
       );
       finishStreamLoadingSession(session);
     } catch (e) {
-      debugPrint('[Player] ${catalogStreamKindLabel(stream)} switch failed: $e');
+      debugPrint(
+        '[Player] ${catalogStreamKindLabel(stream)} switch failed: $e',
+      );
       dismissStreamLoading(session);
       finishStreamLoadingSession(session);
       if (mounted) ForjaToast.info('Failed to resolve stream');
@@ -368,15 +381,17 @@ mixin _MobilePlayerSourcesAlt on ConsumerState<MobilePlayerScreen> {
     if (!mounted) return;
 
     var cancelled = false;
-    final loadingMovie =
-        movieForStreamLoading(movie: widget.movie, title: widget.title);
+    final loadingMovie = movieForStreamLoading(
+      movie: widget.movie,
+      title: widget.title,
+    );
     final session = showStreamLoadingOverlay(
       context,
       movie: loadingMovie,
       kind: StreamLoadingKind.torrent,
       initialTorrentStatus: initialTorrentResolveStatus(
-      debridLabel: DebridPackBridge.activePluginLabel?.call(),
-    ),
+        debridLabel: DebridPackBridge.activePluginLabel?.call(),
+      ),
       onCancel: () => cancelled = true,
     );
     await Future<void>.delayed(Duration.zero);
@@ -416,7 +431,8 @@ mixin _MobilePlayerSourcesAlt on ConsumerState<MobilePlayerScreen> {
 
       final season = widget.selectedSeason;
       final episode = widget.selectedEpisode;
-      final nextTitle = widget.movie != null && season != null && episode != null
+      final nextTitle =
+          widget.movie != null && season != null && episode != null
           ? '${widget.movie!.title} - S$season E$episode'
           : widget.title;
 
@@ -516,8 +532,9 @@ mixin _MobilePlayerSourcesAlt on ConsumerState<MobilePlayerScreen> {
         }
         // Silence before parent unmounts — MediaKit→Exo ANR (issue 128).
         try {
-          await silenceMediaKitPlayer(_s._player)
-              .timeout(const Duration(milliseconds: 400));
+          await silenceMediaKitPlayer(
+            _s._player,
+          ).timeout(const Duration(milliseconds: 400));
         } catch (_) {}
         final target = _externalHandoffTarget();
         return handler(

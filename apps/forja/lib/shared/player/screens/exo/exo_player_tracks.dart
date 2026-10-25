@@ -277,6 +277,26 @@ mixin _ExoPlayerTracks on ConsumerState<ExoPlayerScreen> {
     return [for (final prepared in results) ?prepared];
   }
 
+  /// Sources switch: seed this row's provider `subtitles` (see desktop).
+  void _applyProviderSubtitlesFromStream(Map<String, dynamic> stream) {
+    final merged = mergeStreamProviderSubtitles(
+      currentExternal: _s._externalSubtitles,
+      previousProviderUrls: _s._providerExternalSubUrls,
+      stream: stream,
+    );
+    if (!mounted) return;
+    setState(() {
+      _s._userPickedExternalSubtitle = false;
+      _s._selectedExternalSubUrl = null;
+      _s._providerExternalSubUrls = merged.providerUrls;
+      _s._externalSubtitles = merged.external;
+    });
+    debugPrint(
+      '[ExoPlayer] provider subtitle apply n=${merged.providerUrls.length}',
+    );
+    unawaited(_maybeAutoPickExternalSubtitle());
+  }
+
   Future<void> _fetchSubtitles() async {
     final jellyfinSubs = widget.externalSubtitles ?? [];
     _s._providerExternalSubUrls = providerExternalSubtitleUrls(jellyfinSubs);
