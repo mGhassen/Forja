@@ -78,6 +78,21 @@ abstract final class SettingsTokens {
   static const double addonListSeparatorHeight = 1;
   static const double addonListSeparatorHeightTv = 1;
 
+  /// Compact value chip for [SettingsSelectRow] inline [DropdownButton].
+  /// Matches category-chip density — not Material’s 48px control height.
+  static const EdgeInsets selectChipPad = EdgeInsets.symmetric(
+    horizontal: 8,
+    vertical: 2,
+  );
+  static const EdgeInsets selectChipPadTv = EdgeInsets.symmetric(
+    horizontal: 6,
+    vertical: 1,
+  );
+  static const double selectChipRadius = 8;
+  static const double selectChipRadiusTv = 6;
+  static const double selectChipIconSize = 16;
+  static const double selectChipIconSizeTv = 14;
+
   /// Category tab chips under Forja Packs / Addons (Movie & TV, Anime, …).
   static const EdgeInsets categoryChipPad = EdgeInsets.symmetric(
     horizontal: 12,
@@ -425,6 +440,15 @@ abstract final class SettingsTokens {
 
   static double filledButtonPadHOf(BuildContext context) =>
       _tv(context) ? filledButtonPadHTv : filledButtonPadH;
+
+  static EdgeInsets selectChipPadOf(BuildContext context) =>
+      _tv(context) ? selectChipPadTv : selectChipPad;
+
+  static double selectChipRadiusOf(BuildContext context) =>
+      _tv(context) ? selectChipRadiusTv : selectChipRadius;
+
+  static double selectChipIconSizeOf(BuildContext context) =>
+      _tv(context) ? selectChipIconSizeTv : selectChipIconSize;
 
   static double iconButtonIconSizeOf(BuildContext context) =>
       _tv(context) ? iconButtonIconSizeTv : iconButtonIconSize;

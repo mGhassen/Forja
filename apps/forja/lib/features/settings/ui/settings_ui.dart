@@ -1436,37 +1436,43 @@ class SettingsSelectRow extends StatelessWidget {
   }
 
   Widget _dropdown(BuildContext context) {
+    final labelStyle = TextStyle(
+      color: ForjaShellColors.textPrimary,
+      fontWeight: FontWeight.w600,
+      fontSize: _tvMeta(context),
+      height: 1.2,
+    );
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      padding: SettingsTokens.selectChipPadOf(context),
       decoration: BoxDecoration(
         color: ForjaShellColors.sectionIconBg,
-        borderRadius: BorderRadius.circular(8),
+        borderRadius: BorderRadius.circular(
+          SettingsTokens.selectChipRadiusOf(context),
+        ),
         border: Border.all(color: ForjaShellColors.borderSubtle),
       ),
       child: DropdownButtonHideUnderline(
         child: DropdownButton<String>(
           value: options.contains(value) ? value : null,
-          hint: Text(
-            value,
-            style: TextStyle(
-              color: ForjaShellColors.textPrimary,
-              fontWeight: FontWeight.w600,
-              fontSize: SettingsTokens.typeSizeOf(context, 13),
-            ),
-          ),
+          isDense: true,
+          isExpanded: false,
+          alignment: AlignmentDirectional.centerEnd,
+          hint: Text(value, style: labelStyle),
           dropdownColor: ForjaShellColors.cinematic.menuSurface,
+          iconSize: SettingsTokens.selectChipIconSizeOf(context),
           icon: Icon(
             Icons.keyboard_arrow_down_rounded,
             color: ForjaShellColors.brandGreen,
-            size: SettingsTokens.iconButtonIconSizeOf(context),
+            size: SettingsTokens.selectChipIconSizeOf(context),
           ),
-          style: TextStyle(
-            color: ForjaShellColors.textPrimary,
-            fontWeight: FontWeight.w600,
-            fontSize: SettingsTokens.typeSizeOf(context, 13),
-          ),
+          style: labelStyle,
           items: options
-              .map((o) => DropdownMenuItem(value: o, child: Text(o)))
+              .map(
+                (o) => DropdownMenuItem(
+                  value: o,
+                  child: Text(o, style: labelStyle),
+                ),
+              )
               .toList(),
           onChanged: onChanged,
         ),
@@ -1514,13 +1520,12 @@ class SettingsSelectRow extends StatelessWidget {
           else
             ExcludeFocus(
               child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 10,
-                  vertical: 6,
-                ),
+                padding: SettingsTokens.selectChipPadOf(context),
                 decoration: BoxDecoration(
                   color: ForjaShellColors.sectionIconBg,
-                  borderRadius: BorderRadius.circular(8),
+                  borderRadius: BorderRadius.circular(
+                    SettingsTokens.selectChipRadiusOf(context),
+                  ),
                   border: Border.all(color: ForjaShellColors.borderSubtle),
                 ),
                 child: Row(
@@ -1535,15 +1540,16 @@ class SettingsSelectRow extends StatelessWidget {
                         style: TextStyle(
                           color: ForjaShellColors.textPrimary,
                           fontWeight: FontWeight.w600,
-                          fontSize: SettingsTokens.typeSizeOf(context, 13),
+                          fontSize: _tvMeta(context),
+                          height: 1.2,
                         ),
                       ),
                     ),
-                    const SizedBox(width: 4),
+                    const SizedBox(width: 2),
                     Icon(
                       Icons.keyboard_arrow_down_rounded,
                       color: ForjaShellColors.brandGreen,
-                      size: SettingsTokens.iconButtonIconSizeOf(context),
+                      size: SettingsTokens.selectChipIconSizeOf(context),
                     ),
                   ],
                 ),

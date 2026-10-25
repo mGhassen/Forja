@@ -75,4 +75,5 @@ On desktop, Films / Series / Categories highlighted but no row changed. A filter
 
 ## Related
 
+- [487](fixed/487-[fixed]-brstej-brsteej-beer-hex-ids.md) — upstream moved to `brsteej.beer` with hex ids / `video.php` (broke parsers that assumed numeric `watch.php`)
 - [Aflem feature guide](../features/hubs/aflem.md)
