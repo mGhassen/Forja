@@ -80,17 +80,12 @@ void main() {
   group('PackSettingsStore settings soft hub bump', () {
     test('setString with reloadHub keeps live feed cache slots', () async {
       const ns = 'live_sports.feed';
-      EngineCache.instance.set(
-        ns,
-        'raw:all',
-        {
-          'rows': [
-            {'id': 'm1', 'title': 'Match'},
-          ],
-          'at': 1,
-        },
-        ttl: const Duration(minutes: 15),
-      );
+      EngineCache.instance.set(ns, 'raw:all', {
+        'rows': [
+          {'id': 'm1', 'title': 'Match'},
+        ],
+        'at': 1,
+      }, ttl: const Duration(minutes: 15));
 
       final before = PluginRegistry.hubFeedEpoch.value;
       await PackSettingsStore.setString(
@@ -110,20 +105,20 @@ void main() {
 
     test('reloadHub false only bumps revision', () async {
       const ns = 'live_sports.feed';
-      EngineCache.instance.set(
-        ns,
-        'raw:all',
-        {
-          'rows': [
-            {'id': 'm1'},
-          ],
-          'at': 1,
-        },
-        ttl: const Duration(minutes: 15),
-      );
+      EngineCache.instance.set(ns, 'raw:all', {
+        'rows': [
+          {'id': 'm1'},
+        ],
+        'at': 1,
+      }, ttl: const Duration(minutes: 15));
 
       final epochBefore = PluginRegistry.hubFeedEpoch.value;
       final revBefore = PackSettingsStore.revision.value;
+      var syncHook = 0;
+      final prevHook = PackSettingsStore.onNonSecretUserWrite;
+      PackSettingsStore.onNonSecretUserWrite = () => syncHook++;
+      addTearDown(() => PackSettingsStore.onNonSecretUserWrite = prevHook);
+
       await PackSettingsStore.setString(
         'hub-a',
         'matchOpen',
@@ -134,6 +129,7 @@ void main() {
       expect(PackSettingsStore.revision.value, greaterThan(revBefore));
       expect(PluginRegistry.hubFeedEpoch.value, epochBefore);
       expect(EngineCache.instance.get(ns, 'raw:all'), isNotNull);
+      expect(syncHook, 1);
     });
   });
 

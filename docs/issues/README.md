@@ -513,6 +513,7 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [474-[fixed]-…](fixed/474-[fixed]-mediakit-hls-instream-subtitle-menu-twins.md) | MediaKit HLS in-stream subtitle menu twins on pick | P1 | High | fixed | Complete · 4/4 · A 1/3 | [458](fixed/458-[fixed]-exo-online-subtitle-pick-no-op-and-menu-twins.md) |
 | [475-[fixed]-…](fixed/475-[fixed]-release-tv-login-shows-dev-forjahq.md) | Release TV login shows `dev.forjahq.xyz` | P0 | High | fixed | Complete · 3/3 · A 1/2 | — |
 | [476-[fixed]-…](fixed/476-[fixed]-continue-watching-drops-show-under-2-percent.md) | Continue Watching drops show when next ep under 2% | P1 | High | fixed | Complete · 4/4 · A 0/2 | [454](fixed/454-[fixed]-continue-watching-drops-finished-episode.md) |
+| [477-[fixed]-…](fixed/477-[fixed]-live-sports-matchopen-settings-resets.md) | Live Sports Open matches in resets to Detail page | P1 | High | fixed | Complete · 3/3 · A 0/2 | — |
 
 **Migration parity (draft):** [018](018-[draft]-migration-playback-parity-unverified.md) → [019](019-[draft]-webstreamr-enginejobs-e2e-test-gap.md)–[022](022-[draft]-playback-widget-integration-tests.md).
 
