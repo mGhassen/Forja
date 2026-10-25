@@ -11,6 +11,7 @@ class LetterLinkMark extends StatelessWidget {
     this.size = 16,
     this.onTap,
     this.image,
+    this.color,
   });
 
   final String letter;
@@ -21,6 +22,9 @@ class LetterLinkMark extends StatelessWidget {
 
   /// Pack/host-supplied logo (asset or network). Falls back to [letter].
   final ImageProvider? image;
+
+  /// Optional tint override (e.g. focus/hover green). Else selected/linked defaults.
+  final Color? color;
 
   @override
   Widget build(BuildContext context) {
@@ -33,6 +37,7 @@ class LetterLinkMark extends StatelessWidget {
               linked: linked,
               selected: selected,
               size: size,
+              color: color,
             )
           : CustomPaint(
               painter: _LetterLinkPainter(
@@ -57,21 +62,25 @@ class _ImageMark extends StatelessWidget {
     required this.linked,
     required this.selected,
     required this.size,
+    this.color,
   });
 
   final ImageProvider image;
   final bool linked;
   final bool selected;
   final double size;
+  final Color? color;
 
   @override
   Widget build(BuildContext context) {
-    // CDN/logos are often black-on-transparent — tint white on dark chrome.
-    final tint = selected
-        ? ForjaShellColors.brandGreen
-        : linked
-        ? Colors.white
-        : Colors.white54;
+    // CDN/logos are often black-on-transparent — tint on dark chrome.
+    final tint =
+        color ??
+        (selected
+            ? ForjaShellColors.brandGreen
+            : linked
+            ? Colors.white
+            : Colors.white54);
     return Stack(
       fit: StackFit.expand,
       children: [

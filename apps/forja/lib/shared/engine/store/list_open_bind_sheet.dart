@@ -563,6 +563,9 @@ class _ListOpenBindSheetState extends State<_ListOpenBindSheet> {
                               _ModeIcon(
                                 focusNode: _simklBtnFocus,
                                 selected: _simklMode,
+                                idleColor: _simklLinked
+                                    ? ForjaShellColors.textPrimary
+                                    : ForjaShellColors.iconMuted,
                                 tooltip: 'Match on Simkl',
                                 size: px(28),
                                 onTap: () => _setMode(_ListOpenBindMode.simkl),
@@ -572,18 +575,19 @@ class _ListOpenBindSheetState extends State<_ListOpenBindSheet> {
                                     : null,
                                 onLeftEdge: dpad ? () {} : null,
                                 onUpEdge: dpad ? () {} : null,
-                                child: LetterLinkMark(
+                                icon: (color) => LetterLinkMark(
                                   letter: 'S',
                                   linked: _simklLinked,
-                                  selected: _simklMode,
                                   size: px(20),
                                   image: const AssetImage(kSimklLogoAsset),
+                                  color: color,
                                 ),
                               ),
                               SizedBox(width: px(6)),
                               _ModeIcon(
                                 focusNode: _openWithBtnFocus,
                                 selected: !_simklMode,
+                                idleColor: ForjaShellColors.iconMuted,
                                 tooltip: 'Open with',
                                 size: px(28),
                                 onTap: () =>
@@ -594,12 +598,10 @@ class _ListOpenBindSheetState extends State<_ListOpenBindSheet> {
                                     : null,
                                 onRightEdge: dpad ? () {} : null,
                                 onUpEdge: dpad ? () {} : null,
-                                child: Icon(
+                                icon: (color) => Icon(
                                   Icons.link_rounded,
                                   size: px(20),
-                                  color: !_simklMode
-                                      ? ForjaShellColors.textPrimary
-                                      : ForjaShellColors.iconMuted,
+                                  color: color,
                                 ),
                               ),
                               if (!_simklMode &&
@@ -1320,14 +1322,15 @@ class _HitsBody extends StatelessWidget {
   }
 }
 
-/// Icon-only mode hit — no pill chrome, no hover/focus scale.
-class _ModeIcon extends StatelessWidget {
+/// Icon-only mode hit — color to green on select/focus/hover; no circle, no scale.
+class _ModeIcon extends StatefulWidget {
   const _ModeIcon({
     required this.selected,
+    required this.idleColor,
     required this.onTap,
     required this.tooltip,
     required this.size,
-    required this.child,
+    required this.icon,
     this.focusNode,
     this.onUpEdge,
     this.onDownEdge,
@@ -1336,10 +1339,11 @@ class _ModeIcon extends StatelessWidget {
   });
 
   final bool selected;
+  final Color idleColor;
   final VoidCallback onTap;
   final String tooltip;
   final double size;
-  final Widget child;
+  final Widget Function(Color color) icon;
   final FocusNode? focusNode;
   final VoidCallback? onUpEdge;
   final VoidCallback? onDownEdge;
@@ -1347,42 +1351,49 @@ class _ModeIcon extends StatelessWidget {
   final VoidCallback? onRightEdge;
 
   @override
+  State<_ModeIcon> createState() => _ModeIconState();
+}
+
+class _ModeIconState extends State<_ModeIcon> {
+  bool _focused = false;
+  bool _hovered = false;
+
+  Color get _color {
+    if (widget.selected || _focused || _hovered) {
+      return ForjaShellColors.brandGreen;
+    }
+    return widget.idleColor;
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final icon = SizedBox(
-      width: size,
-      height: size,
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Expanded(child: Center(child: child)),
-          Container(
-            height: 2,
-            width: size * 0.55,
-            decoration: BoxDecoration(
-              color: selected
-                  ? ForjaShellColors.brandGreen
-                  : Colors.transparent,
-              borderRadius: BorderRadius.circular(1),
-            ),
-          ),
-        ],
-      ),
-    );
     return Tooltip(
-      message: tooltip,
+      message: widget.tooltip,
       child: shellFocusableTap(
         context: context,
-        focusNode: focusNode,
-        onTap: onTap,
-        borderRadius: size / 2,
+        focusNode: widget.focusNode,
+        onTap: widget.onTap,
+        borderRadius: widget.size / 2,
         scaleOnFocus: 1,
         suppressInkHover: true,
-        showFocusBorder: true,
-        onUpEdge: onUpEdge,
-        onDownEdge: onDownEdge,
-        onLeftEdge: onLeftEdge,
-        onRightEdge: onRightEdge,
-        child: icon,
+        showFocusBorder: false,
+        onFocusChange: (f) {
+          if (_focused == f) return;
+          setState(() => _focused = f);
+        },
+        onHoverChange: (h) {
+          if (_hovered == h) return;
+          setState(() => _hovered = h);
+        },
+        onUpEdge: widget.onUpEdge,
+        onDownEdge: widget.onDownEdge,
+        onLeftEdge: widget.onLeftEdge,
+        onRightEdge: widget.onRightEdge,
+        child: SizedBox(
+          width: widget.size,
+          height: widget.size,
+          child: Center(child: widget.icon(_color)),
+        ),
       ),
     );
   }
