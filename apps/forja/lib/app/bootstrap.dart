@@ -612,7 +612,8 @@ class _SplashScreenState extends State<SplashScreen> {
   @override
   void initState() {
     super.initState();
-    // ProfileSwitchSplash already warmed engines - open MainScreen immediately.
+    // Restored-session / guest paths only — profile cold start reveals shell
+    // from DesktopStartupGate with the same Offstage-warmed MainScreen (478).
     if (ShellBus.splashDismissed.value) {
       _showOverlay = false;
       WidgetsBinding.instance.addPostFrameCallback((_) {

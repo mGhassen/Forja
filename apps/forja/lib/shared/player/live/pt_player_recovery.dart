@@ -183,23 +183,20 @@ mixin _PtPlayerRecovery on _PtPlayerEngineCore {
   /// Confirm only — the poll timer owns the next open.
   void _armIptvLiveGoLiveStable() {
     _s._liveStableTimer?.cancel();
-    _s._liveStableTimer = Timer(
-      _PtPlayerScreenState._liveStableWindow,
-      () {
-        if (!mounted || _s._disposed || !_s._userPlayWhenReady) return;
-        if (_s._statusBanner != 'Reconnecting…') return;
-        if (!_s._playing || _s._position <= Duration.zero) return;
-        debugPrint('[IPTV] goLive succeeded');
-        _s._liveGoLiveAttempt = 0;
-        _s._liveGoLiveTimer?.cancel();
-        _s._liveGoLiveTimer = null;
-        _s._liveStableTimer = null;
-        _clearBufferingChrome();
-        if (mounted) {
-          setState(() => _s._statusBanner = null);
-        }
-      },
-    );
+    _s._liveStableTimer = Timer(_PtPlayerScreenState._liveStableWindow, () {
+      if (!mounted || _s._disposed || !_s._userPlayWhenReady) return;
+      if (_s._statusBanner != 'Reconnecting…') return;
+      if (!_s._playing || _s._position <= Duration.zero) return;
+      debugPrint('[IPTV] goLive succeeded');
+      _s._liveGoLiveAttempt = 0;
+      _s._liveGoLiveTimer?.cancel();
+      _s._liveGoLiveTimer = null;
+      _s._liveStableTimer = null;
+      _clearBufferingChrome();
+      if (mounted) {
+        setState(() => _s._statusBanner = null);
+      }
+    });
   }
 
   /// Playing listener: arm stable while reconnect banner is up.
@@ -310,8 +307,8 @@ mixin _PtPlayerRecovery on _PtPlayerEngineCore {
 
         // Never drop-buffers on a weak/empty cushion — flushes the only
         // media left and turns underrun stutter into a hard freeze (I148).
-        final cacheOk = _s._cacheAheadSecs >=
-            _PtPlayerScreenState._minHealthyCacheSecs;
+        final cacheOk =
+            _s._cacheAheadSecs >= _PtPlayerScreenState._minHealthyCacheSecs;
         debugPrint(
           '[IPTV Player] live-edge snap (force=$allowForce'
           '${cacheOk ? '' : ', skip drop-buffers'}'
@@ -319,8 +316,7 @@ mixin _PtPlayerRecovery on _PtPlayerEngineCore {
         );
         // drop-buffers while MediaCodec is still configuring 4K surfaces
         // force-closes physical ATV (issue 155). First paint only seeks.
-        final dropBuffers =
-            cacheOk && (!_s._atvMediaKit || _playbackStarted);
+        final dropBuffers = cacheOk && (!_s._atvMediaKit || _playbackStarted);
         if (dropBuffers) {
           _armTransientHwDecodeIgnore();
           await p.command(['drop-buffers']);
@@ -644,9 +640,7 @@ mixin _PtPlayerRecovery on _PtPlayerEngineCore {
     if (_s._disposed || _s._exoBackend || _s._softwareDecodeForced) return;
     // MediaKit live never falls back to TextureSW.
     // IPTV: hold when demux feeds; soft reopen when empty.
-    if (_livePlaybackProfile &&
-        _s._mediaKitBackend &&
-        !_s.widget.vodPlayback) {
+    if (_livePlaybackProfile && _s._mediaKitBackend && !_s.widget.vodPlayback) {
       if (_streamWorking) {
         _logHealthyHold('hw→sw (iptv hold)');
         return;
@@ -655,9 +649,7 @@ mixin _PtPlayerRecovery on _PtPlayerEngineCore {
         '[IPTV Player] IPTV MediaKit: ignore hw→sw — soft reopen keep HW',
       );
       if (_recoveryInFlight) return;
-      await _triggerRecovery(
-        reason: 'hardware decode failed (iptv keep HW)',
-      );
+      await _triggerRecovery(reason: 'hardware decode failed (iptv keep HW)');
       return;
     }
     if (_streamWorking) {
@@ -752,6 +744,9 @@ mixin _PtPlayerRecovery on _PtPlayerEngineCore {
       _s._exoSurfaceFallback = null;
       final id = _s._exoViewId;
       _s._exoViewId = null;
+      _s._exoTextureId = null;
+      _s._exoVideoWidth = 0;
+      _s._exoVideoHeight = 0;
       if (id == null) return;
       try {
         await ExoPlayerBridge.pause(id);
@@ -818,6 +813,9 @@ mixin _PtPlayerRecovery on _PtPlayerEngineCore {
         } catch (_) {}
       }
       _s._exoViewId = null;
+      _s._exoTextureId = null;
+      _s._exoVideoWidth = 0;
+      _s._exoVideoHeight = 0;
       return;
     }
     if (_s._avPlayerBackend) {

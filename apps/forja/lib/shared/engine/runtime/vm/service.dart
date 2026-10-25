@@ -3,6 +3,7 @@ import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 import 'package:forja_foundation/protocol/protocol.dart';
+import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 import 'package:forja/shared/engine/runtime/meta/catalog_extract_context.dart';
 import 'package:forja/shared/engine/models/categories.dart';
 import 'package:forja/shared/engine/models/lean_apply_result.dart';
@@ -1198,17 +1199,32 @@ class EngineService {
       if (kept.isNotEmpty) return kept;
       // Cancel may have emptied the list after gen bump — never stampede JSC.
       if (gen != _extractGeneration) return [];
+      // Providers discover: EngineJS already answered empty — re-running the
+      // same pack on UI-isolate JSC freezes Android TV for seconds per pack.
+      if (!wantsUnlock) {
+        debugPrint(
+          viaRust.isEmpty
+              ? '[engine] ${plugin.id} enginejs live resolve empty — skip flutter_js discover'
+              : '[engine] ${plugin.id} enginejs live resolve no discover rows '
+                    '(${viaRust.length}) — skip flutter_js discover',
+        );
+        return [];
+      }
       debugPrint(
-        viaRust.isEmpty
-            ? '[engine] ${plugin.id} enginejs live resolve empty — flutter_js fallback'
-            : wantsUnlock
-            ? '[engine] ${plugin.id} enginejs live resolve no playable urls '
-                  '(${viaRust.length}) — flutter_js fallback'
-            : '[engine] ${plugin.id} enginejs live resolve no discover rows '
-                  '(${viaRust.length}) — flutter_js fallback',
+        '[engine] ${plugin.id} enginejs live resolve no playable urls '
+        '(${viaRust.length}) — flutter_js fallback',
       );
     }
     if (gen != _extractGeneration) return [];
+
+    // Discover on leanback: never fork JSC when EngineJS was unsupported —
+    // that path is what ANRs / freezes the Providers panel.
+    if (!wantsUnlock && ShellTokens.isAndroidTvDevice) {
+      debugPrint(
+        '[engine] ${plugin.id} skip flutter_js live discover on Android TV',
+      );
+      return [];
+    }
 
     // Must share the flutter_js queue with Live Sports hub feed — parallel
     // JSC while catalog is mid-hub host bridge → SIGSEGV (issue 237).

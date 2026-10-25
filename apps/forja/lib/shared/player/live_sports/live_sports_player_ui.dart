@@ -1067,22 +1067,34 @@ mixin _LiveSportsPlayerUi on ConsumerState<LiveSportsPlayerScreen> {
     if (PlatformInfo.isAndroidTv) {
       unawaited(PlatformChannel.releaseUnderlayPlatformViewFocus());
     }
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    // Sync + one-frame retry (same as top-bar claim). Deferred-only left
+    // seek ↑/↓ returning handled while focus never moved (issue 130).
+    void tryClaim() {
       if (!mounted || !_s._controlsVisible) return;
       if (playerChromeOverlayBlocksFocusClaim()) return;
       if (!_s._playFocus.canRequestFocus) return;
       _s._playFocus.requestFocus();
-    });
+    }
+
+    tryClaim();
+    if (!_s._playFocus.hasFocus) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => tryClaim());
+    }
   }
 
   void _claimBackFocus() {
     if (!liveUseTvFocus(context) || !_s._controlsVisible) return;
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    void tryClaim() {
       if (!mounted || !_s._controlsVisible) return;
       if (playerChromeOverlayBlocksFocusClaim()) return;
       if (!_s._backFocus.canRequestFocus) return;
       _s._backFocus.requestFocus();
-    });
+    }
+
+    tryClaim();
+    if (!_s._backFocus.hasFocus) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => tryClaim());
+    }
   }
 
   /// Progress bar → : first right-cluster control (Subs / Episodes / Search / Source).
@@ -1096,11 +1108,16 @@ mixin _LiveSportsPlayerUi on ConsumerState<LiveSportsPlayerScreen> {
     ];
     for (final node in nodes) {
       if (!node.canRequestFocus) continue;
-      WidgetsBinding.instance.addPostFrameCallback((_) {
+      void tryClaim() {
         if (!mounted || !_s._controlsVisible) return;
         if (playerChromeOverlayBlocksFocusClaim()) return;
         if (node.canRequestFocus) node.requestFocus();
-      });
+      }
+
+      tryClaim();
+      if (!node.hasFocus) {
+        WidgetsBinding.instance.addPostFrameCallback((_) => tryClaim());
+      }
       return;
     }
     _claimPlayFocus();
@@ -1514,11 +1531,9 @@ mixin _LiveSportsPlayerUi on ConsumerState<LiveSportsPlayerScreen> {
         child: ExoPlayerView(
           key: ValueKey('iptv-exo-${_s._videoEpoch}'),
           viewId: _s._exoViewId!,
-          // IPTV Exo always TextureView on ATV: physical SurfaceView + hybrid
-          // composition went audio-only black (even cold-open) and the
-          // composition-dead surface still fires renderedFirstFrame, so the
-          // watchdog cannot rescue it (issue 133).
-          allowSurfaceView: false,
+          textureId: _s._exoTextureId,
+          videoWidth: _s._exoVideoWidth,
+          videoHeight: _s._exoVideoHeight,
         ),
       );
     }

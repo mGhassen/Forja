@@ -1,99 +1,73 @@
 import 'package:flutter/foundation.dart';
-import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/rendering.dart';
-import 'package:flutter/services.dart';
-import 'package:forja/shared/player/exo/exo_player_bridge.dart';
 
-/// Embeds the native Media3 [PlayerView] (Android only).
+/// Embeds native Media3 video via a Flutter [Texture] (Android only).
 ///
-/// **Home / VOD (default):** always TextureView + [AndroidView] (TLHC).
-/// Physical ATV SurfaceView + hybrid composition went audio-only / black on
-/// real devices; the first-frame watchdog cannot detect composition-dead
-/// surfaces that still emit `renderedFirstFrame` (issue 133).
+/// Frames come from a [TextureRegistry.SurfaceProducer] bound in Kotlin
+/// (`ExoPlayer.setVideoSurface`) — same paint class as MediaKit
+/// `mediacodec_embed` / official `video_player` (issue 479). Avoids the
+/// PlatformView TextureView copy that mottled on Xiaomi ATV.
 ///
-/// **IPTV live (`allowSurfaceView: true`):** physical ATV may use SurfaceView
-/// + hybrid composition for frame timing (issue 108). Emulators and the
-/// process-lifetime [ExoPlayerBridge.preferTextureSurface] flag force TextureView.
+/// Resize modes are applied in Dart ([FittedBox]); native PlayerView is not
+/// used for the video plane.
 class ExoPlayerView extends StatelessWidget {
   const ExoPlayerView({
     super.key,
     required this.viewId,
+    this.textureId,
+    this.resizeMode = 'fit',
+    this.videoWidth = 0,
+    this.videoHeight = 0,
+    // Kept so IPTV/Live Sports call sites compile; SurfaceView path is gone.
     this.allowSurfaceView = false,
   });
 
   final int viewId;
 
-  /// When true on physical ATV, prefer SurfaceView unless TextureView fallback
-  /// already flipped. Home/VOD must leave this false.
+  /// Native SurfaceProducer id from [ExoPlayerBridge.create].
+  final int? textureId;
+
+  /// `fit` | `fill` | `zoom` — matches Player menu resize.
+  final String resizeMode;
+
+  /// Last Media3 VideoSize (0 until first size event).
+  final int videoWidth;
+  final int videoHeight;
+
+  /// Unused — SurfaceProducer replaces SurfaceView (issue 133 / 479).
   final bool allowSurfaceView;
-
-  static const _viewType = 'forja-exoplayer';
-
-  static const _gestures = <Factory<OneSequenceGestureRecognizer>>{
-    Factory<EagerGestureRecognizer>(EagerGestureRecognizer.new),
-  };
 
   @override
   Widget build(BuildContext context) {
     if (defaultTargetPlatform != TargetPlatform.android) {
       return const ColoredBox(color: Colors.black);
     }
-    return ValueListenableBuilder<bool>(
-      valueListenable: ExoPlayerBridge.preferTextureSurface,
-      builder: (context, _, child) {
-        final surfaceType = ExoPlayerBridge.creationSurfaceType(
-          allowSurfaceView: allowSurfaceView,
-        );
-        // Key forces PlatformView dispose+create when surface type flips.
-        final view = surfaceType == 'surface'
-            ? _AtvExoSurfaceView(viewId: viewId)
-            : AndroidView(
-                viewType: _viewType,
-                creationParams: {
-                  'viewId': viewId,
-                  'surfaceType': 'texture',
-                },
-                creationParamsCodec: const StandardMessageCodec(),
-                gestureRecognizers: _gestures,
-              );
-        return KeyedSubtree(
-          key: ValueKey<String>('exo-$viewId-$surfaceType'),
-          child: SizedBox.expand(child: view),
-        );
-      },
-    );
-  }
-}
+    final id = textureId;
+    if (id == null || id < 0) {
+      return const ColoredBox(color: Colors.black);
+    }
 
-/// Hybrid-composition PlatformView so native SurfaceView composites correctly.
-class _AtvExoSurfaceView extends StatelessWidget {
-  const _AtvExoSurfaceView({required this.viewId});
+    final fit = switch (resizeMode) {
+      'fill' => BoxFit.fill,
+      'zoom' => BoxFit.cover,
+      _ => BoxFit.contain,
+    };
 
-  final int viewId;
+    final hasSize = videoWidth > 0 && videoHeight > 0;
+    final child = hasSize
+        ? FittedBox(
+            fit: fit,
+            child: SizedBox(
+              width: videoWidth.toDouble(),
+              height: videoHeight.toDouble(),
+              child: Texture(textureId: id),
+            ),
+          )
+        : Texture(textureId: id);
 
-  @override
-  Widget build(BuildContext context) {
-    return PlatformViewLink(
-      viewType: ExoPlayerView._viewType,
-      surfaceFactory: (context, controller) {
-        return AndroidViewSurface(
-          controller: controller as AndroidViewController,
-          gestureRecognizers: ExoPlayerView._gestures,
-          hitTestBehavior: PlatformViewHitTestBehavior.opaque,
-        );
-      },
-      onCreatePlatformView: (params) {
-        return PlatformViewsService.initExpensiveAndroidView(
-          id: params.id,
-          viewType: ExoPlayerView._viewType,
-          layoutDirection: TextDirection.ltr,
-          creationParams: {'viewId': viewId, 'surfaceType': 'surface'},
-          creationParamsCodec: const StandardMessageCodec(),
-        )
-          ..addOnPlatformViewCreatedListener(params.onPlatformViewCreated)
-          ..create();
-      },
+    return ColoredBox(
+      color: Colors.black,
+      child: SizedBox.expand(child: child),
     );
   }
 }

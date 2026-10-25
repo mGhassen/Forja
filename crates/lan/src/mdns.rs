@@ -12,11 +12,7 @@ pub struct MdnsAnnouncer {
 }
 
 impl MdnsAnnouncer {
-    pub fn announce(
-        server_id: &str,
-        port: u16,
-        version: &str,
-    ) -> Result<Self, String> {
+    pub fn announce(server_id: &str, port: u16, version: &str) -> Result<Self, String> {
         let daemon = ServiceDaemon::new().map_err(|e| e.to_string())?;
         let ip = local_lan_ip().unwrap_or_else(|| "127.0.0.1".to_string());
         // Hostname must be a DNS label, not a bare IP (mdns-sd rejects `192.168.x.x.`).
@@ -27,10 +23,7 @@ impl MdnsAnnouncer {
         let host_name = format!("forja-{safe_id}.local.");
         let service_name = format!("Forja-{safe_id}");
         let instance = format!("{service_name}.{SERVICE_TYPE}");
-        let properties = [
-            ("server_id", server_id),
-            ("version", version),
-        ];
+        let properties = [("server_id", server_id), ("version", version)];
         let info = ServiceInfo::new(
             SERVICE_TYPE,
             &service_name,
@@ -40,9 +33,7 @@ impl MdnsAnnouncer {
             &properties[..],
         )
         .map_err(|e| e.to_string())?;
-        daemon
-            .register(info)
-            .map_err(|e| e.to_string())?;
+        daemon.register(info).map_err(|e| e.to_string())?;
         Ok(Self {
             daemon: Some(daemon),
             _service_name: instance,
@@ -89,6 +80,9 @@ pub fn browse_forja_servers(timeout: Duration) -> Vec<DiscoveredServer> {
     };
     let found: Arc<Mutex<Vec<DiscoveredServer>>> = Arc::new(Mutex::new(Vec::new()));
     let deadline = std::time::Instant::now() + timeout;
+    // Poll until [timeout]. recv_timeout Err is empty window / disconnect —
+    // never abort the whole browse on the first quiet 200ms (Android TV mDNS
+    // often needs the full window once multicast is open).
     while std::time::Instant::now() < deadline {
         match receiver.recv_timeout(Duration::from_millis(200)) {
             Ok(ServiceEvent::ServiceResolved(info)) => {
@@ -111,13 +105,16 @@ pub fn browse_forja_servers(timeout: Duration) -> Vec<DiscoveredServer> {
                     version,
                 };
                 if let Ok(mut list) = found.lock() {
-                    if !list.iter().any(|s| s.host == entry.host && s.port == entry.port) {
+                    if !list
+                        .iter()
+                        .any(|s| s.host == entry.host && s.port == entry.port)
+                    {
                         list.push(entry);
                     }
                 }
             }
             Ok(_) => {}
-            Err(_) => break,
+            Err(_) => {}
         }
     }
     found.lock().map(|g| g.clone()).unwrap_or_default()

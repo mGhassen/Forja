@@ -3,33 +3,10 @@ import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
-import 'package:rust/rust.dart';
 
+import 'lan_discovery_service.dart';
 import 'lan_pairing_presence.dart';
 import 'lan_prefs.dart';
-
-class LanServerInfo {
-  const LanServerInfo({
-    required this.serverId,
-    required this.host,
-    required this.port,
-    this.version,
-  });
-
-  final String serverId;
-  final String host;
-  final int port;
-  final String? version;
-
-  factory LanServerInfo.fromJson(Map<String, dynamic> json) => LanServerInfo(
-        serverId: json['server_id']?.toString() ?? '',
-        host: json['host']?.toString() ?? '',
-        port: (json['port'] as num?)?.toInt() ?? 0,
-        version: json['version']?.toString(),
-      );
-
-  Uri get baseUri => Uri.parse('http://$host:$port');
-}
 
 /// HTTP client for paired LAN desktop server.
 class LanClientService {
@@ -167,11 +144,7 @@ class LanClientService {
     if (token == null || h == null || p == null) return null;
 
     // Stale port after desktop restart — rediscover before open.
-    if (!await _probeAndTouch(
-      h,
-      p,
-      expectedServerId: await prefs.serverId,
-    )) {
+    if (!await _probeAndTouch(h, p, expectedServerId: await prefs.serverId)) {
       if (!await verifyPairedConnection()) return null;
       h = await prefs.serverHost;
       p = await prefs.serverPort;
@@ -242,11 +215,7 @@ class LanClientService {
       return false;
     }
 
-    if (!await _probeAndTouch(
-      h,
-      p,
-      expectedServerId: await prefs.serverId,
-    )) {
+    if (!await _probeAndTouch(h, p, expectedServerId: await prefs.serverId)) {
       if (!await verifyPairedConnection()) {
         debugPrint('[LAN] closeTorrent failed — desktop unreachable');
         return false;
@@ -305,23 +274,22 @@ class LanClientService {
   ///
   /// Deferred past MediaKit/MediaCodec dispose — sync prefs + HTTP in the
   /// same window as surface teardown ANRs Android TV (issue 128 pattern).
-  void releaseLanTorrentIfNeeded({
-    String? playUrl,
-    String? magnet,
-  }) {
+  void releaseLanTorrentIfNeeded({String? playUrl, String? magnet}) {
     final mag = (magnet != null && magnet.isNotEmpty)
         ? magnet
         : _lastOpenedTorrentMagnet;
     final url = playUrl ?? '';
     final lanUrl = url.isNotEmpty && isLanTorrentStreamUrl(url);
     // Magnet + non-local /torrents/ path (covers odd hosts); never local engine.
-    final magnetLan = mag != null &&
+    final magnetLan =
+        mag != null &&
         mag.isNotEmpty &&
         url.contains('/torrents/') &&
         url.contains('/stream/') &&
         !isLoopbackPlayHost(url);
     // Paired client opened this magnet on desktop even if URL rewrite failed.
-    final trackedLan = mag != null &&
+    final trackedLan =
+        mag != null &&
         mag.isNotEmpty &&
         _lastOpenedTorrentMagnet != null &&
         _lastOpenedTorrentMagnet == mag;
@@ -367,39 +335,15 @@ class LanClientService {
     }
 
     if (serverId == null || serverId.isEmpty) return false;
-    for (final s in _browseServers()) {
+    for (final s in await LanDiscoveryService.instance.discover()) {
       if (s.serverId != serverId) continue;
-      if (!await _probeAndTouch(
-        s.host,
-        s.port,
-        expectedServerId: serverId,
-      )) {
+      if (!await _probeAndTouch(s.host, s.port, expectedServerId: serverId)) {
         continue;
       }
-      await prefs.setServer(
-        host: s.host,
-        port: s.port,
-        serverId: serverId,
-      );
+      await prefs.setServer(host: s.host, port: s.port, serverId: serverId);
       return true;
     }
     return false;
-  }
-
-  List<LanServerInfo> _browseServers() {
-    if (!Engine.isReady) return const [];
-    try {
-      final raw = RustLib.instance.lanBrowseServersJson(timeoutMs: 3000);
-      final list = jsonDecode(raw);
-      if (list is! List) return const [];
-      return list
-          .whereType<Map>()
-          .map((e) => LanServerInfo.fromJson(Map<String, dynamic>.from(e)))
-          .where((s) => s.host.isNotEmpty && s.port > 0)
-          .toList();
-    } catch (_) {
-      return const [];
-    }
   }
 }
 

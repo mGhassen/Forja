@@ -77,8 +77,7 @@ class _WidgetShelfState extends State<WidgetShelf> {
   bool _hover = false;
   int _focusedTabs = 0;
 
-  bool get _expanded =>
-      !widget.expandOnHover || _hover || _focusedTabs > 0;
+  bool get _expanded => !widget.expandOnHover || _hover || _focusedTabs > 0;
 
   void _setHover(bool value) {
     if (_hover == value) return;
@@ -114,12 +113,13 @@ class _WidgetShelfState extends State<WidgetShelf> {
   Widget build(BuildContext context) {
     if (widget.items.isEmpty) return const SizedBox.shrink();
     final tv = ShellPaintScope.usesTvDensityOf(context);
-    final resolvedHeight =
-        tv ? ShellTokens.widgetShelfHeightTv : widget.height;
-    final resolvedFontSize =
-        tv ? ShellTokens.widgetShelfFontSizeTv : widget.fontSize;
-    final resolvedIconSize =
-        tv ? ShellTokens.widgetShelfIconSizeTv : widget.iconSize;
+    final resolvedHeight = tv ? ShellTokens.widgetShelfHeightTv : widget.height;
+    final resolvedFontSize = tv
+        ? ShellTokens.widgetShelfFontSizeTv
+        : widget.fontSize;
+    final resolvedIconSize = tv
+        ? ShellTokens.widgetShelfIconSizeTv
+        : widget.iconSize;
     final resolvedPad = tv ? ShellTokens.widgetShelfGapTv : widget.pad;
 
     final selectedId = (widget.selectedId ?? '').trim();
@@ -159,13 +159,15 @@ class _WidgetShelfState extends State<WidgetShelf> {
               _WidgetShelfTab(
                 key: ValueKey(visible[i].id),
                 item: visible[i],
-                selected: selectedId == visible[i].id ||
+                selected:
+                    selectedId == visible[i].id ||
                     (selectedId.isEmpty && i == 0 && visible.length == 1),
                 // Each Live / Movies / Series chip owns chrome slot
                 // (base + item index) so ↑ can land on the selected one.
                 listIndex: () {
-                  final itemPos =
-                      widget.items.indexWhere((e) => e.id == visible[i].id);
+                  final itemPos = widget.items.indexWhere(
+                    (e) => e.id == visible[i].id,
+                  );
                   final pos = itemPos < 0 ? 0 : itemPos;
                   final base = widget.chromeItemIndex;
                   return base == null ? pos : base + pos;
@@ -182,8 +184,7 @@ class _WidgetShelfState extends State<WidgetShelf> {
                     ? null
                     : () => widget.onReload!(visible[i].id),
                 onDownEdge: widget.onDownEdge,
-                onFocusChange:
-                    widget.expandOnHover ? _onTabFocus : null,
+                onFocusChange: widget.expandOnHover ? _onTabFocus : null,
               ),
           ],
         ),
@@ -345,12 +346,11 @@ class _WidgetShelfTabState extends State<_WidgetShelfTab> {
       if (_reloadArmed || _tvReloadRevealed) return;
       _revealTimer?.cancel();
       _revealTimer = Timer(
-        Duration(
-          milliseconds: ForjaMotionTheme.of(context).shelfRevealDelayMs,
-        ),
+        Duration(milliseconds: ForjaMotionTheme.of(context).shelfRevealDelayMs),
         () {
-        if (mounted && _expandActive) setState(() => _reloadArmed = true);
-      });
+          if (mounted && _expandActive) setState(() => _reloadArmed = true);
+        },
+      );
     } else {
       _revealTimer?.cancel();
       _revealTimer = null;
@@ -419,11 +419,19 @@ class _WidgetShelfTabState extends State<_WidgetShelfTab> {
   Widget build(BuildContext context) {
     final shelfRow = ShellPaintTvRowScope.maybeOf(context)?.rowId;
     final accent = _gradient.first;
-    // Selected + hover/focus used to invert to white fill + accent ink — Series
-    // (#1CE783) and other green shelves made the label look brand-green. Keep
-    // white ink on the gradient for every lit state.
-    final showGradient = widget.selected || _paintActive;
-    final ink = showGradient ? Colors.white : Colors.white60;
+    // Selected + hover/focus: white fill + accent ink so focus is visible on
+    // the already-selected tab (gradient alone is ambiguous).
+    final invert = widget.selected && _paintActive;
+    final showGradient = !invert && (widget.selected || _paintActive);
+
+    final Color ink;
+    if (invert) {
+      ink = accent;
+    } else if (showGradient) {
+      ink = Colors.white;
+    } else {
+      ink = Colors.white60;
+    }
 
     final tabBody = SizedBox(
       height: widget.height,
@@ -442,7 +450,9 @@ class _WidgetShelfTabState extends State<_WidgetShelfTab> {
               style: GoogleFonts.plusJakartaSans(
                 color: ink,
                 fontSize: widget.fontSize,
-                fontWeight: showGradient ? FontWeight.w800 : FontWeight.w500,
+                fontWeight: invert || showGradient
+                    ? FontWeight.w800
+                    : FontWeight.w500,
               ),
             ),
           ],
@@ -488,7 +498,9 @@ class _WidgetShelfTabState extends State<_WidgetShelfTab> {
                   colors: _gradient,
                 )
               : null,
-          color: showGradient ? null : Colors.transparent,
+          color: invert
+              ? Colors.white
+              : (showGradient ? null : Colors.transparent),
           borderRadius: _radius,
           boxShadow: showGradient
               ? [
@@ -521,8 +533,7 @@ class _WidgetShelfTabState extends State<_WidgetShelfTab> {
                       suppressInkHover: true,
                       showFocusFill: false,
                       listIndex: widget.listIndex,
-                      tvRowId:
-                          shelfRow == null ? null : '$shelfRow-reload',
+                      tvRowId: shelfRow == null ? null : '$shelfRow-reload',
                       tvItemIndex: widget.listIndex,
                       tvZone: ShellPaintTvZone.topBar,
                       onDownEdge: widget.onDownEdge,
@@ -535,9 +546,11 @@ class _WidgetShelfTabState extends State<_WidgetShelfTab> {
                             child: Icon(
                               Icons.refresh_rounded,
                               size: widget.iconSize,
-                              color: showGradient || _revealReload
-                                  ? Colors.white.withValues(alpha: 0.95)
-                                  : Colors.white60,
+                              color: invert
+                                  ? accent
+                                  : (showGradient || _revealReload
+                                        ? Colors.white.withValues(alpha: 0.95)
+                                        : Colors.white60),
                             ),
                           ),
                         ),

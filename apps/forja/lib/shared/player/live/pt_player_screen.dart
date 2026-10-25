@@ -115,7 +115,7 @@ enum PortalLiveSourceKind {
   stremio,
 
   /// Forja Live / PPV / Streamed engine plugins (direct open + plugin headers).
-  liveEngine;
+  liveEngine,
 }
 
 /// HLS masters/media playlists — short HTTP bodies, not a progressive TS pipe.
@@ -423,7 +423,8 @@ String? iptvLiveSourceProbeUrl(LivePlaySource src) {
   final embed = (src.liveEngineEmbedUrl ?? '').trim();
   if (url.startsWith('pending:')) return null;
 
-  if (src.liveSourceKind == PortalLiveSourceKind.liveEngine || embed.isNotEmpty) {
+  if (src.liveSourceKind == PortalLiveSourceKind.liveEngine ||
+      embed.isNotEmpty) {
     return null;
   }
 
@@ -643,10 +644,7 @@ class PtPlayerScreen extends ConsumerStatefulWidget {
   ///
   /// [player] is usually [PtPlayerScreen]; wrappers (deferred channel guide)
   /// are allowed so playback can start before the guide catalog is ready.
-  static Future<T?> open<T>(
-    BuildContext context,
-    Widget player,
-  ) {
+  static Future<T?> open<T>(BuildContext context, Widget player) {
     return NativePlayerOpenGate.run<T>(() async {
       await InAppMiniPlayerController.instance.stopForNewPlay();
       if (!context.mounted) return null;
@@ -712,6 +710,11 @@ class _PtPlayerScreenState extends ConsumerState<PtPlayerScreen>
   bool _engineFailoverUsed = false;
 
   int? _exoViewId;
+
+  /// Flutter Texture id from [ExoPlayerBridge.create] (issue 479).
+  int? _exoTextureId;
+  int _exoVideoWidth = 0;
+  int _exoVideoHeight = 0;
   StreamSubscription<Map<dynamic, dynamic>>? _exoEventSub;
   ExoAtvSurfaceFallback? _exoSurfaceFallback;
 
@@ -725,10 +728,12 @@ class _PtPlayerScreenState extends ConsumerState<PtPlayerScreen>
   Player? _player;
   VideoController? _controller;
   bool _playerReady = false;
+
   /// This player session has shown at least one frame. Never reset while the
   /// screen lives (zaps / reconnects re-buffer, they do not "un-start").
   bool _sessionHadFrame = false;
   int _videoEpoch = 0;
+
   /// MediaKit→Exo: remount Exo TextureView once after first paint (issue 129).
   bool _exoFitRemountAfterMediaKit = false;
   bool _exoFitRemountDone = false;
@@ -762,6 +767,7 @@ class _PtPlayerScreenState extends ConsumerState<PtPlayerScreen>
   Duration _buffered = Duration.zero;
   bool _isSeeking = false;
   double _seekPreview = 0.0;
+
   /// Catalog VOD, or live with a real DVR window — not mpv's ~2–6s HLS artifact.
   bool get _isVod {
     if (widget.vodPlayback) return _duration.inSeconds > 1;
@@ -809,9 +815,12 @@ class _PtPlayerScreenState extends ConsumerState<PtPlayerScreen>
   final FocusNode _playerTvKeyFocus = FocusNode(debugLabel: 'player-tv-keys');
   final FocusNode _backFocus = FocusNode(debugLabel: 'iptv-player-back');
   final FocusNode _playFocus = FocusNode(debugLabel: 'iptv-player-play');
-  final FocusNode _rewind10Focus = FocusNode(debugLabel: 'iptv-player-rewind10');
-  final FocusNode _forward10Focus =
-      FocusNode(debugLabel: 'iptv-player-forward10');
+  final FocusNode _rewind10Focus = FocusNode(
+    debugLabel: 'iptv-player-rewind10',
+  );
+  final FocusNode _forward10Focus = FocusNode(
+    debugLabel: 'iptv-player-forward10',
+  );
   final FocusNode _replayFocus = FocusNode(debugLabel: 'iptv-player-replay');
   final FocusNode _seekFocus = FocusNode(debugLabel: 'iptv-player-seek');
 
@@ -872,6 +881,7 @@ class _PtPlayerScreenState extends ConsumerState<PtPlayerScreen>
   double _volumeBeforeMute = 100.0;
   bool _muted = false;
   bool _showVolumeSlider = false;
+
   /// ValueNotifier — never parent-setState on hover (mouse_tracker assert).
   final ValueNotifier<bool> _volumeHoveringN = ValueNotifier(false);
   Timer? _hideVolumeTimer;
@@ -886,9 +896,11 @@ class _PtPlayerScreenState extends ConsumerState<PtPlayerScreen>
   double _subtitleBgOpacity = 0.67;
   bool _subtitleBold = false;
   String _subtitleFont = 'Default';
+
   /// Exo Media3 cues → Flutter overlay (issue 230).
-  final ValueNotifier<List<String>> _exoCueTexts =
-      ValueNotifier<List<String>>(const []);
+  final ValueNotifier<List<String>> _exoCueTexts = ValueNotifier<List<String>>(
+    const [],
+  );
 
   List<Map<String, dynamic>> _externalSubtitles = [];
   String? _selectedExternalSubUrl;
@@ -916,16 +928,21 @@ class _PtPlayerScreenState extends ConsumerState<PtPlayerScreen>
   bool _releasedForPip = false;
 
   Completer<void>? _stopForNewPlayCompleter;
+
   /// Keep MediaKit/Exo surface across full ↔ in-app mini (no remount).
   final GlobalKey _videoViewKey = GlobalKey(debugLabel: 'iptv-player-video');
-  late final FocusNode _miniRootFocus =
-      FocusNode(debugLabel: 'iptv-in-app-mini-root');
-  late final FocusNode _miniPlayPauseFocus =
-      FocusNode(debugLabel: 'iptv-in-app-mini-play');
-  late final FocusNode _miniExpandFocus =
-      FocusNode(debugLabel: 'iptv-in-app-mini-expand');
-  late final FocusNode _miniCloseFocus =
-      FocusNode(debugLabel: 'iptv-in-app-mini-close');
+  late final FocusNode _miniRootFocus = FocusNode(
+    debugLabel: 'iptv-in-app-mini-root',
+  );
+  late final FocusNode _miniPlayPauseFocus = FocusNode(
+    debugLabel: 'iptv-in-app-mini-play',
+  );
+  late final FocusNode _miniExpandFocus = FocusNode(
+    debugLabel: 'iptv-in-app-mini-expand',
+  );
+  late final FocusNode _miniCloseFocus = FocusNode(
+    debugLabel: 'iptv-in-app-mini-close',
+  );
 
   @override
   FocusNode get miniRootFocus => _miniRootFocus;
@@ -1079,7 +1096,8 @@ class _PtPlayerScreenState extends ConsumerState<PtPlayerScreen>
       );
       return;
     }
-    final active = src ??
+    final active =
+        src ??
         (_sources.isEmpty
             ? null
             : _sources[_sourceIdx.clamp(0, _sources.length - 1)]);
@@ -1430,7 +1448,8 @@ class _PtPlayerScreenState extends ConsumerState<PtPlayerScreen>
   /// availability. Stream type does not override the saved engine.
   Future<BuiltInPlayerEngine> _resolveBootEngine() async {
     final forced = widget.forceBuiltInEngine;
-    var engine = forced ??
+    var engine =
+        forced ??
         await SettingsService().getBuiltInPlayerEngine(
           context: widget.engineContext,
         );
@@ -1511,9 +1530,7 @@ class _PtPlayerScreenState extends ConsumerState<PtPlayerScreen>
         engine == BuiltInPlayerEngine.mediaKit) {
       try {
         await MpvExclusiveSession.instance
-            .prepareForVideoPlayer(
-              timeout: const Duration(milliseconds: 1200),
-            )
+            .prepareForVideoPlayer(timeout: const Duration(milliseconds: 1200))
             .timeout(const Duration(milliseconds: 1500));
       } catch (_) {}
       if (_disposed || !mounted) return;
@@ -1531,6 +1548,9 @@ class _PtPlayerScreenState extends ConsumerState<PtPlayerScreen>
     _player = null;
     _controller = null;
     _exoViewId = null;
+    _exoTextureId = null;
+    _exoVideoWidth = 0;
+    _exoVideoHeight = 0;
     _avViewId = null;
     _vlcViewId = null;
     _vlcTextureId = null;

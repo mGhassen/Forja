@@ -140,7 +140,8 @@ String liveSportsStreamLavfO({
   bool continuityProxy = false,
 }) {
   if (continuityProxy) return 'reconnect=0';
-  final hls = streamUrl != null &&
+  final hls =
+      streamUrl != null &&
       streamUrl.isNotEmpty &&
       iptvUrlLooksLikeHls(streamUrl);
   if (hls) {
@@ -192,7 +193,6 @@ bool liveSportsShouldReopenOnSocketEof({
   if (url == null || url.isEmpty || !iptvUrlLooksLikeHls(url)) return false;
   return reason.toLowerCase().contains('ffurl_read');
 }
-
 
 /// Live Sports native player (v1.5.36 MediaKit stack — independent of IPTV).
 class LiveSportsPlayerScreen extends ConsumerStatefulWidget {
@@ -352,10 +352,7 @@ class LiveSportsPlayerScreen extends ConsumerStatefulWidget {
   ///
   /// [player] is usually [LiveSportsPlayerScreen]; wrappers (deferred channel guide)
   /// are allowed so playback can start before the guide catalog is ready.
-  static Future<T?> open<T>(
-    BuildContext context,
-    Widget player,
-  ) {
+  static Future<T?> open<T>(BuildContext context, Widget player) {
     return NativePlayerOpenGate.run<T>(() async {
       await InAppMiniPlayerController.instance.stopForNewPlay();
       if (!context.mounted) return null;
@@ -392,7 +389,8 @@ class LiveSportsPlayerScreen extends ConsumerStatefulWidget {
   }
 
   @override
-  ConsumerState<LiveSportsPlayerScreen> createState() => _LiveSportsPlayerScreenState();
+  ConsumerState<LiveSportsPlayerScreen> createState() =>
+      _LiveSportsPlayerScreenState();
 }
 
 class _LiveSportsPlayerScreenState extends ConsumerState<LiveSportsPlayerScreen>
@@ -421,6 +419,11 @@ class _LiveSportsPlayerScreenState extends ConsumerState<LiveSportsPlayerScreen>
   bool _engineFailoverUsed = false;
 
   int? _exoViewId;
+
+  /// Flutter Texture id from [ExoPlayerBridge.create] (issue 479).
+  int? _exoTextureId;
+  int _exoVideoWidth = 0;
+  int _exoVideoHeight = 0;
   StreamSubscription<Map<dynamic, dynamic>>? _exoEventSub;
   ExoAtvSurfaceFallback? _exoSurfaceFallback;
 
@@ -434,10 +437,12 @@ class _LiveSportsPlayerScreenState extends ConsumerState<LiveSportsPlayerScreen>
   Player? _player;
   VideoController? _controller;
   bool _playerReady = false;
+
   /// This player session has shown at least one frame. Never reset while the
   /// screen lives (zaps / reconnects re-buffer, they do not "un-start").
   bool _sessionHadFrame = false;
   int _videoEpoch = 0;
+
   /// MediaKit→Exo: remount Exo TextureView once after first paint (issue 129).
   bool _exoFitRemountAfterMediaKit = false;
   bool _exoFitRemountDone = false;
@@ -471,6 +476,7 @@ class _LiveSportsPlayerScreenState extends ConsumerState<LiveSportsPlayerScreen>
   Duration _buffered = Duration.zero;
   bool _isSeeking = false;
   double _seekPreview = 0.0;
+
   /// Catalog VOD, or live with a real DVR window — not mpv's ~2–6s HLS artifact.
   bool get _isVod {
     if (widget.vodPlayback) return _duration.inSeconds > 1;
@@ -518,9 +524,12 @@ class _LiveSportsPlayerScreenState extends ConsumerState<LiveSportsPlayerScreen>
   final FocusNode _playerTvKeyFocus = FocusNode(debugLabel: 'player-tv-keys');
   final FocusNode _backFocus = FocusNode(debugLabel: 'iptv-player-back');
   final FocusNode _playFocus = FocusNode(debugLabel: 'iptv-player-play');
-  final FocusNode _rewind10Focus = FocusNode(debugLabel: 'iptv-player-rewind10');
-  final FocusNode _forward10Focus =
-      FocusNode(debugLabel: 'iptv-player-forward10');
+  final FocusNode _rewind10Focus = FocusNode(
+    debugLabel: 'iptv-player-rewind10',
+  );
+  final FocusNode _forward10Focus = FocusNode(
+    debugLabel: 'iptv-player-forward10',
+  );
   final FocusNode _replayFocus = FocusNode(debugLabel: 'iptv-player-replay');
   final FocusNode _seekFocus = FocusNode(debugLabel: 'iptv-player-seek');
 
@@ -581,6 +590,7 @@ class _LiveSportsPlayerScreenState extends ConsumerState<LiveSportsPlayerScreen>
   double _volumeBeforeMute = 100.0;
   bool _muted = false;
   bool _showVolumeSlider = false;
+
   /// ValueNotifier — never parent-setState on hover (mouse_tracker assert).
   final ValueNotifier<bool> _volumeHoveringN = ValueNotifier(false);
   Timer? _hideVolumeTimer;
@@ -595,9 +605,11 @@ class _LiveSportsPlayerScreenState extends ConsumerState<LiveSportsPlayerScreen>
   double _subtitleBgOpacity = 0.67;
   bool _subtitleBold = false;
   String _subtitleFont = 'Default';
+
   /// Exo Media3 cues → Flutter overlay (issue 230).
-  final ValueNotifier<List<String>> _exoCueTexts =
-      ValueNotifier<List<String>>(const []);
+  final ValueNotifier<List<String>> _exoCueTexts = ValueNotifier<List<String>>(
+    const [],
+  );
 
   List<Map<String, dynamic>> _externalSubtitles = [];
   String? _selectedExternalSubUrl;
@@ -625,16 +637,21 @@ class _LiveSportsPlayerScreenState extends ConsumerState<LiveSportsPlayerScreen>
   bool _releasedForPip = false;
 
   Completer<void>? _stopForNewPlayCompleter;
+
   /// Keep MediaKit/Exo surface across full ↔ in-app mini (no remount).
   final GlobalKey _videoViewKey = GlobalKey(debugLabel: 'iptv-player-video');
-  late final FocusNode _miniRootFocus =
-      FocusNode(debugLabel: 'iptv-in-app-mini-root');
-  late final FocusNode _miniPlayPauseFocus =
-      FocusNode(debugLabel: 'iptv-in-app-mini-play');
-  late final FocusNode _miniExpandFocus =
-      FocusNode(debugLabel: 'iptv-in-app-mini-expand');
-  late final FocusNode _miniCloseFocus =
-      FocusNode(debugLabel: 'iptv-in-app-mini-close');
+  late final FocusNode _miniRootFocus = FocusNode(
+    debugLabel: 'iptv-in-app-mini-root',
+  );
+  late final FocusNode _miniPlayPauseFocus = FocusNode(
+    debugLabel: 'iptv-in-app-mini-play',
+  );
+  late final FocusNode _miniExpandFocus = FocusNode(
+    debugLabel: 'iptv-in-app-mini-expand',
+  );
+  late final FocusNode _miniCloseFocus = FocusNode(
+    debugLabel: 'iptv-in-app-mini-close',
+  );
 
   @override
   FocusNode get miniRootFocus => _miniRootFocus;
@@ -776,7 +793,8 @@ class _LiveSportsPlayerScreenState extends ConsumerState<LiveSportsPlayerScreen>
   String _liveRecoveryMode = SettingsService.iptvLiveRecoveryBuffered;
 
   void _applyLiveRecoveryModeForCurrentSource({LivePlaySource? src}) {
-    final active = src ??
+    final active =
+        src ??
         (_sources.isEmpty
             ? null
             : _sources[_sourceIdx.clamp(0, _sources.length - 1)]);
@@ -1201,7 +1219,8 @@ class _LiveSportsPlayerScreenState extends ConsumerState<LiveSportsPlayerScreen>
   /// availability. Stream type does not override the saved engine.
   Future<BuiltInPlayerEngine> _resolveBootEngine() async {
     final forced = widget.forceBuiltInEngine;
-    var engine = forced ??
+    var engine =
+        forced ??
         await SettingsService().getBuiltInPlayerEngine(
           context: widget.engineContext,
         );
@@ -1282,9 +1301,7 @@ class _LiveSportsPlayerScreenState extends ConsumerState<LiveSportsPlayerScreen>
         engine == BuiltInPlayerEngine.mediaKit) {
       try {
         await MpvExclusiveSession.instance
-            .prepareForVideoPlayer(
-              timeout: const Duration(milliseconds: 1200),
-            )
+            .prepareForVideoPlayer(timeout: const Duration(milliseconds: 1200))
             .timeout(const Duration(milliseconds: 1500));
       } catch (_) {}
       if (_disposed || !mounted) return;
@@ -1302,6 +1319,9 @@ class _LiveSportsPlayerScreenState extends ConsumerState<LiveSportsPlayerScreen>
     _player = null;
     _controller = null;
     _exoViewId = null;
+    _exoTextureId = null;
+    _exoVideoWidth = 0;
+    _exoVideoHeight = 0;
     _avViewId = null;
     _vlcViewId = null;
     _vlcTextureId = null;

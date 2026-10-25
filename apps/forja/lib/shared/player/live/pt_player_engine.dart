@@ -99,20 +99,20 @@ mixin _PtPlayerEngine on _PtPlayerEngineCore {
 
   Future<void> _bootExoPlayer() async {
     _s._exoViewId = _PtPlayerScreenState._nextExoViewId++;
+    _s._exoVideoWidth = 0;
+    _s._exoVideoHeight = 0;
     _s._exoSurfaceFallback?.dispose();
     _s._exoSurfaceFallback = ExoAtvSurfaceFallback(
-      // IPTV Exo is TextureView now (issue 133) — TextureView cannot bind dead,
-      // so the SurfaceView watchdog would only fire pointless reopens on a slow
-      // first frame. Kept wired for a possible per-device SurfaceView opt-in.
+      // SurfaceProducer path (issue 479) — SurfaceView watchdog unused.
       enabled: false,
       onFallback: _reopenAfterExoSurfaceFallback,
     );
     _s._exoEventSub = ExoPlayerBridge.eventsFor(
       _s._exoViewId!,
     ).listen(_onExoEvent);
+    _s._exoTextureId = await ExoPlayerBridge.create(_s._exoViewId!);
+    if (_s._disposed || !mounted) return;
     if (mounted) setState(() => _s._playerReady = true);
-    // Let ExoPlayerView attach + layout before open() — opening over a
-    // zero-sized TextureView leaves a zoomed crop (issue 129).
     await Future<void>.delayed(Duration.zero);
     await WidgetsBinding.instance.endOfFrame;
     if (!mounted || _s._disposed) return;
@@ -411,6 +411,20 @@ mixin _PtPlayerEngine on _PtPlayerEngineCore {
       case 'renderedFirstFrame':
         _noteVideoFrame(reason: 'exo first frame');
         _maybeRemountExoFitOnce();
+        break;
+      case 'videoSize':
+        final w = (event['width'] as num?)?.toInt() ?? 0;
+        final h = (event['height'] as num?)?.toInt() ?? 0;
+        final ratio = (event['pixelRatio'] as num?)?.toDouble() ?? 1.0;
+        if (w <= 0 || h <= 0) break;
+        final adjW = (w * ratio).round().clamp(1, 1 << 15);
+        if (adjW == _s._exoVideoWidth && h == _s._exoVideoHeight) break;
+        if (mounted) {
+          setState(() {
+            _s._exoVideoWidth = adjW;
+            _s._exoVideoHeight = h;
+          });
+        }
         break;
       case 'cues':
         final raw = event['texts'];
@@ -1341,6 +1355,8 @@ mixin _PtPlayerEngine on _PtPlayerEngineCore {
       );
       if (_s._disposed || !mounted) return;
       _s._exoViewId = _PtPlayerScreenState._nextExoViewId++;
+      _s._exoVideoWidth = 0;
+      _s._exoVideoHeight = 0;
       _s._exoSurfaceFallback?.dispose();
       _s._exoSurfaceFallback = ExoAtvSurfaceFallback(
         enabled: false,
@@ -1349,6 +1365,8 @@ mixin _PtPlayerEngine on _PtPlayerEngineCore {
       _s._exoEventSub = ExoPlayerBridge.eventsFor(
         _s._exoViewId!,
       ).listen(_onExoEvent);
+      _s._exoTextureId = await ExoPlayerBridge.create(_s._exoViewId!);
+      if (_s._disposed || !mounted) return;
       if (mounted) setState(() => _s._playerReady = true);
       await Future<void>.delayed(Duration.zero);
       return;

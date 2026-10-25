@@ -94,12 +94,13 @@ On **Android TV**, IPTV and Home/Search movies both use Media3 ExoPlayer by defa
 - **Async MediaCodec queueing was off.** Media3 enables it by default only on API 31+, leaving Android 7 TVs queueing codec work on the playback thread.
 - **Software decode was invisible.** `setEnableDecoderFallback(true)` can silently drop to a software decoder; from the couch that looks identical to a compositing stutter. Decoder name, input format/fps, and dropped-frame counts now log under `ForjaExo`.
 
-**Still true:** TextureView costs a per-frame copy into a Flutter texture that SurfaceView and mpv's `mediacodec_embed` both avoid. The architectural fix is rendering Exo into a Flutter external texture (`TextureRegistry`) instead of a PlatformView — the path the official `video_player` plugin uses. Not attempted here; it would drop `PlayerView` and move subtitle rendering into Flutter.
+**TextureRegistry landed in [479](479-[open]-android-tv-exo-vod-mottled-surfaceproducer.md):** Exo binds MediaCodec to a Flutter `SurfaceProducer` and Dart paints `Texture(textureId)` — same class as MediaKit `mediacodec_embed` / `video_player`. PlatformView TextureView is no longer the Exo video plane. Judder acceptance on weak SoCs (A01/A05) still open.
 
 ## Related
 
 - [102](102-[open]-android-tv-exoplayer-tiled-frames.md) — SurfaceView tiling under TLHC; ATV now uses hybrid composition
 - [133](133-[open]-android-tv-exo-physical-audio-only.md) — physical ATV SurfaceView audio-only (even cold open) → IPTV Exo forced to TextureView; T06 SurfaceView FPS slice parked
+- [479](479-[open]-android-tv-exo-vod-mottled-surfaceproducer.md) — Exo SurfaceProducer (mottled VOD / TextureRegistry)
 - [092](092-[open]-windows-iptv-stream-freeze-after-20s.md) — Windows MediaKit IPTV freeze (separate)
 - [107](fixed/107-[fixed]-android-7-tmdb-lets-encrypt-trust.md) — same Toshiba device, posters only
 - [IPTV Xtream](../features/live/iptv-xtream.md) · [Player](../features/playback/player.md)

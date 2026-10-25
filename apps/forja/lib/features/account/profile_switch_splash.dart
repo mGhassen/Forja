@@ -18,10 +18,11 @@ import 'package:forja/shell/brand/animated_logo.dart';
 import 'package:forja/shell/feedback/forja_toast.dart';
 import 'package:forja/shell/brand/forja_profile_avatar.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
+
 /// Profile-switch splash: avatar flies from its Who's watching tile to center
 /// while scaling up. Boot work matches [SplashScreen] intro: warm under the
-/// motion floor, dismiss when the floor elapses even if catalog is still
-/// loading, torrent starts after dismiss.
+/// motion floor, then dismiss. Gate-owned cold start mounts [MainScreen] under
+/// Offstage via [onShellMount] so first paint runs before reveal (issue 478).
 class ProfileSwitchSplash extends ConsumerStatefulWidget {
   const ProfileSwitchSplash({
     super.key,
@@ -29,6 +30,7 @@ class ProfileSwitchSplash extends ConsumerStatefulWidget {
     this.originRect,
     this.prepareCurrent = true,
     this.onCompleted,
+    this.onShellMount,
   });
 
   final SyncProfile profile;
@@ -42,6 +44,10 @@ class ProfileSwitchSplash extends ConsumerStatefulWidget {
   /// When set (gate-owned splash), called instead of [Navigator.pop].
   final void Function(bool ok)? onCompleted;
 
+  /// Gate-owned only: after profile select + settings, before pack/hub warm —
+  /// parent should Offstage-mount [MainScreen] under this overlay.
+  final VoidCallback? onShellMount;
+
   @override
   ConsumerState<ProfileSwitchSplash> createState() =>
       _ProfileSwitchSplashState();
@@ -49,9 +55,12 @@ class ProfileSwitchSplash extends ConsumerStatefulWidget {
 
 class _ProfileSwitchSplashState extends ConsumerState<ProfileSwitchSplash>
     with SingleTickerProviderStateMixin {
-  /// Same role as intro [_SplashScreenState._minSplashDuration]: motion floor
-  /// and hard cap — dismiss even if warm/TMDB is still running.
+  /// Avatar motion floor from splash start.
   static const Duration _splashDuration = Duration(seconds: 5);
+
+  /// After Offstage [MainScreen] mounts, hold at least this long so first paint
+  /// can run under the overlay (settings sync can eat the motion floor).
+  static const Duration _shellPaintFloor = Duration(seconds: 3);
   static const Duration _continueOfferAfter = Duration(seconds: 12);
   static const Duration _stuckStepAfter = Duration(seconds: 10);
   static const Duration _settingsSyncTimeout = Duration(seconds: 30);
@@ -61,6 +70,7 @@ class _ProfileSwitchSplashState extends ConsumerState<ProfileSwitchSplash>
   late final Animation<double> _copyOpacity;
 
   late final DateTime _startedAt;
+  DateTime? _shellMountedAt;
   String _status = 'Loading profile…';
   bool _finished = false;
   bool _offerContinue = false;
@@ -139,11 +149,21 @@ class _ProfileSwitchSplashState extends ConsumerState<ProfileSwitchSplash>
 
       final needs = await BootNeeds.resolve();
 
-      // Same as intro splash: engines under the floor; play sources after dismiss.
-      final bootFuture = _warmLikeIntro(needs);
       // Gate path uses prepareCurrent:false — still arm the starred tab or
       // MainScreen keeps Settings from the empty-rail paint (issue 253).
+      // Arm before Offstage mount so the underlay does not lock onto Settings.
       _armDefaultTabForIncomingProfile(prepareShell: widget.prepareCurrent);
+
+      // Gate cold start: mount MainScreen under this overlay before warm so
+      // hub first paint runs Offstage (same as intro SplashScreen). Mid-session
+      // leaves onShellMount null — shell already exists under the route.
+      if (widget.onShellMount != null) {
+        widget.onShellMount!();
+        _shellMountedAt = DateTime.now();
+      }
+
+      // Same as intro splash: engines under the floor; play sources after dismiss.
+      final bootFuture = _warmLikeIntro(needs);
       await _dismissWhenReady(bootFuture, needs);
     } catch (_) {
       if (!mounted || _finished) return;
@@ -178,10 +198,7 @@ class _ProfileSwitchSplashState extends ConsumerState<ProfileSwitchSplash>
 
     try {
       await _awaitWithRotatingStatus(
-        Future.any<void>([
-          syncFuture,
-          earlySync.future,
-        ]).timeout(
+        Future.any<void>([syncFuture, earlySync.future]).timeout(
           _settingsSyncTimeout,
           onTimeout: () {
             debugPrint(
@@ -218,8 +235,9 @@ class _ProfileSwitchSplashState extends ConsumerState<ProfileSwitchSplash>
     while (mounted && !_finished) {
       final finished = await Future.any<bool>([
         work.then((_) => true),
-        Future<void>.delayed(const Duration(milliseconds: 1800))
-            .then((_) => false),
+        Future<void>.delayed(
+          const Duration(milliseconds: 1800),
+        ).then((_) => false),
       ]);
       if (finished) return;
       index = (index + 1) % steps.length;
@@ -242,7 +260,10 @@ class _ProfileSwitchSplashState extends ConsumerState<ProfileSwitchSplash>
 
   /// Wait for packs/prefetch, then honor motion floor. User can bail early
   /// via continue-in-background if install is slow/stuck.
-  Future<void> _dismissWhenReady(Future<void> bootFuture, BootNeeds needs) async {
+  Future<void> _dismissWhenReady(
+    Future<void> bootFuture,
+    BootNeeds needs,
+  ) async {
     final started = _startedAt;
     final minEnd = started.add(_splashDuration);
     final early = Completer<void>();
@@ -252,10 +273,9 @@ class _ProfileSwitchSplashState extends ConsumerState<ProfileSwitchSplash>
     var continuedEarly = false;
     try {
       final outcome = await Future.any<String>([
-        bootFuture.then((_) => 'boot').timeout(
-          const Duration(seconds: 30),
-          onTimeout: () => 'timeout',
-        ),
+        bootFuture
+            .then((_) => 'boot')
+            .timeout(const Duration(seconds: 30), onTimeout: () => 'timeout'),
         early.future.then((_) => 'early'),
       ]);
       continuedEarly = outcome == 'early';
@@ -274,8 +294,18 @@ class _ProfileSwitchSplashState extends ConsumerState<ProfileSwitchSplash>
       return;
     }
 
-    final remaining = minEnd.difference(DateTime.now());
+    // Honor avatar motion floor and (gate) Offstage paint floor after mount.
+    var holdUntil = minEnd;
+    final shellMounted = _shellMountedAt;
+    if (shellMounted != null) {
+      final paintEnd = shellMounted.add(_shellPaintFloor);
+      if (paintEnd.isAfter(holdUntil)) holdUntil = paintEnd;
+    }
+    final remaining = holdUntil.difference(DateTime.now());
     if (remaining > Duration.zero) {
+      if (shellMounted != null) {
+        _setStatus('Warming up Home…');
+      }
       await Future<void>.delayed(remaining);
     }
     if (!mounted || _finished) return;
@@ -422,12 +452,8 @@ class _ProfileSwitchSplashState extends ConsumerState<ProfileSwitchSplash>
           final statusLine = metrics.splashStatusFontSize * 1.35 * 2;
           final copyBlockH = nameGap + nameLine + statusGap + statusLine;
           final compositionH = endSize + copyBlockH;
-          final compositionTop =
-              math.max(24.0, (screenH - compositionH) / 2);
-          final endCenter = Offset(
-            screenW / 2,
-            compositionTop + endSize / 2,
-          );
+          final compositionTop = math.max(24.0, (screenH - compositionH) / 2);
+          final endCenter = Offset(screenW / 2, compositionTop + endSize / 2);
           final endRect = Rect.fromCenter(
             center: endCenter,
             width: endSize,
@@ -450,8 +476,7 @@ class _ProfileSwitchSplashState extends ConsumerState<ProfileSwitchSplash>
                   final t = _motion.value;
                   final left =
                       startRect.left + (endRect.left - startRect.left) * t;
-                  final top =
-                      startRect.top + (endRect.top - startRect.top) * t;
+                  final top = startRect.top + (endRect.top - startRect.top) * t;
                   final size =
                       startRect.width + (endSize - startRect.width) * t;
                   return Stack(
@@ -522,20 +547,22 @@ class _ProfileSwitchSplashState extends ConsumerState<ProfileSwitchSplash>
                                         child: SizedBox(
                                           width: math.min(200, screenW - 96),
                                           child: ClipRRect(
-                                            borderRadius:
-                                                BorderRadius.circular(999),
+                                            borderRadius: BorderRadius.circular(
+                                              999,
+                                            ),
                                             child: LinearProgressIndicator(
                                               value: pack.fraction,
                                               minHeight: 3,
-                                              backgroundColor:
-                                                  ForjaShellColors.brandGreen
-                                                      .withValues(alpha: 0.15),
+                                              backgroundColor: ForjaShellColors
+                                                  .brandGreen
+                                                  .withValues(alpha: 0.15),
                                               valueColor:
-                                                  AlwaysStoppedAnimation<
-                                                      Color>(
-                                                ForjaShellColors.brandGreen
-                                                    .withValues(alpha: 0.75),
-                                              ),
+                                                  AlwaysStoppedAnimation<Color>(
+                                                    ForjaShellColors.brandGreen
+                                                        .withValues(
+                                                          alpha: 0.75,
+                                                        ),
+                                                  ),
                                             ),
                                           ),
                                         ),

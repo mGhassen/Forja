@@ -11,6 +11,7 @@ import android.os.Looper
 import android.os.SystemClock
 import android.util.Log
 import android.view.LayoutInflater
+import android.view.Surface
 import android.view.TextureView
 import android.view.View
 import android.view.WindowManager
@@ -46,6 +47,7 @@ import androidx.media3.ui.PlayerView
 import io.flutter.plugin.common.EventChannel
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
+import io.flutter.view.TextureRegistry
 import java.lang.ref.WeakReference
 import java.util.concurrent.ConcurrentHashMap
 import kotlin.math.abs
@@ -128,6 +130,13 @@ class ExoPlayerHost(
     private val mainHandler = Handler(Looper.getMainLooper())
     private var playerView: PlayerView? = null
     private var player: ExoPlayer? = null
+    /**
+     * Flutter external texture (issue 479). Preferred over PlatformView
+     * TextureView — same paint class as MediaKit mediacodec_embed / video_player.
+     */
+    private var surfaceProducer: TextureRegistry.SurfaceProducer? = null
+    /** True while Exo has no Surface (producer cleanup or not yet available). */
+    private var needsSurface = true
     private var progressRunnable: Runnable? = null
     private var videoAuto = true
     private var lastUrl: String? = null
@@ -242,6 +251,7 @@ class ExoPlayerHost(
             applyLiveSpeedForVideoSize(videoSize)
             applyContentFrameRate()
             refreshContentFrameLayout()
+            emitVideoSize(videoSize)
         }
 
         override fun onPlaybackParametersChanged(playbackParameters: PlaybackParameters) {
@@ -385,7 +395,83 @@ class ExoPlayerHost(
         droppedFramesAccum = 0
     }
 
+    /**
+     * Bind MediaCodec to a Flutter [TextureRegistry.SurfaceProducer] Surface
+     * (issue 479). Replaces PlatformView TextureView for Exo video paint.
+     */
+    fun attachSurfaceProducer(producer: TextureRegistry.SurfaceProducer) {
+        if (surfaceProducer === producer) return
+        releaseSurfaceProducer(clearPlayerSurface = true)
+        surfaceProducer = producer
+        needsSurface = true
+        producer.setCallback(
+            object : TextureRegistry.SurfaceProducer.Callback {
+                override fun onSurfaceAvailable() {
+                    bindVideoSurface()
+                }
+
+                override fun onSurfaceCleanup() {
+                    player?.setVideoSurface(null)
+                    needsSurface = true
+                }
+            },
+        )
+        bindVideoSurface()
+        player?.videoSize?.let { emitVideoSize(it) }
+    }
+
+    private fun bindVideoSurface() {
+        val producer = surfaceProducer ?: return
+        val surface: Surface? = producer.surface
+        if (surface == null) {
+            needsSurface = true
+            return
+        }
+        val exo = player
+        if (exo == null) {
+            // create() runs before open() — surface is ready; bind on prepare.
+            needsSurface = true
+            return
+        }
+        exo.setVideoSurface(surface)
+        needsSurface = false
+        Log.i(TAG, "bound SurfaceProducer id=${producer.id()}")
+    }
+
+    private fun releaseSurfaceProducer(clearPlayerSurface: Boolean) {
+        if (clearPlayerSurface) {
+            try {
+                player?.setVideoSurface(null)
+            } catch (_: Exception) {
+            }
+        }
+        val producer = surfaceProducer ?: return
+        surfaceProducer = null
+        needsSurface = true
+        try {
+            producer.release()
+        } catch (_: Exception) {
+        }
+    }
+
+    private fun emitVideoSize(videoSize: VideoSize) {
+        if (videoSize.width <= 0 || videoSize.height <= 0) return
+        emit(
+            mapOf(
+                "type" to "videoSize",
+                "width" to videoSize.width,
+                "height" to videoSize.height,
+                "pixelRatio" to videoSize.pixelWidthHeightRatio.toDouble(),
+            ),
+        )
+    }
+
     fun attachView(view: PlayerView) {
+        // SurfaceProducer path owns the video Surface — do not also bind PlayerView.
+        if (surfaceProducer != null) {
+            Log.i(TAG, "attachView ignored — SurfaceProducer active")
+            return
+        }
         if (playerView === view) return
         // Remount: swap surface without releasing the ExoPlayer host.
         playerView?.player = null
@@ -547,7 +633,12 @@ class ExoPlayerHost(
             },
         )
         player = exo
-        playerView?.player = exo
+        if (surfaceProducer != null) {
+            // Issue 479: HW frames → Flutter TextureRegistry, not PlayerView.
+            bindVideoSurface()
+        } else {
+            playerView?.player = exo
+        }
 
         applyLiveTrackCaps(exo, options)
 
@@ -1007,6 +1098,7 @@ class ExoPlayerHost(
 
     fun dispose() {
         stopInternal(releasePlayer = true)
+        releaseSurfaceProducer(clearPlayerSurface = false)
     }
 
     private fun emptyTracks(): Map<String, Any?> = mapOf(
@@ -1178,6 +1270,13 @@ class ExoPlayerHost(
         player?.removeListener(listener)
         player?.removeAnalyticsListener(frameHealthListener)
         playerView?.player = null
+        if (surfaceProducer != null) {
+            try {
+                player?.setVideoSurface(null)
+            } catch (_: Exception) {
+            }
+            needsSurface = true
+        }
         if (releasePlayer) {
             player?.release()
             player = null
@@ -1287,19 +1386,28 @@ class ForjaExoPlayerPlugin : MethodChannel.MethodCallHandler, EventChannel.Strea
     private var methodChannel: MethodChannel? = null
     private var eventChannel: EventChannel? = null
     private var appContext: Context? = null
+    private var textureRegistry: TextureRegistry? = null
     /** Weak: the display frame-rate switch needs a window, not the app context. */
     private var activityRef: WeakReference<Activity>? = null
     private val hosts = ConcurrentHashMap<Int, ExoPlayerHost>()
     private var eventSink: EventChannel.EventSink? = null
 
-    fun bindEngine(context: Context, messenger: io.flutter.plugin.common.BinaryMessenger, registry: io.flutter.plugin.platform.PlatformViewRegistry) {
+    fun bindEngine(
+        context: Context,
+        messenger: io.flutter.plugin.common.BinaryMessenger,
+        registry: io.flutter.plugin.platform.PlatformViewRegistry,
+        textures: TextureRegistry,
+    ) {
         appContext = context.applicationContext
+        textureRegistry = textures
         (context as? Activity)?.let { activityRef = WeakReference(it) }
         ForjaExoMediaCache.warm(context.applicationContext)
         methodChannel = MethodChannel(messenger, CHANNEL)
         methodChannel?.setMethodCallHandler(this)
         eventChannel = EventChannel(messenger, EVENT_CHANNEL)
         eventChannel?.setStreamHandler(this)
+        // PlatformView factory kept for legacy / debug; Dart Exo mounts use
+        // SurfaceProducer + Texture (issue 479).
         registry.registerViewFactory(VIEW_TYPE, ExoPlayerViewFactory(this))
     }
 
@@ -1332,6 +1440,19 @@ class ForjaExoPlayerPlugin : MethodChannel.MethodCallHandler, EventChannel.Strea
                     return
                 }
                 result.success(isTelevisionContext(ctx))
+            }
+            // Allocate Flutter SurfaceProducer for Exo video (issue 479).
+            // Returns textureId for Dart Texture(...). Call before open.
+            "create" -> {
+                val viewId = call.argument<Int>("viewId")
+                    ?: return result.error("ARG", "viewId required", null)
+                val textures = textureRegistry
+                    ?: return result.error("STATE", "texture registry missing", null)
+                val host = hostFor(viewId)
+                val producer = textures.createSurfaceProducer()
+                host.attachSurfaceProducer(producer)
+                Log.i(TAG, "create viewId=$viewId textureId=${producer.id()}")
+                result.success(producer.id().toInt())
             }
             "open" -> {
                 val viewId = call.argument<Int>("viewId") ?: return result.error("ARG", "viewId required", null)

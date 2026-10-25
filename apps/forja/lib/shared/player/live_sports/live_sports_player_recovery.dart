@@ -182,7 +182,9 @@ mixin _LiveSportsPlayerRecovery on _LiveSportsPlayerEngineCore {
       return;
     }
     _s._liveGoLiveAttempt++;
-    debugPrint('[Live Sports] goLive attempt ${_s._liveGoLiveAttempt}/$maxAttempts');
+    debugPrint(
+      '[Live Sports] goLive attempt ${_s._liveGoLiveAttempt}/$maxAttempts',
+    );
     unawaited(_goLiveReopen());
     _scheduleIptvLiveGoLivePoll(maxAttempts, poll);
   }
@@ -276,7 +278,8 @@ mixin _LiveSportsPlayerRecovery on _LiveSportsPlayerEngineCore {
   /// live edge and the next image-wrapped segment has nothing ahead of it.
   Future<void> _skipReconnectArchive() async {
     if (_s._sources.isNotEmpty) {
-      final url = _s._sources[_s._sourceIdx.clamp(0, _s._sources.length - 1)].url;
+      final url =
+          _s._sources[_s._sourceIdx.clamp(0, _s._sources.length - 1)].url;
       if (iptvUrlLooksLikeHls(url)) return;
     }
     final epoch = _s._liveEdgeSnapEpoch;
@@ -347,7 +350,8 @@ mixin _LiveSportsPlayerRecovery on _LiveSportsPlayerEngineCore {
 
         // Never drop-buffers on a weak/empty cushion — flushes the only
         // media left and turns underrun stutter into a hard freeze (I148).
-        final cacheOk = _s._cacheAheadSecs >=
+        final cacheOk =
+            _s._cacheAheadSecs >=
             _LiveSportsPlayerScreenState._minHealthyCacheSecs;
         debugPrint(
           '[Live Sports Player] live-edge snap (force=$allowForce'
@@ -356,8 +360,7 @@ mixin _LiveSportsPlayerRecovery on _LiveSportsPlayerEngineCore {
         );
         // drop-buffers while MediaCodec is still configuring 4K surfaces
         // force-closes physical ATV (issue 155). First paint only seeks.
-        final dropBuffers =
-            cacheOk && (!_s._atvMediaKit || _playbackStarted);
+        final dropBuffers = cacheOk && (!_s._atvMediaKit || _playbackStarted);
         if (dropBuffers) {
           _armTransientHwDecodeIgnore();
           await p.command(['drop-buffers']);
@@ -725,9 +728,7 @@ mixin _LiveSportsPlayerRecovery on _LiveSportsPlayerEngineCore {
       return;
     }
     // Android live: keep hardware decode.
-    if (_livePlaybackProfile &&
-        _s._mediaKitBackend &&
-        !_s.widget.vodPlayback) {
+    if (_livePlaybackProfile && _s._mediaKitBackend && !_s.widget.vodPlayback) {
       _armTransientHwDecodeIgnore();
       if (_streamWorking) {
         _logHealthyHold('hw→sw (live hold)');
@@ -828,6 +829,9 @@ mixin _LiveSportsPlayerRecovery on _LiveSportsPlayerEngineCore {
       _s._exoSurfaceFallback = null;
       final id = _s._exoViewId;
       _s._exoViewId = null;
+      _s._exoTextureId = null;
+      _s._exoVideoWidth = 0;
+      _s._exoVideoHeight = 0;
       if (id == null) return;
       try {
         await ExoPlayerBridge.pause(id);
@@ -894,6 +898,9 @@ mixin _LiveSportsPlayerRecovery on _LiveSportsPlayerEngineCore {
         } catch (_) {}
       }
       _s._exoViewId = null;
+      _s._exoTextureId = null;
+      _s._exoVideoWidth = 0;
+      _s._exoVideoHeight = 0;
       return;
     }
     if (_s._avPlayerBackend) {

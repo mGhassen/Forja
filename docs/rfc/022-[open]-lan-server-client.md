@@ -354,3 +354,4 @@ No research-grade problems. This RFC adds LAN plumbing on top of existing engine
 - [issue 028 — desktop LAN client](../issues/028-[draft]-desktop-lan-client-not-implemented.md)
 - [issue 029 — LAN range seek](../issues/029-[draft]-lan-range-seek-unverified.md)
 - [issue 030 — LAN HDR passthrough](../issues/030-[draft]-lan-hdr-passthrough-unverified.md)
+- [issue 481 — Android TV LAN Discover mDNS](../issues/fixed/481-[fixed]-android-tv-lan-discover-mdns.md)
