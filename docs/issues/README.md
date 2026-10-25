@@ -519,6 +519,8 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [480-[fixed]-…](fixed/480-[fixed]-shelf-selected-focus-invert.md) | Shelf selected+focus invert missing (IPTV / Live Sports) | P1 | Medium | fixed | Complete · 2/2 · A 0/1 | — |
 | [481-[fixed]-…](fixed/481-[fixed]-android-tv-lan-discover-mdns.md) | Android TV LAN Discover finds no desktop | P1 | High | fixed | Complete · 3/3 · A 0/2 | [RFC-022](../rfc/022-[open]-lan-server-client.md) |
 | [482-[fixed]-…](fixed/482-[fixed]-live-sports-providers-resolve-freezes-tv.md) | Live Sports Providers resolve freezes Android TV | P0 | Critical | fixed | Complete · 4/4 · A 0/2 | [237](fixed/237-[fixed]-live-sports-catalog-resolve-jsc-crash.md) |
+| [483-[fixed]-…](fixed/483-[fixed]-android-tv-settings-back-skips-menu.md) | ATV Settings ←/Back skips category menu → profile nav | P1 | High | fixed | Complete · 2/2 · A 1/2 | [127](fixed/127-[fixed]-android-tv-settings-detail-dpad.md) |
+| [484-[open]-…](484-[open]-android-tv-details-episode-ok-hold-mark-watched.md) | ATV details: hold OK marks episode watched | P1 | Medium | open | 3/3 · A 1/2 | [RFC-122](../rfc/122-[draft]-android-tv-remote-ux.md) · [459](459-[open]-android-tv-series-journey-search-space-episode-ok-next-season.md) |
 
 **Migration parity (draft):** [018](018-[draft]-migration-playback-parity-unverified.md) → [019](019-[draft]-webstreamr-enginejobs-e2e-test-gap.md)–[022](022-[draft]-playback-widget-integration-tests.md).
 
