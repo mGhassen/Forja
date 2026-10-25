@@ -35,6 +35,8 @@ esac
 
 # Preserve env already set by release_local — .env may override.
 _prev_supabase_url="${SUPABASE_URL:-}"
+_prev_forja_web_url="${FORJA_WEB_URL:-}"
+FORJA_WEB_URL_PROD='https://www.forjahq.xyz'
 
 if [[ -f "$ROOT/.env" ]]; then
   set -a
@@ -48,6 +50,17 @@ fi
 
 [[ -n "$_prev_supabase_url" ]] && SUPABASE_URL="$_prev_supabase_url"
 unset _prev_supabase_url
+# Parent release_local may already have pinned prod; keep that over staging .env.
+if [[ -n "$_prev_forja_web_url" ]]; then
+  FORJA_WEB_URL="$_prev_forja_web_url"
+fi
+unset _prev_forja_web_url
+case "${FORJA_WEB_URL:-}" in
+  http://127.0.0.1:*|http://localhost:*|https://127.0.0.1:*|https://localhost:*|*dev.forjahq.xyz*)
+    echo "! FORJA_WEB_URL=${FORJA_WEB_URL} → ${FORJA_WEB_URL_PROD} for this release"
+    FORJA_WEB_URL="$FORJA_WEB_URL_PROD"
+    ;;
+esac
 
 [[ -n "${SUPABASE_URL:-}" ]] || die "SUPABASE_URL missing"
 [[ -n "${SUPABASE_PUBLISHABLE_KEY:-}" ]] || die "SUPABASE_PUBLISHABLE_KEY missing"

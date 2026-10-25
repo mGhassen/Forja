@@ -44,6 +44,8 @@ set -euo pipefail
 #                                    .env. Interactive wizard asks when unset.
 #
 # Requires (.env): SUPABASE_*, RELEASE_CDN_URL, FORJA_WEB_URL, R2_*
+# FORJA_WEB_URL may stay staging/localhost in .env — release builds pin
+# https://www.forjahq.xyz in-process for dart-defines only (file untouched).
 # Android TV also needs: FORJA_KEYSTORE_PASSWORD, FORJA_KEY_PASSWORD,
 #   and FORJA_KEYSTORE_PATH or FORJA_KEYSTORE_BASE64 (optional FORJA_KEY_ALIAS)
 # Optional: TURNSTILE_SITE_KEY, SENTRY_DSN, POSTHOG_*
@@ -728,14 +730,17 @@ require_build_env() {
   assert_public_forja_web_url
 }
 
+# Production portal baked into release binaries (issue 475).
+FORJA_WEB_URL_PROD='https://www.forjahq.xyz'
+
+# Pin FORJA_WEB_URL for this process when .env has staging/localhost.
+# Does not rewrite .env — daily-dev value remains after the script exits.
 assert_public_forja_web_url() {
   [[ -n "${FORJA_WEB_URL:-}" ]] || die "FORJA_WEB_URL missing (set in .env)"
   case "$FORJA_WEB_URL" in
-    http://127.0.0.1:*|http://localhost:*|https://127.0.0.1:*|https://localhost:*)
-      die "FORJA_WEB_URL must be the public portal URL, not localhost"
-      ;;
-    *dev.forjahq.xyz*)
-      die "FORJA_WEB_URL must be https://www.forjahq.xyz for release, not staging (dev.forjahq.xyz)"
+    http://127.0.0.1:*|http://localhost:*|https://127.0.0.1:*|https://localhost:*|*dev.forjahq.xyz*)
+      warn "FORJA_WEB_URL=${FORJA_WEB_URL} → ${FORJA_WEB_URL_PROD} for this release (env only; .env unchanged)"
+      export FORJA_WEB_URL="$FORJA_WEB_URL_PROD"
       ;;
   esac
 }
