@@ -540,58 +540,59 @@ class _ListOpenBindSheetState extends State<_ListOpenBindSheet> {
                           ),
                         ],
                         if (widget.simklLinkEnabled) ...[
-                          SizedBox(height: px(10)),
+                          SizedBox(height: px(8)),
                           Row(
                             children: [
-                              Expanded(
-                                child: _ModeToggleButton(
-                                  focusNode: _simklBtnFocus,
+                              _ModeIcon(
+                                focusNode: _simklBtnFocus,
+                                selected: _simklMode,
+                                tooltip: 'Match on Simkl',
+                                size: px(28),
+                                onTap: () => _setMode(_ListOpenBindMode.simkl),
+                                child: LetterLinkMark(
+                                  letter: 'S',
+                                  linked: _simklLinked,
                                   selected: _simklMode,
-                                  density: density,
-                                  onTap: () =>
-                                      _setMode(_ListOpenBindMode.simkl),
-                                  leading: LetterLinkMark(
-                                    letter: 'S',
-                                    linked: _simklLinked,
-                                    selected: _simklMode,
-                                    size: px(18),
-                                    image: const AssetImage(kSimklLogoAsset),
-                                  ),
-                                  label: 'Match',
+                                  size: px(20),
+                                  image: const AssetImage(kSimklLogoAsset),
                                 ),
                               ),
-                              SizedBox(width: px(8)),
-                              Expanded(
-                                child: _ModeToggleButton(
-                                  focusNode: _openWithBtnFocus,
-                                  selected: !_simklMode,
-                                  density: density,
-                                  onTap: () =>
-                                      _setMode(_ListOpenBindMode.openWith),
-                                  leading: Icon(
-                                    Icons.link_rounded,
-                                    size: px(16),
-                                    color: !_simklMode
-                                        ? ForjaShellColors.textPrimary
-                                        : ForjaShellColors.iconMuted,
-                                  ),
-                                  label: 'Open with',
+                              SizedBox(width: px(6)),
+                              _ModeIcon(
+                                focusNode: _openWithBtnFocus,
+                                selected: !_simklMode,
+                                tooltip: 'Open with',
+                                size: px(28),
+                                onTap: () =>
+                                    _setMode(_ListOpenBindMode.openWith),
+                                child: Icon(
+                                  Icons.link_rounded,
+                                  size: px(20),
+                                  color: !_simklMode
+                                      ? ForjaShellColors.textPrimary
+                                      : ForjaShellColors.iconMuted,
                                 ),
                               ),
+                              if (!_simklMode &&
+                                  (widget.openHubLabel ?? '')
+                                      .trim()
+                                      .isNotEmpty) ...[
+                                SizedBox(width: px(8)),
+                                Flexible(
+                                  child: Text(
+                                    widget.openHubLabel!.trim(),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                      color: ForjaShellColors.textSecondary,
+                                      fontSize: type(12),
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ],
                           ),
-                          if (!_simklMode &&
-                              (widget.openHubLabel ?? '').trim().isNotEmpty)
-                            Padding(
-                              padding: EdgeInsets.only(top: px(4)),
-                              child: Text(
-                                'Current hub: ${widget.openHubLabel!.trim()}',
-                                style: TextStyle(
-                                  color: ForjaShellColors.textSecondary,
-                                  fontSize: type(11),
-                                ),
-                              ),
-                            ),
                         ] else ...[
                           SizedBox(height: px(8)),
                           Row(
@@ -1286,69 +1287,57 @@ class _HitsBody extends StatelessWidget {
   }
 }
 
-class _ModeToggleButton extends StatelessWidget {
-  const _ModeToggleButton({
+/// Icon-only mode hit — no pill chrome, no hover/focus scale.
+class _ModeIcon extends StatelessWidget {
+  const _ModeIcon({
     required this.selected,
     required this.onTap,
-    required this.leading,
-    required this.label,
-    required this.density,
+    required this.tooltip,
+    required this.size,
+    required this.child,
     this.focusNode,
   });
 
   final bool selected;
   final VoidCallback onTap;
-  final Widget leading;
-  final String label;
-  final bool density;
+  final String tooltip;
+  final double size;
+  final Widget child;
   final FocusNode? focusNode;
 
   @override
   Widget build(BuildContext context) {
-    double px(double desktop) =>
-        density ? desktop * ShellTokens.tvChromeScale : desktop;
-    double type(double desktop) =>
-        density ? ShellTokens.tvTypeSize(desktop) : desktop;
-    final border = selected
-        ? ForjaShellColors.textPrimary
-        : ForjaShellColors.borderSubtle;
-    final bg = selected
-        ? ForjaShellColors.textPrimary.withValues(alpha: 0.12)
-        : Colors.transparent;
-    return shellFocusableTap(
-      context: context,
-      focusNode: focusNode,
-      onTap: onTap,
-      borderRadius: px(10),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 160),
-        padding: EdgeInsets.symmetric(horizontal: px(10), vertical: px(8)),
-        decoration: BoxDecoration(
-          color: bg,
-          borderRadius: BorderRadius.circular(px(10)),
-          border: Border.all(color: border, width: selected ? 1.5 : 1),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            leading,
-            SizedBox(width: px(6)),
-            Flexible(
-              child: Text(
-                label,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  color: selected
-                      ? ForjaShellColors.textPrimary
-                      : ForjaShellColors.textSecondary,
-                  fontSize: type(12),
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
+    final icon = SizedBox(
+      width: size,
+      height: size,
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Expanded(child: Center(child: child)),
+          Container(
+            height: 2,
+            width: size * 0.55,
+            decoration: BoxDecoration(
+              color: selected
+                  ? ForjaShellColors.brandGreen
+                  : Colors.transparent,
+              borderRadius: BorderRadius.circular(1),
             ),
-          ],
-        ),
+          ),
+        ],
+      ),
+    );
+    return Tooltip(
+      message: tooltip,
+      child: shellFocusableTap(
+        context: context,
+        focusNode: focusNode,
+        onTap: onTap,
+        borderRadius: size / 2,
+        scaleOnFocus: 1,
+        suppressInkHover: true,
+        showFocusBorder: true,
+        child: icon,
       ),
     );
   }

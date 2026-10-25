@@ -111,9 +111,16 @@ Prefer `ForjaSwitch(scale: ForjaSwitch.settingsScale)` in dense settings lists. 
 
 Forbidden on leanback: raw `TextField` that becomes editable / opens IME when focused; wiring focus listeners to `openSearch` / `beginEditing`. Full rule: `forja-tv-scope.mdc` → **text inputs**.
 
+## Hover / focus — no size grow on chrome
+
+**Forbidden** on chrome icons, dialog mode toggles, `plainIcon` actions, tracker marks, close/X, and similar header controls: hover or focus that **increases size** (`Transform.scale`, `hoverScale` > 1, default `scaleOnFocus` ≠ 1). Use **color / opacity / underline** only. Pass `scaleOnFocus: 1` (and skip hover-scale wrappers) on those hits.
+
+Catalog poster cards may keep existing `cardLift` where the product already uses it — do **not** add new hover scale to chrome or dialog controls.
+
 ## Forbidden without explicit approval
 
 - Magic scales, clamps, or fallback sizes for foundation cards/chrome — token first ([no-hardcode](./forja-foundation-no-hardcode.mdc))
+- Hover/focus **size grow** on chrome icons / mode toggles / plainIcon (see above)
 - Ad-hoc `BackdropFilter` / `ImageFilter.blur` outside `ForjaFrostedPanel` (and existing IPTV frosted panels)
 - Ad-hoc pill/chip styles that duplicate `TorrentSourceToggle` / chip selected tokens
 - Ad-hoc `Switch(` / `SwitchListTile` color overrides — use `ForjaSwitch` / theme tokens

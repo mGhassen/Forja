@@ -864,16 +864,9 @@ class SettingsService {
   }
 
   /// Device-cache value for cloud sync / backup (not platform-gated).
-  /// Legacy installs (no key) follow stored Direct torrent.
-  Future<bool> isPlaySourceNuvioStored() async {
-    if (await kvHasKey(_playSourceNuvioKey)) {
-      return kvGetBool(
-        _playSourceNuvioKey,
-        fallback: _defaults.playSourceNuvio,
-      );
-    }
-    return isPlaySourceTorrentStored();
-  }
+  /// Independent of Direct torrent (same pattern as Stremio).
+  Future<bool> isPlaySourceNuvioStored() async =>
+      kvGetBool(_playSourceNuvioKey, fallback: _defaults.playSourceNuvio);
 
   /// Effective for UI / playback. ATV HTTP streams play locally; magnets
   /// need a paired desktop at play time.

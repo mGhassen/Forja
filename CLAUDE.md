@@ -66,7 +66,7 @@ No Cursor attribution trailers in commits, PRs, or code comments.
 
 | Touching | Read first |
 |----------|-----------|
-| Any Dart paint / widget / tokens / colors | [forja-design-system.mdc](.cursor/rules/forja-design-system.mdc) · [forja-foundation-no-hardcode.mdc](.cursor/rules/forja-foundation-no-hardcode.mdc) |
+| Any Dart paint / widget / tokens / colors | [forja-design-system.mdc](.cursor/rules/forja-design-system.mdc) (incl. **no hover size-grow on chrome icons**) · [forja-foundation-no-hardcode.mdc](.cursor/rules/forja-foundation-no-hardcode.mdc) |
 | D-pad, focus, TV, **any text or search field** | [forja-tv-scope.mdc](.cursor/rules/forja-tv-scope.mdc) · skill `/forja-tv-dpad` |
 | Shared hero / media-details components | [forja-shared-ui.mdc](.cursor/rules/forja-shared-ui.mdc) |
 | Pack vs host vs foundation placement, kit painter | [forja-pack-product-host.mdc](.cursor/rules/forja-pack-product-host.mdc) · skill `forja-pack-product-host` |

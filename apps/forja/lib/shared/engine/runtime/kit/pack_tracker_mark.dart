@@ -58,6 +58,8 @@ Widget? packTrackerMarkTrailing({
       );
     },
     borderRadius: size / 2,
+    scaleOnFocus: 1,
+    suppressInkHover: true,
     child: mark,
   );
 }

@@ -66,28 +66,18 @@ class _ImageMark extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // CDN/logos are often black-on-transparent — tint white on dark chrome.
+    final tint = selected
+        ? ForjaShellColors.brandGreen
+        : linked
+        ? Colors.white
+        : Colors.white54;
     return Stack(
       fit: StackFit.expand,
       children: [
-        DecoratedBox(
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(size * 0.2),
-            border: selected
-                ? Border.all(color: const Color(0xFF22C55E), width: 1.5)
-                : null,
-          ),
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(size * 0.2),
-            child: linked
-                ? Image(image: image, fit: BoxFit.cover)
-                : ColorFiltered(
-                    colorFilter: const ColorFilter.mode(
-                      Colors.white54,
-                      BlendMode.modulate,
-                    ),
-                    child: Image(image: image, fit: BoxFit.cover),
-                  ),
-          ),
+        ColorFiltered(
+          colorFilter: ColorFilter.mode(tint, BlendMode.srcIn),
+          child: Image(image: image, fit: BoxFit.contain),
         ),
         if (!linked)
           CustomPaint(painter: _RedCrossPainter(stroke: size * 0.12)),
