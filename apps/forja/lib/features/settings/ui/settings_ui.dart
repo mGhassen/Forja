@@ -492,12 +492,21 @@ class _SettingsTvExpandableSideRowState
   /// misses (same class as issue 262). Walk from the full-width header rect
   /// instead, and always claim the edge so KeyRepeat does not storm
   /// focusInDirection on a stuck chevron (issue 490).
+  ///
+  /// Skip this row’s details during the walk so ↓ from header does not bounce
+  /// onto the same-row chevron (slightly lower than the header top).
   void _navVerticalFromHeader(TraversalDirection direction) {
-    final steps = ShellTvHoldAccel.lastStep;
-    var n = _headerFocus;
-    for (var i = 0; i < steps; i++) {
-      if (!shellTvTryFocusInDirection(n, direction)) break;
-      n = FocusManager.instance.primaryFocus ?? n;
+    final wasSkip = _detailsFocus.skipTraversal;
+    _detailsFocus.skipTraversal = true;
+    try {
+      final steps = ShellTvHoldAccel.lastStep;
+      var n = _headerFocus;
+      for (var i = 0; i < steps; i++) {
+        if (!shellTvTryFocusInDirection(n, direction)) break;
+        n = FocusManager.instance.primaryFocus ?? n;
+      }
+    } finally {
+      _detailsFocus.skipTraversal = wasSkip;
     }
   }
 

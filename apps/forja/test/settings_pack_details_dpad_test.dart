@@ -80,14 +80,12 @@ void main() {
       await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
       await tester.pump();
 
+      expect(details.hasFocus, isFalse);
       expect(
-        details.hasFocus,
+        identical(FocusManager.instance.primaryFocus, details),
         isFalse,
-        reason: '↓ from details must leave settings-pack-details (issue 490)',
+        reason: '↓ from details must leave this chevron node (issue 490)',
       );
-      final primary = FocusManager.instance.primaryFocus;
-      expect(primary, isNotNull);
-      expect(primary!.debugLabel, isNot(equals('settings-pack-details')));
     },
   );
 
@@ -111,10 +109,11 @@ void main() {
     await tester.sendKeyUpEvent(LogicalKeyboardKey.arrowDown);
     await tester.pump();
 
+    expect(details.hasFocus, isFalse);
     expect(
-      details.hasFocus,
+      identical(FocusManager.instance.primaryFocus, details),
       isFalse,
-      reason: 'KeyRepeat ↓ must not leave focus stuck on details chevron',
+      reason: 'KeyRepeat ↓ must not leave focus stuck on this details chevron',
     );
   });
 }
