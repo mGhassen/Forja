@@ -4,6 +4,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:forja_foundation/components/forja_image_cache.dart';
 import 'package:flutter/material.dart' hide Checkbox;
 import 'package:flutter/services.dart';
+import 'package:forja_foundation/components/button.dart';
 import 'package:forja_foundation/components/checkbox.dart';
 import 'package:forja/shared/engine/store/list_open_binding.dart';
 import 'package:forja/shared/engine/store/list_open_picker.dart';
@@ -395,24 +396,16 @@ class _ListOpenBindSheetState extends State<_ListOpenBindSheet> {
                       ),
                     ),
                   ),
-                  TextButton(
+                  Button(
+                    variant: ButtonVariant.plainIcon,
+                    size: ButtonSize.icon,
+                    icon: Icons.close_rounded,
+                    compact: true,
+                    color: ForjaShellColors.iconMuted,
+                    iconSize: px(18),
+                    height: px(32),
+                    tooltip: 'Close',
                     onPressed: () => Navigator.of(context).pop(),
-                    style: TextButton.styleFrom(
-                      visualDensity: VisualDensity.compact,
-                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                      padding: EdgeInsets.symmetric(
-                        horizontal: px(8),
-                        vertical: px(4),
-                      ),
-                      minimumSize: Size(px(48), px(28)),
-                    ),
-                    child: Text(
-                      'Cancel',
-                      style: TextStyle(
-                        color: ForjaShellColors.textSecondary,
-                        fontSize: type(14),
-                      ),
-                    ),
                   ),
                 ],
               ),
