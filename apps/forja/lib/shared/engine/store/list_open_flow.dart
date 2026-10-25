@@ -4,6 +4,7 @@ import 'package:forja/shared/engine/runtime/kit/paint_artifact.dart';
 import 'package:forja/shared/engine/runtime/nav/plugin_nav.dart';
 import 'package:forja/shared/engine/runtime/open/catalog_open.dart';
 import 'package:forja/shared/engine/store/legacy_list_item.dart';
+import 'package:forja/shared/engine/store/list_follow.dart';
 import 'package:forja/shared/engine/store/list_open_bind_sheet.dart';
 import 'package:forja/shared/engine/store/list_open_binding.dart';
 import 'package:forja/shared/engine/store/list_providers.dart';
@@ -241,6 +242,8 @@ Future<void> openListItemWithBinding(
   }
 
   final trackerUi = simklOn && simklHub != null;
+  final listPin = listPinTargetForBindSheet(row: row, meta: meta);
+  final knownStatus = (row['listStatus'] ?? '').toString().trim();
   if (forcePick || simklLinkMode) {
     await showListOpenBindSheet(
       context,
@@ -255,6 +258,8 @@ Future<void> openListItemWithBinding(
       simklSearchCandidate: simklHub,
       hasSimklLink:
           legacyListTmdbId(row) != null || row['trackerLinked'] == true,
+      listPinTarget: listPin,
+      knownListStatus: knownStatus.isEmpty ? null : knownStatus,
       onSave: (bound) async {
         final saved = await persistListOpenBinding(
           row: row,
@@ -293,6 +298,8 @@ Future<void> openListItemWithBinding(
     openHubLabel: resolvedOpenLabel,
     simklSearchCandidate: simklHub,
     hasSimklLink: legacyListTmdbId(row) != null || row['trackerLinked'] == true,
+    listPinTarget: listPin,
+    knownListStatus: knownStatus.isEmpty ? null : knownStatus,
     onSimklSave: (hit) async {
       final ok = await ListOpenBinding.persistSimklTmdbLink(
         item: row,
@@ -435,4 +442,17 @@ Future<MetaItem?> persistListOpenBinding({
     stampListOpenBinding(row, grid);
   }
   return next;
+}
+
+/// Status pin identity for Open with… (TV cards hide the overlay pin).
+@visibleForTesting
+ListFollowTarget? listPinTargetForBindSheet({
+  required Map<String, dynamic> row,
+  required MetaItem meta,
+}) {
+  final legacy = listFollowTargetFromLegacyItemSync(row);
+  if (legacy != null) return legacy;
+  final pid = (row['pluginId'] ?? '').toString().trim();
+  if (pid.isEmpty) return null;
+  return ListFollowTarget.fromMeta(pluginId: pid, meta: meta);
 }

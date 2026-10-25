@@ -160,8 +160,8 @@ class _ListStatusMenuRowState extends State<ListStatusMenuRow> {
       color: active
           ? widget.statusColor.withValues(alpha: 0.12)
           : selected
-              ? widget.statusColor.withValues(alpha: 0.08)
-              : Colors.transparent,
+          ? widget.statusColor.withValues(alpha: 0.08)
+          : Colors.transparent,
       child: Row(
         children: [
           Icon(widget.icon, size: iconSize, color: accent),
@@ -280,12 +280,9 @@ class ListStatusPopupPanel extends StatelessWidget {
                     statusColor: s.color,
                     onTap: busy
                         ? null
-                        : () => onSelect(
-                            s.id == currentStatus ? '' : s.id,
-                          ),
+                        : () => onSelect(s.id == currentStatus ? '' : s.id),
                     tvFocus: tvFocus,
-                    autoFocus:
-                        autoFocusSelected && tvFocus && s.id == focusId,
+                    autoFocus: autoFocusSelected && tvFocus && s.id == focusId,
                   ),
               ],
             ),
@@ -313,22 +310,40 @@ class ListStatusPin extends StatefulWidget {
     this.menuOffset,
     this.useFocusableChips = false,
     this.scaleOnHover = true,
+    this.motion = ForjaMotionPreset.chipLift,
+    this.focusNode,
+    this.onUpEdge,
+    this.onDownEdge,
+    this.onLeftEdge,
+    this.onRightEdge,
   });
 
   final String? currentStatus;
   final List<ListStatusOption> options;
+
   /// Status id to set, or `''` to remove.
   final Future<void> Function(String statusId) onSelect;
   final bool busy;
   final double? iconSize;
   final Color? iconColor;
   final bool excludeFromTvTraversal;
+
   /// Extra follower offset after [listStatusMenuGapOffset]. Null = gap only.
   final Offset? menuOffset;
+
   /// Host maps [ShellInputPolicy.useFocusableMoodChips].
   final bool useFocusableChips;
+
   /// Host maps [ShellInputPolicy.scaleOnHover] (false on leanback TV).
   final bool scaleOnHover;
+
+  /// Dialog / chrome pins use [ForjaMotionPreset.fillOnly] (no size grow).
+  final ForjaMotionPreset motion;
+  final FocusNode? focusNode;
+  final VoidCallback? onUpEdge;
+  final VoidCallback? onDownEdge;
+  final VoidCallback? onLeftEdge;
+  final VoidCallback? onRightEdge;
 
   @override
   State<ListStatusPin> createState() => _ListStatusPinState();
@@ -410,7 +425,8 @@ class _ListStatusPinState extends State<ListStatusPin> {
               showWhenUnlinked: false,
               targetAnchor: listStatusMenuTargetAnchor,
               followerAnchor: listStatusMenuFollowerAnchor,
-              offset: listStatusMenuGapOffset(context) +
+              offset:
+                  listStatusMenuGapOffset(context) +
                   (widget.menuOffset ?? Offset.zero),
               child: Material(
                 color: Colors.transparent,
@@ -420,6 +436,8 @@ class _ListStatusPinState extends State<ListStatusPin> {
                   busy: _busy,
                   // Desktop hybrid: hover-only rows. D-pad autofocus = leanback.
                   tvFocus: widget.useFocusableChips && !widget.scaleOnHover,
+                  autoFocusSelected:
+                      widget.useFocusableChips && !widget.scaleOnHover,
                   onSelect: _setStatus,
                 ),
               ),
@@ -468,10 +486,7 @@ class _ListStatusPinState extends State<ListStatusPin> {
     );
   }
 
-  Widget _pinHit({
-    required VoidCallback? onTap,
-    required Widget child,
-  }) {
+  Widget _pinHit({required VoidCallback? onTap, required Widget child}) {
     // Card overlays: keep the icon flush with the rating badge (no 40×40
     // focus pad that vertically centers the pin below the score).
     if (!widget.useFocusableChips || widget.excludeFromTvTraversal) {
@@ -488,14 +503,28 @@ class _ListStatusPinState extends State<ListStatusPin> {
       context: context,
       onTap: onTap,
       borderRadius: 20,
-      motion: ForjaMotionPreset.chipLift,
+      motion: widget.motion,
       showFocusFill: false,
       showFocusBorder: false,
       suppressInkHover: true,
-      child: SizedBox(
-        width: ShellTokens.controlHeightTv,
-        height: ShellTokens.controlHeightTv,
-        child: Center(child: child),
+      focusNode: widget.focusNode,
+      onUpEdge: widget.onUpEdge,
+      onDownEdge: widget.onDownEdge,
+      onLeftEdge: widget.onLeftEdge,
+      onRightEdge: widget.onRightEdge,
+      child: Builder(
+        builder: (context) {
+          final tv = ShellPaintScope.usesTvDensityOf(context);
+          final icon = widget.iconSize ?? ShellTokens.iconSizeFor(18, tv: tv);
+          final pad = widget.motion == ForjaMotionPreset.fillOnly
+              ? icon + 8
+              : ShellTokens.controlHeightTv;
+          return SizedBox(
+            width: pad,
+            height: pad,
+            child: Center(child: child),
+          );
+        },
       ),
     );
   }

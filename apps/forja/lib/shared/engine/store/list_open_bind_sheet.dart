@@ -6,9 +6,11 @@ import 'package:flutter/material.dart' hide Checkbox;
 import 'package:flutter/services.dart';
 import 'package:forja_foundation/components/button.dart';
 import 'package:forja_foundation/components/checkbox.dart';
+import 'package:forja/shared/engine/store/list_follow.dart';
 import 'package:forja/shared/engine/store/list_open_binding.dart';
 import 'package:forja/shared/engine/store/list_open_picker.dart';
 import 'package:forja/shared/engine/store/list_open_title_rank.dart';
+import 'package:forja/shared/engine/runtime/kit/hosts/kit_list_status_button.dart';
 import 'package:forja/shared/engine/runtime/kit/pack_tracker_mark.dart';
 import 'package:forja_foundation/widgets/catalog/letter_link_mark.dart';
 import 'package:forja_foundation/widgets/chrome/shell_chip.dart';
@@ -61,6 +63,8 @@ Future<ListOpenBindResult?> showListOpenBindSheet(
   String? openHubLabel,
   ListOpenCandidate? simklSearchCandidate,
   bool hasSimklLink = false,
+  ListFollowTarget? listPinTarget,
+  String? knownListStatus,
   Future<bool> Function(ListOpenBindResult result)? onSave,
   Future<bool> Function(MetaItem hit)? onSimklSave,
 }) {
@@ -82,6 +86,8 @@ Future<ListOpenBindResult?> showListOpenBindSheet(
           openHubLabel: openHubLabel,
           simklSearchCandidate: simklSearchCandidate,
           hasSimklLink: hasSimklLink,
+          listPinTarget: listPinTarget,
+          knownListStatus: knownListStatus,
           onSave: onSave,
           onSimklSave: onSimklSave,
         ),
@@ -102,6 +108,8 @@ class _ListOpenBindSheet extends StatefulWidget {
     this.openHubLabel,
     this.simklSearchCandidate,
     this.hasSimklLink = false,
+    this.listPinTarget,
+    this.knownListStatus,
     this.onSave,
     this.onSimklSave,
   });
@@ -119,6 +127,10 @@ class _ListOpenBindSheet extends StatefulWidget {
   final String? openHubLabel;
   final ListOpenCandidate? simklSearchCandidate;
   final bool hasSimklLink;
+
+  /// My List status pin (TV cards hide pin — change status here).
+  final ListFollowTarget? listPinTarget;
+  final String? knownListStatus;
 
   /// Save the checked title and stay on the sheet. Null pops and opens.
   final Future<bool> Function(ListOpenBindResult result)? onSave;
@@ -140,6 +152,7 @@ class _ListOpenBindSheetState extends State<_ListOpenBindSheet> {
   final FocusNode _openFocus = FocusNode();
   final FocusNode _openWithBtnFocus = FocusNode();
   final FocusNode _simklBtnFocus = FocusNode();
+  final FocusNode _listPinFocus = FocusNode();
   final List<FocusNode> _hitNodes = [];
   Timer? _debounce;
   int _searchGen = 0;
@@ -222,6 +235,7 @@ class _ListOpenBindSheetState extends State<_ListOpenBindSheet> {
     _openFocus.dispose();
     _openWithBtnFocus.dispose();
     _simklBtnFocus.dispose();
+    _listPinFocus.dispose();
     for (final node in _chipNodes) {
       node.dispose();
     }
@@ -264,13 +278,20 @@ class _ListOpenBindSheetState extends State<_ListOpenBindSheet> {
     _chipNodes[i].requestFocus();
   }
 
+  bool get _hasListPin => widget.listPinTarget != null;
+
   void _focusModeIcons() {
-    if (!widget.simklLinkEnabled) return;
-    if (_simklMode) {
-      _simklBtnFocus.requestFocus();
+    if (widget.simklLinkEnabled) {
+      if (_simklMode) {
+        _simklBtnFocus.requestFocus();
+        return;
+      }
+      _openWithBtnFocus.requestFocus();
       return;
     }
-    _openWithBtnFocus.requestFocus();
+    if (_hasListPin) {
+      _listPinFocus.requestFocus();
+    }
   }
 
   void _focusBelowModeIcons() {
@@ -279,6 +300,24 @@ class _ListOpenBindSheetState extends State<_ListOpenBindSheet> {
       return;
     }
     _focusSelectedChip();
+  }
+
+  void _focusRightOfSimkl() {
+    if (_hasListPin) {
+      _listPinFocus.requestFocus();
+      return;
+    }
+    _openWithBtnFocus.requestFocus();
+  }
+
+  void _focusLeftOfOpenWith() {
+    if (_hasListPin) {
+      _listPinFocus.requestFocus();
+      return;
+    }
+    if (widget.simklLinkEnabled) {
+      _simklBtnFocus.requestFocus();
+    }
   }
 
   bool get _usesSearch {
@@ -556,54 +595,95 @@ class _ListOpenBindSheetState extends State<_ListOpenBindSheet> {
                             ),
                           ),
                         ],
-                        if (widget.simklLinkEnabled) ...[
+                        if (widget.simklLinkEnabled || _hasListPin) ...[
                           SizedBox(height: px(8)),
                           Row(
                             children: [
-                              _ModeIcon(
-                                focusNode: _simklBtnFocus,
-                                selected: _simklMode,
-                                idleColor: _simklLinked
-                                    ? ForjaShellColors.textPrimary
-                                    : ForjaShellColors.iconMuted,
-                                tooltip: 'Match on Simkl',
-                                size: px(28),
-                                onTap: () => _setMode(_ListOpenBindMode.simkl),
-                                onDownEdge: dpad ? _focusBelowModeIcons : null,
-                                onRightEdge: dpad
-                                    ? () => _openWithBtnFocus.requestFocus()
-                                    : null,
-                                onLeftEdge: dpad ? () {} : null,
-                                onUpEdge: dpad ? () {} : null,
-                                icon: (color) => LetterLinkMark(
-                                  letter: 'S',
-                                  linked: _simklLinked,
-                                  size: px(20),
-                                  image: const AssetImage(kSimklLogoAsset),
-                                  color: color,
+                              if (widget.simklLinkEnabled) ...[
+                                _ModeIcon(
+                                  focusNode: _simklBtnFocus,
+                                  selected: _simklMode,
+                                  idleColor: _simklLinked
+                                      ? ForjaShellColors.textPrimary
+                                      : ForjaShellColors.iconMuted,
+                                  tooltip: 'Match on Simkl',
+                                  size: px(28),
+                                  onTap: () =>
+                                      _setMode(_ListOpenBindMode.simkl),
+                                  onDownEdge: dpad
+                                      ? _focusBelowModeIcons
+                                      : null,
+                                  onRightEdge: dpad ? _focusRightOfSimkl : null,
+                                  onLeftEdge: dpad ? () {} : null,
+                                  onUpEdge: dpad ? () {} : null,
+                                  icon: (color) => LetterLinkMark(
+                                    letter: 'S',
+                                    linked: _simklLinked,
+                                    size: px(20),
+                                    image: const AssetImage(kSimklLogoAsset),
+                                    color: color,
+                                  ),
                                 ),
-                              ),
-                              SizedBox(width: px(6)),
-                              _ModeIcon(
-                                focusNode: _openWithBtnFocus,
-                                selected: !_simklMode,
-                                idleColor: ForjaShellColors.iconMuted,
-                                tooltip: 'Open with',
-                                size: px(28),
-                                onTap: () =>
-                                    _setMode(_ListOpenBindMode.openWith),
-                                onDownEdge: dpad ? _focusBelowModeIcons : null,
-                                onLeftEdge: dpad
-                                    ? () => _simklBtnFocus.requestFocus()
-                                    : null,
-                                onRightEdge: dpad ? () {} : null,
-                                onUpEdge: dpad ? () {} : null,
-                                icon: (color) => Icon(
+                                SizedBox(width: px(6)),
+                              ],
+                              if (_hasListPin) ...[
+                                KitListStatusButton.follow(
+                                  followTarget: widget.listPinTarget!,
+                                  knownStatus: widget.knownListStatus,
+                                  excludeFromTvTraversal: false,
+                                  noHoverScale: true,
+                                  iconSize: px(20),
+                                  focusNode: _listPinFocus,
+                                  onUpEdge: dpad ? () {} : null,
+                                  onDownEdge: dpad
+                                      ? _focusBelowModeIcons
+                                      : null,
+                                  onLeftEdge: dpad
+                                      ? () {
+                                          if (widget.simklLinkEnabled) {
+                                            _simklBtnFocus.requestFocus();
+                                          }
+                                        }
+                                      : null,
+                                  onRightEdge: dpad
+                                      ? () {
+                                          if (widget.simklLinkEnabled) {
+                                            _openWithBtnFocus.requestFocus();
+                                          }
+                                        }
+                                      : null,
+                                ),
+                                SizedBox(width: px(6)),
+                              ],
+                              if (widget.simklLinkEnabled)
+                                _ModeIcon(
+                                  focusNode: _openWithBtnFocus,
+                                  selected: !_simklMode,
+                                  idleColor: ForjaShellColors.iconMuted,
+                                  tooltip: 'Open with',
+                                  size: px(28),
+                                  onTap: () =>
+                                      _setMode(_ListOpenBindMode.openWith),
+                                  onDownEdge: dpad
+                                      ? _focusBelowModeIcons
+                                      : null,
+                                  onLeftEdge: dpad
+                                      ? _focusLeftOfOpenWith
+                                      : null,
+                                  onRightEdge: dpad ? () {} : null,
+                                  onUpEdge: dpad ? () {} : null,
+                                  icon: (color) => Icon(
+                                    Icons.link_rounded,
+                                    size: px(20),
+                                    color: color,
+                                  ),
+                                )
+                              else
+                                Icon(
                                   Icons.link_rounded,
-                                  size: px(20),
-                                  color: color,
+                                  size: px(16),
+                                  color: ForjaShellColors.iconMuted,
                                 ),
-                              ),
                               if (!_simklMode &&
                                   (widget.openHubLabel ?? '')
                                       .trim()
@@ -611,7 +691,9 @@ class _ListOpenBindSheetState extends State<_ListOpenBindSheet> {
                                 SizedBox(width: px(8)),
                                 Flexible(
                                   child: Text(
-                                    widget.openHubLabel!.trim(),
+                                    widget.simklLinkEnabled
+                                        ? widget.openHubLabel!.trim()
+                                        : 'Open with ${widget.openHubLabel!.trim()}',
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
                                     style: TextStyle(
@@ -694,7 +776,7 @@ class _ListOpenBindSheetState extends State<_ListOpenBindSheet> {
                             : () => _chipNodes[i + 1].requestFocus(),
                         onDownEdge: dpad ? _focusBelowHubs : null,
                         onUpEdge: dpad
-                            ? (widget.simklLinkEnabled
+                            ? (widget.simklLinkEnabled || _hasListPin
                                   ? _focusModeIcons
                                   : () {})
                             : null,

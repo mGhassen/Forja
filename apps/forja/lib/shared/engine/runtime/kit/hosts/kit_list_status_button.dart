@@ -13,6 +13,7 @@ import 'package:forja/shared/theme/app_theme.dart';
 import 'package:rust/rust.dart';
 import 'package:forja/shell/feedback/forja_toast.dart';
 import 'package:forja/shell/core/forja_shell_scope.dart';
+import 'package:forja_foundation/tokens/forja_motion_theme.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
@@ -51,7 +52,13 @@ class KitListStatusButton extends StatelessWidget {
     this.excludeFromTvTraversal = false,
     this.knownStatus,
   }) : stremioItem = null,
-       followTarget = null;
+       followTarget = null,
+       focusNode = null,
+       onUpEdge = null,
+       onDownEdge = null,
+       onLeftEdge = null,
+       onRightEdge = null,
+       noHoverScale = false;
 
   const KitListStatusButton.follow({
     super.key,
@@ -61,6 +68,12 @@ class KitListStatusButton extends StatelessWidget {
     this.iconColorActive,
     this.excludeFromTvTraversal = false,
     this.knownStatus,
+    this.focusNode,
+    this.onUpEdge,
+    this.onDownEdge,
+    this.onLeftEdge,
+    this.onRightEdge,
+    this.noHoverScale = false,
   }) : movie = null,
        stremioItem = null,
        useHeartIcon = false;
@@ -75,7 +88,13 @@ class KitListStatusButton extends StatelessWidget {
     this.excludeFromTvTraversal = false,
   }) : movie = null,
        followTarget = null,
-       knownStatus = null;
+       knownStatus = null,
+       focusNode = null,
+       onUpEdge = null,
+       onDownEdge = null,
+       onLeftEdge = null,
+       onRightEdge = null,
+       noHoverScale = false;
 
   final Movie? movie;
   final Map<String, dynamic>? stremioItem;
@@ -92,6 +111,14 @@ class KitListStatusButton extends StatelessWidget {
   /// status for the pin icon/color until a write lands.
   final String? knownStatus;
 
+  /// Dialog / chrome: D-pad edges + no size-grow on focus/hover.
+  final FocusNode? focusNode;
+  final VoidCallback? onUpEdge;
+  final VoidCallback? onDownEdge;
+  final VoidCallback? onLeftEdge;
+  final VoidCallback? onRightEdge;
+  final bool noHoverScale;
+
   @override
   Widget build(BuildContext context) {
     if (followTarget != null) {
@@ -104,6 +131,12 @@ class KitListStatusButton extends StatelessWidget {
         iconColor: iconColor,
         excludeFromTvTraversal: excludeFromTvTraversal,
         knownStatus: knownStatus,
+        focusNode: focusNode,
+        onUpEdge: onUpEdge,
+        onDownEdge: onDownEdge,
+        onLeftEdge: onLeftEdge,
+        onRightEdge: onRightEdge,
+        noHoverScale: noHoverScale,
         onSetStatus: (to) async {
           ProviderContainer? container;
           try {
@@ -122,6 +155,12 @@ class KitListStatusButton extends StatelessWidget {
         iconColor: iconColor,
         excludeFromTvTraversal: excludeFromTvTraversal,
         knownStatus: knownStatus,
+        focusNode: focusNode,
+        onUpEdge: onUpEdge,
+        onDownEdge: onDownEdge,
+        onLeftEdge: onLeftEdge,
+        onRightEdge: onRightEdge,
+        noHoverScale: noHoverScale,
         onSetStatus: (to) => _setMovieStatus(context, movie!, to),
       );
     }
@@ -199,6 +238,12 @@ class _WiredStatusPin extends StatelessWidget {
     this.iconColor,
     this.excludeFromTvTraversal = false,
     this.knownStatus,
+    this.focusNode,
+    this.onUpEdge,
+    this.onDownEdge,
+    this.onLeftEdge,
+    this.onRightEdge,
+    this.noHoverScale = false,
   });
 
   final String uniqueId;
@@ -209,6 +254,12 @@ class _WiredStatusPin extends StatelessWidget {
   final Color? iconColor;
   final bool excludeFromTvTraversal;
   final String? knownStatus;
+  final FocusNode? focusNode;
+  final VoidCallback? onUpEdge;
+  final VoidCallback? onDownEdge;
+  final VoidCallback? onLeftEdge;
+  final VoidCallback? onRightEdge;
+  final bool noHoverScale;
 
   @override
   Widget build(BuildContext context) {
@@ -229,6 +280,14 @@ class _WiredStatusPin extends StatelessWidget {
           excludeFromTvTraversal: excludeFromTvTraversal,
           useFocusableChips: policy.useFocusableMoodChips,
           scaleOnHover: policy.scaleOnHover,
+          motion: noHoverScale
+              ? ForjaMotionPreset.fillOnly
+              : ForjaMotionPreset.chipLift,
+          focusNode: focusNode,
+          onUpEdge: onUpEdge,
+          onDownEdge: onDownEdge,
+          onLeftEdge: onLeftEdge,
+          onRightEdge: onRightEdge,
           onSelect: (to) async {
             final ok = await onSetStatus(to);
             _toastStatusWrite(ok, to);
@@ -336,15 +395,13 @@ class _LegacyTogglePin extends StatelessWidget {
                     ? Icons.favorite_rounded
                     : Icons.favorite_border_rounded)
               : (inList ? Icons.bookmark_rounded : Icons.add_rounded),
-          size: iconSize ??
+          size:
+              iconSize ??
               ShellPaintScope.iconOf(context, useHeartIcon ? 24 : 20),
           color: inList
               ? (iconColorActive ??
                     (useHeartIcon ? Colors.white : ForjaShellColors.iconActive))
-              : (iconColor ??
-                    (useHeartIcon
-                        ? Colors.white70
-                        : Colors.white)),
+              : (iconColor ?? (useHeartIcon ? Colors.white70 : Colors.white)),
         );
 
         // Card overlays: compact hit target so pin tops align with score badge.
@@ -396,8 +453,8 @@ class BookmarkHeroIcon extends StatelessWidget {
                 mediaType: movie!.mediaType,
               )
             : (BookmarkStore().contains(uid)
-                ? BookmarkStore().statusOf(uid)
-                : null);
+                  ? BookmarkStore().statusOf(uid)
+                  : null);
         return Icon(
           listStatusPinIcon(status),
           size: ShellPaintScope.iconOf(context, 20),
@@ -439,6 +496,7 @@ class KitListStatusControl extends StatefulWidget {
   final VoidCallback? onRightEdge;
   final FocusNode? focusNode;
   final ValueChanged<bool>? onMenuOpenChanged;
+
   /// Inactive hero carousel slides: visual only (no FocusNode / onTap).
   final bool enabled;
 
