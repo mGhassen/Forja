@@ -12,9 +12,10 @@ import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 class ForjaPackChoiceCards extends StatefulWidget {
   const ForjaPackChoiceCards({
     super.key,
-    required this.onBrowseCommunity,
+    this.onBrowseCommunity,
     this.onInstallOfficial,
     this.showOfficial = true,
+    this.showCommunity = true,
     this.installFocusNode,
     this.browseFocusNode,
     this.compact = false,
@@ -24,11 +25,20 @@ class ForjaPackChoiceCards extends StatefulWidget {
   }) : assert(
          !showOfficial || onInstallOfficial != null,
          'onInstallOfficial is required when showOfficial is true',
+       ),
+       assert(
+         !showCommunity || onBrowseCommunity != null,
+         'onBrowseCommunity is required when showCommunity is true',
+       ),
+       assert(
+         showOfficial || showCommunity,
+         'at least one of showOfficial / showCommunity must be true',
        );
 
   final VoidCallback? onInstallOfficial;
-  final VoidCallback onBrowseCommunity;
+  final VoidCallback? onBrowseCommunity;
   final bool showOfficial;
+  final bool showCommunity;
   final FocusNode? installFocusNode;
   final FocusNode? browseFocusNode;
   final bool compact;
@@ -67,24 +77,44 @@ class _ForjaPackChoiceCardsState extends State<ForjaPackChoiceCards> {
       context,
       compact: widget.compact,
     );
-    final community = ForjaPackChoiceCard(
-      focusNode: _browseNode,
-      compact: widget.compact,
-      settingsTvFocus: widget.settingsTvFocus,
-      tvItemIndex: widget.showOfficial ? 1 : 0,
-      // ← exits to the Settings category rail (same as Official / Back).
-      icon: Icons.public_rounded,
-      title: 'Community Packs',
-      subtitle:
-          widget.communitySubtitle ??
-          (widget.compact
-              ? 'Browse packs on the web'
-              : 'Browse and pick packs on the web'),
-      onTap: widget.onBrowseCommunity,
-    );
-    if (!widget.showOfficial) {
-      return community;
+    ForjaPackChoiceCard? official;
+    if (widget.showOfficial) {
+      official = ForjaPackChoiceCard(
+        focusNode: _installNode,
+        autofocus: widget.autofocusInstall,
+        compact: widget.compact,
+        settingsTvFocus: widget.settingsTvFocus,
+        tvItemIndex: 0,
+        onRightEdge: widget.showCommunity
+            ? () => _browseNode.requestFocus()
+            : null,
+        icon: Icons.inventory_2_rounded,
+        title: 'Official packs',
+        subtitle: 'Choose which ForjaHQ packs to install',
+        accent: true,
+        onTap: widget.onInstallOfficial!,
+      );
     }
+    ForjaPackChoiceCard? community;
+    if (widget.showCommunity) {
+      community = ForjaPackChoiceCard(
+        focusNode: _browseNode,
+        compact: widget.compact,
+        settingsTvFocus: widget.settingsTvFocus,
+        tvItemIndex: widget.showOfficial ? 1 : 0,
+        // ← exits to the Settings category rail (same as Official / Back).
+        icon: Icons.public_rounded,
+        title: 'Community Packs',
+        subtitle:
+            widget.communitySubtitle ??
+            (widget.compact
+                ? 'Browse packs on the web'
+                : 'Browse and pick packs on the web'),
+        onTap: widget.onBrowseCommunity!,
+      );
+    }
+    if (official == null) return community!;
+    if (community == null) return official;
     // Stretch so Official matches Community when the subtitle has more lines
     // (e.g. TV Community URL). IntrinsicHeight sizes the row from content so TV
     // is not forced to a desktop min height. ← exits to the Settings category
@@ -93,21 +123,7 @@ class _ForjaPackChoiceCardsState extends State<ForjaPackChoiceCards> {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Expanded(
-            child: ForjaPackChoiceCard(
-              focusNode: _installNode,
-              autofocus: widget.autofocusInstall,
-              compact: widget.compact,
-              settingsTvFocus: widget.settingsTvFocus,
-              tvItemIndex: 0,
-              onRightEdge: () => _browseNode.requestFocus(),
-              icon: Icons.inventory_2_rounded,
-              title: 'Official packs',
-              subtitle: 'Choose which ForjaHQ packs to install',
-              accent: true,
-              onTap: widget.onInstallOfficial!,
-            ),
-          ),
+          Expanded(child: official),
           SizedBox(width: gap),
           Expanded(child: community),
         ],
