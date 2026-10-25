@@ -527,6 +527,7 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [488-[fixed]-…](fixed/488-[fixed]-ppv-taifood-gasm-substreams.md) | PPV dead after taifood-blog.asia + language substreams | P1 | High | fixed | Complete · 5/5 · A 0/2 | — |
 | [489-[fixed]-…](fixed/489-[fixed]-desktop-pip-float-lifecycle-invalid-engine.md) | Desktop PiP float: Invalid engine handle on flutter/lifecycle | P2 | Medium | fixed | Complete · 2/2 · A 0/2 | [367](367-[workaround]-macos-cmd-tab-frame-freeze.md) |
 | [490-[fixed]-…](fixed/490-[fixed]-android-tv-forja-packs-details-down-freeze.md) | ATV Forja Packs: ↓ on details chevron freezes | P1 | High | fixed | Complete · 2/2 · A 0/1 | [262](fixed/262-[fixed]-android-tv-forja-packs-last-pack-clipped.md) |
+| [491-[fixed]-…](fixed/491-[fixed]-android-tv-simkl-sync-select-dpad.md) | ATV Simkl sync mode select won’t open on D-pad | P1 | High | fixed | Complete · 1/1 · A 0/1 | — |
 
 **Migration parity (draft):** [018](018-[draft]-migration-playback-parity-unverified.md) → [019](019-[draft]-webstreamr-enginejobs-e2e-test-gap.md)–[022](022-[draft]-playback-widget-integration-tests.md).
 
