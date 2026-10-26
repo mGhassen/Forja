@@ -202,12 +202,25 @@ class ListFollowFromWatched {
     );
     var ok = true;
     if (await SimklService().isLoggedIn()) {
-      ok = await SimklService().setListStatus(
+      final write = await SimklService().setListStatus(
         tmdbId: movie.id,
         imdbId: movie.imdbId,
         mediaType: movie.mediaType,
         to: to,
       );
+      ok = write.ok;
+      if (write.rewrittenAgainst(to) && write.resolvedTo != null) {
+        await BookmarkStore().upsertMovie(
+          tmdbId: movie.id,
+          imdbId: movie.imdbId,
+          title: movie.title,
+          posterPath: movie.posterPath,
+          mediaType: movie.mediaType,
+          voteAverage: movie.voteAverage,
+          releaseDate: movie.releaseDate,
+          listStatus: write.resolvedTo!,
+        );
+      }
     }
     invalidateListHubFeeds(container);
     return ok;

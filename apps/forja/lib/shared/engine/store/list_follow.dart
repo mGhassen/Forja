@@ -2,7 +2,9 @@ import 'package:flutter/foundation.dart';
 import 'package:forja/shared/engine/runtime/open/meta_movie.dart';
 import 'package:forja/shared/engine/store/list_open_binding.dart';
 import 'package:forja/shared/engine/store/list_providers.dart';
+import 'package:forja/shell/feedback/forja_toast.dart';
 import 'package:forja_foundation/protocol/protocol.dart';
+import 'package:forja_foundation/widgets/details/list_status_pin.dart';
 import 'package:forja/shared/services/tracker/simkl_service.dart';
 import 'package:forja/shared/services/tracker/tracker_sync.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -82,6 +84,15 @@ class ListFollowTarget {
 class ListFollow {
   ListFollow._();
 
+  /// When true, status pin already showed a Simkl rewrite toast — skip generic.
+  static bool suppressNextStatusToast = false;
+
+  static bool takeSuppressNextStatusToast() {
+    final v = suppressNextStatusToast;
+    suppressNextStatusToast = false;
+    return v;
+  }
+
   /// Drama rows may lack TMDB on browse cards; reuse a stored match after details.
   @visibleForTesting
   static ListFollowTarget resolveSimklTarget(ListFollowTarget t) {
@@ -98,6 +109,36 @@ class ListFollow {
     );
   }
 
+  /// Simkl list API media type for [sync] (never default films to `tv`).
+  @visibleForTesting
+  static String simklListMediaType(ListFollowTarget sync) {
+    if (sync.resolvedMediaType == 'anime') return 'anime';
+    return BookmarkStore.normalizeTmdbMediaType(
+          sync.tmdbMediaType ?? sync.resolvedMediaType,
+        ) ??
+        'tv';
+  }
+
+  /// Hide keys that match My List / Simkl card identity (`open:…`, tmdb_…).
+  @visibleForTesting
+  static Set<String> hideKeysFor(ListFollowTarget t) {
+    final sync = resolveSimklTarget(t);
+    final keys = <String>{t.uniqueId};
+    final surface = sync.open.surface.trim();
+    final openId = sync.open.id.trim();
+    if (surface.isNotEmpty && openId.isNotEmpty) {
+      keys.add('open:$surface:$openId');
+    }
+    final simklMt = simklListMediaType(sync);
+    if (simklMt == 'anime' && sync.mediaIdInt != null) {
+      keys.add('anilist:${sync.mediaIdInt}');
+      keys.add('open:anime:${sync.mediaIdInt}');
+    } else if (sync.tmdbId != null) {
+      keys.add(BookmarkStore.movieId(sync.tmdbId!, simklMt));
+    }
+    return keys;
+  }
+
   static Future<bool> setStatus(
     ListFollowTarget raw,
     String to, {
@@ -107,15 +148,8 @@ class ListFollow {
     final t = raw;
     if (to.isEmpty) {
       final sync = resolveSimklTarget(t);
-      final keys = <String>{t.uniqueId};
-      if (sync.tmdbId != null) {
-        final mt =
-            BookmarkStore.normalizeTmdbMediaType(
-              sync.tmdbMediaType ?? sync.resolvedMediaType,
-            ) ??
-            'tv';
-        keys.add(BookmarkStore.movieId(sync.tmdbId!, mt));
-      }
+      final keys = hideKeysFor(sync);
+      final simklMt = simklListMediaType(sync);
       container?.read(bookmarkHiddenKeysProvider.notifier).addAll(keys);
       await BookmarkStore().remove(
         t.uniqueId,
@@ -127,9 +161,7 @@ class ListFollow {
       await SimklService().recordListDeleteTombstone(
         hideKeys: keys,
         tmdbId: isAnime ? null : sync.tmdbId,
-        mediaType: isAnime
-            ? null
-            : (sync.tmdbMediaType ?? sync.resolvedMediaType),
+        mediaType: isAnime ? null : simklMt,
         anilistId: isAnime ? sync.mediaIdInt : null,
       );
       var ok = true;
@@ -142,9 +174,11 @@ class ListFollow {
         } else if (sync.tmdbId != null) {
           ok = await SimklService().removeFromWatchlist(
             tmdbId: sync.tmdbId,
-            mediaType: sync.tmdbMediaType ?? 'tv',
+            mediaType: simklMt,
           );
         }
+        // Drop RAM Simkl library so My List does not re-paint the row.
+        SimklService.clearWatchlistCache();
       }
       _invalidate(container);
       return ok;
@@ -167,39 +201,69 @@ class ListFollow {
     final sync = resolveSimklTarget(t);
     final isAnime =
         sync.resolvedMediaType == 'anime' && sync.mediaIdInt != null;
+    final simklMt = simklListMediaType(sync);
     await SimklService().clearListDeleteTombstonesMatching(
-      hideKeys: {
-        t.uniqueId,
-        if (sync.tmdbId != null)
-          BookmarkStore.movieId(
-            sync.tmdbId!,
-            BookmarkStore.normalizeTmdbMediaType(
-                  sync.tmdbMediaType ?? sync.resolvedMediaType,
-                ) ??
-                'tv',
-          ),
-      },
+      hideKeys: hideKeysFor(sync),
       tmdbId: isAnime ? null : sync.tmdbId,
       anilistId: isAnime ? sync.mediaIdInt : null,
     );
     var ok = true;
     if (await SimklService().isLoggedIn()) {
+      final SimklListWriteResult write;
       if (isAnime) {
-        ok = await SimklService().setListStatus(
+        write = await SimklService().setListStatus(
           anilistId: sync.mediaIdInt,
           mediaType: 'anime',
           to: to,
         );
       } else if (sync.tmdbId != null) {
-        ok = await SimklService().setListStatus(
+        write = await SimklService().setListStatus(
           tmdbId: sync.tmdbId,
-          mediaType: sync.tmdbMediaType ?? 'tv',
+          mediaType: simklMt,
           to: to,
         );
+      } else {
+        write = const SimklListWriteResult(ok: true);
+      }
+      ok = write.ok;
+      if (write.rewrittenAgainst(to) && write.resolvedTo != null) {
+        await BookmarkStore().upsertCatalog(
+          pluginId: t.pluginId,
+          open: t.open.toJson(),
+          uniqueId: t.uniqueId,
+          mediaType: t.resolvedMediaType,
+          title: t.title,
+          posterPath: t.posterPath,
+          listStatus: write.resolvedTo!,
+          tmdbId: t.tmdbId,
+          tmdbMediaType: t.tmdbMediaType,
+          voteAverage: t.voteAverage,
+          releaseDate: t.releaseDate,
+          hubLabel: await ListOpenBinding.hubLabelOf(t.pluginId),
+        );
+        _toastSimklRewrite(to, write.resolvedTo!);
       }
     }
     _invalidate(container);
     return ok;
+  }
+
+  static void _toastSimklRewrite(String requested, String resolved) {
+    suppressNextStatusToast = true;
+    final want = listStatusLabel(requested, fallback: requested);
+    final got = listStatusLabel(resolved, fallback: resolved);
+    if (requested == 'completed' &&
+        (resolved == 'watching' || resolved == 'plantowatch')) {
+      ForjaToast.info(
+        'Still airing on Simkl · kept as $got',
+        duration: const Duration(seconds: 3),
+      );
+      return;
+    }
+    ForjaToast.info(
+      'Simkl saved as $got (not $want)',
+      duration: const Duration(seconds: 3),
+    );
   }
 
   static Future<void> markWatchingOnPlay(ListFollowTarget raw) async {
@@ -247,7 +311,7 @@ class ListFollow {
     }
 
     if (t.tmdbId == null) return;
-    final mt = t.tmdbMediaType ?? 'tv';
+    final mt = simklListMediaType(t);
     if (mt == 'movie') {
       if (!await SimklService().isLoggedIn()) return;
       final hist = {

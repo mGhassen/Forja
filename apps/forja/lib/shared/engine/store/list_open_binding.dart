@@ -291,7 +291,11 @@ abstract final class ListOpenBinding {
         ? status
         : BookmarkStore.defaultStatus;
     if (await SimklService().isLoggedIn()) {
-      return SimklService().setListStatus(tmdbId: tmdb, mediaType: mt, to: to);
+      return (await SimklService().setListStatus(
+        tmdbId: tmdb,
+        mediaType: mt,
+        to: to,
+      )).ok;
     }
     return true;
   }

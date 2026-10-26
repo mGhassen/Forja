@@ -18,7 +18,7 @@ import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 
-void _toastStatusWrite(bool ok, String to) {
+void _toastStatusWrite(bool ok, String to, {String? simklResolved}) {
   if (to.isEmpty) {
     if (ok) {
       ForjaToast.success(
@@ -27,6 +27,23 @@ void _toastStatusWrite(bool ok, String to) {
       );
     } else {
       ForjaToast.error('Removed locally · Simkl failed');
+    }
+    return;
+  }
+  final resolved = (simklResolved ?? '').trim();
+  if (ok && resolved.isNotEmpty && resolved != to) {
+    final got = listStatusLabel(resolved, fallback: resolved);
+    if (to == 'completed' &&
+        (resolved == 'watching' || resolved == 'plantowatch')) {
+      ForjaToast.info(
+        'Still airing on Simkl · kept as $got',
+        duration: const Duration(seconds: 3),
+      );
+    } else {
+      ForjaToast.info(
+        'Simkl saved as $got (not ${listStatusLabel(to, fallback: to)})',
+        duration: const Duration(seconds: 3),
+      );
     }
     return;
   }
@@ -186,14 +203,18 @@ class KitListStatusButton extends StatelessWidget {
     } catch (_) {}
     if (to.isEmpty) {
       final uid = BookmarkStore.movieId(movie.id, movie.mediaType);
-      container?.read(bookmarkHiddenKeysProvider.notifier).addAll({uid});
+      final openKey = 'open:tmdb:${movie.id}';
+      container?.read(bookmarkHiddenKeysProvider.notifier).addAll({
+        uid,
+        openKey,
+      });
       await BookmarkStore().remove(
         uid,
         tmdbId: movie.id,
         mediaType: movie.mediaType,
       );
       await SimklService().recordListDeleteTombstone(
-        hideKeys: {uid},
+        hideKeys: {uid, openKey},
         tmdbId: movie.id,
         mediaType: movie.mediaType,
         imdbId: movie.imdbId,
@@ -205,6 +226,7 @@ class KitListStatusButton extends StatelessWidget {
           imdbId: movie.imdbId,
           mediaType: movie.mediaType,
         );
+        SimklService.clearWatchlistCache();
       }
       invalidateListHubFeeds(container);
       return ok;
@@ -225,12 +247,27 @@ class KitListStatusButton extends StatelessWidget {
     );
     var ok = true;
     if (await SimklService().isLoggedIn()) {
-      ok = await SimklService().setListStatus(
+      final write = await SimklService().setListStatus(
         tmdbId: movie.id,
         imdbId: movie.imdbId,
         mediaType: movie.mediaType,
         to: to,
       );
+      ok = write.ok;
+      if (write.rewrittenAgainst(to) && write.resolvedTo != null) {
+        await BookmarkStore().upsertMovie(
+          tmdbId: movie.id,
+          imdbId: movie.imdbId,
+          title: movie.title,
+          posterPath: movie.posterPath,
+          mediaType: movie.mediaType,
+          voteAverage: movie.voteAverage,
+          releaseDate: movie.releaseDate,
+          listStatus: write.resolvedTo!,
+        );
+        ListFollow.suppressNextStatusToast = true;
+        _toastStatusWrite(ok, to, simklResolved: write.resolvedTo);
+      }
     }
     invalidateListHubFeeds(container);
     return ok;
@@ -312,6 +349,7 @@ class _WiredStatusPin extends StatelessWidget {
           onRightEdge: onRightEdge,
           onSelect: (to) async {
             final ok = await onSetStatus(to);
+            if (ListFollow.takeSuppressNextStatusToast()) return;
             _toastStatusWrite(ok, to);
           },
         );
@@ -409,6 +447,7 @@ class _DialogStatusPinState extends State<_DialogStatusPin> {
     if (!mounted) return;
     setState(() => _busy = false);
     _close();
+    if (ListFollow.takeSuppressNextStatusToast()) return;
     _toastStatusWrite(ok, to);
   }
 
@@ -896,6 +935,7 @@ class _KitListStatusControlState extends State<KitListStatusControl> {
     if (!mounted) return;
     setState(() => _busy = false);
     _close();
+    if (ListFollow.takeSuppressNextStatusToast()) return;
     _toastStatusWrite(ok, to);
   }
 
@@ -965,60 +1005,7 @@ class BookmarkHeroStatusPill extends StatelessWidget {
   final bool enabled;
 
   Future<bool> _setStatus(BuildContext context, String to) async {
-    ProviderContainer? container;
-    try {
-      container = ProviderScope.containerOf(context, listen: false);
-    } catch (_) {}
-    if (to.isEmpty) {
-      final uid = BookmarkStore.movieId(movie.id, movie.mediaType);
-      container?.read(bookmarkHiddenKeysProvider.notifier).addAll({uid});
-      await BookmarkStore().remove(
-        uid,
-        tmdbId: movie.id,
-        mediaType: movie.mediaType,
-      );
-      await SimklService().recordListDeleteTombstone(
-        hideKeys: {uid},
-        tmdbId: movie.id,
-        mediaType: movie.mediaType,
-        imdbId: movie.imdbId,
-      );
-      var ok = true;
-      if (await SimklService().isLoggedIn()) {
-        ok = await SimklService().removeFromWatchlist(
-          tmdbId: movie.id,
-          imdbId: movie.imdbId,
-          mediaType: movie.mediaType,
-        );
-      }
-      invalidateListHubFeeds(container);
-      return ok;
-    }
-    await BookmarkStore().upsertMovie(
-      tmdbId: movie.id,
-      imdbId: movie.imdbId,
-      title: movie.title,
-      posterPath: movie.posterPath,
-      mediaType: movie.mediaType,
-      voteAverage: movie.voteAverage,
-      releaseDate: movie.releaseDate,
-      listStatus: to,
-    );
-    await SimklService().clearListDeleteTombstonesMatching(
-      hideKeys: {BookmarkStore.movieId(movie.id, movie.mediaType)},
-      tmdbId: movie.id,
-    );
-    var ok = true;
-    if (await SimklService().isLoggedIn()) {
-      ok = await SimklService().setListStatus(
-        tmdbId: movie.id,
-        imdbId: movie.imdbId,
-        mediaType: movie.mediaType,
-        to: to,
-      );
-    }
-    invalidateListHubFeeds(container);
-    return ok;
+    return KitListStatusButton._setMovieStatus(context, movie, to);
   }
 
   @override

@@ -19,6 +19,7 @@ Simkl is the tracker everyone can connect. Log in via PIN and sync what you watc
   - **Use Simkl** — overwrite this device from Simkl
   - **Merge** — combine both; same title with different status keeps the device
   - **Merge + delete** — same as Merge, plus titles you removed in Forja are removed from Simkl and not re-imported (new Simkl-only titles still import)
+- Status changes go to Simkl immediately when connected. If Simkl won’t accept Completed for a still-airing series, Forja keeps Watching and tells you
   - **No sync** — Sync Now / Auto sync do nothing for list buckets
 - **Sync Now** runs the saved mode (list + history) — no chooser dialog
 - Toggle **Auto sync lists on My List** — when on, opening My List runs that saved mode and refreshes the cached Simkl library (throttled a couple of minutes so flipping status tabs does not re-sync)

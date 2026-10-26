@@ -44,6 +44,32 @@ class SimklSyncResult {
   final int episodesExported;
 }
 
+/// Result of [SimklService.setListStatus] / add-to-list.
+///
+/// Simkl may silently rewrite `to` (e.g. airing show `completed` → `watching`).
+class SimklListWriteResult {
+  const SimklListWriteResult({
+    required this.ok,
+    this.resolvedTo,
+    this.notFound = false,
+  });
+
+  static const failed = SimklListWriteResult(ok: false);
+
+  final bool ok;
+
+  /// Status Simkl stored (`added.*.to`), when present.
+  final String? resolvedTo;
+
+  final bool notFound;
+
+  bool rewrittenAgainst(String requested) {
+    final r = resolvedTo?.trim();
+    if (!ok || r == null || r.isEmpty) return false;
+    return r != requested;
+  }
+}
+
 /// Full Simkl integration - PIN-based auth, watchlist sync,
 /// scrobble, history, ratings, and two-way import/export.
 class SimklService {
@@ -528,14 +554,26 @@ class SimklService {
     List<Map<String, dynamic>> movies = const [],
     List<Map<String, dynamic>> anime = const [],
   }) async {
+    return (await _addToListResult(
+      shows: shows,
+      movies: movies,
+      anime: anime,
+    )).ok;
+  }
+
+  Future<SimklListWriteResult> _addToListResult({
+    List<Map<String, dynamic>> shows = const [],
+    List<Map<String, dynamic>> movies = const [],
+    List<Map<String, dynamic>> anime = const [],
+  }) async {
     final token = await _secureRead(_keyAccessToken);
-    if (token == null) return false;
+    if (token == null) return SimklListWriteResult.failed;
 
     final body = <String, dynamic>{};
     if (shows.isNotEmpty) body['shows'] = shows;
     if (movies.isNotEmpty) body['movies'] = movies;
     if (anime.isNotEmpty) body['anime'] = anime;
-    if (body.isEmpty) return false;
+    if (body.isEmpty) return SimklListWriteResult.failed;
 
     try {
       final resp = await engineHttp(
@@ -547,12 +585,63 @@ class SimklService {
       );
       debugPrint('[Simkl] Add to list: ${resp.status}');
       final ok = resp.status == 200 || resp.status == 201;
-      if (ok) clearWatchlistCache();
-      return ok;
+      if (!ok) {
+        debugPrint('[Simkl] Add to list body: ${resp.body}');
+        return SimklListWriteResult.failed;
+      }
+      clearWatchlistCache();
+      return parseAddToListResponse(resp.body);
     } catch (e) {
       debugPrint('[Simkl] Add to list error: $e');
-      return false;
+      return SimklListWriteResult.failed;
     }
+  }
+
+  /// Parse Simkl `/sync/add-to-list` JSON for resolved `to` / not_found.
+  @visibleForTesting
+  static SimklListWriteResult parseAddToListResponse(String body) {
+    if (body.trim().isEmpty) {
+      return const SimklListWriteResult(ok: true);
+    }
+    try {
+      final data = json.decode(body);
+      if (data is! Map) return const SimklListWriteResult(ok: true);
+      final map = Map<String, dynamic>.from(data);
+      final resolved = _firstAddedTo(map['added']);
+      final notFound = _addToListHasNotFound(map['not_found']);
+      if (notFound && resolved == null) {
+        return const SimklListWriteResult(ok: false, notFound: true);
+      }
+      return SimklListWriteResult(
+        ok: true,
+        resolvedTo: resolved,
+        notFound: notFound,
+      );
+    } catch (_) {
+      return const SimklListWriteResult(ok: true);
+    }
+  }
+
+  static String? _firstAddedTo(dynamic added) {
+    if (added is! Map) return null;
+    for (final key in ['shows', 'movies', 'anime']) {
+      final list = added[key];
+      if (list is! List || list.isEmpty) continue;
+      final first = list.first;
+      if (first is! Map) continue;
+      final to = first['to']?.toString().trim();
+      if (to != null && to.isNotEmpty) return to;
+    }
+    return null;
+  }
+
+  static bool _addToListHasNotFound(dynamic notFound) {
+    if (notFound is! Map) return false;
+    for (final key in ['shows', 'movies', 'anime']) {
+      final list = notFound[key];
+      if (list is List && list.isNotEmpty) return true;
+    }
+    return false;
   }
 
   /// Remove items from the user's Simkl list.
@@ -598,13 +687,13 @@ class SimklService {
     int? anilistId,
     required String mediaType,
   }) async {
-    return setListStatus(
+    return (await setListStatus(
       tmdbId: tmdbId,
       imdbId: imdbId,
       anilistId: anilistId,
       mediaType: mediaType,
       to: 'plantowatch',
-    );
+    )).ok;
   }
 
   /// Remove a single item from watchlist.
@@ -644,23 +733,29 @@ class SimklService {
   /// Move a title into a Simkl list bucket (`plantowatch`, `watching`, `hold`,
   /// `completed`, `dropped`). Movies also get history add/remove so Completed
   /// matches watched state.
-  Future<bool> setListStatus({
+  ///
+  /// Check [SimklListWriteResult.rewrittenAgainst] — Simkl may store a different
+  /// `to` (airing show marked completed → watching) with HTTP 201.
+  Future<SimklListWriteResult> setListStatus({
     int? tmdbId,
     String? imdbId,
     int? anilistId,
     required String mediaType,
     required String to,
   }) async {
-    if (mediaType == 'anime') {
-      if (anilistId == null) return false;
+    final norm = BookmarkStore.normalizeTmdbMediaType(mediaType);
+    final effectiveMedia = mediaType == 'anime' ? 'anime' : (norm ?? mediaType);
+
+    if (effectiveMedia == 'anime') {
+      if (anilistId == null) return SimklListWriteResult.failed;
       final item = {
         'ids': {'anilist': anilistId},
         'to': to,
       };
-      return _addToList(anime: [item]);
+      return _addToListResult(anime: [item]);
     }
 
-    if (tmdbId == null && imdbId == null) return false;
+    if (tmdbId == null && imdbId == null) return SimklListWriteResult.failed;
 
     final ids = <String, dynamic>{};
     if (tmdbId != null) ids['tmdb'] = tmdbId;
@@ -668,23 +763,31 @@ class SimklService {
 
     final item = {'ids': ids, 'to': to};
     final hist = {'ids': ids};
-    final type = (mediaType == 'tv' || mediaType == 'series')
+    final type =
+        (effectiveMedia == 'tv' ||
+            effectiveMedia == 'series' ||
+            effectiveMedia == 'shows')
         ? 'shows'
         : 'movies';
-    final ok = await _addToList(
+    final result = await _addToListResult(
       shows: type == 'shows' ? [item] : [],
       movies: type == 'movies' ? [item] : [],
     );
-    if (!ok) return false;
+    if (!result.ok) return result;
 
+    final stored = result.resolvedTo ?? to;
     if (type == 'movies') {
-      if (to == 'completed') {
+      if (stored == 'completed') {
         await addToHistory(movies: [hist]);
       } else {
         await removeFromHistory(movies: [hist]);
       }
     }
-    return true;
+    return SimklListWriteResult(
+      ok: true,
+      resolvedTo: result.resolvedTo ?? to,
+      notFound: result.notFound,
+    );
   }
 
   /// Current Simkl list status for a TMDB title, or null if not in the library.
