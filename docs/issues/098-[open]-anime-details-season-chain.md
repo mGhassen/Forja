@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| **Progress** | **12 / 13** |
+| **Progress** | **13 / 14** |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -31,6 +31,7 @@
 | 10 | I98-T10 | Host `parseKitDetailSeasons` + season chip reloads Media by opaque id | ✅ |
 | 11 | I98-T11 | Related excludes chain ids; relation type on `meta.badge` | ✅ |
 | 12 | I98-T12 | Foundation + kitPosterBadge tests for seasons parse / Side Story badge | ✅ |
+| 13 | I98-T13 | Stop TMDB enrich padding anime videos to franchise episodeCount; cour-scoped facts | ✅ |
 
 ---
 
