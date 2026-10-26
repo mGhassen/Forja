@@ -83,6 +83,10 @@ class SimklService {
   /// Cloud sync hook for list sync mode / auto-sync prefs (not the OAuth token).
   static void Function()? onListSyncPrefsWrite;
 
+  /// True while [syncListsIfAuto] is actually running (not throttle / skipped).
+  /// Hub chrome listens for a top-right busy spinner.
+  static final ValueNotifier<bool> listAutoSyncBusy = ValueNotifier(false);
+
   // ── Constants ──────────────────────────────────────────────────────────
   static const String _baseUrl = 'https://api.simkl.com';
 
@@ -142,6 +146,7 @@ class SimklService {
     _syncInProgress = null;
     _listAutoSyncAt = null;
     _listAutoSyncFlight = null;
+    listAutoSyncBusy.value = false;
     clearWatchlistCache();
   }
 
@@ -1409,6 +1414,7 @@ class SimklService {
 
     final completer = Completer<SimklSyncResult?>();
     _listAutoSyncFlight = completer.future;
+    listAutoSyncBusy.value = true;
     SimklSyncResult? result;
     try {
       debugPrint('[Simkl] Auto list sync ($mode)…');
@@ -1424,6 +1430,7 @@ class SimklService {
     } finally {
       completer.complete(result);
       _listAutoSyncFlight = null;
+      listAutoSyncBusy.value = false;
     }
     return {
       'synced': result != null,

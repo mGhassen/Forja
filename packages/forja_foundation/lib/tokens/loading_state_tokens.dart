@@ -15,6 +15,10 @@ abstract final class LoadingStateTokens {
   static const double spinnerStroke = 3;
   static const double spinnerStrokeTv = 3;
 
+  /// Compact hub top-bar busy mark (e.g. list auto-sync).
+  static const double chromeSpinner = 16;
+  static const double chromeSpinnerStroke = 2;
+
   static const double statusIcon = 48;
 
   /// Hand — same reason as [spinnerTv].
