@@ -1285,6 +1285,18 @@ class _PackDetailsHostState extends ConsumerState<PackDetailsHost> {
 
     Widget? episodePicker;
     if (hasEpisodes) {
+      final packSeasonLabels = <int, String>{
+        for (final s in _packSeasons)
+          if ((s.label ?? '').trim().isNotEmpty) s.number: s.label!.trim(),
+      };
+      final packSeasonYears = <int, int>{
+        for (final s in _packSeasons)
+          if (s.year != null && s.year! > 0) s.number: s.year!,
+      };
+      final packSeasonPosters = <int, String>{
+        for (final s in _packSeasons)
+          if ((s.poster ?? '').trim().isNotEmpty) s.number: s.poster!.trim(),
+      };
       final picker = TvSeasonEpisodePicker(
         tmdbId: _watchedMediaId ?? 0,
         seasonCount: seasons.length,
@@ -1293,6 +1305,9 @@ class _PackDetailsHostState extends ConsumerState<PackDetailsHost> {
         isLoadingSeason: false,
         seasonData: null,
         fallbackPosterPath: show.poster,
+        seasonPosters: _usesPackSeasons ? packSeasonPosters : const {},
+        seasonLabels: _usesPackSeasons ? packSeasonLabels : const {},
+        seasonYears: _usesPackSeasons ? packSeasonYears : const {},
         customEpisodesBySeason: _episodeMapsForPicker(videos),
         watchedEpisodes: _watchedEpisodes,
         watchedCatalog: _watchedCatalog,

@@ -5,11 +5,18 @@ void main() {
   test('parseKitDetailSeasons reads numbered opaque ids', () {
     final seasons = parseKitDetailSeasons({
       'seasons': [
-        {'number': 2, 'id': 'pack:21699', 'label': 'Season 2'},
+        {
+          'number': 2,
+          'id': 'pack:21699',
+          'label': 'OVA 1',
+          'year': 2019,
+          'poster': 'https://cdn.example/ova.jpg',
+        },
         {
           'number': 1,
           'id': 'pack:21237',
-          'label': 'Season 1',
+          'label': 'Season 2 - Part 1',
+          'year': 2021,
           'selected': true,
         },
         {'number': 0, 'id': 'bad'},
@@ -20,9 +27,13 @@ void main() {
     expect(seasons, hasLength(2));
     expect(seasons.first.number, 1);
     expect(seasons.first.id, 'pack:21237');
+    expect(seasons.first.label, 'Season 2 - Part 1');
+    expect(seasons.first.year, 2021);
     expect(seasons.first.selected, isTrue);
     expect(seasons.last.number, 2);
     expect(seasons.last.id, 'pack:21699');
+    expect(seasons.last.label, 'OVA 1');
+    expect(seasons.last.poster, 'https://cdn.example/ova.jpg');
   });
 
   test('parseKitDetailSeasons empty when omitted or short', () {

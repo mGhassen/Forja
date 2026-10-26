@@ -19,8 +19,9 @@ class KitDetailRailSection {
 ///
 /// ```json
 /// "seasons": [
-///   { "number": 1, "id": "anilist:21237", "label": "Season 1", "selected": true },
-///   { "number": 2, "id": "anilist:21699", "label": "Season 2" }
+///   { "number": 1, "id": "anilist:21237", "label": "Season 1", "year": 2018, "poster": "…" },
+///   { "number": 2, "id": "anilist:…", "label": "OVA 1", "year": 2019 },
+///   { "number": 3, "id": "anilist:…", "label": "Season 2 - Part 1", "selected": true }
 /// ]
 /// ```
 ///
@@ -30,12 +31,16 @@ class KitDetailSeasonLink {
     required this.number,
     required this.id,
     this.label,
+    this.year,
+    this.poster,
     this.selected = false,
   });
 
   final int number;
   final String id;
   final String? label;
+  final int? year;
+  final String? poster;
   final bool selected;
 }
 
@@ -174,11 +179,15 @@ List<KitDetailSeasonLink> parseKitDetailSeasons(Map<String, dynamic>? data) {
     final id = (m['id'] ?? '').toString().trim();
     if (number <= 0 || id.isEmpty || !seenNumbers.add(number)) continue;
     final label = (m['label'] ?? '').toString().trim();
+    final poster = (m['poster'] ?? '').toString().trim();
+    final year = (m['year'] as num?)?.toInt();
     out.add(
       KitDetailSeasonLink(
         number: number,
         id: id,
         label: label.isEmpty ? null : label,
+        year: year != null && year > 0 ? year : null,
+        poster: poster.isEmpty ? null : poster,
         selected: m['selected'] == true,
       ),
     );

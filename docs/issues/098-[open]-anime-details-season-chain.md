@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| **Progress** | **13 / 14** |
+| **Progress** | **15 / 16** |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -32,6 +32,8 @@
 | 11 | I98-T11 | Related excludes chain ids; relation type on `meta.badge` | ✅ |
 | 12 | I98-T12 | Foundation + kitPosterBadge tests for seasons parse / Side Story badge | ✅ |
 | 13 | I98-T13 | Stop TMDB enrich padding anime videos to franchise episodeCount; cour-scoped facts | ✅ |
+| 14 | I98-T14 | Miruro-style season labels (Season/OVA/Part + year) + SIDE_STORY OVAs in rail | ✅ |
+| 15 | I98-T15 | Walk OVA bridges (Slime Coleus); cap videos at Media.episodes vs absolute stream titles | ✅ |
 
 ---
 

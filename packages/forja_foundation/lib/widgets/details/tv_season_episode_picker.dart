@@ -41,6 +41,8 @@ class TvSeasonEpisodePicker extends StatefulWidget {
     this.onEpisodePlay,
     this.onEpisodeFocused,
     this.seasonPosters = const {},
+    this.seasonLabels = const {},
+    this.seasonYears = const {},
     this.episodeProgress = const {},
     this.customEpisodesBySeason,
 
@@ -79,6 +81,12 @@ class TvSeasonEpisodePicker extends StatefulWidget {
   final EpisodeSelectCallback? onEpisodePlay;
   final EpisodeSelectCallback? onEpisodeFocused;
   final Map<int, String> seasonPosters;
+
+  /// Pack labels (`Season 2 - Part 1`, `OVA 1`) — omit → `Season N`.
+  final Map<int, String> seasonLabels;
+
+  /// Optional year under the label (Miruro-style).
+  final Map<int, int> seasonYears;
   final Map<String, Map<String, dynamic>> episodeProgress;
   final Map<int, List<Map<String, dynamic>>>? customEpisodesBySeason;
   final int tvRowOrderBase;
@@ -337,9 +345,13 @@ class _TvSeasonEpisodePickerState extends State<TvSeasonEpisodePicker> {
       separatorBuilder: (_, _) => const SizedBox(width: 12),
       itemBuilder: (_, i) {
         final season = i + 1;
+        final label = widget.seasonLabels[season];
+        final year = widget.seasonYears[season];
         return _SeasonCard(
           key: ValueKey('season-$season'),
           seasonNumber: season,
+          label: label,
+          year: year,
           selected: widget.selectedSeason == season,
           posterUrl: _seasonPosterUrl(season),
           onTap: () {
@@ -1130,6 +1142,8 @@ class _SeasonCard extends StatefulWidget {
   const _SeasonCard({
     super.key,
     required this.seasonNumber,
+    this.label,
+    this.year,
     required this.selected,
     required this.posterUrl,
     this.onTap,
@@ -1139,6 +1153,8 @@ class _SeasonCard extends StatefulWidget {
   });
 
   final int seasonNumber;
+  final String? label;
+  final int? year;
   final bool selected;
   final String? posterUrl;
   final VoidCallback? onTap;
@@ -1264,22 +1280,43 @@ class _SeasonCardState extends State<_SeasonCard> {
                     Positioned(
                       left: 8,
                       right: 8,
-                      bottom: 10,
-                      child: Text(
-                        'Season ${widget.seasonNumber}',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          color: active
-                              ? ForjaShellColors.brandGreen
-                              : Colors.white.withValues(
-                                  alpha: widget.selected ? 1.0 : 0.85,
-                                ),
-                          fontSize: seasonFontSize,
-                          fontWeight: widget.selected || active
-                              ? FontWeight.w700
-                              : FontWeight.w600,
-                        ),
+                      bottom: 8,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            (widget.label ?? '').trim().isNotEmpty
+                                ? widget.label!.trim()
+                                : 'Season ${widget.seasonNumber}',
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              color: active
+                                  ? ForjaShellColors.brandGreen
+                                  : Colors.white.withValues(
+                                      alpha: widget.selected ? 1.0 : 0.85,
+                                    ),
+                              fontSize: seasonFontSize,
+                              fontWeight: widget.selected || active
+                                  ? FontWeight.w700
+                                  : FontWeight.w600,
+                              height: 1.15,
+                            ),
+                          ),
+                          if (widget.year != null && widget.year! > 0)
+                            Text(
+                              '${widget.year}',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                color: Colors.white.withValues(alpha: 0.7),
+                                fontSize: seasonFontSize - 1,
+                                fontWeight: FontWeight.w500,
+                                height: 1.2,
+                              ),
+                            ),
+                        ],
                       ),
                     ),
                   ],
