@@ -80,5 +80,6 @@ Also: code assumed `/stream/ani/` always 404s and skipped Megaplay without Aniko
 ## Related
 
 - [080](080-[open]-miruro-cf-pipe-webview-unlock.md) — Miruro CF pipe (separate)
+- [494](fixed/494-[fixed]-provider-subtitle-cdn-referer.md) — provider sideload VTT Referer (same CDN class)
 - [RFC-044](../rfc/044-[open]-provider-identity-playback.md) — provider-identity playback
 - [anime hub](../features/hubs/anime.md)

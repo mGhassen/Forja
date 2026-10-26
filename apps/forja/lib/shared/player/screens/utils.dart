@@ -1276,11 +1276,59 @@ catalogPanelSelectionFromStream(Map<String, dynamic> stream) {
   );
 }
 
+String? _firstNonEmptyHeader(Map? map, List<String> keys) {
+  if (map == null) return null;
+  for (final key in keys) {
+    final v = map[key]?.toString().trim();
+    if (v != null && v.isNotEmpty) return v;
+  }
+  return null;
+}
+
+/// HTTP headers for downloading a provider / scraped subtitle URL.
+/// Prefer row `referer`/`origin`, then the playing stream's headers, then the
+/// subtitle CDN's own origin (often 403 on MegaPlay-family CDNs).
+Map<String, String> subtitleDownloadHttpHeaders({
+  required String subtitleUrl,
+  Map<String, dynamic>? subtitleRow,
+  Map<String, String>? playbackHeaders,
+}) {
+  final subUri = Uri.parse(subtitleUrl);
+  final selfOrigin = '${subUri.scheme}://${subUri.host}';
+  final ref =
+      _firstNonEmptyHeader(subtitleRow, const ['referer', 'Referer']) ??
+      _firstNonEmptyHeader(playbackHeaders, const ['Referer', 'referer']) ??
+      '$selfOrigin/';
+  final org =
+      _firstNonEmptyHeader(subtitleRow, const ['origin', 'Origin']) ??
+      _firstNonEmptyHeader(playbackHeaders, const ['Origin', 'origin']) ??
+      selfOrigin;
+  return {
+    'User-Agent':
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
+        '(KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+    'Accept': '*/*',
+    'Referer': ref,
+    'Origin': org,
+  };
+}
+
 List<Map<String, dynamic>>? catalogStreamExternalSubtitles(
   Map<String, dynamic> stream,
 ) {
   final raw = stream['subtitles'];
   if (raw is! List || raw.isEmpty) return null;
+  final streamHeaders = stream['headers'] is Map
+      ? stream['headers'] as Map
+      : null;
+  final streamReferer = _firstNonEmptyHeader(streamHeaders, const [
+    'Referer',
+    'referer',
+  ]);
+  final streamOrigin = _firstNonEmptyHeader(streamHeaders, const [
+    'Origin',
+    'origin',
+  ]);
   final out = <Map<String, dynamic>>[];
   for (final item in raw) {
     if (item is! Map) continue;
@@ -1291,6 +1339,11 @@ List<Map<String, dynamic>>? catalogStreamExternalSubtitles(
     final name =
         item['name']?.toString() ?? item['language']?.toString() ?? 'Subtitle';
     final sourceName = item['sourceName']?.toString().trim();
+    final referer =
+        _firstNonEmptyHeader(item, const ['referer', 'Referer']) ??
+        streamReferer;
+    final origin =
+        _firstNonEmptyHeader(item, const ['origin', 'Origin']) ?? streamOrigin;
     out.add({
       if (url.isNotEmpty) 'url': url,
       if (hasContent) 'content': content,
@@ -1299,6 +1352,8 @@ List<Map<String, dynamic>>? catalogStreamExternalSubtitles(
       'name': name,
       'display': name,
       if (sourceName != null && sourceName.isNotEmpty) 'sourceName': sourceName,
+      if (referer != null) 'referer': referer,
+      if (origin != null) 'origin': origin,
     });
   }
   return out.isEmpty ? null : out;

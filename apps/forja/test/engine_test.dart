@@ -2822,6 +2822,60 @@ void main() {
       );
     });
 
+    test('catalogStreamExternalSubtitles inherits stream headers', () {
+      expect(
+        catalogStreamExternalSubtitles({
+          'headers': {
+            'Referer': 'https://embed.test/',
+            'Origin': 'https://embed.test',
+          },
+          'subtitles': [
+            {
+              'url': 'https://cdn.example/en.vtt',
+              'language': 'English',
+              'name': 'English',
+              'sourceName': 'test-provider-a',
+            },
+          ],
+        }),
+        [
+          {
+            'url': 'https://cdn.example/en.vtt',
+            'language': 'English',
+            'name': 'English',
+            'display': 'English',
+            'sourceName': 'test-provider-a',
+            'referer': 'https://embed.test/',
+            'origin': 'https://embed.test',
+          },
+        ],
+      );
+    });
+
+    test('subtitleDownloadHttpHeaders prefers row then playback', () {
+      expect(
+        subtitleDownloadHttpHeaders(
+          subtitleUrl: 'https://cdn.example/en.vtt',
+          subtitleRow: {'referer': 'https://embed.test/'},
+          playbackHeaders: {'Referer': 'https://stream.test/'},
+        )['Referer'],
+        'https://embed.test/',
+      );
+      expect(
+        subtitleDownloadHttpHeaders(
+          subtitleUrl: 'https://cdn.example/en.vtt',
+          playbackHeaders: {'Referer': 'https://stream.test/'},
+        )['Referer'],
+        'https://stream.test/',
+      );
+      expect(
+        subtitleDownloadHttpHeaders(
+          subtitleUrl: 'https://cdn.example/en.vtt',
+        )['Referer'],
+        'https://cdn.example/',
+      );
+    });
+
     test('catalogStreamExternalSubtitles keeps inline content', () {
       expect(
         catalogStreamExternalSubtitles({

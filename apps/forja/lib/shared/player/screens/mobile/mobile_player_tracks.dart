@@ -112,22 +112,19 @@ mixin _MobilePlayerTracks on ConsumerState<MobilePlayerScreen> {
 
     try {
       final subUri = Uri.parse(url);
-      final selfOrigin = '${subUri.scheme}://${subUri.host}';
-      final ref = (s['referer'] as String?)?.trim();
-      final org = (s['origin'] as String?)?.trim();
-      final headers = <String, String>{
-        'User-Agent':
-            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
-            '(KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-        'Accept': '*/*',
-        'Referer': (ref != null && ref.isNotEmpty) ? ref : '$selfOrigin/',
-        'Origin': (org != null && org.isNotEmpty) ? org : selfOrigin,
-      };
+      final headers = subtitleDownloadHttpHeaders(
+        subtitleUrl: url,
+        subtitleRow: s,
+        playbackHeaders: _s._hlsMasterHeaders ?? widget.headers,
+      );
       final res = await http
           .get(subUri, headers: headers)
           .timeout(Duration(minutes: isTranslated ? 5 : 1));
       if (!mounted) return false;
       if (res.statusCode != 200) {
+        debugPrint(
+          '[MobilePlayer] subtitle download HTTP ${res.statusCode}: $url',
+        );
         fail();
         return false;
       }

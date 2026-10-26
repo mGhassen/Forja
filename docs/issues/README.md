@@ -530,6 +530,7 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [491-[fixed]-…](fixed/491-[fixed]-android-tv-simkl-sync-select-dpad.md) | ATV Simkl sync mode select won’t open on D-pad | P1 | High | fixed | Complete · 1/1 · A 0/1 | — |
 | [492-[fixed]-…](fixed/492-[fixed]-simkl-list-sync-prefs-cloud-profile.md) | Simkl list sync prefs not in cloud profile | P2 | Medium | fixed | Complete · 3/3 · A 0/1 | [486](486-[open]-simkl-auto-sync-lists-on-my-list-open.md) |
 | [493-[fixed]-…](fixed/493-[fixed]-android-tv-hub-nav-enter-stuck-on-rail.md) | ATV catalog hub OK leaves focus on navbar | P1 | High | fixed | Complete · 3/3 · A 0/1 | [460](fixed/460-[fixed]-android-tv-iptv-nav-enter-shelf-while-loading.md) |
+| [494-[fixed]-…](fixed/494-[fixed]-provider-subtitle-cdn-referer.md) | Provider sideload subs 403 without embed Referer | P1 | High | fixed | Complete · 3/3 · A 0/1 | [084](084-[open]-megaplay-nekostream-cdn-referer.md) |
 
 **Migration parity (draft):** [018](018-[draft]-migration-playback-parity-unverified.md) → [019](019-[draft]-webstreamr-enginejobs-e2e-test-gap.md)–[022](022-[draft]-playback-widget-integration-tests.md).
 

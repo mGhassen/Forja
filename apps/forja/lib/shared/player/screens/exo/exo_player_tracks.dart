@@ -211,17 +211,14 @@ mixin _ExoPlayerTracks on ConsumerState<ExoPlayerScreen> {
       final isTranslated =
           s['translated'] == true || url.contains('/subtitlecat-translate');
       final subUri = Uri.parse(url);
-      final selfOrigin = '${subUri.scheme}://${subUri.host}';
-      final ref = (s['referer'] as String?)?.trim();
-      final org = (s['origin'] as String?)?.trim();
-      final headers = <String, String>{
-        'User-Agent':
-            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 '
-            '(KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-        'Accept': '*/*',
-        'Referer': (ref != null && ref.isNotEmpty) ? ref : '$selfOrigin/',
-        'Origin': (org != null && org.isNotEmpty) ? org : selfOrigin,
-      };
+      final playbackHeaders = _s._sources.isNotEmpty
+          ? _s._sources[_s._sourceIndex].headers
+          : widget.headers;
+      final headers = subtitleDownloadHttpHeaders(
+        subtitleUrl: url,
+        subtitleRow: s,
+        playbackHeaders: playbackHeaders,
+      );
       final sw = Stopwatch()..start();
       final res = await http
           .get(subUri, headers: headers)
