@@ -83,6 +83,10 @@ class SimklService {
   /// Cloud sync hook for list sync mode / auto-sync prefs (not the OAuth token).
   static void Function()? onListSyncPrefsWrite;
 
+  /// Kill-switch: Settings toggle hidden + [syncListsIfAuto] never runs.
+  /// Flip to `true` to restore; prefs + UI code stay wired.
+  static const bool listAutoSyncFeatureEnabled = false;
+
   /// True while [syncListsIfAuto] is actually running (not throttle / skipped).
   /// Hub chrome listens for a top-right busy spinner.
   static final ValueNotifier<bool> listAutoSyncBusy = ValueNotifier(false);
@@ -187,6 +191,7 @@ class SimklService {
   }
 
   Future<bool> getAutoSyncLists() async {
+    if (!listAutoSyncFeatureEnabled) return false;
     final raw = await _prefsRead(_keyAutoSyncLists);
     return raw == '1' || raw == 'true';
   }
@@ -1399,6 +1404,10 @@ class SimklService {
   /// Always refreshes the in-memory Simkl library cache when a sync runs so
   /// the following `watchlist` read hits the network / new bookmarks.
   Future<Map<String, dynamic>> syncListsIfAuto() async {
+    if (!listAutoSyncFeatureEnabled) {
+      return {'synced': false, 'reason': 'feature_off'};
+    }
+
     final flight = _listAutoSyncFlight;
     if (flight != null) {
       final r = await flight;

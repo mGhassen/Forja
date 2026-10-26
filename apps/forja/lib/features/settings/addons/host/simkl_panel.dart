@@ -268,21 +268,25 @@ class _SettingsSimklPanelState extends ConsumerState<SettingsSimklPanel> {
             if (_prefsLoaded) ...[
               SettingsSelectRow(
                 title: 'How should lists sync?',
-                subtitle: 'Saved for Sync Now and Auto sync on My List',
+                subtitle: SimklService.listAutoSyncFeatureEnabled
+                    ? 'Saved for Sync Now and Auto sync on My List'
+                    : 'Saved for Sync Now',
                 value: _modeLabel(_listSyncMode),
                 options: [..._kModeLabels.keys, _kNoSync],
                 onChanged: _isSyncing ? (_) {} : _onModePicked,
               ),
-              const SizedBox(height: 8),
-              SettingsToggleRow(
-                title: 'Auto sync lists on My List',
-                subtitle:
-                    'When you open My List, sync with ${_modeLabel(_listSyncMode)} '
-                    'and refresh the cached library',
-                value: _autoSyncLists,
-                onChanged: _isSyncing ? (_) {} : _onAutoSyncChanged,
-                enabled: !_isSyncing && _listSyncMode != null,
-              ),
+              if (SimklService.listAutoSyncFeatureEnabled) ...[
+                const SizedBox(height: 8),
+                SettingsToggleRow(
+                  title: 'Auto sync lists on My List',
+                  subtitle:
+                      'When you open My List, sync with ${_modeLabel(_listSyncMode)} '
+                      'and refresh the cached library',
+                  value: _autoSyncLists,
+                  onChanged: _isSyncing ? (_) {} : _onAutoSyncChanged,
+                  enabled: !_isSyncing && _listSyncMode != null,
+                ),
+              ],
               const SizedBox(height: 12),
             ],
             SettingsFilledButton(
