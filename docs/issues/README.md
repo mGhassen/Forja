@@ -537,6 +537,7 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [498-[fixed]-…](fixed/498-[fixed]-mediakit-hls-av-desync-after-hiccup.md) | MediaKit HLS A/V desync after buffer hiccup | P1 | High | fixed | Complete · 3/3 · A 0/2 | [187](187-[open]-android-tv-mediakit-vod-cache-empty.md) |
 | [499-[open]-…](499-[open]-multi-account-session-switch.md) | Multi-account session switch on device | P1 | Medium | open | 8/8 · A 0/4 | [467](467-[open]-cross-account-simkl-connected-secrets-isolation.md) |
 | [500-[fixed]-…](fixed/500-[fixed]-simkl-list-status-rewrite-and-mediatype.md) | Simkl list status rewrite + film mediaType + remove hide | P1 | High | fixed | Complete · 4/4 · A 0/2 | [497](fixed/497-[fixed]-simkl-merge-with-deletion.md) |
+| [501-[fixed]-…](fixed/501-[fixed]-enginejs-idle-waits-fetch-race-loser.md) | EngineJS idle waits on fetch race loser (~25s Anime) | P1 | High | fixed | Complete · 2/2 · A 1/1 | [380](fixed/380-[fixed]-pack-reload-anilist-stampede.md) |
 
 **Migration parity (draft):** [018](018-[draft]-migration-playback-parity-unverified.md) → [019](019-[draft]-webstreamr-enginejobs-e2e-test-gap.md)–[022](022-[draft]-playback-widget-integration-tests.md).
 

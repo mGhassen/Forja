@@ -700,7 +700,11 @@ async fn extract_inner(req: ExtractRequest, job_id: u64, deadline: Instant) -> E
     })
     .await;
 
-    let _ = rt.idle().await;
+    // Do not await rt.idle(). Pack races (AniList primary+mirror) resolve on the
+    // first win while the loser ctx.fetch is still pending; idle waited for that
+    // loser up to FETCH_TIMEOUT (~25s) and stalled the whole EngineJsExtract.
+    // Dropping the runtime abandons leftover promises; the winner already returned.
+    drop(rt);
 
     match result {
         Ok((streams, needs_host, logs)) => {
@@ -1400,6 +1404,90 @@ function extract(ctx) {
         assert!(
             started.elapsed() < Duration::from_secs(8),
             "memory limit did not stop the allocation loop"
+        );
+    }
+
+    /// Pack-style Promise.race: fast fetch wins; slow peer must not hold the job.
+    #[tokio::test]
+    async fn extract_returns_on_fetch_race_winner_without_waiting_loser() {
+        use tokio::io::{AsyncReadExt, AsyncWriteExt};
+
+        let slow = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let fast = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let slow_port = slow.local_addr().unwrap().port();
+        let fast_port = fast.local_addr().unwrap().port();
+
+        let slow_srv = tokio::spawn(async move {
+            let (mut sock, _) = slow.accept().await.unwrap();
+            let mut buf = [0u8; 1024];
+            let _ = sock.read(&mut buf).await;
+            // Hang until aborted / test ends — mirrors a stuck AniList peer.
+            std::future::pending::<()>().await;
+        });
+        let fast_srv = tokio::spawn(async move {
+            let (mut sock, _) = fast.accept().await.unwrap();
+            let mut buf = [0u8; 1024];
+            let _ = sock.read(&mut buf).await;
+            let body = r#"{"ok":true}"#;
+            let head = format!(
+                "HTTP/1.1 200 OK\r\nContent-Type: application/json\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{}",
+                body.len(),
+                body
+            );
+            let _ = sock.write_all(head.as_bytes()).await;
+            let _ = sock.shutdown().await;
+        });
+
+        let code = format!(
+            r#"
+function extract(ctx) {{
+  return new Promise(function (resolve, reject) {{
+    var left = 2;
+    var won = false;
+    function fail(err) {{
+      left -= 1;
+      if (!won && left <= 0) reject(err || new Error('both failed'));
+    }}
+    function win(label) {{
+      if (won) return;
+      won = true;
+      resolve([{{ url: 'https://example.com/' + label, name: label }}]);
+    }}
+    ctx.fetch('http://127.0.0.1:{slow_port}/slow').then(
+      function () {{ win('slow'); }},
+      fail
+    );
+    ctx.fetch('http://127.0.0.1:{fast_port}/fast').then(
+      function () {{ win('fast'); }},
+      fail
+    );
+  }});
+}}
+"#
+        );
+
+        let started = Instant::now();
+        let r = extract(ExtractRequest {
+            plugin_id: "race".into(),
+            code,
+            ctx: serde_json::json!({ "tmdbId": "1", "type": "movie" }),
+            timeout_ms: 30_000,
+            allow_host_fallback: false,
+            hops: vec![],
+            hop_depth: 0,
+            allow_local_fetch: true,
+        })
+        .await;
+        let elapsed = started.elapsed();
+        slow_srv.abort();
+        let _ = fast_srv.await;
+
+        assert!(r.error.is_none(), "{:?}", r.error);
+        assert_eq!(r.streams.len(), 1);
+        assert_eq!(r.streams[0]["name"], "fast");
+        assert!(
+            elapsed < Duration::from_secs(3),
+            "race loser held extract for {elapsed:?} (idle drain regression)"
         );
     }
 
