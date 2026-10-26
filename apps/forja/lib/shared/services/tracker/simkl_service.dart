@@ -1397,18 +1397,22 @@ class SimklService {
     }
 
     if (!await isLoggedIn()) {
+      debugPrint('[Simkl] Auto list sync skip: not_logged_in');
       return {'synced': false, 'reason': 'not_logged_in'};
     }
     if (!await getAutoSyncLists()) {
+      debugPrint('[Simkl] Auto list sync skip: auto_off');
       return {'synced': false, 'reason': 'auto_off'};
     }
     final mode = await getListSyncMode();
     if (mode == null) {
+      debugPrint('[Simkl] Auto list sync skip: no_mode');
       return {'synced': false, 'reason': 'no_mode'};
     }
     final at = _listAutoSyncAt;
     if (at != null &&
         DateTime.now().difference(at) < _minListAutoSyncInterval) {
+      debugPrint('[Simkl] Auto list sync skip: throttle');
       return {'synced': false, 'reason': 'throttle'};
     }
 

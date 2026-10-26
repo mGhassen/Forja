@@ -18,6 +18,8 @@ abstract final class LoadingStateTokens {
   /// Compact hub top-bar busy mark (e.g. list auto-sync).
   static const double chromeSpinner = 16;
   static const double chromeSpinnerStroke = 2;
+  static const double chromeSpinnerInsetTop = 12;
+  static const double chromeSpinnerInsetEnd = 16;
 
   static const double statusIcon = 48;
 

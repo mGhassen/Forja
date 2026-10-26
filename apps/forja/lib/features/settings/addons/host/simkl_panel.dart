@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja/shared/engine/store/external_list_providers.dart';
+import 'package:forja/shared/engine/store/list_providers.dart';
 import 'package:forja/features/settings/providers/settings_panel_providers.dart';
 import 'package:forja/features/settings/ui/settings_ui.dart';
 import 'package:forja/shell/feedback/forja_toast.dart';
@@ -175,10 +176,13 @@ class _SettingsSimklPanelState extends ConsumerState<SettingsSimklPanel> {
     }
 
     setState(() => _isSyncing = true);
+    final container = ProviderScope.containerOf(context, listen: false);
     try {
       final result = await _service.syncWithMode(mode);
       ref.invalidate(externalListsGateProvider);
-      ref.invalidate(simklWatchlistProvider);
+      // Wipe EngineCache feed + bump listFeedEpoch so My List reloads
+      // (Riverpod-only invalidate left the hub on a stale composed feed).
+      invalidateListHubFeeds(container);
       if (mounted) {
         setState(() => _listSyncMode = mode);
         ForjaToast.success(

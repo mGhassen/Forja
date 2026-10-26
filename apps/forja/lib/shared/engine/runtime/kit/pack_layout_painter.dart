@@ -23,7 +23,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja/shared/engine/runtime/nav/chrome_filters.dart';
 import 'package:forja/shared/engine/runtime/nav/feed_chrome.dart';
 import 'package:forja/shared/engine/store/list_providers.dart';
+import 'package:forja/shared/services/tracker/simkl_service.dart';
 import 'package:forja_foundation/protocol/filter.dart';
+import 'package:forja_foundation/tokens/loading_state_tokens.dart';
 import 'package:forja/shared/engine/runtime/nav/plugin_nav.dart';
 import 'package:forja/shared/engine/runtime/nav/vertical_filters.dart';
 import 'package:forja/shell/bus/shell_bus.dart';
@@ -509,6 +511,34 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
     super.onShellTabShown();
     if (mounted) setState(() {});
     unawaited(_reloadFlaggedHubOnOpen());
+    // My List (status-tab hubs) — do not wait for a cache-miss feed extract;
+    // warm hub restore skips pack feed so syncListsIfAuto never ran.
+    unawaited(_maybeListAutoSyncOnOpen());
+  }
+
+  bool _listAutoSyncOpenFlight = false;
+
+  /// Status-tab list hubs only. Runs Simkl auto sync + busts warm feed.
+  Future<void> _maybeListAutoSyncOnOpen() async {
+    if (!shellTabVisible || _listAutoSyncOpenFlight) return;
+    if (!_layoutHasStatusTab()) return;
+    _listAutoSyncOpenFlight = true;
+    try {
+      final out = await SimklService().syncListsIfAuto();
+      if (!mounted) return;
+      final reason = out['reason']?.toString();
+      // Refresh grid after a real sync, or after throttle so Settings Sync Now
+      // still lands when the hub was kept warm.
+      if (out['synced'] == true || reason == 'throttle') {
+        ProviderContainer? container;
+        try {
+          container = ProviderScope.containerOf(context, listen: false);
+        } catch (_) {}
+        invalidateListHubFeeds(container);
+      }
+    } finally {
+      _listAutoSyncOpenFlight = false;
+    }
   }
 
   @override
@@ -749,6 +779,12 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
       _bindHubTvDefaults(tab);
     }
     markShellTabFresh();
+    // First open: onShellTabShown can race before layout has status tabs.
+    if (shellTabVisible) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) unawaited(_maybeListAutoSyncOnOpen());
+      });
+    }
   }
 
   /// Focus row ids in visual / D-pad order (hero bleed → rails → mood → …).
@@ -1792,6 +1828,37 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
         );
       }
       result = TvFocusGraph(tabId: tab, child: result);
+    }
+    // My List paints chrome in-body (no shell top bar) — busy mark lives here.
+    if (_layoutHasStatusTab()) {
+      final pad = MediaQuery.paddingOf(context);
+      result = Stack(
+        clipBehavior: Clip.none,
+        children: [
+          result,
+          Positioned(
+            top: pad.top + LoadingStateTokens.chromeSpinnerInsetTop,
+            right: pad.right + LoadingStateTokens.chromeSpinnerInsetEnd,
+            child: ValueListenableBuilder<bool>(
+              valueListenable: SimklService.listAutoSyncBusy,
+              builder: (context, busy, _) {
+                if (!busy) return const SizedBox.shrink();
+                final size = LoadingStateTokens.chromeSpinner;
+                return ExcludeFocus(
+                  child: SizedBox(
+                    width: size,
+                    height: size,
+                    child: CircularProgressIndicator(
+                      strokeWidth: LoadingStateTokens.chromeSpinnerStroke,
+                      color: ForjaShellColors.brandGreen,
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
+      );
     }
     return result;
   }
