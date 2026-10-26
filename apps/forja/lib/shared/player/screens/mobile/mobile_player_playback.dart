@@ -1896,11 +1896,13 @@ mixin _MobilePlayerPlayback
     await safeSet('sub-auto', 'all');
 
     // ── Video Sync ────────────────────────────────────────────────────────
-    // On mobile we use audio sync (not display-resample).
+    // On mobile/ATV we use audio sync (not display-resample).
     // display-resample requires a stable vsync signal from the display driver
     // which is unreliable on Android and drains battery unnecessarily.
     // audio sync gives smooth playback tied to the audio clock instead.
     await safeSet('video-sync', 'audio');
+    // Re-lock A/V after cache-pause refill / lavf reconnect (HLS hiccups).
+    await safeSet('initial-audio-sync', 'yes');
 
     // ── Network / Cache ───────────────────────────────────────────────────
     await safeSet('network-timeout', '30');

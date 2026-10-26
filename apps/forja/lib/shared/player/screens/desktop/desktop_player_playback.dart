@@ -1875,26 +1875,12 @@ mixin _DesktopPlayerPlayback
     await safeSet('secondary-sid', 'no');
     await safeSet('sub-auto', 'all');
 
-    // ── Video Sync & Smoothness ───────────────────────────────────────────
-    // display-resample: syncs to the monitor's refresh rate, eliminates judder.
-    // This is the best sync mode for desktop displays.
-    await safeSet('video-sync', 'display-resample');
-
-    // Temporal interpolation to smooth out frame pacing between display frames.
-    // Significantly reduces judder on 24fps content on 60Hz+ monitors.
-    await safeSet('interpolation', 'yes');
-    await safeSet('tscale', 'oversample'); // lightweight interpolation
-
     // ── Network / Streaming ───────────────────────────────────────────────
     await safeSet('network-timeout', '30');
     await safeSet('tls-verify', 'no'); // for self-signed / CDN certs
     // Proxy HLS (e.g. RiveStream valhallastream) serves playlist + segments
     // on different hosts — mpv blocks that unless this is on.
     await safeSet('load-unsafe-playlists', 'yes');
-
-    // Don't freeze on brief cache drain - keep decoding through HLS hiccups.
-    await safeSet('cache-pause', 'no');
-    await safeSet('cache-pause-initial', 'no');
 
     // Stay on the last frame at EOF so the seek bar still works (scrub back /
     // replay). Without this, mpv goes idle and seeks no-op after completed.
@@ -1904,6 +1890,12 @@ mixin _DesktopPlayerPlayback
         (widget.magnetLink != null && widget.magnetLink!.isNotEmpty) ||
         isLocalTorrentStreamUrl(widget.mediaPath);
     if (isTorrent) {
+      // Local/torrent: display clock + light interpolation (stable bitrate).
+      await safeSet('video-sync', 'display-resample');
+      await safeSet('interpolation', 'yes');
+      await safeSet('tscale', 'oversample');
+      await safeSet('cache-pause', 'no');
+      await safeSet('cache-pause-initial', 'no');
       // Open phase: sequential pull only. force-seekable + Content-Length made
       // lavf Range the tail (moov) while the swarm filled random middle pieces
       // — probe retries forever at 0:00. After decode, ensureLocalTorrentSeekable
@@ -1917,6 +1909,15 @@ mixin _DesktopPlayerPlayback
       await safeSet('stream-lavf-o', 'seekable=0');
       await safeSet('demuxer-lavf-o', 'seekable=0');
     } else {
+      // Network HLS VOD (anime MegaPlay family, etc.): audio clock + pause-to-
+      // refill. display-resample + play-through-underrun made video race after
+      // a hiccup and never re-lock lipsync (desktop MediaKit A/V desync).
+      await safeSet('video-sync', 'audio');
+      await safeSet('interpolation', 'no');
+      await safeSet('initial-audio-sync', 'yes');
+      await safeSet('cache-pause', 'yes');
+      await safeSet('cache-pause-wait', '3');
+      await safeSet('cache-pause-initial', 'yes');
       // Prefer a fast first frame over a huge cold prefetch. Mid-play
       // stability still gets a solid forward window + RAM cache; Quality
       // menu can lock a higher rung when the user wants top bitrate.
