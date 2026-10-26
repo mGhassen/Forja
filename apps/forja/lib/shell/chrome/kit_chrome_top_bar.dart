@@ -17,6 +17,7 @@ import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 import 'package:forja_foundation/tokens/loading_state_tokens.dart';
 import 'package:forja_foundation/tokens/top_bar_scrim_tokens.dart';
 import 'package:forja_foundation/widgets/chrome/top_bar_scrim.dart';
+import 'package:forja_foundation/widgets/feedback/loading_dots.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 export 'package:forja_foundation/widgets/chrome/hub_top_bar.dart'
@@ -556,21 +557,18 @@ class _KitChromeTopBarState extends State<KitChromeTopBar> {
                                   if (!busy) {
                                     return const SizedBox.shrink();
                                   }
-                                  final size = LoadingStateTokens.chromeSpinner;
                                   return Padding(
                                     padding: EdgeInsetsDirectional.only(
                                       start: tabGap,
                                     ),
-                                    child: ExcludeFocus(
-                                      child: SizedBox(
-                                        width: size,
-                                        height: size,
-                                        child: CircularProgressIndicator(
-                                          strokeWidth: LoadingStateTokens
-                                              .chromeSpinnerStroke,
-                                          color: ForjaShellColors.brandGreen,
-                                        ),
-                                      ),
+                                    child: ForjaBusyLabel(
+                                      label: 'Updating',
+                                      color: ForjaShellColors.brandGreen,
+                                      fontSize: usesTv
+                                          ? LoadingStateTokens
+                                                .chromeBusyLabelFontSizeTv
+                                          : LoadingStateTokens
+                                                .chromeBusyLabelFontSize,
                                     ),
                                   );
                                 },

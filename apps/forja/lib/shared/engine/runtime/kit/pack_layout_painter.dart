@@ -26,6 +26,7 @@ import 'package:forja/shared/engine/store/list_providers.dart';
 import 'package:forja/shared/services/tracker/simkl_service.dart';
 import 'package:forja_foundation/protocol/filter.dart';
 import 'package:forja_foundation/tokens/loading_state_tokens.dart';
+import 'package:forja_foundation/widgets/feedback/loading_dots.dart';
 import 'package:forja/shared/engine/runtime/nav/plugin_nav.dart';
 import 'package:forja/shared/engine/runtime/nav/vertical_filters.dart';
 import 'package:forja/shell/bus/shell_bus.dart';
@@ -1832,6 +1833,7 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
     // My List paints chrome in-body (no shell top bar) — busy mark lives here.
     if (_layoutHasStatusTab()) {
       final pad = MediaQuery.paddingOf(context);
+      final tv = catalogUsesTvDensity(context);
       result = Stack(
         clipBehavior: Clip.none,
         children: [
@@ -1843,16 +1845,12 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
               valueListenable: SimklService.listAutoSyncBusy,
               builder: (context, busy, _) {
                 if (!busy) return const SizedBox.shrink();
-                final size = LoadingStateTokens.chromeSpinner;
-                return ExcludeFocus(
-                  child: SizedBox(
-                    width: size,
-                    height: size,
-                    child: CircularProgressIndicator(
-                      strokeWidth: LoadingStateTokens.chromeSpinnerStroke,
-                      color: ForjaShellColors.brandGreen,
-                    ),
-                  ),
+                return ForjaBusyLabel(
+                  label: 'Updating',
+                  color: ForjaShellColors.brandGreen,
+                  fontSize: tv
+                      ? LoadingStateTokens.chromeBusyLabelFontSizeTv
+                      : LoadingStateTokens.chromeBusyLabelFontSize,
                 );
               },
             ),

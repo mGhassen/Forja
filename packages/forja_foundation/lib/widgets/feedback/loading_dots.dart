@@ -1,5 +1,41 @@
 import 'package:flutter/material.dart';
 
+/// Label + cycling dots (hub chrome busy — e.g. “Updating…”).
+class ForjaBusyLabel extends StatelessWidget {
+  const ForjaBusyLabel({
+    super.key,
+    required this.label,
+    required this.color,
+    this.fontSize = 13,
+  });
+
+  final String label;
+  final Color color;
+  final double fontSize;
+
+  @override
+  Widget build(BuildContext context) {
+    return ExcludeFocus(
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            label,
+            style: TextStyle(
+              color: color,
+              fontSize: fontSize,
+              fontWeight: FontWeight.w600,
+              height: 1.0,
+              letterSpacing: 0.2,
+            ),
+          ),
+          ForjaLoadingDots(color: color, fontSize: fontSize),
+        ],
+      ),
+    );
+  }
+}
+
 /// Three cycling dots — same glyph as Sources kind tabs while a fetch is live.
 class ForjaLoadingDots extends StatefulWidget {
   const ForjaLoadingDots({super.key, required this.color, this.fontSize = 13});

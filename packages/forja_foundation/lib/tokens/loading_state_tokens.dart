@@ -15,9 +15,9 @@ abstract final class LoadingStateTokens {
   static const double spinnerStroke = 3;
   static const double spinnerStrokeTv = 3;
 
-  /// Compact hub top-bar busy mark (e.g. list auto-sync).
-  static const double chromeSpinner = 16;
-  static const double chromeSpinnerStroke = 2;
+  /// Compact hub chrome busy mark (e.g. list auto-sync label + dots).
+  static const double chromeBusyLabelFontSize = 13;
+  static const double chromeBusyLabelFontSizeTv = ShellTokens.tvMetaFontSize;
   static const double chromeSpinnerInsetTop = 12;
   static const double chromeSpinnerInsetEnd = 16;
 
