@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| **Progress** | **15 / 16** |
+| **Progress** | **16 / 17** |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -34,6 +34,7 @@
 | 13 | I98-T13 | Stop TMDB enrich padding anime videos to franchise episodeCount; cour-scoped facts | ✅ |
 | 14 | I98-T14 | Miruro-style season labels (Season/OVA/Part + year) + SIDE_STORY OVAs in rail | ✅ |
 | 15 | I98-T15 | Walk OVA bridges (Slime Coleus); cap videos at Media.episodes vs absolute stream titles | ✅ |
+| 16 | I98-T16 | Season chip switch: stub params + forceRefresh; no prior-cour merge; hero season subtitle | ✅ |
 
 ---
 

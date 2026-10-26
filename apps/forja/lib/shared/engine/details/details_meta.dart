@@ -2,6 +2,24 @@ import 'package:forja_foundation/protocol/protocol.dart';
 import 'package:forja_foundation/utils/cover_urls.dart';
 import 'package:forja_foundation/widgets/details/episode_air_date.dart';
 
+/// Franchise display name for details loading chrome — strip cour suffixes so
+/// opening Slime S4 shows "Slime", not "… 4th Season".
+String hubFranchiseLoadingTitle(MetaItem item) {
+  var t = item.name.trim();
+  if (t.isEmpty) return t;
+  t = t.replaceFirst(
+    RegExp(r'\s+\d+(?:st|nd|rd|th)\s+Season\b.*$', caseSensitive: false),
+    '',
+  );
+  t = t.replaceFirst(RegExp(r'\s+Season\s*\d+\b.*$', caseSensitive: false), '');
+  t = t.replaceFirst(
+    RegExp(r'\s+(?:part|cour)\s*\d+\b.*$', caseSensitive: false),
+    '',
+  );
+  t = t.replaceAll(RegExp(r'\s+'), ' ').trim();
+  return t.isEmpty ? item.name.trim() : t;
+}
+
 /// Pack `details` action params from catalog meta (opaque `open` passthrough).
 Map<String, dynamic> hubDetailsParams(MetaItem seed) {
   final open = seed.open;
@@ -53,13 +71,11 @@ EpisodeAirDateInfo hubVideoAirDateInfo(MetaVideo video) =>
     episodeAirDateInfo(_hubVideoEpisodeMap(video));
 
 Map<String, dynamic> _hubVideoEpisodeMap(MetaVideo video) => {
-      'air_date': video.airDate,
-      if (video.aired != null) 'aired': video.aired,
-    };
+  'air_date': video.airDate,
+  if (video.aired != null) 'aired': video.aired,
+};
 
-Map<int, List<Map<String, dynamic>>>? hubEpisodeMaps(
-  List<MetaVideo> videos,
-) {
+Map<int, List<Map<String, dynamic>>>? hubEpisodeMaps(List<MetaVideo> videos) {
   if (videos.isEmpty) return null;
   final bySeason = <int, List<Map<String, dynamic>>>{};
   for (final v in videos) {
@@ -90,18 +106,13 @@ List<MetaVideo> hubVideosForSeason(List<MetaVideo> videos, int season) {
 }
 
 /// Keep list/seed artwork when `details` returns episodes but empty poster.
-MetaItem hubMergeDetailsSeed(
-  MetaItem details,
-  MetaItem seed,
-) {
+MetaItem hubMergeDetailsSeed(MetaItem details, MetaItem seed) {
   final poster = details.poster.trim().isNotEmpty
       ? details.poster
       : seed.poster;
   final background = details.background.trim().isNotEmpty
       ? details.background
-      : (seed.background.trim().isNotEmpty
-          ? seed.background
-          : poster);
+      : (seed.background.trim().isNotEmpty ? seed.background : poster);
   final description = details.description.trim().isNotEmpty
       ? details.description
       : seed.description;

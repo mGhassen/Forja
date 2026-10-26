@@ -147,6 +147,9 @@ class _PackDetailsHostState extends ConsumerState<PackDetailsHost> {
   /// Opaque pack Media id for season-chain reload (`data.seasons[].id`).
   String? _detailsOverrideId;
 
+  /// Season-chip reload — skip stale cache and don't merge previous cour art.
+  bool _packSeasonForceRefresh = false;
+
   /// Apply [widget.initialSeason] / [widget.initialEpisode] only on first paint.
   bool _appliedInitialSeasonEpisode = false;
   int _detailsLoadGen = 0;
@@ -724,17 +727,63 @@ class _PackDetailsHostState extends ConsumerState<PackDetailsHost> {
     return false;
   }
 
+  /// Bare details id for a pack season switch — no previous cour `open.extract`.
+  Map<String, dynamic> _hubDetailsParamsForSeasonId(String seasonId) {
+    final raw = seasonId.trim();
+    final tail = raw.contains(':') ? raw.split(':').last.trim() : raw;
+    return {'id': tail.isNotEmpty ? tail : raw};
+  }
+
   Map<String, dynamic> _hubDetailsParamsForLoad() {
+    final override = _detailsOverrideId?.trim();
+    if (override != null && override.isNotEmpty) {
+      return _hubDetailsParamsForSeasonId(override);
+    }
     final seed = _detail ?? widget.item;
-    final params = hubMetaIsIptv(seed)
+    return hubMetaIsIptv(seed)
         ? (KitStreamPlayHooks.hubDetailsParams?.call(seed) ??
               hubDetailsParams(seed))
         : hubDetailsParams(seed);
+  }
+
+  /// Merge seed for details paint. Season switch uses a stub so S4 name/logo
+  /// /synopsis cannot bleed onto S1.
+  MetaItem _detailsMergeSeed() {
     final override = _detailsOverrideId?.trim();
-    if (override != null && override.isNotEmpty) {
-      params['id'] = override;
+    if (override == null || override.isEmpty) {
+      return _detail ?? widget.item;
     }
-    return params;
+    final prev = _detail ?? widget.item;
+    final raw = override;
+    final tail = raw.contains(':') ? raw.split(':').last.trim() : raw;
+    final surface = (prev.open?.surface ?? '').trim();
+    final id = raw.contains(':') ? raw : (tail.isEmpty ? raw : 'anilist:$tail');
+    return MetaItem(
+      id: id,
+      type: prev.type.isNotEmpty ? prev.type : 'anime',
+      name: '',
+      open: MetaOpen(
+        surface: surface.isNotEmpty ? surface : 'anime',
+        id: tail.isNotEmpty ? tail : raw,
+      ),
+    );
+  }
+
+  KitDetailSeasonLink? _packSeasonLink(int season) {
+    for (final s in _packSeasons) {
+      if (s.number == season) return s;
+    }
+    return null;
+  }
+
+  String? get _packSeasonSubtitle {
+    if (!_usesPackSeasons) return null;
+    final link = _packSeasonLink(_selectedSeason);
+    final label = (link?.label ?? '').trim();
+    if (label.isEmpty) return null;
+    final year = link?.year;
+    if (year != null && year > 0) return '$label · $year';
+    return label;
   }
 
   void _paintLoaded(
@@ -805,6 +854,7 @@ class _PackDetailsHostState extends ConsumerState<PackDetailsHost> {
       _selectedSeason = firstSeason;
       _selectedEpisode = firstEp;
       _detailsOverrideId = null;
+      _packSeasonForceRefresh = false;
       _appliedInitialSeasonEpisode = true;
       _belowFoldReady = false;
     });
@@ -814,14 +864,7 @@ class _PackDetailsHostState extends ConsumerState<PackDetailsHost> {
   }
 
   Future<void> _onPackSeasonSelected(int season) async {
-    KitDetailSeasonLink? match;
-    for (final s in _packSeasons) {
-      if (s.number == season) {
-        match = s;
-        break;
-      }
-    }
-    final link = match;
+    final link = _packSeasonLink(season);
     if (link == null) return;
     if (_packSeasonIdMatches(link.id, _show)) {
       final eps = hubVideosForSeason(_videos, 1);
@@ -834,8 +877,11 @@ class _PackDetailsHostState extends ConsumerState<PackDetailsHost> {
     setState(() {
       _selectedSeason = season;
       _detailsOverrideId = link.id;
+      _packSeasonForceRefresh = true;
       _loading = true;
       _error = null;
+      _watchProgress = null;
+      _watchedEpisodes = {};
     });
     await _load();
   }
@@ -875,7 +921,8 @@ class _PackDetailsHostState extends ConsumerState<PackDetailsHost> {
       return;
     }
 
-    final seedEnriched = hubMetaTmdbEnriched(widget.item);
+    final forceRefresh = _packSeasonForceRefresh;
+    final seedEnriched = !forceRefresh && hubMetaTmdbEnriched(widget.item);
     if (!seedEnriched) {
       setState(() {
         _loading = true;
@@ -883,11 +930,12 @@ class _PackDetailsHostState extends ConsumerState<PackDetailsHost> {
       });
     }
     var railsArrived = false;
-    final seed = _detail ?? widget.item;
+    final seed = _detailsMergeSeed();
     final env = await MetaRuntime.instance.run(
       pluginId: widget.pluginId,
       action: 'details',
       params: _hubDetailsParamsForLoad(),
+      forceRefresh: forceRefresh,
       onUpdated: (next) {
         if (!mounted || loadGen != _detailsLoadGen) return;
         final meta = hubMergeDetailsSeed(next.meta ?? seed, seed);
@@ -910,6 +958,7 @@ class _PackDetailsHostState extends ConsumerState<PackDetailsHost> {
       if (!mounted || loadGen != _detailsLoadGen) return;
       setState(() {
         _loading = false;
+        _packSeasonForceRefresh = false;
         _error =
             notReady ??
             userFacingCatalogError(
@@ -1158,12 +1207,11 @@ class _PackDetailsHostState extends ConsumerState<PackDetailsHost> {
               loading: _loading,
               errorMessage: _error,
               onRetry: _load,
-              // Centered indicator at shell scale with the item name while
-              // metadata loads. Non-focusable: Play claims D-pad focus once
-              // the hero mounts, same as before.
+              // Centered indicator at shell scale while metadata loads.
+              // Franchise name (strip "4th Season" / Part N) — not the cour card.
               loadingChild: ForjaLoadingState(
                 backgroundColor: AppTheme.bgDark,
-                title: widget.item.name,
+                title: hubFranchiseLoadingTitle(widget.item),
               ),
               errorChild: _error == null
                   ? null
@@ -1495,6 +1543,8 @@ class _PackDetailsHostState extends ConsumerState<PackDetailsHost> {
         backdropUrl: backdrop,
         backdropUrls: backdropUrls,
         title: show.name,
+        // Pack franchise rail — which cour is open (Season 1 / OVA 1 / …).
+        subtitle: _packSeasonSubtitle,
         genres: show.genres,
         overview: show.description.trim(),
         metaParts: [
