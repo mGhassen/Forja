@@ -606,19 +606,37 @@ class _MkSubtitleLanguageState extends State<_MkSubtitleLanguage> {
                 widget.selectedExternalSubUrl == null &&
                 t.id == _selectedId,
             onTap: () async {
-              final twin = hlsInStreamMatchingTrack(t, _hls);
-              if (twin != null) {
-                await _pickHls(twin);
+              final hlsTwin = hlsInStreamMatchingTrack(t, _hls);
+              if (hlsTwin != null) {
+                await _pickHls(hlsTwin);
                 return;
               }
-              widget.onSubtitleSelected?.call(
-                off: false,
-                language: t.language,
-                title: t.title,
+              // Demux twin of an attached AnimeKai/online file — re-select
+              // that sideload. Never clear sub-file (prepare) on a demux pick;
+              // that blanks the working cues and mpv grows another ghost row.
+              final sideTwin = findAttachedSideloadTwin(
+                widget.player.state.tracks.subtitle,
+                t,
               );
-              widget.onExternalUrlChanged(null);
               try {
-                await preparePlayerExternalSubtitleSwitch(widget.player);
+                if (sideTwin != null) {
+                  await widget.player.setSubtitleTrack(sideTwin);
+                  widget.updateSubVisibility(sideTwin);
+                  widget.onSubtitleSelected?.call(
+                    off: false,
+                    language: sideTwin.language ?? t.language,
+                    title: sideTwin.title ?? t.title,
+                  );
+                  // Keep selectedExternalSubUrl if it still matches.
+                  PlayerPopupPanel.dismiss();
+                  return;
+                }
+                widget.onSubtitleSelected?.call(
+                  off: false,
+                  language: t.language,
+                  title: t.title,
+                );
+                widget.onExternalUrlChanged(null);
                 await widget.player.setSubtitleTrack(t);
                 widget.updateSubVisibility(t);
                 PlayerPopupPanel.dismiss();

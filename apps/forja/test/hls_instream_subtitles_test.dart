@@ -155,6 +155,23 @@ video.m3u8
     expect(hlsInStreamMatchingTrack(demuxTwin, [sub])?.uri, sub.uri);
   });
 
+  test(
+    'findAttachedSideloadTwin finds AnimeKai file twin of demux English',
+    () {
+      final demux = const SubtitleTrack('3', 'English', 'en');
+      final animekai = SubtitleTrack.uri(
+        'file:///tmp/forja_sub_1_en.vtt',
+        title: 'English',
+        language: 'en',
+      );
+      expect(
+        findAttachedSideloadTwin([demux, animekai], demux)?.id,
+        animekai.id,
+      );
+      expect(findAttachedSideloadTwin([demux], demux), isNull);
+    },
+  );
+
   test('hlsInStreamRequestHeaders lets playback headers win conflicts', () {
     expect(
       hlsInStreamRequestHeaders(

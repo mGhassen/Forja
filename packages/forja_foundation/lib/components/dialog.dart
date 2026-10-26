@@ -6,10 +6,7 @@ import 'package:forja_foundation/tokens/forja_theme_extension.dart';
 import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 
 /// Dialog tone.
-enum ForjaDialogType {
-  default_,
-  destructive,
-}
+enum ForjaDialogType { default_, destructive }
 
 /// Show a Forja-styled modal dialog. Returns the result from [actions] pops.
 Future<T?> showForjaDialog<T>({
@@ -43,6 +40,7 @@ Future<T?> showForjaDialog<T>({
           focusStyled: hostPaint.focusStyled,
           focusableTapBuilder: hostPaint.focusableTapBuilder,
           wrapTvRow: hostPaint.wrapTvRow,
+          wrapTvGrid: hostPaint.wrapTvGrid,
           wrapHorizontalScroller: hostPaint.wrapHorizontalScroller,
           absorbHorizontalScroll: hostPaint.absorbHorizontalScroll,
           isActivateKey: hostPaint.isActivateKey,
@@ -121,10 +119,7 @@ class ForjaDialog extends StatelessWidget {
                   ),
                 ),
               ],
-              if (body != null) ...[
-                SizedBox(height: gapMd),
-                body!,
-              ],
+              if (body != null) ...[SizedBox(height: gapMd), body!],
               if (actions != null && actions!.isNotEmpty) ...[
                 SizedBox(height: gapLg),
                 Row(
@@ -159,8 +154,9 @@ class ForjaDialog extends StatelessWidget {
         onPressed: () => Navigator.of(context).maybePop(false),
       ),
       Button(
-        variant:
-            destructive ? ButtonVariant.destructive : ButtonVariant.primary,
+        variant: destructive
+            ? ButtonVariant.destructive
+            : ButtonVariant.primary,
         label: confirmLabel,
         onPressed: () {
           onConfirm?.call();

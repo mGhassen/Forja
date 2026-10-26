@@ -38,12 +38,16 @@ class _SettingsDataPageBodyState extends State<SettingsDataPageBody> {
           .first;
       final fileName = 'forja_settings_$timestamp.json';
 
+      // Desktop: path only — bytes throw on macOS. Mobile: bytes required to write.
+      final Uint8List? bytes = (Platform.isAndroid || Platform.isIOS)
+          ? Uint8List.fromList(utf8.encode(jsonStr))
+          : null;
       final result = await FilePicker.platform.saveFile(
         dialogTitle: 'Export Settings',
         fileName: fileName,
         type: FileType.custom,
         allowedExtensions: const ['json'],
-        bytes: Uint8List.fromList(utf8.encode(jsonStr)),
+        bytes: bytes,
       );
 
       if (result == null) {
@@ -160,9 +164,9 @@ class _SettingsDataPageBodyState extends State<SettingsDataPageBody> {
           ],
         ),
         if (widget.visibility.showIptvSettings)
-        SettingsCacheDataSection(
-          showPortalCache: widget.visibility.showIptvSettings,
-        ),
+          SettingsCacheDataSection(
+            showPortalCache: widget.visibility.showIptvSettings,
+          ),
       ],
     );
   }

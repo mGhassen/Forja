@@ -3121,8 +3121,30 @@ List<SubtitleTrack> embeddedSubtitleTracks(Iterable<SubtitleTrack> tracks) {
       .toList();
 }
 
-/// In-stream tracks for the subtitle menu — hides mpv copies of active
-/// external / HLS URI attaches so the playlist row is listed once.
+bool _subtitleTrackLabelMatch(SubtitleTrack a, SubtitleTrack b) {
+  final aTitle = (a.title ?? '').trim();
+  final bTitle = (b.title ?? '').trim();
+  if (aTitle.isNotEmpty && bTitle.isNotEmpty && aTitle == bTitle) return true;
+  final aLang = languageGroupKey(a.language ?? a.title);
+  final bLang = languageGroupKey(b.language ?? b.title);
+  return aLang.isNotEmpty && aLang != 'und' && aLang == bLang;
+}
+
+bool _embeddedTwinsAnySideload(
+  SubtitleTrack track,
+  Iterable<SubtitleTrack> all,
+) {
+  for (final side in all) {
+    if (side.id == track.id) continue;
+    if (side.id == 'no' || side.id == 'auto') continue;
+    if (!isSideloadedExternalSubtitleTrack(side)) continue;
+    if (_subtitleTrackLabelMatch(track, side)) return true;
+  }
+  return false;
+}
+
+/// In-stream tracks for the subtitle menu — hides mpv demux ghosts of
+/// sideloaded / online / HLS playlist rows so each language is listed once.
 List<SubtitleTrack> menuEmbeddedSubtitleTracks(
   Player player, {
   String? selectedExternalSubUrl,
@@ -3144,7 +3166,16 @@ List<SubtitleTrack> menuEmbeddedSubtitleTracks(
   }
   final selectedDisplay = selectedOnline?['display']?.toString();
 
-  return embedded.where((t) {
+  final selectedLang = selectedOnline == null
+      ? null
+      : languageGroupKey(
+          (selectedOnline['language'] ??
+                  selectedOnline['lang'] ??
+                  selectedDisplay)
+              ?.toString(),
+        );
+
+  final filtered = embedded.where((t) {
     if (selectedExternalSubUrl != null &&
         active.id != 'no' &&
         active.id != 'auto' &&
@@ -3156,23 +3187,48 @@ List<SubtitleTrack> menuEmbeddedSubtitleTracks(
         t.title!.trim() == selectedDisplay.trim()) {
       return false;
     }
-    // URI/data attaches (online or HLS) leave a demux twin — hide it even
-    // when selectedExternalSubUrl is null (HLS pick clears that field).
-    if ((active.uri ||
-            active.data ||
-            isSideloadedExternalSubtitleTrack(active)) &&
-        active.id != 'no' &&
-        active.id != 'auto' &&
-        t.title == active.title &&
-        t.language == active.language) {
-      return false;
+    // Online/file pick is active — mpv often exposes the same cues again as a
+    // numeric demux "In-stream" row (uri flag gone). Hide that whole language.
+    if (selectedLang != null &&
+        selectedLang.isNotEmpty &&
+        selectedLang != 'und') {
+      final tLang = languageGroupKey(t.language ?? t.title);
+      if (tLang == selectedLang) return false;
     }
+    // Any attached URI/data sideload (AnimeKai, Levrx, file, HLS VTT) leaves
+    // a demux twin labeled the same language — hide every twin, not only the
+    // active one. Clicking those ghosts used to clear sub-file and blank cues.
+    if (_embeddedTwinsAnySideload(t, all)) return false;
     if (hlsInStream.isNotEmpty &&
         embeddedTrackTwinsHlsInStream(t, hls: hlsInStream)) {
       return false;
     }
     return true;
-  }).toList();
+  });
+
+  // mpv often exposes several demux English rows; keep one per language.
+  final seenLang = <String>{};
+  final out = <SubtitleTrack>[];
+  for (final t in filtered) {
+    final key = languageGroupKey(t.language ?? t.title);
+    if (key.isNotEmpty && key != 'und' && !seenLang.add(key)) continue;
+    out.add(t);
+  }
+  return out;
+}
+
+/// Sideload already on the player that twins this demux row — re-select it
+/// instead of switching to an empty demux ghost.
+SubtitleTrack? findAttachedSideloadTwin(
+  Iterable<SubtitleTrack> tracks,
+  SubtitleTrack demux,
+) {
+  for (final t in tracks) {
+    if (t.id == 'no' || t.id == 'auto' || t.id == demux.id) continue;
+    if (!isSideloadedExternalSubtitleTrack(t)) continue;
+    if (_subtitleTrackLabelMatch(demux, t)) return t;
+  }
+  return null;
 }
 
 Future<AudioTrack?> resolveActiveAudioTrack(Player player) async {

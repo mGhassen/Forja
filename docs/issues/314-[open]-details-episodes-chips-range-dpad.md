@@ -50,3 +50,5 @@
 Series details **Episodes** header range control sits too close to the screen edge and is outside the TV focus graph (seasons register first). Users want a pack setting to show episodes as **Cards** (stills) or **Number chips** in a wrapping grid with real 2D D-pad — Home, Anime, Asian Drama, and IPTV VOD series.
 
 **Root fix:** pad the title row; register `episode-range` before seasons; each hub pack `settings.select` `episodeView` (Forja Packs expand; Anime / IPTV also via Addons); chips via foundation grid + host `TvGrid` wrap.
+
+**Follow-up:** leanback open/pick for the range control itself → [496](fixed/496-[fixed]-android-tv-details-episode-range-dpad.md).

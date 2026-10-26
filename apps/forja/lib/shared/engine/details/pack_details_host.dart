@@ -865,7 +865,7 @@ class _PackDetailsHostState extends ConsumerState<PackDetailsHost> {
     final landed =
         ShellTvFocusCoordinator.focusRowItem(tab, 'episodes', idx) ||
         ShellTvFocusCoordinator.focusRowItem(tab, 'seasons', 0) ||
-        ShellTvFocusCoordinator.focusRowItem(tab, 'episode-range', 0);
+        ShellTvFocusCoordinator.focusRowItem(tab, 'episode-chrome', 0);
     if (!landed && _heroPlayFocus.canRequestFocus) {
       _heroPlayFocus.requestFocus();
     }

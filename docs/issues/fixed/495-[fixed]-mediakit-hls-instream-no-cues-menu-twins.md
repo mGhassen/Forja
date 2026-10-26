@@ -23,7 +23,7 @@
 
 ## Root cause
 
-HLS playlist rows were attached with `SubtitleTrack.uri` pointing at a subtitle `.m3u8`. mpv does not paint those cues as `sub-file` (AirPlay/offline already merge to WebVTT). Demux twins of the same language stayed listed beside the playlist row, and each URI attach grew mpv’s track list — [474](474-[fixed]-mediakit-hls-instream-subtitle-menu-twins.md) only partially covered reuse/dedupe and left acceptance unverified.
+Verified on AnimeKai desktop (`in-stream renditions=0` from the master — **no** HLS `TYPE=SUBTITLES`). Auto-pick attaches provider English via `sub-file`. mpv then exposes numeric demux twins labeled “English · In-stream”. Menu listed those ghosts. Demux `onTap` called `preparePlayerExternalSubtitleSwitch` (clears `sub-file`) + `onExternalUrlChanged(null)` → working AnimeKai cues die, and another demux ghost appears. HLS VTT materialize never ran on this path.
 
 ## Fix tasks
 
@@ -33,6 +33,8 @@ HLS playlist rows were attached with `SubtitleTrack.uri` pointing at a subtitle 
 | 2 | I495-T02 | Always hide demux twins of HLS playlist rows; demux tap routes to HLS pick | ✅ |
 | 3 | I495-T03 | Desktop/mobile auto HLS pick uses the same attach helper | ✅ |
 | 4 | I495-T04 | Unit: twin hide always / matching-track helper | ✅ |
+| 5 | I495-T05 | Hide demux twins of any attached sideload + selected online language; demux tap must not clear `sub-file`; re-select sideload twin | ✅ |
+| 6 | I495-T06 | Unit: findAttachedSideloadTwin | ✅ |
 
 ## Acceptance
 
