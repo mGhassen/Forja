@@ -667,9 +667,17 @@ class SimklService {
         body: json.encode(body),
         maxRetries: 0,
       );
-      final ok = resp.status == 200;
-      if (ok) clearWatchlistCache();
-      return ok;
+      debugPrint(
+        '[Simkl] Remove from list: ${resp.status} '
+        'movies=${movies.length} shows=${shows.length} anime=${anime.length}',
+      );
+      final ok = resp.status == 200 || resp.status == 201;
+      if (!ok) {
+        debugPrint('[Simkl] Remove from list body: ${resp.body}');
+        return false;
+      }
+      clearWatchlistCache();
+      return true;
     } catch (e) {
       debugPrint('[Simkl] Remove from list error: $e');
       return false;
@@ -696,15 +704,25 @@ class SimklService {
     )).ok;
   }
 
-  /// Remove a single item from watchlist.
+  /// Remove a single item from the Simkl library.
+  ///
+  /// TMDB/IMDB titles are removed from **both** `movies` and `shows` in one
+  /// call — Simkl keeps them in one bucket; a wrong local mediaType used to
+  /// delete the empty bucket and leave the real row (films came back on sync).
   Future<bool> removeFromWatchlist({
     int? tmdbId,
     String? imdbId,
     int? anilistId,
     required String mediaType,
   }) async {
-    if (mediaType == 'anime') {
-      if (anilistId == null) return false;
+    final norm = BookmarkStore.normalizeTmdbMediaType(mediaType);
+    final kind = mediaType == 'anime' ? 'anime' : (norm ?? mediaType);
+
+    if (kind == 'anime') {
+      if (anilistId == null) {
+        debugPrint('[Simkl] removeFromWatchlist anime missing anilistId');
+        return false;
+      }
       return _removeFromList(
         anime: [
           {
@@ -714,20 +732,20 @@ class SimklService {
       );
     }
 
-    if (tmdbId == null && imdbId == null) return false;
+    if (tmdbId == null && (imdbId == null || imdbId.isEmpty)) {
+      debugPrint(
+        '[Simkl] removeFromWatchlist missing ids mediaType=$mediaType',
+      );
+      return false;
+    }
 
     final ids = <String, dynamic>{};
     if (tmdbId != null) ids['tmdb'] = tmdbId;
-    if (imdbId != null) ids['imdb'] = imdbId;
+    if (imdbId != null && imdbId.isNotEmpty) ids['imdb'] = imdbId;
 
     final item = {'ids': ids};
-    final type = (mediaType == 'tv' || mediaType == 'series')
-        ? 'shows'
-        : 'movies';
-    return _removeFromList(
-      shows: type == 'shows' ? [item] : [],
-      movies: type == 'movies' ? [item] : [],
-    );
+    // Always hit both buckets — one will no-op; the other clears the library.
+    return _removeFromList(shows: [item], movies: [item]);
   }
 
   /// Move a title into a Simkl list bucket (`plantowatch`, `watching`, `hold`,

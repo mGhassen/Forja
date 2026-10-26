@@ -63,6 +63,12 @@ class ListFollowTarget {
     if (open == null) return null;
     final fromIds = meta.numericId('tmdb');
     final fromOpen = open.surface.trim() == 'tmdb' ? open.idInt : null;
+    final extractMt = open.effectiveExtract.resolveType;
+    final tmdbMediaType =
+        meta.tmdbMediaType ??
+        BookmarkStore.normalizeTmdbMediaType(meta.type) ??
+        BookmarkStore.normalizeTmdbMediaType(extractMt) ??
+        (open.surface.trim() == 'tmdb' ? 'movie' : null);
     return ListFollowTarget(
       pluginId: pluginId,
       open: open,
@@ -71,12 +77,8 @@ class ListFollowTarget {
       voteAverage: meta.rating ?? 0,
       releaseDate: metaReleaseYear(meta),
       tmdbId: fromIds ?? fromOpen,
-      tmdbMediaType:
-          meta.tmdbMediaType ??
-          (open.surface.trim() == 'tmdb'
-              ? BookmarkStore.normalizeTmdbMediaType(meta.type)
-              : null),
-      mediaType: meta.type,
+      tmdbMediaType: tmdbMediaType,
+      mediaType: meta.type.isNotEmpty ? meta.type : (tmdbMediaType ?? 'movie'),
     );
   }
 }
@@ -150,35 +152,47 @@ class ListFollow {
       final sync = resolveSimklTarget(t);
       final keys = hideKeysFor(sync);
       final simklMt = simklListMediaType(sync);
+      // Prefer open.id when surface is tmdb (Simkl cards always have this).
+      final tmdbId =
+          sync.tmdbId ??
+          (sync.open.surface.trim() == 'tmdb' ? sync.open.idInt : null);
       container?.read(bookmarkHiddenKeysProvider.notifier).addAll(keys);
       await BookmarkStore().remove(
         t.uniqueId,
-        tmdbId: sync.tmdbId,
+        tmdbId: tmdbId,
         mediaType: sync.tmdbMediaType ?? sync.resolvedMediaType,
       );
       final isAnime =
           sync.resolvedMediaType == 'anime' && sync.mediaIdInt != null;
       await SimklService().recordListDeleteTombstone(
         hideKeys: keys,
-        tmdbId: isAnime ? null : sync.tmdbId,
+        tmdbId: isAnime ? null : tmdbId,
         mediaType: isAnime ? null : simklMt,
         anilistId: isAnime ? sync.mediaIdInt : null,
       );
+
+      final loggedIn = await SimklService().isLoggedIn();
       var ok = true;
-      if (await SimklService().isLoggedIn()) {
+      if (loggedIn) {
         if (isAnime) {
           ok = await SimklService().removeFromWatchlist(
             anilistId: sync.mediaIdInt,
             mediaType: 'anime',
           );
-        } else if (sync.tmdbId != null) {
+        } else if (tmdbId != null) {
           ok = await SimklService().removeFromWatchlist(
-            tmdbId: sync.tmdbId,
+            tmdbId: tmdbId,
             mediaType: simklMt,
           );
+        } else {
+          // Local gone, but we cannot tell Simkl — do not pretend it worked.
+          debugPrint(
+            '[ListFollow] remove: logged in but no tmdb/anilist '
+            'uniqueId=${t.uniqueId} surface=${sync.open.surface}',
+          );
+          ok = false;
         }
-        // Drop RAM Simkl library so My List does not re-paint the row.
-        SimklService.clearWatchlistCache();
+        if (ok) SimklService.clearWatchlistCache();
       }
       _invalidate(container);
       return ok;

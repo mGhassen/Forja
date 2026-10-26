@@ -31,7 +31,7 @@ Categories appear only when they match your profile. **VOD tabs** = Home, Search
 ## Tips
 
 - Only the selected category loads — opening Settings is lighter than the old all-sections page
-- IPTV / Live Sports alone → **Addons** and **Forja Packs** stay in the category list. Built-in addons stay listed even when off — the switch turns them on. Pack install is **Forja Packs**; packs may also contribute Addon rows and settings fields (manifest `settings`). The web portal mirrors that list for the active profile.
+- IPTV / Live Sports alone → **Addons** and **Forja Packs** stay in the category list. **Addons** lists **Built-in addons** and **Pack settings** separately (same as the web portal). Built-in addons stay listed even when off — the switch turns them on. Pack install is **Forja Packs**; packs may also contribute Pack settings rows and fields (manifest `settings`).
 - On **desktop**, Tab / arrow keys show the same green left-bar focus chrome on
   category tiles and detail rows (hidden again while you use the mouse). Arrow
   focus on a category does **not** auto-switch the right pane — click or

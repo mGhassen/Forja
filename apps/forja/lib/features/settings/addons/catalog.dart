@@ -123,8 +123,7 @@ List<SettingsAddonMeta> packContributedAddonMetas(
     if (!p.enabled) continue;
     final spec = PackAddonSettingsSpec.fromPlugin(p);
     if (spec == null) continue;
-    final bucket =
-        spec.addonId.isNotEmpty ? spec.addonId : p.id;
+    final bucket = spec.addonId.isNotEmpty ? spec.addonId : p.id;
     if (_hostAddonIds.contains(bucket)) continue;
     byAddon.putIfAbsent(bucket, () => []).add((p, spec));
   }
@@ -144,10 +143,10 @@ List<SettingsAddonMeta> packContributedAddonMetas(
     final title = navLabel.isNotEmpty
         ? navLabel
         : (list.length > 1
-            ? _titleFromAddonId(id)
-            : (first.$2.pluginName.trim().isNotEmpty
-                ? first.$2.pluginName
-                : _titleFromAddonId(id)));
+              ? _titleFromAddonId(id)
+              : (first.$2.pluginName.trim().isNotEmpty
+                    ? first.$2.pluginName
+                    : _titleFromAddonId(id)));
     out.add(
       SettingsAddonMeta(
         id: id,
@@ -164,6 +163,8 @@ List<SettingsAddonMeta> packContributedAddonMetas(
   return out;
 }
 
+/// Host built-in Addons rows (admin-filtered). Pass [packContributed] only when
+/// a flat merged list is needed; the Addons hub paints pack rows separately.
 List<SettingsAddonMeta> settingsAddons({
   List<SettingsAddonMeta> packContributed = const [],
 }) {

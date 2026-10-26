@@ -24,6 +24,7 @@ import 'package:forja/shell/core/forja_shell_input_policy.dart';
 import 'package:forja/shell/focus/shell_focusable_tap.dart';
 import 'package:forja_foundation/tokens/forja_settings_tokens.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
+
 /// Open addon inside Settings → Addons. Hub chrome listens so the page title
 /// is the addon name (not a second "Addons" heading).
 class SettingsAddonDrill {
@@ -86,7 +87,8 @@ class SettingsAddonsAwareScaffold extends StatelessWidget {
         return ValueListenableBuilder<PluginBatchInstallPrompt?>(
           valueListenable: SettingsPackPromptDrill.current,
           builder: (context, packPrompt, _) {
-            final packOpen = packPrompt != null &&
+            final packOpen =
+                packPrompt != null &&
                 categoryId == SettingsCategoryId.forjaPacks;
             final title = packOpen
                 ? SettingsPackPromptDrill.titleFor(packPrompt)
@@ -99,13 +101,11 @@ class SettingsAddonsAwareScaffold extends StatelessWidget {
               showBack: packOpen || addon != null || categoryBack,
               onBack: packOpen
                   ? () {
-                      unawaited(
-                        SettingsPackPromptDrill.dismissWithoutApply(),
-                      );
+                      unawaited(SettingsPackPromptDrill.dismissWithoutApply());
                     }
                   : addon != null
-                      ? SettingsAddonDrill.close
-                      : () => Navigator.of(context).maybePop(),
+                  ? SettingsAddonDrill.close
+                  : () => Navigator.of(context).maybePop(),
               // Pack picker: fill pane so the list scrolls and Install stays pinned
               // (same shape as Update Forja — header + scroll + footer).
               scrollable: packOpen ? false : scrollable,
@@ -185,7 +185,8 @@ class SettingsAddonsHostState extends State<SettingsAddonsHost> {
         final rowId = snap.rowId;
         if (rowId == null || rowId.isEmpty) return;
         // Prefer exact index (chevron vs row); soft fallback if node not ready.
-        final ok = ShellTvFocusCoordinator.focusRowItemExact(
+        final ok =
+            ShellTvFocusCoordinator.focusRowItemExact(
               'settings',
               rowId,
               snap.itemIndex,
@@ -209,8 +210,9 @@ class SettingsAddonsHostState extends State<SettingsAddonsHost> {
 
   Future<void> _reloadPackAddons() async {
     final packs = await EngineService.instance.listPacks();
-    final contributed =
-        packContributedAddonMetas(activePluginsFromPacks(packs));
+    final contributed = packContributedAddonMetas(
+      activePluginsFromPacks(packs),
+    );
     if (!mounted) return;
     setState(() => _packContributed = contributed);
   }
@@ -218,18 +220,12 @@ class SettingsAddonsHostState extends State<SettingsAddonsHost> {
   Future<void> _openWhenReady(String addonId) async {
     await _reloadPackAddons();
     if (!mounted) return;
-    final meta = settingsAddonById(
-      addonId,
-      packContributed: _packContributed,
-    );
+    final meta = settingsAddonById(addonId, packContributed: _packContributed);
     if (meta != null) SettingsAddonDrill.open(meta);
   }
 
   void _open(String addonId) {
-    final meta = settingsAddonById(
-      addonId,
-      packContributed: _packContributed,
-    );
+    final meta = settingsAddonById(addonId, packContributed: _packContributed);
     if (meta != null) SettingsAddonDrill.open(meta);
   }
 
@@ -237,8 +233,7 @@ class SettingsAddonsHostState extends State<SettingsAddonsHost> {
   Widget build(BuildContext context) {
     final open = SettingsAddonDrill.current.value;
     if (open != null) {
-      final adminBlocked =
-          open.adminOnly && !AccountFeatures.instance.isAdmin;
+      final adminBlocked = open.adminOnly && !AccountFeatures.instance.isAdmin;
       if (adminBlocked) {
         WidgetsBinding.instance.addPostFrameCallback((_) {
           SettingsAddonDrill.close();
@@ -285,38 +280,63 @@ class _AddonListPaneState extends ConsumerState<_AddonListPane> {
   @override
   Widget build(BuildContext context) {
     ref.watch(accountFeaturesProvider);
-    final addons = settingsAddons(packContributed: widget.packContributed);
+    // Same split as web Addons: host rows, then pack-discovered buckets.
+    final builtIn = settingsAddons();
+    final packs = widget.packContributed;
+    final flat = [...builtIn, ...packs];
     final tv = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
+
+    String? rowIdAt(int index) {
+      if (index < 0 || index >= flat.length) return null;
+      return 'addon-${flat[index].id}';
+    }
+
+    _AddonRow rowAt(int index) {
+      final addon = flat[index];
+      return _AddonRow(
+        meta: addon,
+        visibility: widget.visibility,
+        sortOrder: index,
+        prevRowId: rowIdAt(index - 1),
+        nextRowId: rowIdAt(index + 1),
+        onOpen: () => widget.onOpen(addon.id),
+      );
+    }
+
+    final body = Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        SettingsGroup(
+          label: 'Built-in addons',
+          children: [for (var i = 0; i < builtIn.length; i++) rowAt(i)],
+        ),
+        SettingsGroup(
+          label: 'Pack settings',
+          children: packs.isEmpty
+              ? [
+                  Padding(
+                    padding: SettingsTokens.addonListRowPaddingOf(context),
+                    child: Text(
+                      'No pack settings yet. Enable packs with Addon settings '
+                      'under Forja Packs.',
+                      style: TextStyle(
+                        color: ForjaShellColors.textSecondary,
+                        fontSize: SettingsTokens.rowSubtitleSizeOf(context),
+                      ),
+                    ),
+                  ),
+                ]
+              : [
+                  for (var j = 0; j < packs.length; j++)
+                    rowAt(builtIn.length + j),
+                ],
+        ),
+      ],
+    );
     // Spatial rows: OK activates; → details. Linear scope would walk columns
     // as one reading-order line.
-    final list = ListView.separated(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      itemCount: addons.length,
-      separatorBuilder: (_, _) => Padding(
-        padding: const EdgeInsets.only(left: 2),
-        child: Divider(
-          height: SettingsTokens.addonListSeparatorHeightOf(context),
-          thickness: 1,
-          color: ForjaShellColors.borderSubtle.withValues(alpha: 0.6),
-        ),
-      ),
-      itemBuilder: (context, index) {
-        final addon = addons[index];
-        return _AddonRow(
-          meta: addon,
-          visibility: widget.visibility,
-          sortOrder: index,
-          prevRowId: index > 0 ? 'addon-${addons[index - 1].id}' : null,
-          nextRowId: index < addons.length - 1
-              ? 'addon-${addons[index + 1].id}'
-              : null,
-          onOpen: () => widget.onOpen(addon.id),
-        );
-      },
-    );
-    if (!tv) return list;
-    return ShellTvDisableLinearFocus(child: list);
+    if (!tv) return body;
+    return ShellTvDisableLinearFocus(child: body);
   }
 }
 
@@ -342,10 +362,12 @@ class _AddonRow extends ConsumerStatefulWidget {
 }
 
 class _AddonRowState extends ConsumerState<_AddonRow> {
-  late final FocusNode _rowFocus =
-      FocusNode(debugLabel: 'addon-row-${widget.meta.id}');
-  late final FocusNode _detailsFocus =
-      FocusNode(debugLabel: 'addon-details-${widget.meta.id}');
+  late final FocusNode _rowFocus = FocusNode(
+    debugLabel: 'addon-row-${widget.meta.id}',
+  );
+  late final FocusNode _detailsFocus = FocusNode(
+    debugLabel: 'addon-details-${widget.meta.id}',
+  );
   bool? _optimisticEnabled;
   bool _lanEnabled = false;
   bool _busy = false;
@@ -381,8 +403,9 @@ class _AddonRowState extends ConsumerState<_AddonRow> {
         ? visAsync.requireValue
         : widget.visibility;
     final debridAsync = ref.read(settingsDebridProvider);
-    final debridEnabled =
-        debridAsync.hasValue ? debridAsync.requireValue.useDebrid : false;
+    final debridEnabled = debridAsync.hasValue
+        ? debridAsync.requireValue.useDebrid
+        : false;
     final enabled = addonMasterEnabled(
       addonId: widget.meta.id,
       snap: snap,
@@ -435,8 +458,9 @@ class _AddonRowState extends ConsumerState<_AddonRow> {
       final visAsync = ref.watch(settingsVisibilityProvider);
       final vis = visAsync.hasValue ? visAsync.requireValue : visibility;
       final debridAsync = ref.watch(settingsDebridProvider);
-      final debridEnabled =
-          debridAsync.hasValue ? debridAsync.requireValue.useDebrid : false;
+      final debridEnabled = debridAsync.hasValue
+          ? debridAsync.requireValue.useDebrid
+          : false;
       final computed = addonMasterEnabled(
         addonId: meta.id,
         snap: snap,
@@ -631,16 +655,20 @@ class _AddonRowState extends ConsumerState<_AddonRow> {
         final prev = widget.prevRowId;
         if (prev == null) return; // first addon — trap in page
         final handle = ShellTvFocusCoordinator.rowHandle('settings', prev);
-        final idx = (handle?.lastFocusedIndex ?? 0)
-            .clamp(0, (handle?.itemCount ?? 1) - 1);
+        final idx = (handle?.lastFocusedIndex ?? 0).clamp(
+          0,
+          (handle?.itemCount ?? 1) - 1,
+        );
         ShellTvFocusCoordinator.focusRowItem('settings', prev, idx);
       },
       onFocusDown: () {
         final next = widget.nextRowId;
         if (next == null) return; // last addon — trap in page
         final handle = ShellTvFocusCoordinator.rowHandle('settings', next);
-        final idx = (handle?.lastFocusedIndex ?? 0)
-            .clamp(0, (handle?.itemCount ?? 1) - 1);
+        final idx = (handle?.lastFocusedIndex ?? 0).clamp(
+          0,
+          (handle?.itemCount ?? 1) - 1,
+        );
         ShellTvFocusCoordinator.focusRowItem('settings', next, idx);
       },
       child: body,
