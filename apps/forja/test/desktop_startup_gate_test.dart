@@ -121,4 +121,22 @@ void main() {
       );
     });
   });
+
+  group('shouldIgnoreSignedOutDuringAccountSwitch', () {
+    test('ignores while switch in progress', () {
+      expect(
+        shouldIgnoreSignedOutDuringAccountSwitch(accountSwitchInProgress: true),
+        isTrue,
+      );
+    });
+
+    test('does not ignore when idle', () {
+      expect(
+        shouldIgnoreSignedOutDuringAccountSwitch(
+          accountSwitchInProgress: false,
+        ),
+        isFalse,
+      );
+    });
+  });
 }

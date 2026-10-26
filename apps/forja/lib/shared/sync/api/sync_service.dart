@@ -2,12 +2,14 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
+import 'package:forja/shared/engine/packs/registry/plugin_registry.dart';
 import 'package:forja/shared/engine/packs/registry/plugin_script_disk_store.dart';
 import 'package:forja/shared/engine/portals/store/portal_catalog_shelf_store.dart';
 import 'package:forja/shared/engine/portals/store/storage.dart';
 import 'package:forja/shared/supabase/forja_secure_local_storage.dart';
 import 'package:forja/shared/supabase/forja_supabase.dart';
 import 'package:forja/shared/sync/models/account_features.dart';
+import 'package:forja/shared/sync/auth/account_session_vault.dart';
 import 'package:forja/shared/sync/auth/desktop_browser_auth.dart';
 import 'package:rust/rust.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -46,8 +48,22 @@ class SyncService {
   /// Rebuilds profile/account chrome after sign-in, sign-out, or profile switch.
   final ValueNotifier<int> identityRevision = ValueNotifier<int>(0);
 
+  /// True while swapping / adding accounts so [signedOut] does not kick the gate.
+  final ValueNotifier<bool> accountSwitchInProgress = ValueNotifier<bool>(
+    false,
+  );
+
+  /// Max GoTrue accounts kept on this device (matches vault default).
+  static const maxDeviceAccounts = 5;
+
+  /// Device multi-account vault (secure store). Tests may replace [accountVault].
+  AccountSessionVault accountVault = AccountSessionVault(
+    maxAccounts: maxDeviceAccounts,
+  );
+
   bool get isSignedIn => session != null;
   String? get userEmail => session?.user.email;
+  String? get userId => session?.user.id;
   Session? get session => ForjaSupabase.clientOrNull?.auth.currentSession;
   static const _activeProfileKeyPrefix = 'forja_sync_active_profile_';
 
@@ -125,7 +141,9 @@ class SyncService {
         final response = await client.auth.refreshSession().timeout(
           _refreshTimeout,
         );
-        return await _ensureCurrentSessionApplied(client, response.session);
+        final ok = await _ensureCurrentSessionApplied(client, response.session);
+        if (ok) unawaited(persistActiveSessionToVault());
+        return ok;
       } on TimeoutException catch (e) {
         debugPrint('[Sync] refreshSession timed out: $e');
         return false;
@@ -143,6 +161,186 @@ class SyncService {
     }();
     _refreshInFlight = run;
     return run;
+  }
+
+  /// Write the live GoTrue session into the multi-account vault.
+  Future<void> persistActiveSessionToVault() async {
+    final s = session;
+    if (s == null) return;
+    try {
+      await accountVault.snapshotFromSession(s);
+    } catch (e) {
+      debugPrint('[Sync] vault persist failed: $e');
+    }
+  }
+
+  Future<List<DeviceAccountSession>> listDeviceAccounts() async {
+    final state = await accountVault.load();
+    return state.sortedByLastUsed;
+  }
+
+  /// Apply a vault entry via [setSession]. Updates vault tokens on success.
+  Future<bool> applyDeviceAccountSession(DeviceAccountSession entry) async {
+    await ForjaSupabase.ensureInitialized();
+    final client = ForjaSupabase.clientOrNull;
+    if (client == null) return false;
+    try {
+      final access = entry.accessToken?.trim();
+      if (access != null && access.isNotEmpty) {
+        try {
+          await client.auth.setSession(entry.refreshToken, accessToken: access);
+        } on AuthException catch (e) {
+          if (!_canFallbackBrowserTokenRefresh(e)) rethrow;
+          await client.auth.setSession(entry.refreshToken);
+        }
+      } else {
+        await client.auth.setSession(entry.refreshToken);
+      }
+    } on AuthException catch (e) {
+      debugPrint('[Sync] applyDeviceAccountSession: ${e.message}');
+      return false;
+    } catch (e) {
+      debugPrint('[Sync] applyDeviceAccountSession: $e');
+      return false;
+    }
+    final s = client.auth.currentSession;
+    if (s == null) return false;
+    await accountVault.snapshotFromSession(s);
+    return true;
+  }
+
+  /// Cold start: if GoTrue has no session, try the most recent vault entry.
+  ///
+  /// Returns true when a session is live afterward.
+  Future<bool> tryRestoreSessionFromVault() async {
+    if (isSignedIn) {
+      await persistActiveSessionToVault();
+      return true;
+    }
+    final state = await accountVault.load();
+    if (state.accounts.isEmpty) return false;
+    final ordered = state.sortedByLastUsed;
+    accountSwitchInProgress.value = true;
+    try {
+      for (final entry in ordered) {
+        final ok = await applyDeviceAccountSession(entry);
+        if (ok) {
+          _notifyIdentityChanged();
+          return true;
+        }
+        // Dead refresh — drop the slot so Settings does not keep a zombie.
+        await accountVault.remove(entry.userId);
+      }
+    } finally {
+      accountSwitchInProgress.value = false;
+    }
+    return false;
+  }
+
+  /// Switch the live GoTrue session to [userId] from the vault.
+  ///
+  /// Callers should cancel pending sync pushes first. Does **not** wipe
+  /// account-bound local state (other accounts' [LocalDataScope] rows stay).
+  Future<bool> switchAccount(String userId) async {
+    final targetId = userId.trim();
+    if (targetId.isEmpty) return false;
+    if (session?.user.id == targetId) {
+      await accountVault.setActive(targetId);
+      return true;
+    }
+    final state = await accountVault.load();
+    final target = state.byUserId(targetId);
+    if (target == null) {
+      debugPrint('[Sync] switchAccount: no vault entry for $targetId');
+      return false;
+    }
+
+    final previous = DeviceAccountSession.fromSession(session);
+    if (previous != null) {
+      await accountVault.upsert(previous, setActive: false);
+    }
+
+    accountSwitchInProgress.value = true;
+    try {
+      final ok = await applyDeviceAccountSession(target);
+      if (!ok) {
+        if (previous != null) {
+          await applyDeviceAccountSession(previous);
+        }
+        return false;
+      }
+      await ensurePluginDiskScopeForCurrentSession();
+      AccountFeatures.instance.clear();
+      _notifyIdentityChanged();
+      return true;
+    } finally {
+      accountSwitchInProgress.value = false;
+    }
+  }
+
+  /// Remove a non-active (or any) vault entry. If [userId] is active, signs
+  /// that account out via [signOut] (may switch to another vault account).
+  Future<void> removeDeviceAccount(String userId) async {
+    final id = userId.trim();
+    if (id.isEmpty) return;
+    if (session?.user.id == id) {
+      await signOut(all: false);
+      return;
+    }
+    await accountVault.remove(id);
+    _notifyIdentityChanged();
+  }
+
+  /// Snapshot the live session and raise [accountSwitchInProgress] before
+  /// opening device-link / QR add-account UI.
+  Future<DeviceAccountSession?> prepareAddAccount() async {
+    final previous = DeviceAccountSession.fromSession(session);
+    if (previous != null) {
+      await accountVault.upsert(previous, setActive: false);
+    }
+    accountSwitchInProgress.value = true;
+    return previous;
+  }
+
+  /// Finish add-account after QR / device-link. Restores [previous] on cancel.
+  Future<void> completeAddAccount({
+    required DeviceAccountSession? previous,
+    required bool success,
+  }) async {
+    try {
+      if (success && isSignedIn) {
+        await persistActiveSessionToVault();
+        await ensurePluginDiskScopeForCurrentSession();
+        _notifyIdentityChanged();
+        return;
+      }
+      if (previous == null) return;
+      final liveId = session?.user.id;
+      if (liveId == previous.userId) {
+        await ensurePluginDiskScopeForCurrentSession();
+        return;
+      }
+      await applyDeviceAccountSession(previous);
+      await ensurePluginDiskScopeForCurrentSession();
+      _notifyIdentityChanged();
+    } finally {
+      accountSwitchInProgress.value = false;
+    }
+  }
+
+  /// Run [login] while preserving the previous session on cancel/failure.
+  ///
+  /// Prefer [prepareAddAccount] + device-link QR for Settings **Add account**.
+  Future<T> runAddAccount<T>(Future<T> Function() login) async {
+    final previous = await prepareAddAccount();
+    try {
+      final result = await login();
+      await completeAddAccount(previous: previous, success: isSignedIn);
+      return result;
+    } catch (e) {
+      await completeAddAccount(previous: previous, success: false);
+      rethrow;
+    }
   }
 
   /// Applies [returned] when gotrue discarded a successful refresh apply.
@@ -358,6 +556,9 @@ class SyncService {
       password: password,
       captchaToken: captchaToken,
     );
+    if (response.session != null) {
+      await persistActiveSessionToVault();
+    }
     _notifyIdentityChanged();
     return response;
   }
@@ -377,7 +578,10 @@ class SyncService {
       password: password,
       captchaToken: captchaToken,
     );
-    if (response.session != null) _notifyIdentityChanged();
+    if (response.session != null) {
+      await persistActiveSessionToVault();
+      _notifyIdentityChanged();
+    }
     return response;
   }
 
@@ -426,9 +630,61 @@ class SyncService {
     }
   }
 
-  Future<void> signOut() async {
+  /// Sign out the active account, or [all] device vault accounts.
+  ///
+  /// Default: remove active from vault; if another vault entry remains, switch
+  /// to the most recently used one (stay in shell — no account gate). If the
+  /// vault is empty afterward, local GoTrue sign-out (gate returns to account).
+  Future<void> signOut({bool all = false}) async {
     final client = ForjaSupabase.clientOrNull;
     if (client == null) return;
+
+    if (all) {
+      await accountVault.clearAll();
+      try {
+        await client.auth.signOut(scope: SignOutScope.local);
+      } catch (e) {
+        debugPrint('[Sync] signOut remote revoke failed (local cleared): $e');
+      }
+      AccountFeatures.instance.clear();
+      _notifyIdentityChanged();
+      return;
+    }
+
+    final activeId = session?.user.id;
+    if (activeId != null) {
+      final afterRemove = await accountVault.remove(activeId);
+      final next = afterRemove.mostRecent;
+      if (next != null) {
+        // Switch without emitting a terminal signedOut to the account gate.
+        accountSwitchInProgress.value = true;
+        try {
+          // Clear live session without vault wipe of [next].
+          try {
+            await client.auth.signOut(scope: SignOutScope.local);
+          } catch (e) {
+            debugPrint('[Sync] signOut before switch: $e');
+          }
+          final ok = await applyDeviceAccountSession(next);
+          if (ok) {
+            await ensurePluginDiskScopeForCurrentSession();
+            AccountFeatures.instance.clear();
+            _notifyIdentityChanged();
+            return;
+          }
+          // Keep [next] in vault; fall through to signed-out UI.
+        } finally {
+          accountSwitchInProgress.value = false;
+        }
+      }
+    } else {
+      // No live session — still clear vault active if any.
+      final state = await accountVault.load();
+      if (state.activeUserId != null) {
+        await accountVault.remove(state.activeUserId!);
+      }
+    }
+
     // Gate listens for signedOut and wipes account-bound local state (IPTV…).
     // gotrue clears local session first, then may throw on remote revoke when
     // DNS/TLS is down — never leave Settings stuck on signed-in error chrome.
@@ -485,6 +741,7 @@ class SyncService {
     if (response.session == null) {
       throw const AuthException('Web login did not return a usable session.');
     }
+    await persistActiveSessionToVault();
     // Android TV: EncryptedSharedPreferences alone can drop the session;
     // ForjaPlatformSecureStore dual-writes a prefs vault. Verify after apply.
     try {
@@ -727,6 +984,8 @@ class SyncService {
     SettingsService.forgetIdentitySessionCache();
     await PortalStore.migrateLegacyInventoryIfNeeded();
     await ProviderScoreMemory.syncIdentityScope();
+    // Force pack/nav hosts to drop the previous identity's in-memory packs.
+    PluginRegistry.instance.notifyChanged();
   }
 
   /// Guest / signed-out local profile (`accounts/local/profiles/default`).
@@ -756,9 +1015,10 @@ class SyncService {
   /// Bind pack disk for the launched profile before pack I/O.
   ///
   /// - Guest / no session → [useGuestPluginDiskScope] (local profile).
-  /// - Signed-in with an active profile id (picker or restored) → that profile.
-  /// - Signed-in on the profile picker with no active profile yet → no-op; init
-  ///   has not started. [selectProfile] binds scope when the user picks one.
+  /// - Signed-in with a saved profile id → that profile.
+  /// - Signed-in with no saved profile yet → park under `accountId:default`
+  ///   until Who's watching / [selectProfile] (never leave the previous
+  ///   account's [LocalDataScope] live under a new JWT — multi-account switch).
   Future<void> ensurePluginDiskScopeForCurrentSession() async {
     final userId = session?.user.id;
     if (userId == null) {
@@ -769,10 +1029,10 @@ class SyncService {
     final profileId = prefs
         .getString('$_activeProfileKeyPrefix$userId')
         ?.trim();
-    if (profileId == null || profileId.isEmpty) {
-      return;
-    }
-    await _syncPluginDiskScope(accountId: userId, profileId: profileId);
+    await _syncPluginDiskScope(
+      accountId: userId,
+      profileId: (profileId == null || profileId.isEmpty) ? null : profileId,
+    );
   }
 
   /// Matches `profiles_enforce_max` in Supabase.

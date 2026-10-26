@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:forja/features/account/account_chooser_screen.dart';
 import 'package:forja/features/account/device_link_connect_view.dart';
 import 'package:forja/features/account/profile_chooser_screen.dart';
 import 'package:forja/features/account/tv_account_link_screen.dart';
@@ -39,8 +40,10 @@ class _SettingsForjaAccountPanelState extends State<SettingsForjaAccountPanel> {
   List<SyncProfile> _profiles = const [];
   String? _activeProfileId;
   Completer<void>? _webCancel;
+
   /// False until the active profile row is loaded - never paint a stale profile.
   bool _profileReady = false;
+
   /// Set when a signed-in profile fetch fails (timeout / network).
   String? _profileLoadError;
   int _refreshGen = 0;
@@ -133,6 +136,27 @@ class _SettingsForjaAccountPanelState extends State<SettingsForjaAccountPanel> {
     setState(() {});
   }
 
+  Future<void> _openAccountChooser() async {
+    final changed = await presentAccountChooser(context);
+    if (!mounted) return;
+    if (changed) {
+      // New / switched account — pick who’s watching for that user.
+      if (SyncService.instance.isSignedIn) {
+        // Always re-pick / re-bind for the new account — never skip with a
+        // stale "already active" profile id from the previous JWT.
+        await presentProfileChooser(
+          context,
+          prepareCurrentOnSwitch: false,
+          closeIfAlreadyActive: false,
+        );
+      }
+      if (!mounted) return;
+      ForjaToast.success('Account ready');
+    }
+    await _refreshRemote();
+    setState(() {});
+  }
+
   Future<void> _signIn() async {
     setState(() {
       _busy = true;
@@ -146,16 +170,12 @@ class _SettingsForjaAccountPanelState extends State<SettingsForjaAccountPanel> {
     setState(() => _busy = false);
     if (!ok) {
       setState(() {
-        _error =
-            'Sign-in failed. Check email/password or Supabase config.';
+        _error = 'Sign-in failed. Check email/password or Supabase config.';
       });
       return;
     }
     _passwordCtrl.clear();
-    await presentProfileChooser(
-      context,
-      prepareCurrentOnSwitch: false,
-    );
+    await presentProfileChooser(context, prepareCurrentOnSwitch: false);
     if (!mounted) return;
     await _refreshRemote();
     setState(() {});
@@ -164,10 +184,7 @@ class _SettingsForjaAccountPanelState extends State<SettingsForjaAccountPanel> {
   Future<void> _onDeviceLinkAuthenticated() async {
     if (!mounted) return;
     setState(() => _deviceLinkActive = false);
-    await presentProfileChooser(
-      context,
-      prepareCurrentOnSwitch: false,
-    );
+    await presentProfileChooser(context, prepareCurrentOnSwitch: false);
     if (!mounted) return;
     await _refreshRemote();
     setState(() {});
@@ -185,10 +202,7 @@ class _SettingsForjaAccountPanelState extends State<SettingsForjaAccountPanel> {
       ),
     );
     if (!mounted || linked != true) return;
-    await presentProfileChooser(
-      context,
-      prepareCurrentOnSwitch: false,
-    );
+    await presentProfileChooser(context, prepareCurrentOnSwitch: false);
     if (!mounted) return;
     await _refreshRemote();
     setState(() {});
@@ -210,10 +224,7 @@ class _SettingsForjaAccountPanelState extends State<SettingsForjaAccountPanel> {
         setState(() => _error = 'Web login did not complete.');
         return;
       }
-      await presentProfileChooser(
-        context,
-        prepareCurrentOnSwitch: false,
-      );
+      await presentProfileChooser(context, prepareCurrentOnSwitch: false);
       if (!mounted) return;
       await _refreshRemote();
       setState(() {});
@@ -250,7 +261,7 @@ class _SettingsForjaAccountPanelState extends State<SettingsForjaAccountPanel> {
     }
   }
 
-  Future<void> _signOut() async {
+  Future<void> _signOut({bool all = false}) async {
     if (_busy) return;
     // Invalidate in-flight profile load so it cannot paint signed-in chrome
     // after local session clear.
@@ -262,17 +273,13 @@ class _SettingsForjaAccountPanelState extends State<SettingsForjaAccountPanel> {
     });
     SyncDomainBridge.instance.cancelPendingPushes();
     try {
-      await SyncService.instance.signOut();
-    } finally {
-      // Always drop signed-in chrome — session may already be local-cleared
-      // even when remote revoke threw (DNS / TLS).
-      if (mounted) {
-        setState(() {
-          _clearProfileUi();
-          _busy = false;
-        });
-      }
+      await SyncService.instance.signOut(all: all);
+    } catch (_) {
+      // Session may already be local-cleared; still refresh chrome below.
     }
+    if (!mounted) return;
+    setState(() => _busy = false);
+    await _refreshRemote();
   }
 
   bool get _formLocked => _busy || _webBusy;
@@ -287,7 +294,10 @@ class _SettingsForjaAccountPanelState extends State<SettingsForjaAccountPanel> {
         child: Text(
           'Cloud account is not configured in this build. '
           'Pass SUPABASE_URL and SUPABASE_PUBLISHABLE_KEY via --dart-define.',
-          style: TextStyle(color: ForjaShellColors.textSecondary, fontSize: SettingsTokens.typeSizeOf(context, 13)),
+          style: TextStyle(
+            color: ForjaShellColors.textSecondary,
+            fontSize: SettingsTokens.typeSizeOf(context, 13),
+          ),
         ),
       );
     }
@@ -322,7 +332,7 @@ class _SettingsForjaAccountPanelState extends State<SettingsForjaAccountPanel> {
                     subtitle: loading
                         ? 'Loading cloud profile…'
                         : 'Cloud profile could not load. Retry, or sign out to '
-                            'clear this session on the device.',
+                              'clear this session on the device.',
                     icon: loading
                         ? Icons.cloud_sync_rounded
                         : Icons.cloud_off_rounded,
@@ -388,9 +398,9 @@ class _SettingsForjaAccountPanelState extends State<SettingsForjaAccountPanel> {
         activeProfile: activeProfile,
         email: email,
         domains: _domains,
-        busy: _busy,
+        busy: _busy || _webBusy,
+        onOpenAccountChooser: () => unawaited(_openAccountChooser()),
         onOpenChooser: () => _openChooser(),
-        onSignOut: _signOut,
         error: _error,
       );
     }
@@ -425,8 +435,8 @@ class _SignedInAccountBody extends StatelessWidget {
     required this.email,
     required this.domains,
     required this.busy,
+    required this.onOpenAccountChooser,
     required this.onOpenChooser,
-    required this.onSignOut,
     this.error,
   });
 
@@ -434,8 +444,8 @@ class _SignedInAccountBody extends StatelessWidget {
   final String? email;
   final int domains;
   final bool busy;
+  final VoidCallback onOpenAccountChooser;
   final VoidCallback onOpenChooser;
-  final VoidCallback onSignOut;
   final String? error;
 
   @override
@@ -447,11 +457,28 @@ class _SignedInAccountBody extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        _ActiveAccountStage(
+          email: email ?? 'Signed in',
+          onTap: busy ? null : onOpenAccountChooser,
+        ),
+        const SizedBox(height: 4),
         _ActiveProfileStage(
           name: activeProfile.name,
           avatarKey: activeProfile.avatarKey,
           onTap: busy ? null : onOpenChooser,
         ),
+        if (error != null)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(2, 8, 2, 0),
+            child: Text(
+              error!,
+              style: TextStyle(
+                color: Color(0xFFF87171),
+                fontSize: SettingsTokens.typeSizeOf(context, 12.5),
+                height: 1.35,
+              ),
+            ),
+          ),
         const SizedBox(height: 8),
         SettingsGroup(
           label: 'Cloud sync',
@@ -465,42 +492,148 @@ class _SignedInAccountBody extends StatelessWidget {
             ),
           ],
         ),
-        SettingsGroup(
-          label: 'Account',
-          children: [
-            SettingsStatusRow(
-              title: email ?? 'Signed in',
-              subtitle: 'Forja cloud account shared with the web portal',
-              icon: Icons.mail_outline_rounded,
-              iconColor: ForjaShellColors.iconMuted,
-            ),
-            if (error != null)
-              Padding(
-                padding: const EdgeInsets.fromLTRB(2, 4, 2, 8),
-                child: Text(
-                  error!,
-                  style: TextStyle(
-                    color: Color(0xFFF87171),
-                    fontSize: SettingsTokens.typeSizeOf(context, 12.5),
-                    height: 1.35,
+      ],
+    );
+  }
+}
+
+/// Account hero above profile — same stage language as Who’s watching.
+class _ActiveAccountStage extends StatelessWidget {
+  const _ActiveAccountStage({required this.email, required this.onTap});
+
+  final String email;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final avatarSize = SettingsTokens.profileStageAvatarSizeOf(context);
+    final glowSize = SettingsTokens.profileStageGlowSizeOf(context);
+    final gap = SettingsTokens.profileStageGapOf(context);
+    final chevronSize = SettingsTokens.profileStageChevronSizeOf(context);
+    final content = Padding(
+      padding: SettingsTokens.profileStagePadOf(context),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Stack(
+            alignment: Alignment.center,
+            clipBehavior: Clip.none,
+            children: [
+              Container(
+                width: glowSize,
+                height: glowSize,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: RadialGradient(
+                    colors: [
+                      ForjaShellColors.brandGreen.withValues(alpha: 0.18),
+                      ForjaShellColors.brandGreen.withValues(alpha: 0.03),
+                      Colors.transparent,
+                    ],
+                    stops: const [0.0, 0.55, 1.0],
                   ),
                 ),
               ),
-            SettingsActionRow(
-              title: 'Sign out',
-              subtitle: 'Returns to the sign-in screen on this device',
-              leading: Icon(
-                Icons.logout_rounded,
-                color: Color(0xFFF87171),
-                size: SettingsTokens.iconButtonIconSizeOf(context),
+              Container(
+                width: avatarSize,
+                height: avatarSize,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: ForjaShellColors.surfaceElevated,
+                  border: Border.all(
+                    color: ForjaShellColors.brandGreen.withValues(alpha: 0.55),
+                    width: 2,
+                  ),
+                ),
+                child: Icon(
+                  Icons.mail_outline_rounded,
+                  color: ForjaShellColors.brandGreen,
+                  size: avatarSize * 0.42,
+                ),
               ),
-              destructive: true,
-              onTap: busy ? null : onSignOut,
-              trailing: const SizedBox.shrink(),
+            ],
+          ),
+          SizedBox(width: gap),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  padding: SettingsTokens.profileStageBadgePadOf(context),
+                  decoration: BoxDecoration(
+                    color: ForjaShellColors.brandGreen.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(4),
+                    border: Border.all(
+                      color: ForjaShellColors.brandGreen.withValues(
+                        alpha: 0.45,
+                      ),
+                    ),
+                  ),
+                  child: Text(
+                    'ACCOUNT',
+                    style: TextStyle(
+                      color: ForjaShellColors.brandGreen,
+                      fontSize: SettingsTokens.typeSizeOf(context, 10),
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: ShellPaintScope.usesTvDensityOf(context)
+                          ? 0.8
+                          : 1.4,
+                    ),
+                  ),
+                ),
+                SizedBox(
+                  height: SettingsTokens.profileStageGapOf(context) * 0.5,
+                ),
+                Text(
+                  email,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: ForjaShellColors.textPrimary,
+                    fontSize: SettingsTokens.typeSizeOf(context, 22),
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: -0.4,
+                    height: 1.15,
+                  ),
+                ),
+                SizedBox(
+                  height: SettingsTokens.profileStageGapOf(context) * 0.3,
+                ),
+                Text(
+                  onTap == null
+                      ? 'Active Forja cloud account'
+                      : 'Tap to switch or add accounts',
+                  style: TextStyle(
+                    color: ForjaShellColors.textSecondary,
+                    fontSize: SettingsTokens.typeSizeOf(context, 13),
+                    height: 1.35,
+                  ),
+                ),
+              ],
             ),
-          ],
-        ),
-      ],
+          ),
+          if (onTap != null)
+            Icon(
+              Icons.chevron_right_rounded,
+              color: ForjaShellColors.iconMuted,
+              size: chevronSize,
+            ),
+        ],
+      ),
+    );
+
+    if (onTap == null) return content;
+
+    return shellFocusableTap(
+      context: context,
+      onTap: onTap,
+      borderRadius: SettingsTokens.categoryTileRadius,
+      scaleOnFocus: 1.0,
+      showFocusRail: true,
+      tvTabId: 'settings',
+      tvZone: ShellTvZone.settings,
+      ensureVisibleMode: ShellPaintEnsureVisible.item,
+      child: content,
     );
   }
 }
@@ -567,8 +700,9 @@ class _ActiveProfileStage extends StatelessWidget {
                     color: ForjaShellColors.brandGreen.withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(4),
                     border: Border.all(
-                      color:
-                          ForjaShellColors.brandGreen.withValues(alpha: 0.45),
+                      color: ForjaShellColors.brandGreen.withValues(
+                        alpha: 0.45,
+                      ),
                     ),
                   ),
                   child: Text(
@@ -577,12 +711,15 @@ class _ActiveProfileStage extends StatelessWidget {
                       color: ForjaShellColors.brandGreen,
                       fontSize: SettingsTokens.typeSizeOf(context, 10),
                       fontWeight: FontWeight.w800,
-                      letterSpacing:
-                          ShellPaintScope.usesTvDensityOf(context) ? 0.8 : 1.4,
+                      letterSpacing: ShellPaintScope.usesTvDensityOf(context)
+                          ? 0.8
+                          : 1.4,
                     ),
                   ),
                 ),
-                SizedBox(height: SettingsTokens.profileStageGapOf(context) * 0.5),
+                SizedBox(
+                  height: SettingsTokens.profileStageGapOf(context) * 0.5,
+                ),
                 Text(
                   name,
                   maxLines: 1,
@@ -595,7 +732,9 @@ class _ActiveProfileStage extends StatelessWidget {
                     height: 1.1,
                   ),
                 ),
-                SizedBox(height: SettingsTokens.profileStageGapOf(context) * 0.3),
+                SizedBox(
+                  height: SettingsTokens.profileStageGapOf(context) * 0.3,
+                ),
                 Text(
                   onTap == null
                       ? 'Active profile on this device'
@@ -716,7 +855,7 @@ class _SignedOutAccountBody extends StatelessWidget {
                       const SizedBox(height: 12),
                     ],
                     Button(
-              variant: ButtonVariant.primary,
+                      variant: ButtonVariant.primary,
                       label: 'Link with code or QR',
                       icon: Icons.tv_rounded,
                       onPressed: formLocked ? null : onTvDeviceLink,
@@ -782,7 +921,7 @@ class _SignedOutAccountBody extends StatelessWidget {
                       ),
                       const SizedBox(height: 16),
                       Button(
-              variant: ButtonVariant.primary,
+                        variant: ButtonVariant.primary,
                         label: 'Sign in',
                         icon: Icons.link_rounded,
                         onPressed: formLocked ? null : onStartDeviceLink,
@@ -852,8 +991,7 @@ class _SignedOutAccountBody extends StatelessWidget {
                     label: 'Password',
                     obscureText: true,
                     enabled: !formLocked,
-                    onSubmitted:
-                        canSubmitPassword ? (_) => onSignIn() : null,
+                    onSubmitted: canSubmitPassword ? (_) => onSignIn() : null,
                   ),
                   if (error != null) ...[
                     const SizedBox(height: 10),
@@ -872,7 +1010,7 @@ class _SignedOutAccountBody extends StatelessWidget {
                     runSpacing: 10,
                     children: [
                       Button(
-              variant: ButtonVariant.primary,
+                        variant: ButtonVariant.primary,
                         label: busy ? 'Signing in…' : 'Sign in',
                         icon: Icons.login_rounded,
                         loading: busy,

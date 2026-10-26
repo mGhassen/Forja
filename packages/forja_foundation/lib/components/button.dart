@@ -209,9 +209,15 @@ class _ButtonState extends State<Button> {
       ),
       foregroundColor: WidgetStatePropertyAll(colors.foreground),
       backgroundColor: WidgetStatePropertyAll(colors.background),
+      // plainIcon: glyph color only — no Material hover wash / splash box.
       overlayColor: WidgetStatePropertyAll(
-        colors.foreground.withValues(alpha: 0.08),
+        widget.variant == ButtonVariant.plainIcon
+            ? Colors.transparent
+            : colors.foreground.withValues(alpha: 0.08),
       ),
+      splashFactory: widget.variant == ButtonVariant.plainIcon
+          ? NoSplash.splashFactory
+          : null,
       side: colors.border != null
           ? WidgetStatePropertyAll(
               BorderSide(color: colors.border!, width: 1.5),

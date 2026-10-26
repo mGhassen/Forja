@@ -63,6 +63,14 @@ bool shouldReturnToAccountOnSignOut({
   return true;
 }
 
+/// Multi-account switch / add emits transient [signedOut] — do not bounce to
+/// the account gate while [SyncService.accountSwitchInProgress] is true.
+bool shouldIgnoreSignedOutDuringAccountSwitch({
+  required bool accountSwitchInProgress,
+}) {
+  return accountSwitchInProgress;
+}
+
 enum _StartupStage { account, profiles, packs, profileSplash, splash }
 
 /// Cold-start gate: paint account or splash **immediately** from the cached
@@ -215,6 +223,21 @@ class _DesktopStartupGateState extends ConsumerState<DesktopStartupGate> {
       hasSession = SyncService.instance.isSignedIn;
     }
 
+    if (!hasSession && ForjaSupabase.isConfigured) {
+      try {
+        final restored = await SyncService.instance
+            .tryRestoreSessionFromVault();
+        if (restored) {
+          hasSession = true;
+          debugPrint(
+            '[DesktopStartupGate] restored session from account vault',
+          );
+        }
+      } catch (e) {
+        debugPrint('[DesktopStartupGate] vault restore: $e');
+      }
+    }
+
     if (!hasSession) {
       await SyncService.instance.useGuestPluginDiskScope();
       if (!mounted) return;
@@ -288,6 +311,15 @@ class _DesktopStartupGateState extends ConsumerState<DesktopStartupGate> {
       'stage=$_stage signedIn=${SyncService.instance.isSignedIn}',
     );
     if (state.event != AuthChangeEvent.signedOut) return;
+    if (shouldIgnoreSignedOutDuringAccountSwitch(
+      accountSwitchInProgress:
+          SyncService.instance.accountSwitchInProgress.value,
+    )) {
+      debugPrint(
+        '[DesktopStartupGate] ignoring signedOut during account switch',
+      );
+      return;
+    }
     assert(
       shouldReturnToAccountOnSignOut(
         reason: state.signOutReason,

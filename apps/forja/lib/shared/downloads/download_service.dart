@@ -10,8 +10,11 @@ import 'package:forja/shared/downloads/download_task.dart';
 import 'package:forja/shared/downloads/hls_download_engine.dart';
 import 'package:forja/shared/downloads/hls_subtitle_sidecar.dart';
 import 'package:forja/shared/downloads/storage_space_helper.dart';
+import 'package:forja/shared/playback/playable_stream_url.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
+import 'package:rust/rust.dart' show LocalDataScope;
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
 /// How tightly a Sources row matches a saved download.
@@ -143,6 +146,10 @@ class DownloadService {
 
   bool _isInitialized = false;
   Completer<void>? _initCompleter;
+  bool _scopeListening = false;
+  String? _boundScopeId;
+  static const String _legacyMigratedPrefsKey =
+      'forja_downloads_identity_scope_v1_migrated';
 
   /// Progress ticks only schedule a write; status changes flush immediately.
   static const Duration _progressPersistInterval = Duration(seconds: 5);
@@ -159,6 +166,7 @@ class DownloadService {
   /// Loads persisted tasks once. Concurrent callers await the same load so a
   /// late finish cannot wipe an enqueue that already wrote to [tasksNotifier].
   Future<void> initialize() async {
+    _ensureScopeListener();
     if (_isInitialized) return;
     final inFlight = _initCompleter;
     if (inFlight != null) {
@@ -168,7 +176,9 @@ class DownloadService {
     final completer = Completer<void>();
     _initCompleter = completer;
     try {
+      await _migrateLegacyUnscopedLibraryIfNeeded();
       await _loadPersistedTasks();
+      _boundScopeId = LocalDataScope.id;
       _isInitialized = true;
       completer.complete();
     } catch (e, st) {
@@ -189,18 +199,202 @@ class DownloadService {
 
   static const String _storageFilename = 'forja_download_tasks.json';
 
+  void _ensureScopeListener() {
+    if (_scopeListening) return;
+    _scopeListening = true;
+    LocalDataScope.addListener(_onLocalDataScopeChanged);
+  }
+
+  Future<void> _onLocalDataScopeChanged() async {
+    final previous = _boundScopeId;
+    // Abort writers first. Do not call pauseDownload — it persists via the
+    // *new* identity path after LocalDataScope.configure already flipped.
+    for (final task in List<DownloadTask>.from(tasksNotifier.value)) {
+      if (task.isActive) {
+        _canceledOrPausedTaskIds.add(task.id);
+        _cleanupHttpTask(task.id);
+      }
+    }
+
+    if (previous != null &&
+        previous != LocalDataScope.id &&
+        tasksNotifier.value.isNotEmpty) {
+      tasksNotifier.value = [
+        for (final task in tasksNotifier.value)
+          if (task.isActive)
+            task.copyWith(
+              status: DownloadStatus.paused,
+              speedBytesPerSec: 0.0,
+              etaSeconds: null,
+            )
+          else
+            task,
+      ];
+      await _writeTasksFileForScopeId(previous);
+    }
+
+    _progressPersistTimer?.cancel();
+    _progressPersistTimer = null;
+    tasksNotifier.value = [];
+    _isInitialized = false;
+    _initCompleter = null;
+    _boundScopeId = LocalDataScope.id;
+    await _migrateLegacyUnscopedLibraryIfNeeded();
+    await _loadPersistedTasks();
+    _isInitialized = true;
+    libraryRevision.value++;
+    unawaited(registerDownloadsAsPlayableFileRoot());
+  }
+
   Future<File> _getStorageFile() async {
-    final docDir = await getApplicationDocumentsDirectory();
-    return File(p.join(docDir.path, _storageFilename));
+    final dir = await DownloadPathHelper.getDownloadsDirectoryPath();
+    return File(p.join(dir, _storageFilename));
+  }
+
+  Future<File> _storageFileForScopeId(String scopeId) async {
+    final parts = scopeId.split(':');
+    final account = parts.isNotEmpty
+        ? parts.first
+        : LocalDataScope.guestAccountId;
+    final profile = parts.length > 1
+        ? parts.sublist(1).join(':')
+        : LocalDataScope.guestProfileId;
+    final dir = await DownloadPathHelper.getDownloadsDirectoryPathFor(
+      accountId: account,
+      profileId: profile,
+    );
+    return File(p.join(dir, _storageFilename));
+  }
+
+  Future<void> _writeTasksFileForScopeId(String scopeId) async {
+    try {
+      final file = await _storageFileForScopeId(scopeId);
+      final jsonList = tasksNotifier.value.map((t) => t.toJson()).toList();
+      final encoded = jsonEncode(jsonList);
+      final tmp = File('${file.path}.tmp');
+      await tmp.writeAsString(encoded);
+      if (await file.exists()) {
+        try {
+          await file.delete();
+        } catch (_) {}
+      }
+      await tmp.rename(file.path);
+    } catch (e) {
+      debugPrint('[DownloadService] Failed to persist tasks for $scopeId: $e');
+    }
+  }
+
+  /// One-time: park the old device-global library under the **current** identity.
+  Future<void> _migrateLegacyUnscopedLibraryIfNeeded() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      if (prefs.getBool(_legacyMigratedPrefsKey) == true) return;
+
+      final scopedDirPath =
+          await DownloadPathHelper.getDownloadsDirectoryPath();
+      final scopedTasks = File(p.join(scopedDirPath, _storageFilename));
+      if (await scopedTasks.exists()) {
+        await prefs.setBool(_legacyMigratedPrefsKey, true);
+        return;
+      }
+
+      final root = await DownloadPathHelper.getDownloadsRootPath();
+      final docDir = await getApplicationDocumentsDirectory();
+      final legacyDocTasks = File(p.join(docDir.path, _storageFilename));
+      final legacyRootTasks = File(p.join(root, _storageFilename));
+
+      File? legacyTasks;
+      if (await legacyDocTasks.exists()) {
+        legacyTasks = legacyDocTasks;
+      } else if (await legacyRootTasks.exists()) {
+        legacyTasks = legacyRootTasks;
+      }
+
+      final rootDir = Directory(root);
+      final looseFiles = <File>[];
+      if (await rootDir.exists()) {
+        await for (final entity in rootDir.list(followLinks: false)) {
+          if (entity is! File) continue;
+          final name = p.basename(entity.path);
+          if (name == _storageFilename || name.endsWith('.tmp')) continue;
+          looseFiles.add(entity);
+        }
+      }
+
+      if (legacyTasks == null && looseFiles.isEmpty) {
+        await prefs.setBool(_legacyMigratedPrefsKey, true);
+        return;
+      }
+
+      final pathRewrites = <String, String>{};
+      for (final file in looseFiles) {
+        final dest = File(p.join(scopedDirPath, p.basename(file.path)));
+        if (!await dest.exists()) {
+          try {
+            await file.rename(dest.path);
+            pathRewrites[file.path] = dest.path;
+          } catch (_) {
+            try {
+              await file.copy(dest.path);
+              await file.delete();
+              pathRewrites[file.path] = dest.path;
+            } catch (e) {
+              debugPrint('[DownloadService] migrate file failed: $e');
+            }
+          }
+        }
+      }
+
+      if (legacyTasks != null) {
+        final raw = await legacyTasks.readAsString();
+        if (raw.isNotEmpty) {
+          final decoded = jsonDecode(raw);
+          if (decoded is List) {
+            final rewritten = <Map<String, dynamic>>[];
+            for (final item in decoded) {
+              if (item is! Map) continue;
+              final map = Map<String, dynamic>.from(item);
+              final oldPath = (map['targetFilePath'] as String?) ?? '';
+              final moved = pathRewrites[oldPath];
+              if (moved != null) {
+                map['targetFilePath'] = moved;
+              } else if (oldPath.isNotEmpty) {
+                final basenamed = p.join(scopedDirPath, p.basename(oldPath));
+                if (await File(basenamed).exists()) {
+                  map['targetFilePath'] = basenamed;
+                }
+              }
+              rewritten.add(map);
+            }
+            await scopedTasks.writeAsString(jsonEncode(rewritten));
+          }
+        }
+        try {
+          await legacyTasks.delete();
+        } catch (_) {}
+      }
+
+      await prefs.setBool(_legacyMigratedPrefsKey, true);
+    } catch (e) {
+      debugPrint('[DownloadService] legacy migrate failed: $e');
+    }
   }
 
   Future<void> _loadPersistedTasks() async {
     try {
       final file = await _getStorageFile();
-      if (!await file.exists()) return;
+      if (!await file.exists()) {
+        tasksNotifier.value = [];
+        _updateWakelockState();
+        return;
+      }
 
       final content = await file.readAsString();
-      if (content.isEmpty) return;
+      if (content.isEmpty) {
+        tasksNotifier.value = [];
+        _updateWakelockState();
+        return;
+      }
 
       final List<dynamic> jsonList = jsonDecode(content);
       final tasks = <DownloadTask>[];

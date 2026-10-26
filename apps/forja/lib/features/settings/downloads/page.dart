@@ -39,6 +39,7 @@ class _SettingsDownloadsPageBodyState extends State<SettingsDownloadsPageBody>
   StorageSpaceInfo? _space;
   String? _downloadsDir;
   bool _hasCustomDir = false;
+
   /// Pack-contributed tabs: active plugins whose `settings.addons` include
   /// `downloads`. One tab per plugin, labelled by its settings group.
   List<_PackTab> _packTabs = const [];
@@ -78,10 +79,10 @@ class _SettingsDownloadsPageBodyState extends State<SettingsDownloadsPageBody>
           if (p.id == spec.pluginId) _PackTab(label: spec.group, plugin: p),
     ];
     if (!mounted) return;
-    final sameTabs = next.length == _packTabs.length &&
+    final sameTabs =
+        next.length == _packTabs.length &&
         [for (final t in next) '${t.plugin.id}|${t.label}'].join(',') ==
-            [for (final t in _packTabs) '${t.plugin.id}|${t.label}']
-                .join(',');
+            [for (final t in _packTabs) '${t.plugin.id}|${t.label}'].join(',');
     if (sameTabs) return;
     final previous = _tabs;
     final length = 2 + next.length;
@@ -100,8 +101,7 @@ class _SettingsDownloadsPageBodyState extends State<SettingsDownloadsPageBody>
     try {
       final dir = await DownloadPathHelper.getDownloadsDirectoryPath();
       final space = await StorageSpaceHelper.getAvailableSpace(dir);
-      final custom =
-          await DownloadPathHelper.hasCustomDownloadsDirectoryPath();
+      final custom = await DownloadPathHelper.hasCustomDownloadsDirectoryPath();
       if (!mounted) return;
       setState(() {
         _downloadsDir = dir;
@@ -136,7 +136,9 @@ class _SettingsDownloadsPageBodyState extends State<SettingsDownloadsPageBody>
         await dir.create(recursive: true);
       }
       // Probe write access before persisting.
-      final probe = File('${dir.path}${Platform.pathSeparator}.forja_write_probe');
+      final probe = File(
+        '${dir.path}${Platform.pathSeparator}.forja_write_probe',
+      );
       await probe.writeAsString('ok');
       await probe.delete();
     } catch (e) {
@@ -183,7 +185,9 @@ class _SettingsDownloadsPageBodyState extends State<SettingsDownloadsPageBody>
       ForjaToast.error(kOfflineDownloadMissingMessage);
       return;
     }
-    final file = File(path.startsWith('file://') ? Uri.parse(path).toFilePath() : path);
+    final file = File(
+      path.startsWith('file://') ? Uri.parse(path).toFilePath() : path,
+    );
     if (!await file.exists()) {
       ForjaToast.error(kOfflineDownloadMissingMessage);
       return;
@@ -193,8 +197,9 @@ class _SettingsDownloadsPageBodyState extends State<SettingsDownloadsPageBody>
       ForjaToast.error(blocked);
       return;
     }
-    final streamUrl =
-        path.startsWith('file://') ? path : Uri.file(path).toString();
+    final streamUrl = path.startsWith('file://')
+        ? path
+        : Uri.file(path).toString();
     final savedSubs = await offlineSavedSubtitleRows(file.path);
     if (!mounted) return;
     await AppRouter.openPlayer(
@@ -291,10 +296,8 @@ class _SettingsDownloadsPageBodyState extends State<SettingsDownloadsPageBody>
                         emptyHint:
                             'Start one from details, Sources, or the player.',
                         trailing: null,
-                        itemBuilder: (task) => _ActiveTile(
-                          task: task,
-                          onChanged: _loadSpace,
-                        ),
+                        itemBuilder: (task) =>
+                            _ActiveTile(task: task, onChanged: _loadSpace),
                       ),
                       _TaskList(
                         tasks: completed,
@@ -311,8 +314,10 @@ class _SettingsDownloadsPageBodyState extends State<SettingsDownloadsPageBody>
                                   'Delete all',
                                   style: TextStyle(
                                     color: ForjaShellColors.textSecondary,
-                                    fontSize:
-                                        SettingsTokens.typeSizeOf(context, 12),
+                                    fontSize: SettingsTokens.typeSizeOf(
+                                      context,
+                                      12,
+                                    ),
                                   ),
                                 ),
                               ),
@@ -382,21 +387,17 @@ class _StorageHeader extends StatelessWidget {
     final usedLabel = DownloadTask.formatBytes(usedBytes);
     final free = freeBytes ?? 0;
     final total = totalBytes ?? 0;
-    final freeLabel =
-        freeBytes == null ? '…' : DownloadTask.formatBytes(free);
-    final totalLabel =
-        totalBytes == null ? '…' : DownloadTask.formatBytes(total);
+    final freeLabel = freeBytes == null ? '…' : DownloadTask.formatBytes(free);
+    final totalLabel = totalBytes == null
+        ? '…'
+        : DownloadTask.formatBytes(total);
 
     // Volume breakdown: offline library · other used · available.
     final offline = usedBytes.clamp(0, total > 0 ? total : usedBytes);
-    final other = total > 0
-        ? (total - free - offline).clamp(0, total)
-        : 0;
+    final other = total > 0 ? (total - free - offline).clamp(0, total) : 0;
     final available = free.clamp(0, total > 0 ? total : free);
     final sum = offline + other + available;
-    final denom = total > 0
-        ? total.toDouble()
-        : (sum > 0 ? sum : 1).toDouble();
+    final denom = total > 0 ? total.toDouble() : (sum > 0 ? sum : 1).toDouble();
 
     return Padding(
       padding: SettingsTokens.storageBlockPadOf(context),
@@ -423,7 +424,7 @@ class _StorageHeader extends StatelessWidget {
                       height: SettingsTokens.rowTitleSubtitleGapOf(context),
                     ),
                     Text(
-                      'Offline library on this device.',
+                      'Offline library for this profile.',
                       style: TextStyle(
                         color: ForjaShellColors.textSecondary,
                         fontSize: SettingsTokens.rowSubtitleSizeOf(context),
@@ -796,9 +797,8 @@ class _ActiveTile extends StatelessWidget {
       DownloadStatus.queued => 'Queued',
       DownloadStatus.downloading => task.speedLabel,
       DownloadStatus.paused => 'Paused',
-      DownloadStatus.failed => task.error?.trim().isNotEmpty == true
-          ? task.error!
-          : 'Failed',
+      DownloadStatus.failed =>
+        task.error?.trim().isNotEmpty == true ? task.error! : 'Failed',
       _ => task.status.name,
     };
 

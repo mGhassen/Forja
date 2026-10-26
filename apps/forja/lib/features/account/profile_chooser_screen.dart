@@ -453,6 +453,32 @@ class _ProfileChooserScreenState extends ConsumerState<ProfileChooserScreen> {
                     mainAxisAlignment: MainAxisAlignment.center,
                     mainAxisSize: MainAxisSize.min,
                     children: [
+                      if (SyncService.instance.userEmail case final email?
+                          when email.isNotEmpty) ...[
+                        Text(
+                          'ACCOUNT',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            color: ForjaShellColors.brandGreen,
+                            fontSize: metrics.isTv ? 11 : 10,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: metrics.isTv ? 0.8 : 1.4,
+                          ),
+                        ),
+                        SizedBox(height: metrics.isTv ? 6 : 8),
+                        Text(
+                          email,
+                          textAlign: TextAlign.center,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: ForjaShellColors.textPrimary,
+                            fontSize: metrics.isTv ? 16 : 15,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        SizedBox(height: metrics.isTv ? 18 : 22),
+                      ],
                       Text(
                         managing ? 'Manage profiles' : 'Who’s watching?',
                         textAlign: TextAlign.center,

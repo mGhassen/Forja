@@ -81,12 +81,12 @@ abstract final class SettingsTokens {
   /// Compact value chip for [SettingsSelectRow] inline [DropdownButton].
   /// Matches category-chip density — not Material’s 48px control height.
   static const EdgeInsets selectChipPad = EdgeInsets.symmetric(
-    horizontal: 8,
-    vertical: 2,
+    horizontal: 10,
+    vertical: 6,
   );
   static const EdgeInsets selectChipPadTv = EdgeInsets.symmetric(
-    horizontal: 6,
-    vertical: 1,
+    horizontal: 8,
+    vertical: 4,
   );
   static const double selectChipRadius = 8;
   static const double selectChipRadiusTv = 6;

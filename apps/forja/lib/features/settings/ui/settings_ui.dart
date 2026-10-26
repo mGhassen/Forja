@@ -1826,6 +1826,7 @@ class SettingsActionRow extends StatelessWidget {
     required this.onTap,
     this.busy = false,
     this.adminOnly = false,
+    this.allowNestedFocus = false,
   });
 
   final String title;
@@ -1836,6 +1837,9 @@ class SettingsActionRow extends StatelessWidget {
   final VoidCallback? onTap;
   final bool busy;
   final bool adminOnly;
+
+  /// When [trailing] holds its own focusables (e.g. remove X), D-pad can enter it.
+  final bool allowNestedFocus;
 
   @override
   Widget build(BuildContext context) {
@@ -1904,6 +1908,7 @@ class SettingsActionRow extends StatelessWidget {
       borderRadius: SettingsTokens.categoryTileRadius,
       scaleOnFocus: 1.0,
       showFocusRail: true,
+      allowNestedFocus: allowNestedFocus,
       tvTabId: 'settings',
       tvZone: ShellTvZone.settings,
       ensureVisibleMode: ShellPaintEnsureVisible.item,

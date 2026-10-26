@@ -1,6 +1,7 @@
 library;
 
 export 'api/sync_service.dart';
+export 'auth/account_session_vault.dart';
 export 'auth/desktop_browser_auth.dart';
 export 'auth/tv_device_link_auth.dart';
 export 'bridge/packs_onboarding_store.dart';

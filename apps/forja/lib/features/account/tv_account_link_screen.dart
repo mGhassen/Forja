@@ -6,6 +6,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:forja_foundation/widgets/feedback/fractal_glass_gradient.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
+
 enum _TvLinkStep { welcome, connect, error }
 
 /// Leanback account link: welcome → code/QR (not desktop login).
@@ -14,10 +15,15 @@ class TvAccountLinkScreen extends StatefulWidget {
     super.key,
     required this.onAuthenticated,
     required this.onContinueAsGuest,
+    this.allowContinueAsGuest = true,
   });
 
   final VoidCallback onAuthenticated;
   final VoidCallback onContinueAsGuest;
+
+  /// When false (Settings → Add account), hide guest — cancel returns via
+  /// [onContinueAsGuest].
+  final bool allowContinueAsGuest;
 
   @override
   State<TvAccountLinkScreen> createState() => _TvAccountLinkScreenState();
@@ -106,6 +112,7 @@ class _TvAccountLinkScreenState extends State<TvAccountLinkScreen>
                           guestFocus: _guestFocus,
                           onSignIn: _openConnect,
                           onGuest: widget.onContinueAsGuest,
+                          allowContinueAsGuest: widget.allowContinueAsGuest,
                         ),
                         _TvLinkStep.connect => _ConnectPage(
                           backFocus: _backFocus,
@@ -118,6 +125,7 @@ class _TvAccountLinkScreenState extends State<TvAccountLinkScreen>
                           secondaryFocus: _guestFocus,
                           onRetry: _openConnect,
                           onGuest: widget.onContinueAsGuest,
+                          allowContinueAsGuest: widget.allowContinueAsGuest,
                         ),
                       },
                     ),
@@ -215,12 +223,14 @@ class _WelcomePage extends StatelessWidget {
     required this.guestFocus,
     required this.onSignIn,
     required this.onGuest,
+    this.allowContinueAsGuest = true,
   });
 
   final FocusNode signInFocus;
   final FocusNode guestFocus;
   final VoidCallback onSignIn;
   final VoidCallback onGuest;
+  final bool allowContinueAsGuest;
 
   @override
   Widget build(BuildContext context) {
@@ -254,7 +264,7 @@ class _WelcomePage extends StatelessWidget {
               const SizedBox(height: 8),
               _FlatAction(
                 focusNode: guestFocus,
-                label: 'Continue as guest',
+                label: allowContinueAsGuest ? 'Continue as guest' : 'Cancel',
                 onTap: onGuest,
               ),
             ],
@@ -482,6 +492,7 @@ class _ErrorPage extends StatelessWidget {
     required this.secondaryFocus,
     required this.onRetry,
     required this.onGuest,
+    this.allowContinueAsGuest = true,
   });
 
   final String message;
@@ -489,6 +500,7 @@ class _ErrorPage extends StatelessWidget {
   final FocusNode secondaryFocus;
   final VoidCallback onRetry;
   final VoidCallback onGuest;
+  final bool allowContinueAsGuest;
 
   @override
   Widget build(BuildContext context) {
@@ -506,7 +518,7 @@ class _ErrorPage extends StatelessWidget {
             const Spacer(),
             _FlatAction(
               focusNode: secondaryFocus,
-              label: 'Continue as guest',
+              label: allowContinueAsGuest ? 'Continue as guest' : 'Cancel',
               onTap: onGuest,
             ),
           ],

@@ -3,18 +3,30 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
-import 'package:rust/rust.dart' show PlayableStreamFileRoots;
+import 'package:rust/rust.dart' show LocalDataScope, PlayableStreamFileRoots;
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// Resolves the on-disk folder for VOD offline downloads.
+///
+/// Device root (`Downloads/Forja` or a user-picked folder) is shared; the
+/// library itself lives under `accounts/<accountId>/<profileId>/` so identities
+/// never see each other's files or task index.
 class DownloadPathHelper {
   static const String _customPathKey = 'forja_custom_downloads_directory';
 
-  /// Returns the configured downloads directory path.
-  ///
-  /// Prefer public `Downloads/Forja` on desktop/Android when available,
-  /// otherwise `Documents/ForjaDownloads`.
-  static Future<String> getDownloadsDirectoryPath() async {
+  /// `accounts/<accountId>/<profileId>` under the device root.
+  static String identityRelativePath({String? accountId, String? profileId}) {
+    final account = (accountId ?? LocalDataScope.accountId).trim();
+    final profile = (profileId ?? LocalDataScope.profileId).trim();
+    return p.join(
+      'accounts',
+      account.isEmpty ? LocalDataScope.guestAccountId : account,
+      profile.isEmpty ? LocalDataScope.guestProfileId : profile,
+    );
+  }
+
+  /// Device root only (no identity segment). Settings “Change” picks this.
+  static Future<String> getDownloadsRootPath() async {
     final prefs = await SharedPreferences.getInstance();
     final custom = prefs.getString(_customPathKey);
     if (custom != null && custom.isNotEmpty) {
@@ -32,12 +44,38 @@ class DownloadPathHelper {
     return defaultPath;
   }
 
-  /// Sets a custom user downloads directory (Settings → Downloads).
+  /// Active identity’s library folder (files + `forja_download_tasks.json`).
+  static Future<String> getDownloadsDirectoryPath() async {
+    return getDownloadsDirectoryPathFor(
+      accountId: LocalDataScope.accountId,
+      profileId: LocalDataScope.profileId,
+    );
+  }
+
+  /// Library folder for a specific identity (used when flushing before switch).
+  static Future<String> getDownloadsDirectoryPathFor({
+    required String accountId,
+    required String profileId,
+  }) async {
+    final root = await getDownloadsRootPath();
+    final scoped = Directory(
+      p.join(
+        root,
+        identityRelativePath(accountId: accountId, profileId: profileId),
+      ),
+    );
+    if (!await scoped.exists()) {
+      await scoped.create(recursive: true);
+    }
+    return scoped.path;
+  }
+
+  /// Sets a custom user downloads **root** (Settings → Downloads).
   static Future<void> setCustomDownloadsDirectoryPath(String path) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_customPathKey, path);
     // Files under the new folder become playable `file://` streams too.
-    PlayableStreamFileRoots.add(path);
+    PlayableStreamFileRoots.add(await getDownloadsDirectoryPath());
   }
 
   /// Clears a custom folder so the next resolve uses the platform default.
@@ -53,19 +91,18 @@ class DownloadPathHelper {
     return custom != null && custom.isNotEmpty;
   }
 
-  /// Platform default: public Downloads/Forja, else Documents/ForjaDownloads.
+  /// Platform default root: public Downloads/Forja, else Documents/ForjaDownloads.
   static Future<String> getDefaultDownloadsDirectoryPath() async {
     if (!kIsWeb && Platform.isAndroid) {
       try {
-        final publicDownload =
-            Directory('/storage/emulated/0/Download/Forja');
-        if (await publicDownload.exists() ||
-            await _tryCreate(publicDownload)) {
+        final publicDownload = Directory('/storage/emulated/0/Download/Forja');
+        if (await publicDownload.exists() || await _tryCreate(publicDownload)) {
           return publicDownload.path;
         }
 
-        final extDirs =
-            await getExternalStorageDirectories(type: StorageDirectory.downloads);
+        final extDirs = await getExternalStorageDirectories(
+          type: StorageDirectory.downloads,
+        );
         if (extDirs != null && extDirs.isNotEmpty) {
           final target = Directory(p.join(extDirs.first.path, 'Forja'));
           if (await target.exists() || await _tryCreate(target)) {

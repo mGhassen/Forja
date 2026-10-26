@@ -535,6 +535,7 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [496-[fixed]-…](fixed/496-[fixed]-android-tv-details-episode-range-dpad.md) | Android TV details episode range D-pad | P1 | High | fixed | Complete · 2/2 · A 0/1 | — |
 | [497-[fixed]-…](fixed/497-[fixed]-simkl-merge-with-deletion.md) | Simkl Merge + delete list sync mode | P2 | Medium | fixed | Complete · 5/5 · A 0/2 | [486](486-[open]-simkl-auto-sync-lists-on-my-list-open.md) |
 | [498-[fixed]-…](fixed/498-[fixed]-mediakit-hls-av-desync-after-hiccup.md) | MediaKit HLS A/V desync after buffer hiccup | P1 | High | fixed | Complete · 3/3 · A 0/2 | [187](187-[open]-android-tv-mediakit-vod-cache-empty.md) |
+| [499-[open]-…](499-[open]-multi-account-session-switch.md) | Multi-account session switch on device | P1 | Medium | open | 6/6 · A 0/3 | [467](467-[open]-cross-account-simkl-connected-secrets-isolation.md) |
 
 **Migration parity (draft):** [018](018-[draft]-migration-playback-parity-unverified.md) → [019](019-[draft]-webstreamr-enginejobs-e2e-test-gap.md)–[022](022-[draft]-playback-widget-integration-tests.md).
 
