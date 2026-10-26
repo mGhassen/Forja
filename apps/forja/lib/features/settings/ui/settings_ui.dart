@@ -2798,6 +2798,12 @@ class _SettingsTextFieldState extends State<SettingsTextField> {
       decoration: InputDecoration(
         labelText: widget.label,
         hintText: widget.hint,
+        // When a hint is set, keep the label floated so the hint is always
+        // visible in the empty field (Material otherwise shows only the label
+        // until focus, then the hint is easy to miss).
+        floatingLabelBehavior: widget.hint != null && widget.hint!.isNotEmpty
+            ? FloatingLabelBehavior.always
+            : FloatingLabelBehavior.auto,
         isDense: true,
         counterText: widget.maxLength != null ? '' : null,
         floatingLabelStyle: TextStyle(color: labelColor, fontSize: titleSize),
