@@ -2625,6 +2625,47 @@ Future<void> preparePlayerExternalSubtitleSwitch(Player player) async {
   }
 }
 
+/// Select an already-attached HLS in-stream track, or materialize the
+/// playlist/VTT to a local file and attach once (no raw `.m3u8` sub-file).
+Future<SubtitleTrack?> selectOrAttachHlsInStreamSubtitle(
+  Player player,
+  HlsInStreamSubtitle sub, {
+  Map<String, String>? headers,
+}) async {
+  final existing = findAttachedHlsInStreamTrack(
+    player.state.tracks.subtitle,
+    sub,
+  );
+  if (existing != null) {
+    if (player.state.track.subtitle.id != existing.id) {
+      await preparePlayerExternalSubtitleSwitch(player);
+      await player.setSubtitleTrack(existing);
+    }
+    return existing;
+  }
+  final fileUri = await materializeHlsInStreamSubtitleFile(
+    sub,
+    headers: headers,
+  );
+  if (fileUri == null) return null;
+  final already = findAttachedHlsInStreamTrack(
+    player.state.tracks.subtitle,
+    sub,
+  );
+  await preparePlayerExternalSubtitleSwitch(player);
+  if (already != null) {
+    await player.setSubtitleTrack(already);
+    return already;
+  }
+  final track = SubtitleTrack.uri(
+    fileUri,
+    title: sub.name.isNotEmpty ? sub.name : sub.language,
+    language: sub.language,
+  );
+  await setPlayerExternalSubtitle(player, track);
+  return track;
+}
+
 /// Drop stale mpv external subtitle URI before opening another stream on the
 /// same [Player]. Soft reopen otherwise tries to reload the prior temp SRT.
 Future<void> resetPlayerSubtitleForNewOpen(Player player) async {
@@ -3127,12 +3168,7 @@ List<SubtitleTrack> menuEmbeddedSubtitleTracks(
       return false;
     }
     if (hlsInStream.isNotEmpty &&
-        embeddedTrackTwinsHlsInStream(
-          t,
-          hls: hlsInStream,
-          active: active,
-          allTracks: all,
-        )) {
+        embeddedTrackTwinsHlsInStream(t, hls: hlsInStream)) {
       return false;
     }
     return true;

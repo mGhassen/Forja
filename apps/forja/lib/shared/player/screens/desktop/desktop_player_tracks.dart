@@ -524,42 +524,29 @@ mixin _DesktopPlayerTracks
   ) async {
     if (_s._userPickedExternalSubtitle) return false;
     final playUrl = _s._hlsMasterUrl ?? _s._currentUrl ?? widget.mediaPath;
+    final headers = hlsInStreamRequestHeaders(
+      streamHeaders: _s._hlsMasterHeaders ?? widget.headers,
+      playbackHeaders: currentPlaybackHttpHeaders(_s._player),
+    );
     final pick = await preferredHlsInStreamSubtitle(
       playUrl: playUrl,
-      headers: hlsInStreamRequestHeaders(
-        streamHeaders: _s._hlsMasterHeaders ?? widget.headers,
-        playbackHeaders: currentPlaybackHttpHeaders(_s._player),
-      ),
+      headers: headers,
       preferredLang: preferred,
     );
     if (_subtitleAutoCancelled(gen) || pick == null) return false;
-    final current = _s._player.state.track.subtitle;
-    final title = current.title ?? '';
-    final already =
-        current.id != 'no' &&
-        current.id != 'auto' &&
-        current.id.isNotEmpty &&
-        (current.id == pick.uri || (title.isNotEmpty && title == pick.name));
-    if (already && _s._selectedExternalSubUrl == null) return true;
-    final existing = findAttachedHlsInStreamTrack(
-      _s._player.state.tracks.subtitle,
-      pick,
-    );
+    if (hlsInStreamSubtitleSelected(_s._player.state.track.subtitle, pick) &&
+        findAttachedHlsInStreamTrack(_s._player.state.tracks.subtitle, pick) !=
+            null &&
+        _s._selectedExternalSubUrl == null) {
+      return true;
+    }
     try {
-      await preparePlayerExternalSubtitleSwitch(_s._player);
-      if (_subtitleAutoCancelled(gen)) return false;
-      final SubtitleTrack track;
-      if (existing != null) {
-        track = existing;
-        await _s._player.setSubtitleTrack(existing);
-      } else {
-        track = SubtitleTrack.uri(
-          pick.uri,
-          title: pick.name.isNotEmpty ? pick.name : pick.language,
-          language: pick.language,
-        );
-        await setPlayerExternalSubtitle(_s._player, track);
-      }
+      final track = await selectOrAttachHlsInStreamSubtitle(
+        _s._player,
+        pick,
+        headers: headers,
+      );
+      if (_subtitleAutoCancelled(gen) || track == null) return track != null;
       if (_s._disposed || !mounted) return true;
       _s._updateSubVisibility(track);
       if (mounted) setState(() => _s._selectedExternalSubUrl = null);

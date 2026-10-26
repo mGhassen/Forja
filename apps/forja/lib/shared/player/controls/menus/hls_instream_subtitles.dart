@@ -1,10 +1,13 @@
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:flutter/foundation.dart';
+import 'package:forja/shared/downloads/hls_subtitle_sidecar.dart';
 import 'package:forja/shared/player/resolvers/track_auto_select.dart';
 import 'package:forja/shared/utils/language_display.dart';
 import 'package:http/http.dart' as http;
 import 'package:media_kit/media_kit.dart';
+import 'package:path_provider/path_provider.dart';
 
 /// One HLS subtitle rendition kept off the demuxed track list until a
 /// subtitle command. Listed from the playlist so the menu does not wait
@@ -23,6 +26,9 @@ class HlsInStreamSubtitle {
 
 final Map<String, List<HlsInStreamSubtitle>> _hlsInStreamCache = {};
 final Map<String, Future<List<HlsInStreamSubtitle>>> _hlsInStreamInflight = {};
+
+/// Source playlist/VTT URI → local `file://` after [materializeHlsInStreamSubtitleFile].
+final Map<String, String> _hlsInStreamMaterializedFiles = {};
 
 /// `#FORJA-SUB:` lines the local HLS proxy appends after it drops
 /// `TYPE=SUBTITLES` groups (lavf would otherwise open every rendition).
@@ -135,8 +141,22 @@ bool _hlsInStreamLabelMatch(HlsInStreamSubtitle sub, SubtitleTrack track) {
   return subLang == trackLang;
 }
 
-/// True when the active mpv track is this playlist rendition (uri id or
-/// demux twin after [SubtitleTrack.uri] attach).
+bool _trackIdMatchesHlsSource(SubtitleTrack track, HlsInStreamSubtitle sub) {
+  final cached = _hlsInStreamMaterializedFiles[sub.uri];
+  if (cached != null) {
+    if (track.id == cached) return true;
+    final trackPath = externalSubtitleCacheFilePath(track.id);
+    final cachedPath = externalSubtitleCacheFilePath(cached);
+    if (trackPath != null && cachedPath != null && trackPath == cachedPath) {
+      return true;
+    }
+  }
+  // Raw playlist URI is not a playable attach — never treat it as selected.
+  return false;
+}
+
+/// True when the active mpv track is the materialized file for this row
+/// (or a demux twin matching the playlist label while that file is attached).
 bool hlsInStreamSubtitleSelected(
   SubtitleTrack active,
   HlsInStreamSubtitle sub,
@@ -144,41 +164,114 @@ bool hlsInStreamSubtitleSelected(
   if (active.id == 'no' || active.id == 'auto' || active.id.isEmpty) {
     return false;
   }
-  if (active.id == sub.uri) return true;
-  return _hlsInStreamLabelMatch(sub, active);
+  if (_trackIdMatchesHlsSource(active, sub)) return true;
+  // Demux twin while our local VTT is on the player — menu check only.
+  if (_hlsInStreamMaterializedFiles.containsKey(sub.uri) &&
+      _hlsInStreamLabelMatch(sub, active)) {
+    return true;
+  }
+  return false;
 }
 
-/// Uri/sideload already on the player for this HLS row — select it instead
-/// of appending another [SubtitleTrack.uri] (each append grows mpv's list).
+/// Playlist row that twins this demuxed track (same language / name).
+HlsInStreamSubtitle? hlsInStreamMatchingTrack(
+  SubtitleTrack track,
+  Iterable<HlsInStreamSubtitle> hls,
+) {
+  for (final sub in hls) {
+    if (_hlsInStreamLabelMatch(sub, track)) return sub;
+  }
+  return null;
+}
+
+/// Local VTT/SRT already on the player for this HLS row — select it instead
+/// of appending again. Does **not** match same-language online sideloads.
 SubtitleTrack? findAttachedHlsInStreamTrack(
   Iterable<SubtitleTrack> tracks,
   HlsInStreamSubtitle sub,
 ) {
   for (final t in tracks) {
     if (t.id == 'no' || t.id == 'auto') continue;
-    if (t.id == sub.uri) return t;
-    if (!(isSideloadedExternalSubtitleTrack(t) || t.uri || t.data)) continue;
-    if (_hlsInStreamLabelMatch(sub, t)) return t;
+    if (_trackIdMatchesHlsSource(t, sub)) return t;
   }
   return null;
 }
 
-/// Hide a demuxed menu row that twins an HLS playlist entry while that
-/// rendition is selected or already URI-attached.
+/// Hide a demuxed menu row that twins any HLS playlist entry. The playlist
+/// row is the sole In-stream UI for that language — listing demux too doubles
+/// the menu and clicking demux selects a track with no cues.
 bool embeddedTrackTwinsHlsInStream(
   SubtitleTrack track, {
   required Iterable<HlsInStreamSubtitle> hls,
-  required SubtitleTrack active,
-  required Iterable<SubtitleTrack> allTracks,
 }) {
   if (track.id == 'no' || track.id == 'auto') return false;
   for (final sub in hls) {
     if (track.id == sub.uri) return true;
-    if (!_hlsInStreamLabelMatch(sub, track)) continue;
-    if (hlsInStreamSubtitleSelected(active, sub)) return true;
-    if (findAttachedHlsInStreamTrack(allTracks, sub) != null) return true;
+    if (_hlsInStreamLabelMatch(sub, track)) return true;
   }
   return false;
+}
+
+/// Fetch an HLS in-stream rendition and write a local WebVTT/SRT file.
+///
+/// mpv does not paint cues from a raw subtitle `.m3u8` `sub-file`. AirPlay and
+/// offline save already merge segments via [hlsSubtitleRenditionToVtt]; MediaKit
+/// attach must do the same or the menu looks selected with a blank overlay.
+Future<String?> materializeHlsInStreamSubtitleFile(
+  HlsInStreamSubtitle sub, {
+  Map<String, String>? headers,
+}) async {
+  final source = sub.uri.trim();
+  if (source.isEmpty) return null;
+  final prior = _hlsInStreamMaterializedFiles[source];
+  if (prior != null && await externalSubtitleCacheFileValid(prior)) {
+    return prior;
+  }
+  if (prior != null) {
+    _hlsInStreamMaterializedFiles.remove(source);
+    await deleteExternalSubtitleCacheFile(prior);
+  }
+
+  try {
+    final playlistUri = Uri.parse(source);
+    final body = await fetchSubtitleText(playlistUri, headers);
+    final trimmed = body.trimLeft();
+    String text;
+    String ext;
+    if (trimmed.startsWith('#EXTM3U')) {
+      final vtt = await hlsSubtitleRenditionToVtt(
+        body: body,
+        playlistUri: playlistUri,
+        fetchText: (uri) => fetchSubtitleText(uri, headers),
+      );
+      if (vtt == null || !vtt.contains('-->')) {
+        debugPrint('[Subtitles] HLS in-stream merge produced no cues: $source');
+        return null;
+      }
+      text = vtt;
+      ext = 'vtt';
+    } else if (isPlausibleSubtitleBytes(utf8.encode(body))) {
+      text = body;
+      ext = externalSubtitleFileExtension(utf8.encode(body));
+    } else {
+      debugPrint('[Subtitles] HLS in-stream body not a subtitle: $source');
+      return null;
+    }
+
+    final dir = await getTemporaryDirectory();
+    final safeLang = (sub.language.isNotEmpty ? sub.language : 'sub')
+        .replaceAll(RegExp(r'[^A-Za-z0-9_-]'), '_');
+    final file = File(
+      '${dir.path}/forja_hls_sub_${DateTime.now().millisecondsSinceEpoch}_$safeLang.$ext',
+    );
+    await file.writeAsString(text);
+    final fileUri = Uri.file(file.path).toString();
+    _hlsInStreamMaterializedFiles[source] = fileUri;
+    return fileUri;
+  } catch (e) {
+    debugPrint('[Subtitles] HLS in-stream materialize failed: $e');
+    return null;
+  }
 }
 
 bool isLocalHlsPlayUrl(String url) {

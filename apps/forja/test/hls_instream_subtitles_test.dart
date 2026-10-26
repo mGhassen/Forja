@@ -85,66 +85,74 @@ video.m3u8
     expect(isLocalHlsPlayUrl('https://cdn.example/master.m3u8'), isFalse);
   });
 
-  test('hlsInStreamSubtitleSelected matches uri id or demux title twin', () {
-    const sub = HlsInStreamSubtitle(
-      language: 'en',
-      name: 'English',
-      uri: 'https://cdn.example/en.vtt',
-    );
-    expect(
-      hlsInStreamSubtitleSelected(
-        SubtitleTrack('https://cdn.example/en.vtt', 'English', 'en'),
-        sub,
-      ),
-      isTrue,
-    );
-    expect(
-      hlsInStreamSubtitleSelected(
-        const SubtitleTrack('3', 'English', 'en'),
-        sub,
-      ),
-      isTrue,
-    );
-    expect(
-      hlsInStreamSubtitleSelected(
-        const SubtitleTrack('4', 'Spanish', 'es'),
-        sub,
-      ),
-      isFalse,
-    );
-  });
+  test(
+    'hlsInStreamSubtitleSelected ignores raw playlist uri and online twins',
+    () {
+      const sub = HlsInStreamSubtitle(
+        language: 'en',
+        name: 'English',
+        uri: 'https://cdn.example/subs/en.m3u8',
+      );
+      // Raw playlist URI is not a playable attach.
+      expect(
+        hlsInStreamSubtitleSelected(
+          SubtitleTrack(sub.uri, 'English', 'en'),
+          sub,
+        ),
+        isFalse,
+      );
+      // Online same-language sideload must not look selected as In-stream.
+      expect(
+        hlsInStreamSubtitleSelected(
+          SubtitleTrack.uri(
+            'file:///tmp/animekai_en.vtt',
+            title: 'English',
+            language: 'en',
+          ),
+          sub,
+        ),
+        isFalse,
+      );
+      expect(
+        hlsInStreamSubtitleSelected(
+          const SubtitleTrack('3', 'English', 'en'),
+          sub,
+        ),
+        isFalse,
+      );
+    },
+  );
 
-  test('findAttachedHlsInStreamTrack prefers uri sideload over mux label', () {
-    const sub = HlsInStreamSubtitle(
-      language: 'en',
-      name: 'English',
-      uri: 'https://cdn.example/en.vtt',
-    );
-    final uri = SubtitleTrack.uri(sub.uri, title: 'English', language: 'en');
-    final mux = const SubtitleTrack('2', 'English', 'en');
-    expect(findAttachedHlsInStreamTrack([mux, uri], sub)?.id, uri.id);
-    expect(findAttachedHlsInStreamTrack([mux], sub), isNull);
-  });
+  test(
+    'findAttachedHlsInStreamTrack ignores same-language online sideloads',
+    () {
+      const sub = HlsInStreamSubtitle(
+        language: 'en',
+        name: 'English',
+        uri: 'https://cdn.example/subs/en.m3u8',
+      );
+      final online = SubtitleTrack.uri(
+        'file:///tmp/animekai_en.vtt',
+        title: 'English',
+        language: 'en',
+      );
+      final mux = const SubtitleTrack('2', 'English', 'en');
+      expect(findAttachedHlsInStreamTrack([mux, online], sub), isNull);
+      expect(findAttachedHlsInStreamTrack([online], sub), isNull);
+    },
+  );
 
-  test('menuEmbeddedSubtitleTracks hides demux twin of selected HLS', () {
+  test('embeddedTrackTwinsHlsInStream always hides demux twin of HLS row', () {
     const sub = HlsInStreamSubtitle(
       language: 'en',
       name: 'English',
       uri: 'https://cdn.example/en.vtt',
     );
-    // Pure unit: filter helpers used by the menu (no live Player).
     final demuxTwin = const SubtitleTrack('3', 'English', 'en');
+    expect(embeddedTrackTwinsHlsInStream(demuxTwin, hls: [sub]), isTrue);
     final active = SubtitleTrack.uri(sub.uri, title: 'English', language: 'en');
-    expect(
-      embeddedTrackTwinsHlsInStream(
-        demuxTwin,
-        hls: [sub],
-        active: active,
-        allTracks: [active, demuxTwin],
-      ),
-      isTrue,
-    );
     expect(embeddedSubtitleTracks([active, demuxTwin]).map((t) => t.id), ['3']);
+    expect(hlsInStreamMatchingTrack(demuxTwin, [sub])?.uri, sub.uri);
   });
 
   test('hlsInStreamRequestHeaders lets playback headers win conflicts', () {

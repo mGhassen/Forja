@@ -49,3 +49,4 @@ HLS menu pick called `setPlayerExternalSubtitle(SubtitleTrack.uri)` every time. 
 
 - [458](458-[fixed]-exo-online-subtitle-pick-no-op-and-menu-twins.md) — Exo menu twins (same product bug, different engine)
 - [424](424-[fixed]-mediakit-double-subtitle-paint.md) — cue paint twin, not menu rows
+- [495](495-[fixed]-mediakit-hls-instream-no-cues-menu-twins.md) — follow-up: no cues on raw `.m3u8` attach + remaining twins

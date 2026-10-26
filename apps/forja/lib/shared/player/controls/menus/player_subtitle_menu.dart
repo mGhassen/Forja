@@ -537,35 +537,39 @@ class _MkSubtitleLanguageState extends State<_MkSubtitleLanguage> {
   }
 
   Future<void> _pickHls(HlsInStreamSubtitle sub) async {
-    widget.onSubtitleSelected?.call(
-      off: false,
-      language: sub.language,
-      title: sub.name,
-    );
-    widget.onExternalUrlChanged(null);
     final active = widget.player.state.track.subtitle;
-    if (hlsInStreamSubtitleSelected(active, sub)) {
+    if (hlsInStreamSubtitleSelected(active, sub) &&
+        findAttachedHlsInStreamTrack(
+              widget.player.state.tracks.subtitle,
+              sub,
+            ) !=
+            null) {
+      widget.onSubtitleSelected?.call(
+        off: false,
+        language: sub.language,
+        title: sub.name,
+      );
+      widget.onExternalUrlChanged(null);
       PlayerPopupPanel.dismiss();
       return;
     }
-    final existing = findAttachedHlsInStreamTrack(
-      widget.player.state.tracks.subtitle,
-      sub,
-    );
     try {
-      await preparePlayerExternalSubtitleSwitch(widget.player);
-      if (existing != null) {
-        await widget.player.setSubtitleTrack(existing);
-        widget.updateSubVisibility(existing);
-      } else {
-        final track = SubtitleTrack.uri(
-          sub.uri,
-          title: sub.name,
-          language: sub.language,
-        );
-        await setPlayerExternalSubtitle(widget.player, track);
-        widget.updateSubVisibility(track);
+      final track = await selectOrAttachHlsInStreamSubtitle(
+        widget.player,
+        sub,
+        headers: widget.streamHeaders,
+      );
+      if (track == null) {
+        debugPrint('[PlayerSubtitleMenu] HLS in-stream materialize empty');
+        return;
       }
+      widget.onSubtitleSelected?.call(
+        off: false,
+        language: sub.language,
+        title: sub.name,
+      );
+      widget.onExternalUrlChanged(null);
+      widget.updateSubVisibility(track);
       PlayerPopupPanel.dismiss();
     } catch (e) {
       debugPrint('[PlayerSubtitleMenu] HLS in-stream sub failed: $e');
@@ -602,6 +606,11 @@ class _MkSubtitleLanguageState extends State<_MkSubtitleLanguage> {
                 widget.selectedExternalSubUrl == null &&
                 t.id == _selectedId,
             onTap: () async {
+              final twin = hlsInStreamMatchingTrack(t, _hls);
+              if (twin != null) {
+                await _pickHls(twin);
+                return;
+              }
               widget.onSubtitleSelected?.call(
                 off: false,
                 language: t.language,
