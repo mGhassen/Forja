@@ -533,6 +533,7 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [494-[fixed]-…](fixed/494-[fixed]-provider-subtitle-cdn-referer.md) | Provider sideload subs 403 without embed Referer | P1 | High | fixed | Complete · 3/3 · A 0/1 | [084](084-[open]-megaplay-nekostream-cdn-referer.md) |
 | [495-[fixed]-…](fixed/495-[fixed]-mediakit-hls-instream-no-cues-menu-twins.md) | MediaKit HLS in-stream no cues + menu twins | P1 | High | fixed | Complete · 4/4 · A 1/3 | [474](fixed/474-[fixed]-mediakit-hls-instream-subtitle-menu-twins.md) |
 | [496-[fixed]-…](fixed/496-[fixed]-android-tv-details-episode-range-dpad.md) | Android TV details episode range D-pad | P1 | High | fixed | Complete · 2/2 · A 0/1 | — |
+| [497-[fixed]-…](fixed/497-[fixed]-simkl-merge-with-deletion.md) | Simkl Merge + delete list sync mode | P2 | Medium | fixed | Complete · 5/5 · A 0/2 | [486](486-[open]-simkl-auto-sync-lists-on-my-list-open.md) |
 
 **Migration parity (draft):** [018](018-[draft]-migration-playback-parity-unverified.md) → [019](019-[draft]-webstreamr-enginejobs-e2e-test-gap.md)–[022](022-[draft]-playback-widget-integration-tests.md).
 

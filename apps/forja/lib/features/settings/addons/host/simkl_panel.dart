@@ -17,6 +17,7 @@ const _kModeLabels = <String, SimklListSyncMode>{
   'Keep local': SimklListSyncMode.keepLocal,
   'Use Simkl': SimklListSyncMode.useSimkl,
   'Merge': SimklListSyncMode.merge,
+  'Merge + delete': SimklListSyncMode.mergeWithDeletion,
 };
 
 class SettingsSimklPanel extends ConsumerStatefulWidget {
@@ -215,6 +216,7 @@ class _SettingsSimklPanelState extends ConsumerState<SettingsSimklPanel> {
     SimklListSyncMode.keepLocal => 'Keep local',
     SimklListSyncMode.useSimkl => 'Use Simkl',
     SimklListSyncMode.merge => 'Merge',
+    SimklListSyncMode.mergeWithDeletion => 'Merge + delete',
     null => _kNoSync,
   };
 
@@ -223,9 +225,12 @@ class _SettingsSimklPanelState extends ConsumerState<SettingsSimklPanel> {
       SimklListSyncMode.keepLocal => 'Kept local',
       SimklListSyncMode.useSimkl => 'Used Simkl',
       SimklListSyncMode.merge => 'Merged',
+      SimklListSyncMode.mergeWithDeletion => 'Merged + deleted',
       null => 'Synced',
     };
-    return '$modeLabel · list ↑${r.watchlistExported} ↓${r.watchlistImported}, '
+    final removed = r.watchlistRemoved > 0 ? ' −${r.watchlistRemoved}' : '';
+    return '$modeLabel · list ↑${r.watchlistExported} ↓${r.watchlistImported}'
+        '$removed, '
         'progress ${r.watchingImported}, movies ${r.moviesImported}, '
         'eps ↑${r.episodesExported} ↓${r.episodesImported}';
   }

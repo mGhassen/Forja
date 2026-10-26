@@ -116,7 +116,7 @@ export type PreferencesPayload = {
   addon_feature_iptv?: boolean
   /** @deprecated RFC-093 — Live Sports is pack-only; stripped on write. */
   addon_feature_live_sports?: boolean
-  /** Simkl list sync mode — `keepLocal` · `useSimkl` · `merge` · null = off. OAuth stays device-local. */
+  /** Simkl list sync mode — `keepLocal` · `useSimkl` · `merge` · `mergeWithDeletion` · null = off. OAuth stays device-local. */
   simkl_list_sync_mode?: string | null
   /** Auto sync lists when opening My List (requires a mode). */
   simkl_auto_sync_lists?: boolean

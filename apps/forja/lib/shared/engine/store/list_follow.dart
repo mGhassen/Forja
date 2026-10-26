@@ -60,8 +60,7 @@ class ListFollowTarget {
     final open = meta.open;
     if (open == null) return null;
     final fromIds = meta.numericId('tmdb');
-    final fromOpen =
-        open.surface.trim() == 'tmdb' ? open.idInt : null;
+    final fromOpen = open.surface.trim() == 'tmdb' ? open.idInt : null;
     return ListFollowTarget(
       pluginId: pluginId,
       open: open,
@@ -70,7 +69,8 @@ class ListFollowTarget {
       voteAverage: meta.rating ?? 0,
       releaseDate: metaReleaseYear(meta),
       tmdbId: fromIds ?? fromOpen,
-      tmdbMediaType: meta.tmdbMediaType ??
+      tmdbMediaType:
+          meta.tmdbMediaType ??
           (open.surface.trim() == 'tmdb'
               ? BookmarkStore.normalizeTmdbMediaType(meta.type)
               : null),
@@ -87,7 +87,8 @@ class ListFollow {
   static ListFollowTarget resolveSimklTarget(ListFollowTarget t) {
     if (t.tmdbId != null) return t;
     if (t.resolvedMediaType != 'drama') return t;
-    final stored = BookmarkStore().resolve(uniqueId: t.uniqueId) ??
+    final stored =
+        BookmarkStore().resolve(uniqueId: t.uniqueId) ??
         BookmarkStore().itemOf(t.uniqueId);
     final storedTmdb = stored?['tmdbId'] as int?;
     if (storedTmdb == null) return t;
@@ -108,7 +109,8 @@ class ListFollow {
       final sync = resolveSimklTarget(t);
       final keys = <String>{t.uniqueId};
       if (sync.tmdbId != null) {
-        final mt = BookmarkStore.normalizeTmdbMediaType(
+        final mt =
+            BookmarkStore.normalizeTmdbMediaType(
               sync.tmdbMediaType ?? sync.resolvedMediaType,
             ) ??
             'tv';
@@ -120,9 +122,19 @@ class ListFollow {
         tmdbId: sync.tmdbId,
         mediaType: sync.tmdbMediaType ?? sync.resolvedMediaType,
       );
+      final isAnime =
+          sync.resolvedMediaType == 'anime' && sync.mediaIdInt != null;
+      await SimklService().recordListDeleteTombstone(
+        hideKeys: keys,
+        tmdbId: isAnime ? null : sync.tmdbId,
+        mediaType: isAnime
+            ? null
+            : (sync.tmdbMediaType ?? sync.resolvedMediaType),
+        anilistId: isAnime ? sync.mediaIdInt : null,
+      );
       var ok = true;
       if (await SimklService().isLoggedIn()) {
-        if (sync.resolvedMediaType == 'anime' && sync.mediaIdInt != null) {
+        if (isAnime) {
           ok = await SimklService().removeFromWatchlist(
             anilistId: sync.mediaIdInt,
             mediaType: 'anime',
@@ -153,9 +165,26 @@ class ListFollow {
     );
 
     final sync = resolveSimklTarget(t);
+    final isAnime =
+        sync.resolvedMediaType == 'anime' && sync.mediaIdInt != null;
+    await SimklService().clearListDeleteTombstonesMatching(
+      hideKeys: {
+        t.uniqueId,
+        if (sync.tmdbId != null)
+          BookmarkStore.movieId(
+            sync.tmdbId!,
+            BookmarkStore.normalizeTmdbMediaType(
+                  sync.tmdbMediaType ?? sync.resolvedMediaType,
+                ) ??
+                'tv',
+          ),
+      },
+      tmdbId: isAnime ? null : sync.tmdbId,
+      anilistId: isAnime ? sync.mediaIdInt : null,
+    );
     var ok = true;
     if (await SimklService().isLoggedIn()) {
-      if (sync.resolvedMediaType == 'anime' && sync.mediaIdInt != null) {
+      if (isAnime) {
         ok = await SimklService().setListStatus(
           anilistId: sync.mediaIdInt,
           mediaType: 'anime',
@@ -264,7 +293,8 @@ class ListFollow {
       );
       return;
     }
-    final stored = BookmarkStore().resolve(uniqueId: raw.uniqueId) ??
+    final stored =
+        BookmarkStore().resolve(uniqueId: raw.uniqueId) ??
         BookmarkStore().itemOf(raw.uniqueId);
     final tmdbId = raw.tmdbId ?? stored?['tmdbId'] as int?;
     final mt =

@@ -18,6 +18,7 @@ Simkl is the tracker everyone can connect. Log in via PIN and sync what you watc
   - **Keep local** — push this device’s statuses to Simkl
   - **Use Simkl** — overwrite this device from Simkl
   - **Merge** — combine both; same title with different status keeps the device
+  - **Merge + delete** — same as Merge, plus titles you removed in Forja are removed from Simkl and not re-imported (new Simkl-only titles still import)
   - **No sync** — Sync Now / Auto sync do nothing for list buckets
 - **Sync Now** runs the saved mode (list + history) — no chooser dialog
 - Toggle **Auto sync lists on My List** — when on, opening My List runs that saved mode and refreshes the cached Simkl library (throttled a couple of minutes so flipping status tabs does not re-sync)
@@ -37,7 +38,7 @@ Simkl is the tracker everyone can connect. Log in via PIN and sync what you watc
 
 1. Tap **Login with Simkl**
 2. Enter the displayed code at the verification URL (copied + opened automatically)
-3. Set **How should lists sync?** (Keep local / Use Simkl / Merge / No sync)
+3. Set **How should lists sync?** (Keep local / Use Simkl / Merge / Merge + delete / No sync)
 4. Optionally turn on **Auto sync lists on My List**
 5. Tap **Sync Now** to run the saved mode (list + history)
 

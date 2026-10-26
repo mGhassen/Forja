@@ -16,6 +16,10 @@ enum SimklListSyncMode {
   /// Push local titles, then pull Simkl into local. Same title, different
   /// status → device wins.
   merge,
+
+  /// Same as [merge], then remove Forja delete-tombstones from Simkl and skip
+  /// re-importing those titles. Simkl-only titles still import.
+  mergeWithDeletion,
 }
 
 class SimklSyncResult {
@@ -23,6 +27,7 @@ class SimklSyncResult {
     this.mode,
     required this.watchlistImported,
     required this.watchlistExported,
+    this.watchlistRemoved = 0,
     required this.watchingImported,
     required this.moviesImported,
     required this.episodesImported,
@@ -32,6 +37,7 @@ class SimklSyncResult {
   final SimklListSyncMode? mode;
   final int watchlistImported;
   final int watchlistExported;
+  final int watchlistRemoved;
   final int watchingImported;
   final int moviesImported;
   final int episodesImported;
@@ -74,6 +80,9 @@ class SimklService {
 
   /// Prefs — when true, My List hub open runs [syncListBuckets] with saved mode.
   static const String _keyAutoSyncLists = 'simkl_auto_sync_lists';
+
+  /// Prefs — device-local JSON list of explicit Forja list deletes (not cloud).
+  static const String _keyListDeleteTombstones = 'simkl_list_delete_tombstones';
 
   /// Max synthetic continue-watching seeds per background sync (newest first).
   static const int _resumeImportCap = 20;
@@ -120,6 +129,11 @@ class SimklService {
     await prefs.setString(LocalDataScope.storageKey(baseKey), value);
   }
 
+  Future<void> _prefsRemove(String baseKey) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(LocalDataScope.storageKey(baseKey));
+  }
+
   /// Last chosen Keep local / Use Simkl / Merge (null until Sync Now / connect).
   Future<SimklListSyncMode?> getListSyncMode() async {
     return listSyncModeFromStorage(await _prefsRead(_keyListSyncMode));
@@ -127,8 +141,7 @@ class SimklService {
 
   Future<void> setListSyncMode(SimklListSyncMode? mode) async {
     if (mode == null) {
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.remove(LocalDataScope.storageKey(_keyListSyncMode));
+      await _prefsRemove(_keyListSyncMode);
       onListSyncPrefsWrite?.call();
       return;
     }
@@ -136,6 +149,7 @@ class SimklService {
       SimklListSyncMode.keepLocal => 'keepLocal',
       SimklListSyncMode.useSimkl => 'useSimkl',
       SimklListSyncMode.merge => 'merge',
+      SimklListSyncMode.mergeWithDeletion => 'mergeWithDeletion',
     };
     await _prefsWrite(_keyListSyncMode, v);
     onListSyncPrefsWrite?.call();
@@ -152,12 +166,14 @@ class SimklService {
     onListSyncPrefsWrite?.call();
   }
 
-  /// Cloud / prefs wire: `keepLocal` · `useSimkl` · `merge` · null = no sync.
+  /// Cloud / prefs wire: `keepLocal` · `useSimkl` · `merge` ·
+  /// `mergeWithDeletion` · null = no sync.
   static String? listSyncModeToStorage(SimklListSyncMode? mode) =>
       switch (mode) {
         SimklListSyncMode.keepLocal => 'keepLocal',
         SimklListSyncMode.useSimkl => 'useSimkl',
         SimklListSyncMode.merge => 'merge',
+        SimklListSyncMode.mergeWithDeletion => 'mergeWithDeletion',
         null => null,
       };
 
@@ -166,8 +182,36 @@ class SimklService {
         'keepLocal' => SimklListSyncMode.keepLocal,
         'useSimkl' => SimklListSyncMode.useSimkl,
         'merge' => SimklListSyncMode.merge,
+        'mergeWithDeletion' => SimklListSyncMode.mergeWithDeletion,
         _ => null,
       };
+
+  /// True when a Simkl→bookmark import row matches a delete tombstone hide key.
+  @visibleForTesting
+  static bool importRowSkippedByTombstone({
+    required int tmdbId,
+    required String mediaType,
+    required Set<String> skipHideKeys,
+  }) {
+    if (skipHideKeys.isEmpty) return false;
+    final norm =
+        (mediaType == 'tv' || mediaType == 'series' || mediaType == 'shows')
+        ? 'tv'
+        : 'movie';
+    return skipHideKeys.contains(BookmarkStore.movieId(tmdbId, norm));
+  }
+
+  @visibleForTesting
+  static bool importAnimeSkippedByTombstone({
+    required int anilistId,
+    required Set<String> skipHideKeys,
+  }) {
+    if (skipHideKeys.isEmpty) return false;
+    if (skipHideKeys.contains('anilist:$anilistId')) return true;
+    return skipHideKeys.any(
+      (k) => k == 'open:anime:$anilistId' || k.endsWith(':$anilistId'),
+    );
+  }
 
   bool _initialSyncDone = false;
   Future<void>? _syncInProgress;
@@ -240,10 +284,174 @@ class SimklService {
     await _secureDelete(_keyAccessToken);
     await _secureDelete(_keyLastActivity);
     await _secureDelete(_keyLastSyncMs);
+    await clearListDeleteTombstones();
     _initialSyncDone = false;
     _syncInProgress = null;
     clearWatchlistCache();
     debugPrint('[Simkl] Logged out.');
+  }
+
+  // ── List delete tombstones (device-local) ───────────────────────────────
+
+  Future<List<Map<String, dynamic>>> _readListDeleteTombstones() async {
+    final raw = await _prefsRead(_keyListDeleteTombstones);
+    if (raw == null || raw.isEmpty) return [];
+    try {
+      final decoded = json.decode(raw);
+      if (decoded is! List) return [];
+      return [
+        for (final e in decoded)
+          if (e is Map) Map<String, dynamic>.from(e),
+      ];
+    } catch (_) {
+      return [];
+    }
+  }
+
+  Future<void> _writeListDeleteTombstones(
+    List<Map<String, dynamic>> rows,
+  ) async {
+    if (rows.isEmpty) {
+      await _prefsRemove(_keyListDeleteTombstones);
+      return;
+    }
+    await _prefsWrite(_keyListDeleteTombstones, json.encode(rows));
+  }
+
+  Future<void> clearListDeleteTombstones() =>
+      _prefsRemove(_keyListDeleteTombstones);
+
+  /// Persist an explicit Forja list removal for Merge + delete flush/skip.
+  Future<void> recordListDeleteTombstone({
+    required Iterable<String> hideKeys,
+    int? tmdbId,
+    String? mediaType,
+    String? imdbId,
+    int? anilistId,
+  }) async {
+    final keys = <String>{
+      for (final k in hideKeys)
+        if (k.trim().isNotEmpty) k.trim(),
+    };
+    if (anilistId != null) keys.add('anilist:$anilistId');
+    if (tmdbId != null) {
+      final norm =
+          BookmarkStore.normalizeTmdbMediaType(mediaType) ??
+          ((mediaType == 'tv' || mediaType == 'series' || mediaType == 'shows')
+              ? 'tv'
+              : 'movie');
+      keys.add(BookmarkStore.movieId(tmdbId, norm));
+    }
+    if (keys.isEmpty && tmdbId == null && anilistId == null) return;
+
+    final rows = await _readListDeleteTombstones();
+    rows.removeWhere((row) => _tombstoneMatches(row, keys, tmdbId, anilistId));
+    rows.add({
+      'hideKeys': keys.toList(growable: false),
+      if (tmdbId != null) 'tmdbId': tmdbId,
+      if (mediaType != null && mediaType.isNotEmpty) 'mediaType': mediaType,
+      if (imdbId != null && imdbId.isNotEmpty) 'imdbId': imdbId,
+      if (anilistId != null) 'anilistId': anilistId,
+    });
+    await _writeListDeleteTombstones(rows);
+  }
+
+  /// Drop tombstones that match a re-added title.
+  Future<void> clearListDeleteTombstonesMatching({
+    Iterable<String> hideKeys = const [],
+    int? tmdbId,
+    int? anilistId,
+  }) async {
+    final keys = <String>{
+      for (final k in hideKeys)
+        if (k.trim().isNotEmpty) k.trim(),
+    };
+    if (anilistId != null) keys.add('anilist:$anilistId');
+    if (keys.isEmpty && tmdbId == null && anilistId == null) return;
+    final rows = await _readListDeleteTombstones();
+    final next = [
+      for (final row in rows)
+        if (!_tombstoneMatches(row, keys, tmdbId, anilistId)) row,
+    ];
+    if (next.length != rows.length) {
+      await _writeListDeleteTombstones(next);
+    }
+  }
+
+  Future<Set<String>> listDeleteTombstoneKeys() async {
+    final rows = await _readListDeleteTombstones();
+    final out = <String>{};
+    for (final row in rows) {
+      final hk = row['hideKeys'];
+      if (hk is List) {
+        for (final k in hk) {
+          final s = k?.toString().trim() ?? '';
+          if (s.isNotEmpty) out.add(s);
+        }
+      }
+      final anilist = _asInt(row['anilistId']);
+      if (anilist != null) out.add('anilist:$anilist');
+      final tmdb = _asInt(row['tmdbId']);
+      if (tmdb != null) {
+        final mt = row['mediaType']?.toString() ?? 'movie';
+        final norm =
+            BookmarkStore.normalizeTmdbMediaType(mt) ??
+            ((mt == 'tv' || mt == 'series' || mt == 'shows') ? 'tv' : 'movie');
+        out.add(BookmarkStore.movieId(tmdb, norm));
+      }
+    }
+    return out;
+  }
+
+  /// Push tombstoned removals to Simkl; drop entries that remove successfully.
+  Future<int> flushListDeleteTombstones() async {
+    final rows = await _readListDeleteTombstones();
+    if (rows.isEmpty) return 0;
+    final kept = <Map<String, dynamic>>[];
+    var removed = 0;
+    for (final row in rows) {
+      final anilist = _asInt(row['anilistId']);
+      final tmdb = _asInt(row['tmdbId']);
+      final imdb = row['imdbId']?.toString();
+      final mt = row['mediaType']?.toString() ?? 'tv';
+      var ok = false;
+      if (anilist != null) {
+        ok = await removeFromWatchlist(anilistId: anilist, mediaType: 'anime');
+      } else if (tmdb != null || (imdb != null && imdb.isNotEmpty)) {
+        ok = await removeFromWatchlist(
+          tmdbId: tmdb,
+          imdbId: imdb,
+          mediaType: mt,
+        );
+      }
+      if (ok) {
+        removed++;
+      } else {
+        kept.add(row);
+      }
+    }
+    await _writeListDeleteTombstones(kept);
+    return removed;
+  }
+
+  static bool _tombstoneMatches(
+    Map<String, dynamic> row,
+    Set<String> keys,
+    int? tmdbId,
+    int? anilistId,
+  ) {
+    final rowAnilist = _asInt(row['anilistId']);
+    if (anilistId != null && rowAnilist == anilistId) return true;
+    final rowTmdb = _asInt(row['tmdbId']);
+    if (tmdbId != null && rowTmdb == tmdbId) return true;
+    if (keys.isEmpty) return false;
+    final hk = row['hideKeys'];
+    if (hk is! List) return false;
+    for (final k in hk) {
+      final s = k?.toString() ?? '';
+      if (s.isNotEmpty && keys.contains(s)) return true;
+    }
+    return false;
   }
 
   /// Handle 401 unauthorized - token revoked server-side.
@@ -806,7 +1014,11 @@ class SimklService {
   // ═══════════════════════════════════════════════════════════════════════
 
   /// Mirror Simkl list buckets onto local bookmarks (backup if Simkl is removed).
-  Future<int> importWatchlistToBookmarks() async {
+  ///
+  /// [skipHideKeys] — Merge + delete tombstones; matching rows are not upserted.
+  Future<int> importWatchlistToBookmarks({
+    Set<String> skipHideKeys = const {},
+  }) async {
     final token = await _secureRead(_keyAccessToken);
     if (token == null) return 0;
 
@@ -830,6 +1042,13 @@ class SimklService {
             final title = show['title']?.toString() ?? 'Unknown';
             final mediaType = type == 'shows' ? 'tv' : 'movie';
             if (tmdbId == null) continue;
+            if (importRowSkippedByTombstone(
+              tmdbId: tmdbId,
+              mediaType: mediaType,
+              skipHideKeys: skipHideKeys,
+            )) {
+              continue;
+            }
             await BookmarkStore().upsertMovie(
               tmdbId: tmdbId,
               imdbId: imdbId,
@@ -986,6 +1205,7 @@ class SimklService {
   Future<SimklSyncResult> syncListBuckets(SimklListSyncMode mode) async {
     var watchlistImported = 0;
     var watchlistExported = 0;
+    var watchlistRemoved = 0;
 
     switch (mode) {
       case SimklListSyncMode.useSimkl:
@@ -995,6 +1215,15 @@ class SimklService {
       case SimklListSyncMode.merge:
         watchlistExported = await exportBookmarksToWatchlist();
         watchlistImported = await importWatchlistToBookmarks();
+      case SimklListSyncMode.mergeWithDeletion:
+        watchlistExported = await exportBookmarksToWatchlist();
+        // Capture keys before flush — successful removes drop tombstones from
+        // storage, but Simkl may still return them until the next activity.
+        final skipKeys = await listDeleteTombstoneKeys();
+        watchlistRemoved = await flushListDeleteTombstones();
+        watchlistImported = await importWatchlistToBookmarks(
+          skipHideKeys: skipKeys,
+        );
     }
 
     clearWatchlistCache();
@@ -1003,6 +1232,7 @@ class SimklService {
       mode: mode,
       watchlistImported: watchlistImported,
       watchlistExported: watchlistExported,
+      watchlistRemoved: watchlistRemoved,
       watchingImported: 0,
       moviesImported: 0,
       episodesImported: 0,
@@ -1018,6 +1248,7 @@ class SimklService {
       mode: mode,
       watchlistImported: lists.watchlistImported,
       watchlistExported: lists.watchlistExported,
+      watchlistRemoved: lists.watchlistRemoved,
       watchingImported: history.watchingImported,
       moviesImported: history.moviesImported,
       episodesImported: history.episodesImported,
@@ -1452,7 +1683,7 @@ class SimklService {
     'Authorization': 'Bearer $token',
   };
 
-  int? _asInt(dynamic v) {
+  static int? _asInt(dynamic v) {
     if (v == null) return null;
     if (v is int) return v;
     if (v is num) return v.toInt();

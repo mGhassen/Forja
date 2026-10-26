@@ -192,6 +192,12 @@ class KitListStatusButton extends StatelessWidget {
         tmdbId: movie.id,
         mediaType: movie.mediaType,
       );
+      await SimklService().recordListDeleteTombstone(
+        hideKeys: {uid},
+        tmdbId: movie.id,
+        mediaType: movie.mediaType,
+        imdbId: movie.imdbId,
+      );
       var ok = true;
       if (await SimklService().isLoggedIn()) {
         ok = await SimklService().removeFromWatchlist(
@@ -212,6 +218,10 @@ class KitListStatusButton extends StatelessWidget {
       voteAverage: movie.voteAverage,
       releaseDate: movie.releaseDate,
       listStatus: to,
+    );
+    await SimklService().clearListDeleteTombstonesMatching(
+      hideKeys: {BookmarkStore.movieId(movie.id, movie.mediaType)},
+      tmdbId: movie.id,
     );
     var ok = true;
     if (await SimklService().isLoggedIn()) {
@@ -967,6 +977,12 @@ class BookmarkHeroStatusPill extends StatelessWidget {
         tmdbId: movie.id,
         mediaType: movie.mediaType,
       );
+      await SimklService().recordListDeleteTombstone(
+        hideKeys: {uid},
+        tmdbId: movie.id,
+        mediaType: movie.mediaType,
+        imdbId: movie.imdbId,
+      );
       var ok = true;
       if (await SimklService().isLoggedIn()) {
         ok = await SimklService().removeFromWatchlist(
@@ -987,6 +1003,10 @@ class BookmarkHeroStatusPill extends StatelessWidget {
       voteAverage: movie.voteAverage,
       releaseDate: movie.releaseDate,
       listStatus: to,
+    );
+    await SimklService().clearListDeleteTombstonesMatching(
+      hideKeys: {BookmarkStore.movieId(movie.id, movie.mediaType)},
+      tmdbId: movie.id,
     );
     var ok = true;
     if (await SimklService().isLoggedIn()) {
