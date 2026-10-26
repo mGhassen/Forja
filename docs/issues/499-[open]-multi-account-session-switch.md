@@ -10,7 +10,7 @@
 
 | | |
 |--|--|
-| **Progress** | **7 / 7** fix · **0 / 4** acceptance |
+| **Progress** | **8 / 8** fix · **0 / 4** acceptance |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -37,6 +37,7 @@ Only one GoTrue session is stored (`sb-{host}-auth-token`). Signing into another
 | 5 | I499-T05 | Unit tests: vault rotate, switch no wipe, gate suppress, add-cancel restore | ✅ |
 | 6 | I499-T06 | Changelog user-facing Add bullet | ✅ |
 | 7 | I499-T07 | Offline downloads path + task index scoped per account/profile; reload on switch | ✅ |
+| 8 | I499-T08 | Account chooser: FocusableControl D-pad; X in-row; skipTraversal so row/Add focus first | ✅ |
 
 ## Acceptance
 

@@ -506,16 +506,32 @@ class _OtherAccountFocusRow extends StatefulWidget {
 
 class _OtherAccountFocusRowState extends State<_OtherAccountFocusRow> {
   final FocusNode _rowFocus = FocusNode(debugLabel: 'account_row');
-  final FocusNode _removeFocus = FocusNode(debugLabel: 'account_remove');
-  final FocusNode _yesFocus = FocusNode(debugLabel: 'account_remove_yes');
-  final FocusNode _noFocus = FocusNode(debugLabel: 'account_remove_no');
+  // skipTraversal: ↓/↑ hit the row first; Right (onRightEdge) still requestFocus.
+  final FocusNode _removeFocus = FocusNode(
+    debugLabel: 'account_remove',
+    skipTraversal: true,
+  );
+  final FocusNode _yesFocus = FocusNode(
+    debugLabel: 'account_remove_yes',
+    skipTraversal: true,
+  );
+  final FocusNode _noFocus = FocusNode(
+    debugLabel: 'account_remove_no',
+    skipTraversal: true,
+  );
 
   @override
   void didUpdateWidget(covariant _OtherAccountFocusRow oldWidget) {
     super.didUpdateWidget(oldWidget);
+    // Arming remove from X unmounts that node — park on Yes, never No/X.
     if (!oldWidget.confirming && widget.confirming) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (mounted) _yesFocus.requestFocus();
+      });
+    }
+    if (oldWidget.confirming && !widget.confirming) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _rowFocus.requestFocus();
       });
     }
   }
