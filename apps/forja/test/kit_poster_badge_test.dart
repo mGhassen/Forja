@@ -3,12 +3,12 @@ import 'package:forja/shared/engine/runtime/open/meta_movie.dart';
 import 'package:forja_foundation/protocol/protocol.dart';
 
 MetaItem _item({String? badge, String type = 'movie'}) => MetaItem(
-      id: 'tt1',
-      type: type,
-      name: 'Title',
-      releaseInfo: '2024',
-      badge: badge,
-    );
+  id: 'tt1',
+  type: type,
+  name: 'Title',
+  releaseInfo: '2024',
+  badge: badge,
+);
 
 void main() {
   test('kitPosterBadge omits FILM/TV media-type chips', () {
@@ -22,6 +22,8 @@ void main() {
   test('kitPosterBadge keeps non-type labels', () {
     expect(kitPosterBadge(_item(badge: 'REMAKE')), 'REMAKE');
     expect(kitPosterBadge(_item(badge: 'NOW')), 'NOW');
+    expect(kitPosterBadge(_item(badge: 'Side Story')), 'Side Story');
+    expect(kitPosterBadge(_item(badge: 'Summary')), 'Summary');
   });
 
   test('kitPosterSubtitle still carries FILM under the title', () {

@@ -15,6 +15,30 @@ class KitDetailRailSection {
   final List<MetaItem> items;
 }
 
+/// Pack `details.data.seasons[]` — franchise Media switcher (opaque ids).
+///
+/// ```json
+/// "seasons": [
+///   { "number": 1, "id": "anilist:21237", "label": "Season 1", "selected": true },
+///   { "number": 2, "id": "anilist:21699", "label": "Season 2" }
+/// ]
+/// ```
+///
+/// Omit or length ≤ 1 → host keeps video-derived season chips.
+class KitDetailSeasonLink {
+  const KitDetailSeasonLink({
+    required this.number,
+    required this.id,
+    this.label,
+    this.selected = false,
+  });
+
+  final int number;
+  final String id;
+  final String? label;
+  final bool selected;
+}
+
 /// Pack `details.data.layout` — backdrop + first body row placement.
 ///
 /// ```json
@@ -86,8 +110,9 @@ KitDetailsLayout parseKitDetailsLayout(Map<String, dynamic>? data) {
     sectionSpacing: _layoutDouble(m['sectionSpacing']),
     heroBodyOverlap: _layoutDouble(m['heroBodyOverlap']),
     contentPadding: _layoutDouble(m['contentPadding']),
-    heroDescriptionWidthFraction:
-        _layoutFraction(m['heroDescriptionWidthFraction']),
+    heroDescriptionWidthFraction: _layoutFraction(
+      m['heroDescriptionWidthFraction'],
+    ),
     sectionTitleFontSize: _layoutDouble(m['sectionTitleFontSize']),
     bodyFontSize: _layoutDouble(m['bodyFontSize']),
     metaFontSize: _layoutDouble(m['metaFontSize']),
@@ -135,12 +160,38 @@ List<KitDetailRailSection> parseKitDetailRails(Map<String, dynamic>? data) {
   return out;
 }
 
+/// Reads `data.seasons` from a catalog `details` envelope.
+List<KitDetailSeasonLink> parseKitDetailSeasons(Map<String, dynamic>? data) {
+  final raw = data?['seasons'];
+  if (raw is! List) return const [];
+
+  final out = <KitDetailSeasonLink>[];
+  final seenNumbers = <int>{};
+  for (final row in raw) {
+    if (row is! Map) continue;
+    final m = Map<String, dynamic>.from(row);
+    final number = (m['number'] as num?)?.toInt() ?? 0;
+    final id = (m['id'] ?? '').toString().trim();
+    if (number <= 0 || id.isEmpty || !seenNumbers.add(number)) continue;
+    final label = (m['label'] ?? '').toString().trim();
+    out.add(
+      KitDetailSeasonLink(
+        number: number,
+        id: id,
+        label: label.isEmpty ? null : label,
+        selected: m['selected'] == true,
+      ),
+    );
+  }
+  out.sort((a, b) => a.number.compareTo(b.number));
+  return out;
+}
+
 List<MetaItem> _itemsFromJsonList(dynamic raw) {
   if (raw is! List) return const [];
   return [
     for (final it in raw)
-      if (it is Map)
-        MetaItem.fromJson(Map<String, dynamic>.from(it)),
+      if (it is Map) MetaItem.fromJson(Map<String, dynamic>.from(it)),
   ];
 }
 
@@ -188,8 +239,7 @@ List<String> _packHeroBackdropUrls(MetaItem meta) {
 }
 
 /// Pack / enrich URLs for hero backdrops.
-List<String> hubHeroBackdropUrls(MetaItem meta) =>
-    _packHeroBackdropUrls(meta);
+List<String> hubHeroBackdropUrls(MetaItem meta) => _packHeroBackdropUrls(meta);
 
 String? hubMetaLogoUrl(MetaItem meta) {
   final u = resolveAbsoluteCoverUrl(meta.logo.trim());

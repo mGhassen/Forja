@@ -136,12 +136,20 @@ class _PackDetailsHostState extends ConsumerState<PackDetailsHost> {
 
   MetaItem? _detail;
   List<KitDetailRailSection> _packRails = const [];
+  List<KitDetailSeasonLink> _packSeasons = const [];
   KitDetailsLayout _layout = KitDetailsLayout.classic;
   List<String> _heroBackdrops = const [];
   bool _loading = true;
   String? _error;
   int _selectedSeason = 1;
   int _selectedEpisode = 1;
+
+  /// Opaque pack Media id for season-chain reload (`data.seasons[].id`).
+  String? _detailsOverrideId;
+
+  /// Apply [widget.initialSeason] / [widget.initialEpisode] only on first paint.
+  bool _appliedInitialSeasonEpisode = false;
+  int _detailsLoadGen = 0;
   final Map<String, String> _playFilterSelections = {};
   Set<String> _streamLanguageKeys = {};
   List<PluginLanguage> _streamLanguageOptions = const [];
@@ -558,6 +566,15 @@ class _PackDetailsHostState extends ConsumerState<PackDetailsHost> {
     if (_isMovie) return;
     final ep = (hit['episodeNumber'] as num?)?.toInt();
     if (ep == null || ep <= 0) return;
+    if (_usesPackSeasons) {
+      // Hub progress keys are always S1 per AniList Media id.
+      final videos = hubVideosForSeason(_videos, 1);
+      if (videos.isNotEmpty && !videos.any((v) => (v.episode ?? 1) == ep)) {
+        return;
+      }
+      _selectedEpisode = ep;
+      return;
+    }
     final season = (hit['season'] as num?)?.toInt() ?? _selectedSeason;
     final videos = hubVideosForSeason(_videos, season);
     if (videos.isNotEmpty && !videos.any((v) => (v.episode ?? 1) == ep)) {
@@ -641,6 +658,7 @@ class _PackDetailsHostState extends ConsumerState<PackDetailsHost> {
     }
 
     final ep = (progress['episodeNumber'] as num?)?.toInt() ?? _selectedEpisode;
+    final clearSeason = _playbackSeason;
     final open = show.open;
     if (open != null) {
       final videoId = progress['episodeVideoId']?.toString();
@@ -649,7 +667,7 @@ class _PackDetailsHostState extends ConsumerState<PackDetailsHost> {
           CatalogSourcesSessionCache.cacheKey(
             mediaId: 0,
             mediaType: show.type,
-            season: _isMovie ? null : _selectedSeason,
+            season: _isMovie ? null : clearSeason,
             episode: ep,
             open: open,
             pluginId: widget.pluginId,
@@ -667,14 +685,14 @@ class _PackDetailsHostState extends ConsumerState<PackDetailsHost> {
         PlayerStreamExtractCache.cacheKeyFromProgress(
           tmdbId: tmdbId,
           mediaType: _isMovie ? 'movie' : 'tv',
-          season: _isMovie ? null : _selectedSeason,
+          season: _isMovie ? null : clearSeason,
           episode: _isMovie ? null : ep,
         ),
       );
       if (hubMetaUsesHomeWatchHistory(show)) {
         final uniqueId = _isMovie
             ? '$tmdbId'
-            : '${tmdbId}_S${_selectedSeason}_E$ep';
+            : '${tmdbId}_S${clearSeason}_E$ep';
         await WatchHistoryService().removeItem(uniqueId);
       }
     }
@@ -689,35 +707,105 @@ class _PackDetailsHostState extends ConsumerState<PackDetailsHost> {
     DownloadPageStore.note(mediaIdForMetaItem(item), item);
   }
 
+  bool get _usesPackSeasons => _packSeasons.length > 1;
+
+  /// Pack season ids are opaque (`anilist:123` or bare `123`).
+  bool _packSeasonIdMatches(String seasonId, MetaItem meta) {
+    final a = seasonId.trim();
+    if (a.isEmpty) return false;
+    final openId = meta.open?.id.trim() ?? '';
+    final metaId = meta.id.trim();
+    if (a == metaId || a == openId) return true;
+    final aTail = a.contains(':') ? a.split(':').last : a;
+    final metaTail = metaId.contains(':') ? metaId.split(':').last : metaId;
+    if (aTail.isNotEmpty && (aTail == openId || aTail == metaTail)) {
+      return true;
+    }
+    return false;
+  }
+
+  Map<String, dynamic> _hubDetailsParamsForLoad() {
+    final seed = _detail ?? widget.item;
+    final params = hubMetaIsIptv(seed)
+        ? (KitStreamPlayHooks.hubDetailsParams?.call(seed) ??
+              hubDetailsParams(seed))
+        : hubDetailsParams(seed);
+    final override = _detailsOverrideId?.trim();
+    if (override != null && override.isNotEmpty) {
+      params['id'] = override;
+    }
+    return params;
+  }
+
   void _paintLoaded(
     MetaItem meta, {
     required List<KitDetailRailSection> rails,
     required KitDetailsLayout layout,
     required List<String> backdrops,
+    List<KitDetailSeasonLink> packSeasons = const [],
   }) {
-    final seasons = hubSeasonNumbers(meta.videos).toList()..sort();
-    var firstSeason = seasons.isEmpty ? 1 : seasons.first;
+    final applyInitial = !_appliedInitialSeasonEpisode;
+    var firstSeason = 1;
     var firstEp = 1;
-    if (widget.initialSeason != null &&
-        (seasons.isEmpty || seasons.contains(widget.initialSeason))) {
-      firstSeason = widget.initialSeason!;
+    if (packSeasons.length > 1) {
+      final matched = packSeasons
+          .where((s) => _packSeasonIdMatches(s.id, meta))
+          .toList();
+      if (matched.isNotEmpty) {
+        firstSeason = matched.first.number;
+      } else {
+        final marked = packSeasons.where((s) => s.selected).toList();
+        if (marked.isNotEmpty) {
+          firstSeason = marked.first.number;
+        } else if (packSeasons.any((s) => s.number == _selectedSeason)) {
+          firstSeason = _selectedSeason;
+        } else {
+          firstSeason = packSeasons.first.number;
+        }
+      }
+      if (applyInitial &&
+          widget.initialSeason != null &&
+          packSeasons.any((s) => s.number == widget.initialSeason)) {
+        firstSeason = widget.initialSeason!;
+      }
+      // Pack seasons keep per-Media videos at season 1.
+      final seasonVideos = hubVideosForSeason(meta.videos, 1);
+      final wantInitialEp = applyInitial ? widget.initialEpisode : null;
+      firstEp = seasonVideos.isEmpty
+          ? (wantInitialEp ?? 1)
+          : (wantInitialEp != null &&
+                    seasonVideos.any((v) => v.episode == wantInitialEp)
+                ? wantInitialEp
+                : (seasonVideos.first.episode ?? 1));
+    } else {
+      final seasons = hubSeasonNumbers(meta.videos).toList()..sort();
+      firstSeason = seasons.isEmpty ? 1 : seasons.first;
+      if (applyInitial &&
+          widget.initialSeason != null &&
+          (seasons.isEmpty || seasons.contains(widget.initialSeason))) {
+        firstSeason = widget.initialSeason!;
+      }
+      final seasonVideos = hubVideosForSeason(meta.videos, firstSeason);
+      final wantInitialEp = applyInitial ? widget.initialEpisode : null;
+      firstEp = seasonVideos.isEmpty
+          ? (wantInitialEp ?? 1)
+          : (wantInitialEp != null &&
+                    seasonVideos.any((v) => v.episode == wantInitialEp)
+                ? wantInitialEp
+                : (seasonVideos.first.episode ?? 1));
     }
-    final seasonVideos = hubVideosForSeason(meta.videos, firstSeason);
-    firstEp = seasonVideos.isEmpty
-        ? (widget.initialEpisode ?? 1)
-        : (widget.initialEpisode != null &&
-                  seasonVideos.any((v) => v.episode == widget.initialEpisode)
-              ? widget.initialEpisode!
-              : (seasonVideos.first.episode ?? 1));
     setState(() {
       _detail = meta;
       _packRails = rails;
+      _packSeasons = packSeasons;
       _layout = layout;
       _heroBackdrops = backdrops;
       _loading = false;
       _error = null;
       _selectedSeason = firstSeason;
       _selectedEpisode = firstEp;
+      _detailsOverrideId = null;
+      _appliedInitialSeasonEpisode = true;
       _belowFoldReady = false;
     });
     _noteDownloadPage(meta);
@@ -725,8 +813,37 @@ class _PackDetailsHostState extends ConsumerState<PackDetailsHost> {
     _armBelowFoldCovers();
   }
 
+  Future<void> _onPackSeasonSelected(int season) async {
+    KitDetailSeasonLink? match;
+    for (final s in _packSeasons) {
+      if (s.number == season) {
+        match = s;
+        break;
+      }
+    }
+    final link = match;
+    if (link == null) return;
+    if (_packSeasonIdMatches(link.id, _show)) {
+      final eps = hubVideosForSeason(_videos, 1);
+      setState(() {
+        _selectedSeason = season;
+        _selectedEpisode = eps.isEmpty ? 1 : (eps.first.episode ?? 1);
+      });
+      return;
+    }
+    setState(() {
+      _selectedSeason = season;
+      _detailsOverrideId = link.id;
+      _loading = true;
+      _error = null;
+    });
+    await _load();
+  }
+
   Future<void> _load() async {
+    final loadGen = ++_detailsLoadGen;
     if (_offlineLibrary) {
+      if (loadGen != _detailsLoadGen) return;
       _paintLoaded(
         widget.item,
         rails: const [],
@@ -741,7 +858,7 @@ class _PackDetailsHostState extends ConsumerState<PackDetailsHost> {
         _error = null;
       });
       final result = await loadKitStremioDetails(widget.item);
-      if (!mounted) return;
+      if (!mounted || loadGen != _detailsLoadGen) return;
       final meta = result.meta;
       final backdrops = hubHeroBackdropUrls(meta);
       _paintLoaded(
@@ -766,30 +883,31 @@ class _PackDetailsHostState extends ConsumerState<PackDetailsHost> {
       });
     }
     var railsArrived = false;
+    final seed = _detail ?? widget.item;
     final env = await MetaRuntime.instance.run(
       pluginId: widget.pluginId,
       action: 'details',
-      params: hubMetaIsIptv(widget.item)
-          ? (KitStreamPlayHooks.hubDetailsParams?.call(widget.item) ??
-                hubDetailsParams(widget.item))
-          : hubDetailsParams(widget.item),
+      params: _hubDetailsParamsForLoad(),
       onUpdated: (next) {
-        if (!mounted) return;
-        final meta = hubMergeDetailsSeed(next.meta ?? widget.item, widget.item);
+        if (!mounted || loadGen != _detailsLoadGen) return;
+        final meta = hubMergeDetailsSeed(next.meta ?? seed, seed);
         final packRails = parseKitDetailRails(next.data);
+        final packSeasons = parseKitDetailSeasons(next.data);
         if (packRails.isNotEmpty) railsArrived = true;
         setState(() {
           _detail = meta;
           if (packRails.isNotEmpty) _packRails = packRails;
+          if (packSeasons.length > 1) _packSeasons = packSeasons;
           _heroBackdrops = hubHeroBackdropUrls(meta);
         });
         _noteDownloadPage(meta);
       },
     );
-    if (!mounted) return;
+    if (!mounted || loadGen != _detailsLoadGen) return;
     if (!env.ok) {
       final notReady = await PluginInstallCoordinator.instance
           .pluginNotReadyMessage(widget.pluginId);
+      if (!mounted || loadGen != _detailsLoadGen) return;
       setState(() {
         _loading = false;
         _error =
@@ -801,17 +919,25 @@ class _PackDetailsHostState extends ConsumerState<PackDetailsHost> {
       });
       return;
     }
-    final meta = hubMergeDetailsSeed(env.meta ?? widget.item, widget.item);
+    final meta = hubMergeDetailsSeed(env.meta ?? seed, seed);
     final loadedRails = parseKitDetailRails(env.data);
     // Deferred More Like This can land before this paint. Don't replace it
     // with the first envelope, which has no rails yet.
     final packRails = loadedRails.isNotEmpty || !railsArrived
         ? loadedRails
         : _packRails;
+    final loadedSeasons = parseKitDetailSeasons(env.data);
+    final packSeasons = loadedSeasons.length > 1 ? loadedSeasons : _packSeasons;
     final layout = parseKitDetailsLayout(env.data);
     final backdrops = hubHeroBackdropUrls(meta);
-    if (!mounted) return;
-    _paintLoaded(meta, rails: packRails, layout: layout, backdrops: backdrops);
+    if (!mounted || loadGen != _detailsLoadGen) return;
+    _paintLoaded(
+      meta,
+      rails: packRails,
+      layout: layout,
+      backdrops: backdrops,
+      packSeasons: packSeasons,
+    );
     unawaited(_loadWatchProgress());
     unawaited(_loadWatchedEpisodes());
     if (widget.autoPlay) {
@@ -881,9 +1007,13 @@ class _PackDetailsHostState extends ConsumerState<PackDetailsHost> {
     _scrollDetailsToTop();
   }
 
+  /// Media-local season for play / sources (pack franchise chips use UI numbers).
+  int get _playbackSeason => _usesPackSeasons ? 1 : _selectedSeason;
+
   MetaVideo? _selectedVideo() {
+    final matchSeason = _playbackSeason;
     for (final v in _videos) {
-      if ((v.season ?? 1) == _selectedSeason &&
+      if ((v.season ?? 1) == matchSeason &&
           (v.episode ?? 1) == _selectedEpisode) {
         return v;
       }
@@ -901,7 +1031,7 @@ class _PackDetailsHostState extends ConsumerState<PackDetailsHost> {
     if (!mounted) return;
     final ep = episode ?? _selectedVideo();
     final epNum = ep?.episode ?? _selectedEpisode;
-    final season = ep?.season ?? _selectedSeason;
+    final season = ep?.season ?? _playbackSeason;
     final progress = _watchProgress;
     final progressExtras = progress?['extras'] is Map
         ? Map<String, dynamic>.from(progress!['extras'] as Map)
@@ -995,7 +1125,7 @@ class _PackDetailsHostState extends ConsumerState<PackDetailsHost> {
       meta: _show,
       pluginId: widget.pluginId,
       episode: ep,
-      season: _selectedSeason,
+      season: _playbackSeason,
       episodeNumber: _selectedEpisode,
       videos: _videos,
       extras: _playFilterExtras,
@@ -1047,10 +1177,27 @@ class _PackDetailsHostState extends ConsumerState<PackDetailsHost> {
     );
   }
 
+  /// Episode maps for the picker. Pack franchise seasons remap Media videos
+  /// (always season 1) under the selected pack season number.
+  Map<int, List<Map<String, dynamic>>>? _episodeMapsForPicker(
+    List<MetaVideo> videos,
+  ) {
+    if (!_usesPackSeasons) return hubEpisodeMaps(videos);
+    final base = hubEpisodeMaps(videos);
+    final eps =
+        base?[1] ??
+        (base?.values.isNotEmpty == true
+            ? base!.values.first
+            : const <Map<String, dynamic>>[]);
+    return {_selectedSeason: eps};
+  }
+
   Widget _buildScrollLayout() {
     final show = _show;
     final videos = _videos;
-    final seasons = hubSeasonNumbers(videos).toList()..sort();
+    final seasons = _usesPackSeasons
+        ? _packSeasons.map((s) => s.number).toList()
+        : (hubSeasonNumbers(videos).toList()..sort());
     final backdrop = resolveAbsoluteCoverUrl(
       _heroBackdrops.isNotEmpty
           ? _heroBackdrops.first
@@ -1065,7 +1212,10 @@ class _PackDetailsHostState extends ConsumerState<PackDetailsHost> {
     final isIptv = hubMetaIsIptv(_show);
     final showCatalogSources =
         _offlineLibrary || (!isIptv && kitHasPanelSources(playbackFlags));
-    final hasEpisodes = videos.isNotEmpty && !_isMovie;
+    // Pack season chain: show Season 1…N even when opening a bridge film.
+    final hasEpisodes = _usesPackSeasons
+        ? (videos.isNotEmpty || _packSeasons.length > 1)
+        : (videos.isNotEmpty && !_isMovie);
 
     if (policy.heroPlayAutoFocus &&
         !_detailsHeroInitialFocusDone &&
@@ -1143,7 +1293,7 @@ class _PackDetailsHostState extends ConsumerState<PackDetailsHost> {
         isLoadingSeason: false,
         seasonData: null,
         fallbackPosterPath: show.poster,
-        customEpisodesBySeason: hubEpisodeMaps(videos),
+        customEpisodesBySeason: _episodeMapsForPicker(videos),
         watchedEpisodes: _watchedEpisodes,
         watchedCatalog: _watchedCatalog,
         watchedSeasonForKeys: _watchedSeasonForKeys,
@@ -1152,6 +1302,10 @@ class _PackDetailsHostState extends ConsumerState<PackDetailsHost> {
             ? null
             : _toggleSeasonWatched,
         onSeasonSelected: (season) {
+          if (_usesPackSeasons) {
+            unawaited(_onPackSeasonSelected(season));
+            return;
+          }
           final eps = hubVideosForSeason(videos, season);
           setState(() {
             _selectedSeason = season;

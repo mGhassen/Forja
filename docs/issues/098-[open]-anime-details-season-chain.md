@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| **Progress** | **7 / 8** |
+| **Progress** | **12 / 13** |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -26,6 +26,11 @@
 | 5 | I98-T05 | Manual QA — multi-season title season switch + resume/watched | ⬜ |
 | 6 | I98-T06 | Typed AniList relations rail (films/specials) + skip 1-ep ONA season pollution | ✅ |
 | 7 | I98-T07 | Walk MOVIE as season-chain bridge (emit TV only) — Youjo Senki S1→Movie→S2 | ✅ |
+| 8 | I98-T08 | Port season BFS into anime pack `anilist.js` after AnimeService cutover | ✅ |
+| 9 | I98-T09 | Emit `details.data.seasons` (`number` / opaque `id` / `selected`) | ✅ |
+| 10 | I98-T10 | Host `parseKitDetailSeasons` + season chip reloads Media by opaque id | ✅ |
+| 11 | I98-T11 | Related excludes chain ids; relation type on `meta.badge` | ✅ |
+| 12 | I98-T12 | Foundation + kitPosterBadge tests for seasons parse / Side Story badge | ✅ |
 
 ---
 
@@ -44,8 +49,10 @@
 
 ## Summary
 
-AniList stores each cour as a separate Media id. Catalog cards stay that way; details now walk the existing PREQUEL→SEQUEL spine (`getSeasons`) so related seasons share one details page with a season switcher.
+AniList stores each cour as a separate Media id. Catalog cards stay that way; details walk the PREQUEL→SEQUEL spine in the **anime pack** and emit `data.seasons` so the host shows Season 1…N and reloads that Media (hero, eps, progress, watched). Watched keys stay `S1` per AniList id.
 
-Continuous series (One Piece) are one Media — no arc seasons in AniList. Franchise films/specials come from typed `relations` edges and show under **Related**.
+Continuous series (One Piece) are one Media — no arc seasons in AniList. Franchise films/specials come from typed `relations` edges under **Related** (relation badges; chain siblings excluded).
 
-Some franchises put a **MOVIE** between TV cours (Youjo Senki S1 → Movie → S2). `getSeasons` walks those movies as bridges but only emits TV / TV_SHORT / multi-ep ONA into the season rail.
+Some franchises put a **MOVIE** between TV cours (Youjo Senki S1 → Movie → S2). The pack walks those movies as bridges but only emits TV / TV_SHORT / multi-ep ONA into the season rail.
+
+**Regression note:** T01–T04 / T06–T07 were the pre-cutover Dart `AnimeService` path (deleted with pack migration). T08–T12 restore the same behavior in pack + generic host.

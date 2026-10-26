@@ -527,10 +527,10 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
     try {
       final out = await SimklService().syncListsIfAuto();
       if (!mounted) return;
-      final reason = out['reason']?.toString();
-      // Refresh grid after a real sync, or after throttle so Settings Sync Now
-      // still lands when the hub was kept warm.
-      if (out['synced'] == true || reason == 'throttle') {
+      // Only bust feed after a real sync. Throttle+invalidate re-ran feed →
+      // pack syncListsIfAuto → throttle spam, and Settings Sync Now already
+      // calls invalidateListHubFeeds.
+      if (out['synced'] == true) {
         ProviderContainer? container;
         try {
           container = ProviderScope.containerOf(context, listen: false);

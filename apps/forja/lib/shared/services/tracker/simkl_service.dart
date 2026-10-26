@@ -709,11 +709,14 @@ class SimklService {
     )).ok;
   }
 
-  /// Remove a single item from the Simkl library.
+  /// Remove a single item from the Simkl library (watchlist + history).
   ///
-  /// TMDB/IMDB titles are removed from **both** `movies` and `shows` in one
-  /// call — Simkl keeps them in one bucket; a wrong local mediaType used to
-  /// delete the empty bucket and leave the real row (films came back on sync).
+  /// Simkl’s canonical path is [POST /sync/history/remove] — it clears the
+  /// library entry (including Plan to Watch). Legacy `/sync/remove-from-list`
+  /// can 200 and leave plantowatch films in place.
+  ///
+  /// TMDB/IMDB titles hit **both** `movies` and `shows` — wrong mediaType
+  /// used to clear the empty bucket and leave the real row.
   Future<bool> removeFromWatchlist({
     int? tmdbId,
     String? imdbId,
@@ -728,7 +731,7 @@ class SimklService {
         debugPrint('[Simkl] removeFromWatchlist anime missing anilistId');
         return false;
       }
-      return _removeFromList(
+      return removeFromHistory(
         anime: [
           {
             'ids': {'anilist': anilistId},
@@ -749,8 +752,7 @@ class SimklService {
     if (imdbId != null && imdbId.isNotEmpty) ids['imdb'] = imdbId;
 
     final item = {'ids': ids};
-    // Always hit both buckets — one will no-op; the other clears the library.
-    return _removeFromList(shows: [item], movies: [item]);
+    return removeFromHistory(shows: [item], movies: [item]);
   }
 
   /// Move a title into a Simkl list bucket (`plantowatch`, `watching`, `hold`,
@@ -945,7 +947,10 @@ class SimklService {
     }
   }
 
-  /// Remove items from watched history.
+  /// Remove items from watched history / library.
+  ///
+  /// Title-level (no seasons/episodes) = full library remove (Simkl docs).
+  /// Success status is **201**.
   Future<bool> removeFromHistory({
     List<Map<String, dynamic>> shows = const [],
     List<Map<String, dynamic>> movies = const [],
@@ -968,7 +973,15 @@ class SimklService {
         body: json.encode(body),
         maxRetries: 0,
       );
-      return resp.status == 200;
+      // Simkl returns 201 Created for this write.
+      final ok = resp.status == 200 || resp.status == 201;
+      debugPrint(
+        '[Simkl] Remove from history: ${resp.status} '
+        'movies=${movies.length} shows=${shows.length} anime=${anime.length}'
+        '${ok ? '' : ' body=${resp.body}'}',
+      );
+      if (ok) clearWatchlistCache();
+      return ok;
     } catch (e) {
       debugPrint('[Simkl] Remove from history error: $e');
       return false;
