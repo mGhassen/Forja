@@ -38,6 +38,8 @@ abstract final class PluginStreamLanguages {
       for (final e in keys) ?PluginLanguage.tryParseKey(e),
     ];
     // SUB and DUB are exclusive — if both slip in, keep the last kind touched.
+    // Spanish `es` is one hub bucket (Sub ES + Latino): never strip the sibling
+    // es key when the other kind is selected.
     String? lastKind;
     for (final e in keys) {
       final lang = PluginLanguage.tryParseKey(e);
@@ -48,7 +50,7 @@ abstract final class PluginStreamLanguages {
     final kind = (hasSub && hasDub) ? (lastKind ?? 'sub') : null;
     final clean = <String>[
       for (final l in parsed)
-        if (kind == null || l.kind == kind) l.key,
+        if (l.code == 'es' || kind == null || l.kind == kind) l.key,
     ]..sort();
     await PackSettingsStore.setStringList(
       id,
@@ -108,9 +110,7 @@ abstract final class PluginStreamLanguages {
       for (final pack in packs)
         pack.copyWithPlugins([
           for (final p in pack.plugins)
-            local.containsKey(p.id)
-                ? p.copyWith(languages: local[p.id]!)
-                : p,
+            local.containsKey(p.id) ? p.copyWith(languages: local[p.id]!) : p,
         ]),
     ];
   }
@@ -208,14 +208,23 @@ abstract final class PluginStreamLanguages {
 
   /// When every selected key shares one kind (`sub` / `dub`), return that kind
   /// for extract lane scrape + stream filter. Empty / mixed → null (both).
+  ///
+  /// Spanish (`es`) is one hub chip that covers Sub ES + Latino/Castellano —
+  /// never strip either lane when only ES is selected.
   static String? audioCategoryFromKeys(Iterable<String> selected) {
     String? kind;
+    var saw = false;
+    var onlyEs = true;
     for (final key in selected) {
       final lang = PluginLanguage.tryParseKey(key);
       if (lang == null) continue;
+      saw = true;
+      if (lang.code != 'es') onlyEs = false;
       kind ??= lang.kind;
       if (lang.kind != kind) return null;
     }
+    if (!saw) return null;
+    if (onlyEs) return null;
     return normalizeEngineAudioCategory(kind);
   }
 }

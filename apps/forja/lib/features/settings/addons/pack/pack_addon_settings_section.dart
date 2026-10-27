@@ -170,9 +170,14 @@ class _PackAddonSettingsSectionState extends State<PackAddonSettingsSection> {
         types: typeSet,
         kinds: anyKinds ? kindSet : const [],
       );
+      // Collapse same label (sub:es + dub:es → one ES chip; id = comma keys).
+      final byLabel = <String, List<String>>{};
+      for (final l in langs) {
+        byLabel.putIfAbsent(l.label, () => []).add(l.key);
+      }
       langOptions = [
-        for (final l in langs)
-          PackAddonSettingsOption(id: l.key, label: l.label),
+        for (final e in byLabel.entries)
+          PackAddonSettingsOption(id: e.value.join(','), label: e.key),
       ];
     }
     if (!mounted || gen != _reloadGen) return;
@@ -677,6 +682,12 @@ class _MultiSelectChipsField extends StatelessWidget {
   final Set<String> selected;
   final ValueChanged<List<String>> onChanged;
 
+  /// Option ids may be comma-joined (`sub:es,dub:es`) for one label chip.
+  static List<String> _optionKeys(String id) => [
+    for (final p in id.split(','))
+      if (p.trim().isNotEmpty) p.trim(),
+  ];
+
   @override
   Widget build(BuildContext context) {
     final tv = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
@@ -710,7 +721,8 @@ class _MultiSelectChipsField extends StatelessWidget {
               _allNoneButton(
                 context,
                 label: 'All',
-                onPressed: () => onChanged([for (final o in options) o.id]),
+                onPressed: () =>
+                    onChanged([for (final o in options) ..._optionKeys(o.id)]),
               ),
               _allNoneButton(
                 context,
@@ -729,15 +741,21 @@ class _MultiSelectChipsField extends StatelessWidget {
                   for (var i = 0; i < options.length; i++)
                     ForjaShellChip(
                       label: options[i].label,
-                      selected: selected.contains(options[i].id),
+                      selected: _optionKeys(
+                        options[i].id,
+                      ).any(selected.contains),
                       listIndex: i,
                       fontSize: SettingsTokens.typeSizeOf(context, 12),
                       accentHover: true,
                       ensureVisibleMode: ShellPaintEnsureVisible.item,
                       onTap: () {
+                        final keys = _optionKeys(options[i].id);
                         final next = Set<String>.from(selected);
-                        if (!next.add(options[i].id)) {
-                          next.remove(options[i].id);
+                        final on = keys.any(next.contains);
+                        if (on) {
+                          next.removeAll(keys);
+                        } else {
+                          next.addAll(keys);
                         }
                         onChanged(next.toList()..sort());
                       },

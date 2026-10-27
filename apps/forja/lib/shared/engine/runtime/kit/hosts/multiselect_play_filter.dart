@@ -211,12 +211,24 @@ class _KindDropdownSegmentState extends State<_KindDropdownSegment> {
   }
 
   void _toggleKey(String key, bool checked) {
+    final isEs = key.endsWith(':es');
     final next = <String>{};
     if (checked) {
       for (final k in widget.selected) {
-        if (k.startsWith('${widget.kind}:')) next.add(k);
+        // ES spans SUB+DUB — keep sibling es keys; still exclusive vs other langs.
+        if (k.startsWith('${widget.kind}:') || (isEs && k.endsWith(':es'))) {
+          next.add(k);
+        }
       }
       next.add(key);
+      if (isEs) {
+        next.add('sub:es');
+        next.add('dub:es');
+      }
+    } else if (isEs) {
+      for (final k in widget.selected) {
+        if (!k.endsWith(':es')) next.add(k);
+      }
     } else {
       for (final k in widget.selected) {
         if (k != key) next.add(k);
@@ -229,7 +241,10 @@ class _KindDropdownSegmentState extends State<_KindDropdownSegment> {
   void _clearKind() {
     final next = {
       for (final k in widget.selected)
-        if (!k.startsWith('${widget.kind}:')) k,
+        if (!k.startsWith('${widget.kind}:') &&
+            // Clearing SUB or DUB also drops the shared ES bucket keys.
+            !k.endsWith(':es'))
+          k,
     };
     widget.onChanged(next);
     _scheduleOverlayRefresh();
@@ -488,11 +503,20 @@ class _LanguageMenuPanel extends StatelessWidget {
                     for (final lang in langs)
                       _LanguageMenuRow(
                         label: lang.label,
-                        checked: selected.contains(lang.key),
+                        // ES is one bucket — checked if either sub:es or dub:es is on.
+                        checked: lang.code == 'es'
+                            ? selected.contains('sub:es') ||
+                                  selected.contains('dub:es')
+                            : selected.contains(lang.key),
                         tvFocus: tvFocus,
                         tvDensity: tvDensity,
-                        onTap: () =>
-                            onToggle(lang.key, !selected.contains(lang.key)),
+                        onTap: () {
+                          final on = lang.code == 'es'
+                              ? selected.contains('sub:es') ||
+                                    selected.contains('dub:es')
+                              : selected.contains(lang.key);
+                          onToggle(lang.key, !on);
+                        },
                       ),
                   ],
                 ),
