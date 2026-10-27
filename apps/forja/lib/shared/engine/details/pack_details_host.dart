@@ -749,6 +749,29 @@ class _PackDetailsHostState extends ConsumerState<PackDetailsHost> {
         : hubDetailsParams(seed);
   }
 
+  /// Soft season stub: new AniList open/id, no prior-cour art/ids/TMDB.
+  MetaItem _packSeasonStub({
+    required String seasonId,
+    String name = '',
+    String poster = '',
+  }) {
+    final prev = _detail ?? widget.item;
+    final raw = seasonId.trim();
+    final tail = raw.contains(':') ? raw.split(':').last.trim() : raw;
+    final surface = (prev.open?.surface ?? '').trim();
+    final id = raw.contains(':') ? raw : (tail.isEmpty ? raw : 'anilist:$tail');
+    return MetaItem(
+      id: id,
+      type: prev.type.isNotEmpty ? prev.type : 'anime',
+      name: name,
+      poster: poster,
+      open: MetaOpen(
+        surface: surface.isNotEmpty ? surface : 'anime',
+        id: tail.isNotEmpty ? tail : raw,
+      ),
+    );
+  }
+
   /// Merge seed for details paint. Season switch uses a stub so S4 name/logo
   /// /synopsis cannot bleed onto S1.
   MetaItem _detailsMergeSeed() {
@@ -756,20 +779,7 @@ class _PackDetailsHostState extends ConsumerState<PackDetailsHost> {
     if (override == null || override.isEmpty) {
       return _detail ?? widget.item;
     }
-    final prev = _detail ?? widget.item;
-    final raw = override;
-    final tail = raw.contains(':') ? raw.split(':').last.trim() : raw;
-    final surface = (prev.open?.surface ?? '').trim();
-    final id = raw.contains(':') ? raw : (tail.isEmpty ? raw : 'anilist:$tail');
-    return MetaItem(
-      id: id,
-      type: prev.type.isNotEmpty ? prev.type : 'anime',
-      name: '',
-      open: MetaOpen(
-        surface: surface.isNotEmpty ? surface : 'anime',
-        id: tail.isNotEmpty ? tail : raw,
-      ),
-    );
+    return _packSeasonStub(seasonId: override);
   }
 
   KitDetailSeasonLink? _packSeasonLink(int season) {
@@ -867,6 +877,19 @@ class _PackDetailsHostState extends ConsumerState<PackDetailsHost> {
     _armBelowFoldCovers();
   }
 
+  /// Season change resets the episode rail to the first card (selected ep).
+  void _pinDetailsSeasonEpisodeFocusMemory(int season) {
+    final tab = MediaDetailsTv.tabId;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ShellTvFocusCoordinator.setRowLastFocusedIndex(
+        tab,
+        'seasons',
+        season - 1,
+      );
+      ShellTvFocusCoordinator.setRowLastFocusedIndex(tab, 'episodes', 0);
+    });
+  }
+
   Future<void> _onPackSeasonSelected(int season) async {
     final link = _packSeasonLink(season);
     if (link == null) return;
@@ -876,9 +899,9 @@ class _PackDetailsHostState extends ConsumerState<PackDetailsHost> {
         _selectedSeason = season;
         _selectedEpisode = eps.isEmpty ? 1 : (eps.first.episode ?? 1);
       });
+      _pinDetailsSeasonEpisodeFocusMemory(season);
       return;
     }
-    final prev = _detail ?? widget.item;
     final chipPoster = (link.poster ?? '').trim();
     final chipLabel = (link.label ?? '').trim();
     setState(() {
@@ -889,21 +912,15 @@ class _PackDetailsHostState extends ConsumerState<PackDetailsHost> {
       _error = null;
       _watchProgress = null;
       _watchedEpisodes = {};
-      // Drop prior-cour TMDB art so enrich cannot stick onto the next Media.
-      _detail = prev.copyWith(
+      // Fresh open/id — copyWith kept prior AniList Media on the pin.
+      _detail = _packSeasonStub(
+        seasonId: link.id,
         name: chipLabel.isNotEmpty ? chipLabel : '',
         poster: chipPoster,
-        background: '',
-        logo: '',
-        description: '',
-        videos: const [],
-        cast: const [],
-        crew: const [],
-        trailers: const [],
-        backdrops: const [],
       );
       _heroBackdrops = chipPoster.isNotEmpty ? [chipPoster] : const [];
     });
+    _pinDetailsSeasonEpisodeFocusMemory(season);
     await _load();
   }
 
@@ -1409,6 +1426,7 @@ class _PackDetailsHostState extends ConsumerState<PackDetailsHost> {
             _selectedSeason = season;
             _selectedEpisode = eps.isEmpty ? 1 : (eps.first.episode ?? 1);
           });
+          _pinDetailsSeasonEpisodeFocusMemory(season);
         },
         onEpisodeSelected: (ep) => setState(() => _selectedEpisode = ep),
         onEpisodePlay: (ep) {
@@ -1675,6 +1693,7 @@ class _PackDetailsHostState extends ConsumerState<PackDetailsHost> {
               if (listTarget != null) ...[
                 const SizedBox(width: 10),
                 KitListStatusHero(
+                  key: ValueKey(listTarget.uniqueId),
                   target: listTarget,
                   tvTabId: tvFocus ? MediaDetailsTv.tabId : null,
                   tvItemIndexStart: listIndex!,

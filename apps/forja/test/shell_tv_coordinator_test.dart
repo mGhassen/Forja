@@ -1309,6 +1309,13 @@ void main() {
       await tester.pump();
       expect(find.text('Details Play'), findsOneWidget);
       expect(play.hasFocus, isTrue);
+      expect(
+        ShellTvFocusCoordinator.verticalColumnMemoryEnabled(
+          MediaDetailsTv.tabId,
+        ),
+        isFalse,
+        reason: 'details seasons/episodes pin lastFocused on ↑/↓',
+      );
 
       // One press: details gone. Focus must not stop on the Back chevron.
       expect(ShellTvFocusCoordinator.handleShellBackKey(), isTrue);

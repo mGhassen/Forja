@@ -797,6 +797,14 @@ class _KitListStatusControlState extends State<KitListStatusControl> {
   bool _restoreFocusOnClose = false;
   bool _busy = false;
 
+  @override
+  void didUpdateWidget(KitListStatusControl oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.uniqueId != widget.uniqueId && _open) {
+      _close();
+    }
+  }
+
   bool get _open => _entry != null;
 
   @override
@@ -879,7 +887,7 @@ class _KitListStatusControlState extends State<KitListStatusControl> {
                     child: ValueListenableBuilder<int>(
                       valueListenable: BookmarkStore.changeNotifier,
                       builder: (context, _, _) {
-                        final status = BookmarkStore().resolvedStatus(
+                        final status = _pinDisplayStatus(
                           uniqueId: widget.uniqueId,
                           tmdbId: widget.tmdbId,
                           mediaType: widget.mediaType,
@@ -950,7 +958,7 @@ class _KitListStatusControlState extends State<KitListStatusControl> {
       child: ValueListenableBuilder<int>(
         valueListenable: BookmarkStore.changeNotifier,
         builder: (context, _, _) {
-          final status = BookmarkStore().resolvedStatus(
+          final status = _pinDisplayStatus(
             uniqueId: widget.uniqueId,
             tmdbId: widget.tmdbId,
             mediaType: widget.mediaType,

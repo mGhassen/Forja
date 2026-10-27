@@ -30,6 +30,13 @@ class _MediaDetailsTvScopeState extends State<MediaDetailsTvScope> {
   @override
   void initState() {
     super.initState();
+    // Season posters and episode cards don't share x-columns — pin ↑/↓ to each
+    // rail's lastFocusedIndex like remembered catalog landings when column
+    // memory is off (nearest-x would skip the last selected episode).
+    ShellTvFocusCoordinator.setVerticalColumnMemory(
+      MediaDetailsTv.tabId,
+      false,
+    );
     TvHeroActions.bind(
       MediaDetailsTv.tabId,
       defaultFocus: () => widget.heroPlayFocus,
@@ -50,15 +57,13 @@ class _MediaDetailsTvScopeState extends State<MediaDetailsTvScope> {
   @override
   void dispose() {
     ShellTvFocusCoordinator.clearTab(MediaDetailsTv.tabId);
+    ShellTvFocusCoordinator.setVerticalColumnMemory(MediaDetailsTv.tabId, true);
     TvHeroActions.unbind(MediaDetailsTv.tabId);
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    return TvFocusGraph(
-      tabId: MediaDetailsTv.tabId,
-      child: widget.child,
-    );
+    return TvFocusGraph(tabId: MediaDetailsTv.tabId, child: widget.child);
   }
 }

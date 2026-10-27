@@ -49,11 +49,17 @@ class KitListStatusHero extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Anime cours share franchise TMDB — never alias pin status across Media.
+    final animeScoped =
+        target.open.surface.trim() == 'anime' ||
+        (target.mediaType ?? '').trim().toLowerCase() == 'anime';
     // Prefer the shared host control (bookmark listen + TV dismiss + toast).
     return KitListStatusControl(
       uniqueId: target.uniqueId,
-      tmdbId: target.tmdbId,
-      mediaType: target.tmdbMediaType ?? target.resolvedMediaType,
+      tmdbId: animeScoped ? null : target.tmdbId,
+      mediaType: animeScoped
+          ? 'anime'
+          : (target.tmdbMediaType ?? target.resolvedMediaType),
       onSetStatus: (to) => _setStatus(context, to),
       tvTabId: tvTabId,
       tvItemIndexStart: tvItemIndexStart,
@@ -99,26 +105,27 @@ class KitListStatusHeroPaint extends StatelessWidget {
       onMenuOpenChanged: onMenuOpenChanged,
       useFocusableChips: policy.useFocusableMoodChips,
       scaleOnHover: policy.scaleOnHover,
-      triggerBuilder: (context, {required status, required onTap, required menuOpen}) {
-        return HeroPillIconGroup(
-          tvTabId: tvTabId,
-          tvRowId: tvTabId != null ? MediaDetailsTv.heroRowId : null,
-          tvItemIndexStart: tvItemIndexStart,
-          onUpEdge: onUpEdge,
-          slots: [
-            HeroPillIconSlot(
-              label: listStatusLabel(status),
-              iconWidget: Icon(
-                listStatusPinIcon(status),
-                size: ShellPaintScope.iconOf(context, 20),
-                color: listStatusPinColor(status),
-              ),
-              onTap: onTap,
-              suppressActive: menuOpen,
-            ),
-          ],
-        );
-      },
+      triggerBuilder:
+          (context, {required status, required onTap, required menuOpen}) {
+            return HeroPillIconGroup(
+              tvTabId: tvTabId,
+              tvRowId: tvTabId != null ? MediaDetailsTv.heroRowId : null,
+              tvItemIndexStart: tvItemIndexStart,
+              onUpEdge: onUpEdge,
+              slots: [
+                HeroPillIconSlot(
+                  label: listStatusLabel(status),
+                  iconWidget: Icon(
+                    listStatusPinIcon(status),
+                    size: ShellPaintScope.iconOf(context, 20),
+                    color: listStatusPinColor(status),
+                  ),
+                  onTap: onTap,
+                  suppressActive: menuOpen,
+                ),
+              ],
+            );
+          },
     );
   }
 }

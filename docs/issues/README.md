@@ -119,7 +119,7 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [095-[fixed]-…](fixed/095-[fixed]-anime-english-titles-server-miss.md) | Anime English titles + SPECIALS server miss | P1 | High | fixed | Complete · 5/5 · A 0/1 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [096-[fixed]-…](fixed/096-[fixed]-iptv-empty-local-cache-wipes-cloud.md) | Empty local IPTV cache wiped cloud portals | P0 | Critical | fixed | Complete · 5/5 · A 0/1 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [097-[open]-…](097-[open]-auto-watched-series-progress-details.md) | Auto watched + series % on details | P2 | Medium | open | 5/6 · A 0/4 | [1.0.1](../backlog/1.0.1-[open].md) |
-| [098-[open]-…](098-[open]-anime-details-season-chain.md) | Anime details AniList season chain | P2 | Medium | open | 21/22 · A 0/6 | [1.0.1](../backlog/1.0.1-[open].md) |
+| [098-[open]-…](098-[open]-anime-details-season-chain.md) | Anime details AniList season chain | P2 | Medium | open | 22/22 · A 0/6 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [099-[open]-…](099-[open]-profile-settings-cloud-master-local-cache.md) | Profile settings: cloud master, local cache | P1 | High | open | 5/5 · A 0/2 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [100-[open]-…](100-[open]-anime-details-cast-recs-trailers.md) | Anime details cast / recs / trailers | P2 | Medium | open | 5/6 · A 1/4 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [101-[open]-…](101-[open]-player-back-lands-on-loading.md) | Player Back lands on stream loading | P1 | High | open | 5/5 · A 0/3 | [1.0.1](../backlog/1.0.1-[open].md) |
@@ -545,6 +545,7 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [506-[fixed]-…](fixed/506-[fixed]-android-tv-player-skip-next-ep-chip-autofocus.md) | ATV Skip / Next Episode chips autofocus on appear | P2 | Medium | fixed | Complete · 2/2 · A 0/2 | [122](../rfc/122-[draft]-android-tv-remote-ux.md) |
 | [507-[open]-…](507-[open]-exo-hls-instream-subtitles-no-cues.md) | Exo HLS In-stream subtitles show no cues | P1 | High | open | 2/2 · A 1/2 | [495](fixed/495-[fixed]-mediakit-hls-instream-no-cues-menu-twins.md) · [230](230-[open]-android-tv-exo-subtitles-invisible.md) |
 | [508-[fixed]-…](fixed/508-[fixed]-atv-online-subtitle-exo-mime-mediakit-loading.md) | ATV online (Wyzie) Exo empty cues + MediaKit no loading | P1 | High | fixed | Complete · 3/3 · A 0/2 | [230](230-[open]-android-tv-exo-subtitles-invisible.md) · [458](fixed/458-[fixed]-exo-online-subtitle-pick-no-op-and-menu-twins.md) |
+| [509-[fixed]-…](fixed/509-[fixed]-anime-season-switch-pin-stale.md) | Anime season switch My List pin stuck on prior cour | P2 | Medium | fixed | Complete · 3/3 · A 0/2 | [098](098-[open]-anime-details-season-chain.md) |
 
 **Migration parity (draft):** [018](018-[draft]-migration-playback-parity-unverified.md) → [019](019-[draft]-webstreamr-enginejobs-e2e-test-gap.md)–[022](022-[draft]-playback-widget-integration-tests.md).
 
