@@ -110,7 +110,7 @@ export function SiteFooter() {
                 </li>
                 <li>
                   <a
-                    href="https://github.com/forjahq/forja"
+                    href="https://github.com/mGhassen/Forja"
                     rel="noopener noreferrer"
                     target="_blank"
                     className="transition-colors hover:text-[#EDE6DA]"

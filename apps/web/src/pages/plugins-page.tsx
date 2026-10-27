@@ -17,7 +17,7 @@ const BUILD_GUIDE_URL =
   'https://github.com/mGhassen/forja-sdk/blob/main/DEVELOPING.md'
 const STARTERS_URL =
   'https://github.com/mGhassen/forja-sdk/tree/main/starters'
-const FORJA_SOURCE_URL = 'https://github.com/forjahq/forja'
+const FORJA_SOURCE_URL = 'https://github.com/mGhassen/Forja'
 
 const BUILD_STEPS = [
   {
