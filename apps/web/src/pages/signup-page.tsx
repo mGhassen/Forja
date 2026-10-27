@@ -189,8 +189,8 @@ function SignupForm() {
                 <CardDescription className="text-base leading-relaxed text-[rgba(237,230,218,0.5)]">
                   We sent a confirmation link to{' '}
                   <span className="text-[#EDE6DA]">{email.trim()}</span>. Open
-                  it to finish signup, then you can sign in with your password
-                  anytime. If you don&apos;t see it, check spam.
+                  it to finish signup and create your profile. If you
+                  don&apos;t see it, check spam.
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -212,7 +212,7 @@ function SignupForm() {
                     <span className="font-mono-ui text-[10px] uppercase tracking-[0.14em] text-forja-green">
                       3
                     </span>{' '}
-                    Sign in with your password
+                    Create your profile
                   </li>
                 </ol>
 

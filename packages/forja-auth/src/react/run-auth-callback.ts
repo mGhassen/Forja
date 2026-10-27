@@ -14,9 +14,11 @@ export async function runAuthCallback(options: {
   defaultNext?: string
   errorPath?: string
   search?: string
+  hash?: string
 }): Promise<RunAuthCallbackResult> {
   const result = await exchangeAuthCode(options.client, options.configured, {
     search: options.search,
+    hash: options.hash,
     defaultNext: options.defaultNext ?? '/',
     errorPath: options.errorPath ?? '/login',
     unavailableMessage: options.unavailableMessage,

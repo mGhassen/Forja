@@ -165,6 +165,11 @@ editing files in `templates/`:
    `ConfirmationURL` → `/reset-password`. Daily sign-in stays email/password or
    passkey (no magic-link login).
 
+**Portal fallback (issue 504):** if a confirm still hits Site URL with
+`#access_token=…` (default template / allowlist miss), the web app relocates to
+`/auth/callback` and finishes the session → `/account/profiles`. Still paste the
+token_hash template so inboxes get the preferred link.
+
 From `apps/web` only:
 
 ```bash

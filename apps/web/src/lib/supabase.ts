@@ -1,10 +1,21 @@
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
+import { relocateAuthRedirectToCallback } from '@forja/auth'
 import type { Database } from '@/lib/database.types'
 
 const url = import.meta.env.VITE_SUPABASE_URL as string | undefined
 const publishableKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as
   | string
   | undefined
+
+// Before createClient: default confirm emails hit Site URL with #access_token
+// and would leave the user on `/#`. Move them to /auth/callback first, and
+// skip detectSessionInUrl on this dying document so the hash survives navigation.
+const authRedirectRelocated =
+  typeof window !== 'undefined' &&
+  relocateAuthRedirectToCallback({
+    callbackPath: '/auth/callback',
+    defaultNext: '/account/profiles',
+  })
 
 const looksLikePlaceholder =
   !url ||
@@ -79,6 +90,7 @@ export const supabase: SupabaseClient<Database> = createClient<Database>(
   looksLikePlaceholder ? 'placeholder' : publishableKey!,
   {
     auth: {
+      detectSessionInUrl: !authRedirectRelocated,
       experimental: { passkey: true },
     },
     global: {
