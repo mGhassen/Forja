@@ -106,5 +106,22 @@ void main() {
       expect(LiveGoatUnlock.isEpiEmbedsUrl(epi), isTrue);
       expect(LiveGoatUnlock.isEmbedIndiaUrl(epi), isFalse);
     });
+
+    test('isBzhPlayerSniffUrl recognizes zonalive and ordernap', () {
+      expect(
+        LiveGoatUnlock.isBzhPlayerSniffUrl('https://zonalive.click/player/3/3'),
+        isTrue,
+      );
+      expect(
+        LiveGoatUnlock.isBzhPlayerSniffUrl(
+          'https://ordernap.net/embed/63r8g0nw7pt1',
+        ),
+        isTrue,
+      );
+      expect(
+        LiveGoatUnlock.isBzhPlayerSniffUrl('https://embed.st/embed/admin/x'),
+        isFalse,
+      );
+    });
   });
 }

@@ -72,19 +72,33 @@ class LiveGoatUnlock {
     return host == 'embedindia.st' || host.endsWith('.embedindia.st');
   }
 
+  /// BZH / volkamax player wrappers + gated CDN embeds (HTTP often 403).
+  static bool isBzhPlayerSniffUrl(String url) {
+    final host = Uri.tryParse(url.trim())?.host.toLowerCase() ?? '';
+    if (host.isEmpty) return false;
+    const hosts = <String>[
+      'zonalive.click',
+      '104game.click',
+      '18zone.click',
+      'ordernap.net',
+      'truckrefuse.net',
+      'tossequip.net',
+      'dembed.st',
+      'bstream.st',
+    ];
+    return hosts.any((h) => host == h || host.endsWith('.$h'));
+  }
+
   /// sportsembed.su client handshake → plaintext HLS URL.
-  static Future<({String url, Map<String, String> headers})?> resolveSportsEmbed({
-    required String embedUrl,
-  }) {
+  static Future<({String url, Map<String, String> headers})?>
+  resolveSportsEmbed({required String embedUrl}) {
     return _enqueueNativeUnlock(() async {
       return _resolveSportsEmbedImpl(embedUrl: embedUrl);
     });
   }
 
   static Future<({String url, Map<String, String> headers})?>
-  _resolveSportsEmbedImpl({
-    required String embedUrl,
-  }) async {
+  _resolveSportsEmbedImpl({required String embedUrl}) async {
     final embed = embedUrl.trim();
     if (embed.isEmpty || !isSportsEmbedUrl(embed)) return null;
     final slot = parseSportsEmbedSlot(embed);
@@ -95,7 +109,9 @@ class LiveGoatUnlock {
 
     final node = await _findNodeBinary();
     if (node == null) {
-      debugPrint('[LiveSportsEmbed] node not found — sportsembed unlock skipped');
+      debugPrint(
+        '[LiveSportsEmbed] node not found — sportsembed unlock skipped',
+      );
       return null;
     }
 
@@ -208,7 +224,8 @@ class LiveGoatUnlock {
     final out = Map<String, String>.from(headers);
     String? take(String a, String b) => out[a] ?? out[b];
     final current = (take('Referer', 'referer') ?? '').trim();
-    final weak = current.isEmpty ||
+    final weak =
+        current.isEmpty ||
         current == '$_sportsEmbedOrigin/' ||
         current == _sportsEmbedOrigin ||
         current.contains('watchfooty.st');
@@ -226,16 +243,14 @@ class LiveGoatUnlock {
   static Future<bool> probePlayableM3u8(
     String url,
     Map<String, String> headers,
-  ) async =>
-      (await selectPlayableM3u8(url, headers)) != null;
+  ) async => (await selectPlayableM3u8(url, headers)) != null;
 
   /// Highest-bandwidth playable media playlist URL (skips TikTok WebP bait
   /// variants that admin goat masters list first).
   static Future<String?> selectPlayableM3u8(
     String url,
     Map<String, String> headers,
-  ) =>
-      _selectPlayableM3u8(url, headers);
+  ) => _selectPlayableM3u8(url, headers);
 
   static bool _looksLikeImageMagic(List<int> bytes) {
     if (bytes.length < 12) return false;
@@ -276,13 +291,15 @@ class LiveGoatUnlock {
       final line = lines[i].trim();
       if (!line.startsWith('#EXT-X-STREAM-INF')) continue;
       var bw = 0;
-      final m = RegExp(r'BANDWIDTH=(\d+)', caseSensitive: false).firstMatch(line);
+      final m = RegExp(
+        r'BANDWIDTH=(\d+)',
+        caseSensitive: false,
+      ).firstMatch(line);
       if (m != null) bw = int.tryParse(m.group(1) ?? '') ?? 0;
       for (var j = i + 1; j < lines.length; j++) {
         final next = lines[j].trim();
         if (next.isEmpty || next.startsWith('#')) continue;
-        final abs =
-            Uri.tryParse(masterUrl)?.resolve(next).toString() ?? next;
+        final abs = Uri.tryParse(masterUrl)?.resolve(next).toString() ?? next;
         if (abs.isNotEmpty) out.add((url: abs, bandwidth: bw));
         break;
       }
@@ -547,11 +564,15 @@ class LiveGoatUnlock {
     required String embedUrl,
     String? referer,
   }) async {
-    if (!isEpiEmbedsUrl(embedUrl) && !isEmbedIndiaUrl(embedUrl)) return null;
+    if (!isEpiEmbedsUrl(embedUrl) &&
+        !isEmbedIndiaUrl(embedUrl) &&
+        !isBzhPlayerSniffUrl(embedUrl)) {
+      return null;
+    }
     return _sniffJwEmbedPlaylist(embedUrl: embedUrl, referer: referer);
   }
 
-  /// JW embed playlist sniff (epiembeds / embedindia) when WASM memory scrape misses.
+  /// Playlist sniff via headless WebView (JW poll + resource m3u8 capture).
   static Future<String?> _sniffJwEmbedPlaylist({
     required String embedUrl,
     String? referer,
@@ -569,6 +590,13 @@ class LiveGoatUnlock {
         referer: (referer ?? embed).trim(),
       );
       if (viaWebView != null && viaWebView.isNotEmpty) return viaWebView;
+    }
+
+    // Node JW sniff only for epi/embedindia — BZH CDNs need a real WebView.
+    if (isBzhPlayerSniffUrl(embed) &&
+        !isEpiEmbedsUrl(embed) &&
+        !isEmbedIndiaUrl(embed)) {
+      return null;
     }
 
     final node = await _findNodeBinary();
@@ -599,33 +627,50 @@ class LiveGoatUnlock {
     final completer = Completer<String?>();
     ForjaHeadlessInAppWebView? headless;
 
+    void acceptM3u8(String? raw) {
+      final file = (raw ?? '').toString().trim();
+      if (file.isEmpty || !file.contains('.m3u8')) return;
+      if (!completer.isCompleted) completer.complete(file);
+    }
+
     Future<void> poll(InAppWebViewController controller) async {
       const js = '''
 (function() {
   try {
-    if (typeof jwplayer !== 'function') return '';
-    var item = jwplayer().getPlaylistItem();
-    if (!item) return '';
-    if (item.file && /.m3u8/i.test(item.file)) return item.file;
-    var sources = item.sources;
-    if (!Array.isArray(sources)) return '';
-    for (var i = 0; i < sources.length; i++) {
-      var u = sources[i] && sources[i].file;
-      if (u && /.m3u8/i.test(u)) return u;
+    if (typeof jwplayer === 'function') {
+      var item = jwplayer().getPlaylistItem();
+      if (item) {
+        if (item.file && /.m3u8/i.test(item.file)) return item.file;
+        var sources = item.sources;
+        if (Array.isArray(sources)) {
+          for (var i = 0; i < sources.length; i++) {
+            var u = sources[i] && sources[i].file;
+            if (u && /.m3u8/i.test(u)) return u;
+          }
+        }
+      }
     }
+    var videos = document.querySelectorAll('video');
+    for (var v = 0; v < videos.length; v++) {
+      var src = videos[v].currentSrc || videos[v].src || '';
+      if (src && /.m3u8/i.test(src)) return src;
+      var ss = videos[v].querySelectorAll('source');
+      for (var s = 0; s < ss.length; s++) {
+        var su = ss[s].src || '';
+        if (su && /.m3u8/i.test(su)) return su;
+      }
+    }
+    if (window.Hls && window.Hls.DefaultConfig && window.Hls.DefaultConfig.xhrSetup) {}
   } catch (_) {}
   return '';
 })()
 ''';
-      for (var i = 0; i < 40; i++) {
+      for (var i = 0; i < 50; i++) {
         if (completer.isCompleted) return;
         try {
           final raw = await controller.evaluateJavascript(source: js);
-          final file = (raw ?? '').toString().trim();
-          if (file.isNotEmpty && file.contains('.m3u8')) {
-            if (!completer.isCompleted) completer.complete(file);
-            return;
-          }
+          acceptM3u8(raw?.toString());
+          if (completer.isCompleted) return;
         } catch (_) {}
         await Future<void>.delayed(const Duration(milliseconds: 500));
       }
@@ -637,10 +682,21 @@ class LiveGoatUnlock {
         url: WebUri(embedUrl),
         headers: {'Referer': referer, 'User-Agent': _ua},
       ),
+      initialSettings: InAppWebViewSettings(
+        javaScriptEnabled: true,
+        mediaPlaybackRequiresUserGesture: false,
+        useOnLoadResource: true,
+        iframeAllow:
+            'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture',
+        allowsInlineMediaPlayback: true,
+      ),
       onWebViewCreated: (controller) {},
+      onLoadResource: (_, resource) {
+        acceptM3u8(resource.url?.toString());
+      },
       onLoadStop: (controller, _) => unawaited(poll(controller)),
-      onReceivedError: (_, _, _) {
-        if (!completer.isCompleted) completer.complete(null);
+      onReceivedError: (_, req, err) {
+        debugPrint('[LiveSniffEmbed] load error ${req.url} ${err.description}');
       },
     );
 
@@ -664,10 +720,7 @@ class LiveGoatUnlock {
     required String embedUrl,
     required String referer,
   }) async {
-    final payload = jsonEncode({
-      'embedUrl': embedUrl,
-      'referer': referer,
-    });
+    final payload = jsonEncode({'embedUrl': embedUrl, 'referer': referer});
     final proc = await Process.start(
       node,
       ['sniff.mjs'],
@@ -707,10 +760,7 @@ class LiveGoatUnlock {
         candidates.add('$local\\Programs\\node\\node.exe');
       }
     } else {
-      candidates.addAll([
-        '/opt/homebrew/bin/node',
-        '/usr/local/bin/node',
-      ]);
+      candidates.addAll(['/opt/homebrew/bin/node', '/usr/local/bin/node']);
     }
     for (final c in candidates) {
       try {
@@ -797,18 +847,14 @@ class LiveGoatUnlock {
     if (npm == null) {
       throw StateError('npm not found (needed once for unlock deps)');
     }
-    final install = await Process.run(
-      npm,
-      [
-        'install',
-        'happy-dom@20.11.6',
-        'big-integer@1.6.52',
-        '--no-fund',
-        '--no-audit',
-        '--prefer-offline',
-      ],
-      workingDirectory: dir.path,
-    ).timeout(const Duration(minutes: 2));
+    final install = await Process.run(npm, [
+      'install',
+      'happy-dom@20.11.6',
+      'big-integer@1.6.52',
+      '--no-fund',
+      '--no-audit',
+      '--prefer-offline',
+    ], workingDirectory: dir.path).timeout(const Duration(minutes: 2));
     if (install.exitCode != 0) {
       throw StateError(
         'npm install failed: ${install.stderr.toString().trim()}',
@@ -857,16 +903,12 @@ class LiveGoatUnlock {
       // Clean lock from any half-failed prior install.
       final lock = File('${dir.path}/package-lock.json');
       if (await lock.exists()) await lock.delete();
-      final install = await Process.run(
-        npm,
-        [
-          'install',
-          '--no-fund',
-          '--no-audit',
-          '--no-package-lock',
-        ],
-        workingDirectory: dir.path,
-      ).timeout(const Duration(minutes: 3));
+      final install = await Process.run(npm, [
+        'install',
+        '--no-fund',
+        '--no-audit',
+        '--no-package-lock',
+      ], workingDirectory: dir.path).timeout(const Duration(minutes: 3));
       if (install.exitCode != 0) {
         throw StateError(
           'npm install failed: ${install.stderr.toString().trim()}',
@@ -889,10 +931,7 @@ class LiveGoatUnlock {
         candidates.add('$local\\Programs\\node\\npm.cmd');
       }
     } else {
-      candidates.addAll([
-        '/opt/homebrew/bin/npm',
-        '/usr/local/bin/npm',
-      ]);
+      candidates.addAll(['/opt/homebrew/bin/npm', '/usr/local/bin/npm']);
     }
     for (final c in candidates) {
       try {
@@ -902,7 +941,9 @@ class LiveGoatUnlock {
     }
     try {
       final lookup = Platform.isWindows ? 'where.exe' : 'which';
-      final which = await Process.run(lookup, [Platform.isWindows ? 'npm.cmd' : 'npm']);
+      final which = await Process.run(lookup, [
+        Platform.isWindows ? 'npm.cmd' : 'npm',
+      ]);
       if (which.exitCode == 0) {
         final path = which.stdout.toString().trim().split('\n').first.trim();
         if (path.isNotEmpty) return path;
@@ -920,9 +961,7 @@ class LiveGoatUnlock {
 
   static Future<String> _ensureSportsEmbedDir() async {
     if (_cachedSportsEmbedDir != null) {
-      final ready = File(
-        '${_cachedSportsEmbedDir!}/vendor/stream-lock.wasm',
-      );
+      final ready = File('${_cachedSportsEmbedDir!}/vendor/stream-lock.wasm');
       if (await ready.exists()) {
         await _refreshSportsEmbedAssets(_cachedSportsEmbedDir!);
         return _cachedSportsEmbedDir!;
