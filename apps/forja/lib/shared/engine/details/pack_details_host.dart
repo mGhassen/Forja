@@ -878,6 +878,9 @@ class _PackDetailsHostState extends ConsumerState<PackDetailsHost> {
       });
       return;
     }
+    final prev = _detail ?? widget.item;
+    final chipPoster = (link.poster ?? '').trim();
+    final chipLabel = (link.label ?? '').trim();
     setState(() {
       _selectedSeason = season;
       _detailsOverrideId = link.id;
@@ -886,6 +889,20 @@ class _PackDetailsHostState extends ConsumerState<PackDetailsHost> {
       _error = null;
       _watchProgress = null;
       _watchedEpisodes = {};
+      // Drop prior-cour TMDB art so enrich cannot stick onto the next Media.
+      _detail = prev.copyWith(
+        name: chipLabel.isNotEmpty ? chipLabel : '',
+        poster: chipPoster,
+        background: '',
+        logo: '',
+        description: '',
+        videos: const [],
+        cast: const [],
+        crew: const [],
+        trailers: const [],
+        backdrops: const [],
+      );
+      _heroBackdrops = chipPoster.isNotEmpty ? [chipPoster] : const [];
     });
     await _load();
   }
@@ -944,7 +961,9 @@ class _PackDetailsHostState extends ConsumerState<PackDetailsHost> {
       forceRefresh: forceRefresh,
       onUpdated: (next) {
         if (!mounted || loadGen != _detailsLoadGen) return;
-        final meta = hubMergeDetailsSeed(next.meta ?? seed, seed);
+        // Soft season switch: never fill empty logo/backdrop from prior cour.
+        final raw = next.meta ?? seed;
+        final meta = softSeasonSwitch ? raw : hubMergeDetailsSeed(raw, seed);
         final packRails = parseKitDetailRails(next.data);
         final packSeasons = parseKitDetailSeasons(next.data);
         if (packRails.isNotEmpty) railsArrived = true;
@@ -975,7 +994,10 @@ class _PackDetailsHostState extends ConsumerState<PackDetailsHost> {
       });
       return;
     }
-    final meta = hubMergeDetailsSeed(env.meta ?? seed, seed);
+    final rawFinal = env.meta ?? seed;
+    final meta = softSeasonSwitch
+        ? rawFinal
+        : hubMergeDetailsSeed(rawFinal, seed);
     final loadedRails = parseKitDetailRails(env.data);
     // Deferred More Like This can land before this paint. Don't replace it
     // with the first envelope, which has no rails yet.
