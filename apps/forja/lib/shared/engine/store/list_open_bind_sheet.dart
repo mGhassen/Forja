@@ -758,6 +758,7 @@ class _ListOpenBindSheetState extends State<_ListOpenBindSheet> {
                     error: _error,
                     hits: _hits,
                     isBest: _isBest,
+                    yearHint: _yearHint,
                     onPick: _confirmHit,
                     pickFilm: widget.pickFilm || _trackerMode,
                     pickedKey: _pickedKey,
@@ -1116,6 +1117,7 @@ class _HitsBody extends StatelessWidget {
     required this.density,
     required this.focusNodes,
     required this.onUpFromFirst,
+    this.yearHint = '',
     this.pickFilm = false,
     this.pickedKey,
     this.hitKey,
@@ -1125,6 +1127,9 @@ class _HitsBody extends StatelessWidget {
   final String? error;
   final List<MetaItem> hits;
   final bool Function(MetaItem hit, int index) isBest;
+
+  /// Source / query year — shown when a hit (esp. best match) has no date.
+  final String yearHint;
   final ValueChanged<MetaItem> onPick;
   final bool dpad;
   final bool density;
@@ -1173,9 +1178,18 @@ class _HitsBody extends StatelessWidget {
     Widget hitTile(int i) {
       final hit = hits[i];
       final best = isBest(hit, i);
-      final year = hit.releaseInfo.trim().isNotEmpty
+      final hitYear = hit.releaseInfo.trim().isNotEmpty
           ? hit.releaseInfo.trim()
           : hit.premiereDate.trim();
+      // TMDB multi-search often omits dates on the top title hit; keep the
+      // source year visible so Best match matches the header.
+      final hintYear = yearHint.trim();
+      final year = hitYear.isNotEmpty
+          ? hitYear
+          : (best
+                ? (listOpenParseYear(hintYear)?.toString() ??
+                      (hintYear.isNotEmpty ? hintYear : ''))
+                : '');
       final row = Padding(
         padding: EdgeInsets.symmetric(vertical: px(8)),
         child: Row(
