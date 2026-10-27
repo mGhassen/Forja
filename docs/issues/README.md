@@ -209,7 +209,7 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [184-[open]-…](184-[open]-post-seek-buffering-remount.md) | Post-seek BUFFERING remount same URL | P1 | High | open | 6/6 · A 0/2 | — |
 | [185-[open]-…](185-[open]-streamcrypto-dart-webview.md) | STREAMCRYPTO Dart + WebView (shared enc=2) | P1 | High | open | 5/5 · A 2/4 | — |
 | [186-[open]-…](186-[open]-paused-playback-history-scrobble-heartbeat.md) | Paused play still heartbeats history/Simkl | P2 | Medium | open | 4/4 · A 0/1 | — |
-| [187-[open]-…](187-[open]-android-tv-mediakit-vod-cache-empty.md) | ATV movies MediaKit cache never fills | P1 | High | open | 2/2 · A 0/2 | — |
+| [187-[open]-…](187-[open]-android-tv-mediakit-vod-cache-empty.md) | ATV movies MediaKit cache never fills | P1 | High | open | 3/3 · A 0/3 | — |
 | [188-[draft]-…](188-[draft]-forja-engine-play-manual-qa.md) | Forja engine tab manual play QA | P2 | Medium | open | 0/2 | — |
 | [189-[fixed]-…](fixed/189-[fixed]-engine-jsc-use-after-dispose-on-cancel.md) | Engine Forja tab JSC SIGSEGV on cancel | P1 | High | fixed | Complete · 4/4 · A 1/2 | — |
 | [190-[open]-…](190-[open]-forja-engine-parallel-jsc-crash.md) | Forja Engine parallel JSC crash / UI starvation | P1 | High | open | 10/10 · A 3/4 | [RFC-064](../rfc/064-[open]-rust-quickjs-engine-runtime.md) |
@@ -543,6 +543,8 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [504-[fixed]-…](fixed/504-[fixed]-signup-confirm-lands-on-site-url-hash.md) | Signup confirm lands on Site URL `/#` not profiles | P1 | High | fixed | Complete · 2/2 · A 1/2 | — |
 | [505-[fixed]-…](fixed/505-[fixed]-android-tv-player-back-exit-hint.md) | Android TV player Back exit hint restored | P2 | Medium | fixed | Complete · 3/3 · A 0/2 | [122](../rfc/122-[draft]-android-tv-remote-ux.md) |
 | [506-[fixed]-…](fixed/506-[fixed]-android-tv-player-skip-next-ep-chip-autofocus.md) | ATV Skip / Next Episode chips autofocus on appear | P2 | Medium | fixed | Complete · 2/2 · A 0/2 | [122](../rfc/122-[draft]-android-tv-remote-ux.md) |
+| [507-[open]-…](507-[open]-exo-hls-instream-subtitles-no-cues.md) | Exo HLS In-stream subtitles show no cues | P1 | High | open | 2/2 · A 1/2 | [495](fixed/495-[fixed]-mediakit-hls-instream-no-cues-menu-twins.md) · [230](230-[open]-android-tv-exo-subtitles-invisible.md) |
+| [508-[fixed]-…](fixed/508-[fixed]-atv-online-subtitle-exo-mime-mediakit-loading.md) | ATV online (Wyzie) Exo empty cues + MediaKit no loading | P1 | High | fixed | Complete · 3/3 · A 0/2 | [230](230-[open]-android-tv-exo-subtitles-invisible.md) · [458](fixed/458-[fixed]-exo-online-subtitle-pick-no-op-and-menu-twins.md) |
 
 **Migration parity (draft):** [018](018-[draft]-migration-playback-parity-unverified.md) → [019](019-[draft]-webstreamr-enginejobs-e2e-test-gap.md)–[022](022-[draft]-playback-widget-integration-tests.md).
 

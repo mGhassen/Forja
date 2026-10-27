@@ -23,6 +23,13 @@ void main() {
       expect(externalSubtitleFileExtension(srt.codeUnits), 'srt');
     });
 
+    test('Media3 mime follows sniffed extension (not URL path)', () {
+      expect(externalSubtitleMimeForExtension('vtt'), 'text/vtt');
+      expect(externalSubtitleMimeForExtension('srt'), 'application/x-subrip');
+      expect(externalSubtitleMimeForExtension('ass'), isNull);
+      expect(externalSubtitleMimeForExtension('ssa'), isNull);
+    });
+
     test('rejects OpenSubtitles HTML error page', () {
       const html =
           'Sorry. We have problem with network connection to database server, '
@@ -75,14 +82,17 @@ void main() {
   });
 
   group('embeddedSubtitleTracks', () {
-    test('drops media_kit auto/no so the menu has no Unknown Audio auto/no', () {
-      final out = embeddedSubtitleTracks([
-        SubtitleTrack.auto(),
-        SubtitleTrack.no(),
-        const SubtitleTrack('2', 'English', 'en'),
-      ]);
-      expect(out.map((t) => t.id), ['2']);
-    });
+    test(
+      'drops media_kit auto/no so the menu has no Unknown Audio auto/no',
+      () {
+        final out = embeddedSubtitleTracks([
+          SubtitleTrack.auto(),
+          SubtitleTrack.no(),
+          const SubtitleTrack('2', 'English', 'en'),
+        ]);
+        expect(out.map((t) => t.id), ['2']);
+      },
+    );
   });
 
   group('pickPlaylistSubtitleRendition', () {
@@ -165,11 +175,13 @@ void main() {
   });
 
   group('stripSubtitlePromoCues', () {
-    const promo = "You're on the free plan. Unlock every source, AI "
+    const promo =
+        "You're on the free plan. Unlock every source, AI "
         'translation & ad-free subs → store.wyzie.io';
 
     test('drops the Wyzie free-plan cue from SRT', () {
-      final srt = '1\r\n00:00:00,000 --> 00:00:06,000\r\n$promo\r\n\r\n'
+      final srt =
+          '1\r\n00:00:00,000 --> 00:00:06,000\r\n$promo\r\n\r\n'
           '2\r\n00:00:25,876 --> 00:00:29,156\r\n[BABIES crying]\r\n';
       final out = utf8.decode(stripSubtitlePromoCues(utf8.encode(srt)));
       expect(out, isNot(contains('wyzie')));
@@ -178,7 +190,8 @@ void main() {
     });
 
     test('drops the cue from WEBVTT and keeps the header', () {
-      final vtt = 'WEBVTT\n\n00:00:00.000 --> 00:00:06.000\n$promo\n\n'
+      final vtt =
+          'WEBVTT\n\n00:00:00.000 --> 00:00:06.000\n$promo\n\n'
           '00:00:25.876 --> 00:00:29.156\nHello\n';
       final out = utf8.decode(stripSubtitlePromoCues(utf8.encode(vtt)));
       expect(out, startsWith('WEBVTT'));
@@ -187,8 +200,10 @@ void main() {
     });
 
     test('drops the hoofoot sports-stream ad cue', () {
-      const ad = 'Visit hoofoot.ru to watch all sports\nlivestream and highlights for free';
-      final vtt = 'WEBVTT\n\n00:00:00.000 --> 00:00:08.000\n$ad\n\n'
+      const ad =
+          'Visit hoofoot.ru to watch all sports\nlivestream and highlights for free';
+      final vtt =
+          'WEBVTT\n\n00:00:00.000 --> 00:00:08.000\n$ad\n\n'
           '00:00:25.876 --> 00:00:29.156\nHello\n';
       final out = utf8.decode(stripSubtitlePromoCues(utf8.encode(vtt)));
       expect(out, isNot(contains('hoofoot')));

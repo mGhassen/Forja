@@ -2959,7 +2959,12 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
                   ),
                 ),
               ),
-              // Flutter cue paint — native SubtitleView unused (issue 230).
+              if (_coverDeadSurface)
+                const Positioned.fill(
+                  child: IgnorePointer(child: ColoredBox(color: Colors.black)),
+                ),
+              // Flutter cue paint above dead-surface cover (MediaKit parity;
+              // issue 230 / 508). Native SubtitleView unused.
               Positioned.fill(
                 child: IgnorePointer(
                   child: ValueListenableBuilder<List<String>>(
@@ -2968,10 +2973,6 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
                   ),
                 ),
               ),
-              if (_coverDeadSurface)
-                const Positioned.fill(
-                  child: IgnorePointer(child: ColoredBox(color: Colors.black)),
-                ),
               Positioned.fill(
                 child: GestureDetector(
                   behavior: HitTestBehavior.translucent,

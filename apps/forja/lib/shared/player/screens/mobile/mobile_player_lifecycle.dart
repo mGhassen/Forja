@@ -194,9 +194,9 @@ mixin _MobilePlayerLifecycle
       Player(
         configuration: const PlayerConfiguration(
           logLevel: MPVLogLevel.warn,
-          // Match VOD `demuxer-max-bytes=100MiB`. media_kit default is 32MB
+          // Match VOD `demuxer-max-bytes=128MiB`. media_kit default is 32MB
           // and `cache-on-disk=yes` — both starve ATV HLS prefetch (issue 187).
-          bufferSize: 100 * 1024 * 1024,
+          bufferSize: 128 * 1024 * 1024,
           // libass enabled so ASS/SSA subtitles render natively on the video.
           // For SRT/VTT we dynamically set sub-visibility=no so our custom
           // Flutter overlay still handles those.

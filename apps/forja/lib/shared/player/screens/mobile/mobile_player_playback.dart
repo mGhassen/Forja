@@ -1913,9 +1913,6 @@ mixin _MobilePlayerPlayback
     // RAM packet cache. media_kit defaults cache-on-disk=yes; on ATV that
     // prunes metadata and never builds an HLS ahead window (issue 187).
     await safeSet('cache-on-disk', 'no');
-    await safeSet('cache-pause', 'yes');
-    await safeSet('cache-pause-wait', '3');
-    await safeSet('cache-pause-initial', 'yes');
 
     // Stay on the last frame at EOF so the seek bar still works (scrub back /
     // replay). Without this, mpv goes idle and seeks no-op after completed.
@@ -1929,6 +1926,9 @@ mixin _MobilePlayerPlayback
       // lavf Range the tail (moov) while the swarm filled random middle pieces
       // — probe retries forever at 0:00. After decode, ensureLocalTorrentSeekable
       // clears seekable=0 and enables HTTP Range scrub (issue 024 T07/T09).
+      // Play-through underrun — swarm catch-up must not hard-pause for 20s.
+      await safeSet('cache-pause', 'no');
+      await safeSet('cache-pause-initial', 'no');
       await safeSet('cache', 'yes');
       await safeSet('network-timeout', '120');
       await safeSet('demuxer-readahead-secs', '20');
@@ -1938,15 +1938,19 @@ mixin _MobilePlayerPlayback
       await safeSet('stream-lavf-o', 'seekable=0');
       await safeSet('demuxer-lavf-o', 'seekable=0');
     } else {
-      // Sliding RAM window (cache-secs wins over readahead). Pause-to-refill
-      // is set above so HLS underruns BUFFER instead of stuttering.
+      // Sliding RAM window + pause-to-refill. wait=3 resumed after a tiny
+      // cushion and re-underran every ~10s HLS segment (MegaPlay ATV).
+      // 60s / 128MiB / 40s readahead ≈ Exo VOD min cushion + IPTV VOD bytes.
+      await safeSet('cache-pause', 'yes');
+      await safeSet('cache-pause-wait', '20');
+      await safeSet('cache-pause-initial', 'yes');
       await safeSet('cache', 'yes');
-      await safeSet('cache-secs', '45');
-      await safeSet('demuxer-max-bytes', '100MiB');
-      await safeSet('demuxer-readahead-secs', '20');
+      await safeSet('cache-secs', '60');
+      await safeSet('demuxer-max-bytes', '128MiB');
+      await safeSet('demuxer-readahead-secs', '40');
 
-      // 30 MiB back-buffer so backward seeks don't require a full rebuffer.
-      await safeSet('demuxer-max-back-bytes', '30MiB');
+      // Back-buffer so backward seeks don't require a full rebuffer.
+      await safeSet('demuxer-max-back-bytes', '40MiB');
 
       // Cap from Settings → Max stream quality (Auto = soft ~5 Mbps).
       final maxH = await SettingsService().getMaxPlaybackHeight();

@@ -22,8 +22,17 @@ mixin _MobilePlayerTracks on ConsumerState<MobilePlayerScreen> {
     }
     final url = (s['url'] ?? '').toString();
     if (url.isEmpty) return false;
+    final label = (s['display'] ?? s['language'] ?? s['lang'] ?? 'Subtitle')
+        .toString();
     final isTranslated =
         s['translated'] == true || url.contains('/subtitlecat-translate');
+    if (userInitiated) {
+      _s._statusController.upsert(
+        'subtitle',
+        label,
+        kind: StatusRouletteKind.loading,
+      );
+    }
 
     Future<bool> applyUri(String uri) async {
       if (_s._disposed || !mounted) return false;
@@ -38,6 +47,14 @@ mixin _MobilePlayerTracks on ConsumerState<MobilePlayerScreen> {
         if (_s._disposed || !mounted) return false;
         _s._updateSubVisibility(track);
         if (mounted) setState(() => _s._selectedExternalSubUrl = url);
+        if (userInitiated) {
+          _s._statusController.upsert(
+            'subtitle',
+            label,
+            kind: StatusRouletteKind.success,
+            dismissAfter: const Duration(milliseconds: 1500),
+          );
+        }
         return true;
       } catch (e) {
         debugPrint('[MobilePlayer] subtitle apply failed: $e');
@@ -48,7 +65,7 @@ mixin _MobilePlayerTracks on ConsumerState<MobilePlayerScreen> {
     void fail() {
       if (!mounted) return;
       setState(() => _s._selectedExternalSubUrl = null);
-      if (showFailureToast) {
+      if (showFailureToast || userInitiated) {
         _s._statusController.upsert(
           'subtitle',
           'Subtitle failed',
@@ -82,11 +99,12 @@ mixin _MobilePlayerTracks on ConsumerState<MobilePlayerScreen> {
           return false;
         }
         _s._externalSubFileCache[url] = uri;
-        return await applyUri(uri);
+        if (await applyUri(uri)) return true;
       } catch (e) {
-        fail();
-        return false;
+        debugPrint('[MobilePlayer] local subtitle apply failed: $e');
       }
+      fail();
+      return false;
     }
 
     if (hasInlineSubtitleContent(s)) {
@@ -102,12 +120,12 @@ mixin _MobilePlayerTracks on ConsumerState<MobilePlayerScreen> {
           await deleteExternalSubtitleCacheFile(prior);
         }
         _s._externalSubFileCache[cacheKey] = local;
-        return await applyUri(local);
+        if (await applyUri(local)) return true;
       } catch (e) {
         debugPrint('[MobilePlayer] inline subtitle materialize failed: $e');
-        fail();
-        return false;
       }
+      fail();
+      return false;
     }
 
     try {
@@ -152,11 +170,12 @@ mixin _MobilePlayerTracks on ConsumerState<MobilePlayerScreen> {
         await deleteExternalSubtitleCacheFile(prior);
       }
       _s._externalSubFileCache[url] = uri;
-      return await applyUri(uri);
+      if (await applyUri(uri)) return true;
     } catch (e) {
-      fail();
-      return false;
+      debugPrint('[MobilePlayer] subtitle download failed: $e');
     }
+    fail();
+    return false;
   }
 
   bool _subtitleAutoCancelled(int gen) =>

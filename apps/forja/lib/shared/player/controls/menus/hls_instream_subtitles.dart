@@ -127,6 +127,24 @@ List<Map<String, dynamic>> hlsInStreamSubtitleRows(
   ];
 }
 
+/// True when Exo must merge the row to a local VTT/SRT before Media3
+/// sideload (raw subtitle `.m3u8` is not a SubRip/VTT file).
+///
+/// MediaKit already does this via [materializeHlsInStreamSubtitleFile];
+/// Exo used to GET + reject `#EXTM3U` bodies as non-SRT/VTT.
+bool exoSideloadNeedsHlsMaterialize({
+  required String url,
+  Map<String, dynamic>? row,
+}) {
+  final source = (row?['sourceName'] ?? '').toString().trim();
+  if (source == 'In-stream') return true;
+  final raw = url.trim();
+  if (raw.isEmpty) return false;
+  if (isLocalHlsPlayUrl(raw)) return true;
+  final path = Uri.tryParse(raw)?.path.toLowerCase() ?? '';
+  return path.contains('.m3u8');
+}
+
 bool _hlsInStreamLabelMatch(HlsInStreamSubtitle sub, SubtitleTrack track) {
   final trackTitle = (track.title ?? '').trim();
   final subName = sub.name.trim();

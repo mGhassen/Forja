@@ -1912,11 +1912,13 @@ mixin _DesktopPlayerPlayback
       // Network HLS VOD (anime MegaPlay family, etc.): audio clock + pause-to-
       // refill. display-resample + play-through-underrun made video race after
       // a hiccup and never re-lock lipsync (desktop MediaKit A/V desync).
+      // wait=3 re-underran every HLS segment (~10s MegaPlay freezes).
+      // Match mobile/ATV refill cushion (20s of media before resume).
       await safeSet('video-sync', 'audio');
       await safeSet('interpolation', 'no');
       await safeSet('initial-audio-sync', 'yes');
       await safeSet('cache-pause', 'yes');
-      await safeSet('cache-pause-wait', '3');
+      await safeSet('cache-pause-wait', '20');
       await safeSet('cache-pause-initial', 'yes');
       // Prefer a fast first frame over a huge cold prefetch. Mid-play
       // stability still gets a solid forward window + RAM cache; Quality
@@ -1924,7 +1926,7 @@ mixin _DesktopPlayerPlayback
       await safeSet('cache', 'yes');
       await safeSet('cache-secs', '60');
       await safeSet('demuxer-max-bytes', '200MiB');
-      await safeSet('demuxer-readahead-secs', '20');
+      await safeSet('demuxer-readahead-secs', '40');
 
       // How far back the demuxer keeps decoded data (for backward seeks).
       await safeSet('demuxer-max-back-bytes', '50MiB');

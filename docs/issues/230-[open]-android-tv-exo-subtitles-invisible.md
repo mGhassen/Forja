@@ -53,4 +53,6 @@ On **Android TV** (reported **Xiaomi / Android 11**), ExoPlayer can select a tex
 
 - [132](132-[open]-android-tv-exo-auto-subtitle-merging-crash.md) — auto-select crash (selection path)
 - [032](032-[draft]-exoplayer-parity-gaps.md) — Exo subtitle parity
+- [507](507-[open]-exo-hls-instream-subtitles-no-cues.md) — HLS In-stream playlist → no cues (materialize gap; not PlatformView paint)
+- [508](fixed/508-[fixed]-atv-online-subtitle-exo-mime-mediakit-loading.md) — Wyzie/online Exo mime sniff + MediaKit loading chip
 - [features/playback/subtitles.md](../features/playback/subtitles.md)

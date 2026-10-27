@@ -172,6 +172,37 @@ video.m3u8
     },
   );
 
+  test('exoSideloadNeedsHlsMaterialize gates In-stream and m3u8', () {
+    expect(
+      exoSideloadNeedsHlsMaterialize(
+        url: 'https://cdn.example/en.vtt',
+        row: const {'sourceName': 'In-stream'},
+      ),
+      isTrue,
+    );
+    expect(
+      exoSideloadNeedsHlsMaterialize(
+        url: 'https://cdn.example/subs/en.m3u8',
+        row: const {'sourceName': 'AnimeKai'},
+      ),
+      isTrue,
+    );
+    expect(
+      exoSideloadNeedsHlsMaterialize(
+        url: 'http://127.0.0.1:9/hls-proxy?url=https%3A%2F%2Fx',
+        row: const {'sourceName': 'AnimeKai'},
+      ),
+      isTrue,
+    );
+    expect(
+      exoSideloadNeedsHlsMaterialize(
+        url: 'https://cdn.example/en.vtt',
+        row: const {'sourceName': 'AnimeKai'},
+      ),
+      isFalse,
+    );
+  });
+
   test('hlsInStreamRequestHeaders lets playback headers win conflicts', () {
     expect(
       hlsInStreamRequestHeaders(

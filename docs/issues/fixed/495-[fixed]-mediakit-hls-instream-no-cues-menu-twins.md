@@ -49,3 +49,4 @@ Verified on AnimeKai desktop (`in-stream renditions=0` from the master — **no*
 - [474](474-[fixed]-mediakit-hls-instream-subtitle-menu-twins.md) — prior menu-twin work (incomplete)
 - [424](424-[fixed]-mediakit-double-subtitle-paint.md) — cue paint twin, not menu rows
 - [455](455-[fixed]-airplay-hls-instream-subtitles.md) — AirPlay merge-to-VTT precedent
+- [507](../507-[open]-exo-hls-instream-subtitles-no-cues.md) — Exo same materialize gap

@@ -94,12 +94,15 @@ mixin _ExoPlayerTracks on ConsumerState<ExoPlayerScreen> {
         '[ExoPlayer] subtitle pick failed after ${sw.elapsedMilliseconds} ms: '
         '$url',
       );
-      _s._statusController.upsert(
-        'subtitle',
-        'Subtitle failed',
-        kind: StatusRouletteKind.failed,
-        dismissAfter: const Duration(seconds: 2),
-      );
+      // Auto may fall through to Wyzie — don't flash failed first.
+      if (manual) {
+        _s._statusController.upsert(
+          'subtitle',
+          'Subtitle failed',
+          kind: StatusRouletteKind.failed,
+          dismissAfter: const Duration(seconds: 2),
+        );
+      }
       return;
     }
     debugPrint(
@@ -142,12 +145,14 @@ mixin _ExoPlayerTracks on ConsumerState<ExoPlayerScreen> {
       // READY one from before, so auto-pick and late attach stay alive.
       _s._exoReady = true;
       setState(() => _s._selectedExternalSubUrl = null);
-      _s._statusController.upsert(
-        'subtitle',
-        'Subtitle failed',
-        kind: StatusRouletteKind.failed,
-        dismissAfter: const Duration(seconds: 2),
-      );
+      if (manual) {
+        _s._statusController.upsert(
+          'subtitle',
+          'Subtitle failed',
+          kind: StatusRouletteKind.failed,
+          dismissAfter: const Duration(seconds: 2),
+        );
+      }
     }
   }
 
@@ -160,16 +165,32 @@ mixin _ExoPlayerTracks on ConsumerState<ExoPlayerScreen> {
     final label = (s['display'] ?? s['language'] ?? s['lang'] ?? lang)
         .toString();
 
-    Future<Map<String, String>> pack(String fileUri) async => {
-      'url': fileUri,
-      'lang': lang,
-      'label': label,
-      'sourceUrl': url,
-    };
+    // Content sniff sets Media3 mime — URL/path extension is often wrong
+    // (Wyzie/CDN extensionless VTT saved as `.srt` → empty cues).
+    Future<Map<String, String>?> pack(String fileUri) async {
+      final mime = await externalSubtitleMimeForFileUri(fileUri);
+      if (mime == null) {
+        debugPrint(
+          '[ExoPlayer] subtitle sideload skipped (unsupported or unreadable): '
+          '$fileUri',
+        );
+        return null;
+      }
+      return {
+        'url': fileUri,
+        'lang': lang,
+        'label': label,
+        'sourceUrl': url,
+        'mime': mime,
+      };
+    }
 
     final cached = _s._externalSubFileCache[url];
     if (cached != null) {
-      if (await externalSubtitleCacheFileValid(cached)) return pack(cached);
+      if (await externalSubtitleCacheFileValid(cached)) {
+        final prepared = await pack(cached);
+        if (prepared != null) return prepared;
+      }
       _s._externalSubFileCache.remove(url);
       await deleteExternalSubtitleCacheFile(cached);
     }
@@ -180,14 +201,29 @@ mixin _ExoPlayerTracks on ConsumerState<ExoPlayerScreen> {
       return pack(uri);
     }
 
-    if (isLocalHlsPlayUrl(url)) {
-      return {
-        'url': url,
-        'lang': lang,
-        'label': label,
-        'sourceUrl': url,
-        'mime': 'text/vtt',
-      };
+    // HLS TYPE=SUBTITLES / In-stream — merge playlist → local VTT (issue 507).
+    // Do not pass raw `.m3u8` to Media3 as SubRip/VTT.
+    if (exoSideloadNeedsHlsMaterialize(url: url, row: s)) {
+      final playbackHeaders = _s._sources.isNotEmpty
+          ? _s._sources[_s._sourceIndex].headers
+          : widget.headers;
+      // Keep Cookie/Referer from the play path (MediaKit parity).
+      final headers = hlsInStreamRequestHeaders(
+        streamHeaders: playbackHeaders,
+        playbackHeaders: playbackHeaders,
+      );
+      try {
+        final fileUri = await materializeHlsInStreamSubtitleFile(
+          HlsInStreamSubtitle(language: lang, name: label, uri: url),
+          headers: (headers == null || headers.isEmpty) ? null : headers,
+        );
+        if (fileUri == null) return null;
+        _s._externalSubFileCache[url] = fileUri;
+        return pack(fileUri);
+      } catch (e) {
+        debugPrint('[ExoPlayer] HLS in-stream materialize failed: $e');
+        return null;
+      }
     }
 
     if (hasInlineSubtitleContent(s)) {
@@ -244,16 +280,18 @@ mixin _ExoPlayerTracks on ConsumerState<ExoPlayerScreen> {
 
       final dir = await getTemporaryDirectory();
       final safeLang = lang.replaceAll(RegExp(r'[^A-Za-z0-9_-]'), '_');
-      final lowerPath = subUri.path.toLowerCase();
-      final ext = lowerPath.endsWith('.vtt')
-          ? 'vtt'
-          : lowerPath.endsWith('.srt')
-          ? 'srt'
-          : 'srt';
+      final body = stripSubtitlePromoCues(res.bodyBytes);
+      final ext = externalSubtitleFileExtension(body);
+      if (externalSubtitleMimeForExtension(ext) == null) {
+        debugPrint(
+          '[ExoPlayer] subtitle download skipped (Exo cannot paint $ext): $url',
+        );
+        return null;
+      }
       final file = File(
         '${dir.path}/forja_exo_sub_${DateTime.now().millisecondsSinceEpoch}_$safeLang.$ext',
       );
-      await file.writeAsBytes(stripSubtitlePromoCues(res.bodyBytes));
+      await file.writeAsBytes(body);
       final uri = Uri.file(file.path).toString();
       _s._externalSubFileCache[url] = uri;
       return pack(uri);
@@ -423,10 +461,9 @@ mixin _ExoPlayerTracks on ConsumerState<ExoPlayerScreen> {
     });
     if (hasUsableMux) return;
 
-    // Master already lists the language, but Media3 has not reported text
-    // tracks yet. Do not sideload Wyzie in that gap — its free-plan cue
-    // flashes, then the in-stream track replaces it.
-    if (await _hlsPlaylistCoversPreferred(preferred)) return;
+    // HLS TYPE=SUBTITLES — materialize + sideload before Wyzie (MediaKit
+    // parity; Exo used to only "wait for Media3" and never attached).
+    if (await _applyPreferredHlsInStreamSubtitle(preferred)) return;
 
     // Already on a matching Media3 text track (embedded or previous sideload).
     if (_s._tracks.text.any(
@@ -465,7 +502,8 @@ mixin _ExoPlayerTracks on ConsumerState<ExoPlayerScreen> {
     await _loadOnlineSubtitle(pick, manual: false);
   }
 
-  Future<bool> _hlsPlaylistCoversPreferred(String preferred) async {
+  /// Playlist has preferred language → merge to VTT and sideload (issue 507).
+  Future<bool> _applyPreferredHlsInStreamSubtitle(String preferred) async {
     final playUrl = _s._currentUrl ?? widget.mediaPath;
     final headers = _s._sources.isNotEmpty
         ? _s._sources[_s._sourceIndex].headers
@@ -475,7 +513,19 @@ mixin _ExoPlayerTracks on ConsumerState<ExoPlayerScreen> {
       headers: headers,
       preferredLang: preferred,
     );
-    return pick != null;
+    if (pick == null || _s._disposed || !mounted) return false;
+    final row = hlsInStreamSubtitleRows([pick]).first;
+    final pickUrl = row['url']?.toString();
+    if (pickUrl != null &&
+        pickUrl == _s._selectedExternalSubUrl &&
+        _s._sideloadedSubtitles.any((e) => e['sourceUrl'] == pickUrl)) {
+      _s._preferredSubtitleApplied = true;
+      return true;
+    }
+    await _loadOnlineSubtitle(row, manual: false);
+    if (_s._disposed || !mounted) return true;
+    // Materialize failed → fall through to Wyzie/Levrx.
+    return pickUrl != null && pickUrl == _s._selectedExternalSubUrl;
   }
 
   Future<void> _turnOffSubtitles() async {
