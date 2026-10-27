@@ -923,6 +923,7 @@ class _LiveSportsPlayerScreenState extends ConsumerState<LiveSportsPlayerScreen>
         setState(() {
           _guideVisible = false;
           _controlsVisible = true;
+          _escapeExitArmed = false;
         });
         _hideControlsTimer?.cancel();
         WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -932,13 +933,21 @@ class _LiveSportsPlayerScreenState extends ConsumerState<LiveSportsPlayerScreen>
         return true;
       }
       // No picture yet this session (first open pending): one Back leaves.
-      // A zap / reconnect re-buffer after a frame keeps the hide-then-leave.
+      // Playing: hide chrome → arm hint → leave.
       return PlayerBackExitGate.consumeChromeOrExit(
         chromeVisible: _controlsVisible,
         mediaStarted: _sessionHadFrame,
         hideChrome: () {
           _hideControlsTimer?.cancel();
-          setState(() => _controlsVisible = false);
+          setState(() {
+            _controlsVisible = false;
+            _escapeExitArmed = false;
+          });
+        },
+        exitArmed: _escapeExitArmed,
+        armExit: () {
+          if (_disposed || !mounted) return;
+          setState(() => _escapeExitArmed = true);
         },
       );
     });

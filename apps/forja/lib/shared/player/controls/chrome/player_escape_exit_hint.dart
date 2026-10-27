@@ -3,19 +3,20 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 
-/// Top-right toast while the desktop Escape exit is armed (second Esc leaves).
-/// TV remote Back has no arm step — see `PlayerBackExitGate`.
+/// Top-right toast while exit is armed (second Back / Esc leaves).
 class PlayerEscapeExitHint extends StatelessWidget {
-  const PlayerEscapeExitHint({
-    super.key,
-    this.message = 'Press Esc again to exit',
-  });
+  const PlayerEscapeExitHint({super.key, this.message});
 
-  final String message;
+  /// Defaults to Back copy on TV density, Esc copy elsewhere.
+  final String? message;
+
+  static const backMessage = 'Press Back again to exit';
+  static const escMessage = 'Press Esc again to exit';
 
   @override
   Widget build(BuildContext context) {
     final tv = ShellPaintScope.usesTvDensityOf(context);
+    final text = message ?? (tv ? backMessage : escMessage);
     return Positioned(
       top: tv ? 10 : 16,
       right: tv ? 10 : 16,
@@ -31,12 +32,10 @@ class PlayerEscapeExitHint extends StatelessWidget {
               decoration: BoxDecoration(
                 color: Colors.black.withValues(alpha: 0.78),
                 borderRadius: BorderRadius.circular(tv ? 6 : 10),
-                border: Border.all(
-                  color: Colors.white.withValues(alpha: 0.14),
-                ),
+                border: Border.all(color: Colors.white.withValues(alpha: 0.14)),
               ),
               child: Text(
-                message,
+                text,
                 style: GoogleFonts.plusJakartaSans(
                   color: Colors.white,
                   fontSize: tv

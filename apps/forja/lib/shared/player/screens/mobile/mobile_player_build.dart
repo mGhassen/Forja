@@ -168,6 +168,7 @@ mixin _MobilePlayerBuild on ConsumerState<MobilePlayerScreen> {
                   ),
                 ),
               ),
+              if (_s._escapeExitArmed) const PlayerEscapeExitHint(),
 
               // ── 5. Lock button (always visible when locked + controls shown)
               if (_s._isLocked)

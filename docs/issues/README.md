@@ -541,6 +541,7 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [502-[open]-…](502-[open]-account-switch-my-list-keep-alive-bleed.md) | Account switch My List keep-alive cross-account bleed | P0 | High | open | 2/2 · A 0/2 | [499](499-[open]-multi-account-session-switch.md) · [467](467-[open]-cross-account-simkl-connected-secrets-isolation.md) |
 | [503-[fixed]-…](fixed/503-[fixed]-nuvio-addon-toggle-stale-until-reenter.md) | Nuvio addon enable toggle stale until leave/reenter | P2 | Medium | fixed | Complete · 2/2 · A 0/1 | — |
 | [504-[fixed]-…](fixed/504-[fixed]-signup-confirm-lands-on-site-url-hash.md) | Signup confirm lands on Site URL `/#` not profiles | P1 | High | fixed | Complete · 2/2 · A 1/2 | — |
+| [505-[fixed]-…](fixed/505-[fixed]-android-tv-player-back-exit-hint.md) | Android TV player Back exit hint restored | P2 | Medium | fixed | Complete · 3/3 · A 0/2 | [122](../rfc/122-[draft]-android-tv-remote-ux.md) |
 
 **Migration parity (draft):** [018](018-[draft]-migration-playback-parity-unverified.md) → [019](019-[draft]-webstreamr-enginejobs-e2e-test-gap.md)–[022](022-[draft]-playback-widget-integration-tests.md).
 

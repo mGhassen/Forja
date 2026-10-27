@@ -71,6 +71,7 @@ import 'package:forja/shared/player/controls/menus/player_quality_menu.dart';
 import 'package:forja/shared/player/controls/chrome/player_status_roulette.dart';
 import 'package:forja/shared/player/controls/menus/player_app_menu.dart';
 import 'package:forja/shared/player/controls/chrome/player_back_exit_gate.dart';
+import 'package:forja/shared/player/controls/chrome/player_escape_exit_hint.dart';
 import 'package:forja/shared/downloads/download_enqueue.dart';
 import 'package:forja/shared/downloads/download_source_match.dart';
 import 'package:forja/shared/playback/open/engine_auto_play.dart';
@@ -129,7 +130,12 @@ class MobilePlayerScreen extends ConsumerStatefulWidget {
   final Future<void> Function(PlayerKitEpisode episode)? onHubEpisodeSelected;
   final String? episodeOverview;
   final EnginePlaySession? enginePlaySession;
-  final Future<void> Function(Duration position, Duration duration, {String? sourceId, String? streamUrl})?
+  final Future<void> Function(
+    Duration position,
+    Duration duration, {
+    String? sourceId,
+    String? streamUrl,
+  })?
   onSaveProgress;
   final Future<void> Function(String sourceUrl, String sourceTitle)?
   onSourcePinned;
@@ -220,6 +226,7 @@ class _MobilePlayerScreenState extends ConsumerState<MobilePlayerScreen>
 
   // ── UI State ─────────────────────────────────────────────────────────────
   bool _showControls = true;
+  bool _escapeExitArmed = false;
 
   /// Guards re-entrant Back while [_exitPlayer] awaits stop/orientation.
   bool _exitInProgress = false;
@@ -295,6 +302,7 @@ class _MobilePlayerScreenState extends ConsumerState<MobilePlayerScreen>
   Timer? _trackAutoSelectTimer;
   Timer? _embeddedSubtitleAutoTimer;
   StreamSubscription<List<Map<String, dynamic>>>? _subtitleFetchSub;
+
   /// Bumped on exit so an in-flight auto-pick cannot attach after leave.
   int _subtitleAutoGen = 0;
   bool _subtitleAutoPickBusy = false;
@@ -420,8 +428,10 @@ class _MobilePlayerScreenState extends ConsumerState<MobilePlayerScreen>
   final Map<String, PlayerSourceStatus> _urlCheckStatuses = {};
   final ValueNotifier<int> _sourceMenuRevision = ValueNotifier(0);
   bool _isInitPlaybackRunning = false;
+
   /// Remount seek requested while open/remount was in flight (Skip Intro, scrub).
   Duration? _pendingRemountSeek;
+
   /// Pins seek bar position/duration while peakstorm trim remount runs.
   bool _lockSeekBarPosition = false;
   bool _networkRemountInFlight = false;
@@ -432,9 +442,9 @@ class _MobilePlayerScreenState extends ConsumerState<MobilePlayerScreen>
   Duration _lastHealthyPosition = Duration.zero;
 
   Duration _recoveryResumePosition() => recoveryResumePosition(
-        lastHealthy: _lastHealthyPosition,
-        shown: _positionNotifier.value,
-      );
+    lastHealthy: _lastHealthyPosition,
+    shown: _positionNotifier.value,
+  );
   bool _playbackConfirmed = false;
   DateTime? _playbackConfirmedAt;
 
@@ -499,7 +509,8 @@ class _MobilePlayerScreenState extends ConsumerState<MobilePlayerScreen>
   Future<void> _continueAirPlayIfActive() async {
     if (_disposed) return;
     if (!CastingService.instance.airPlayActive.value) return;
-    final url = _hlsMasterUrl ??
+    final url =
+        _hlsMasterUrl ??
         _currentQualityUrl ??
         _currentUrl ??
         (isLocalTorrentStreamUrl(widget.mediaPath) ? widget.mediaPath : null);
@@ -555,13 +566,13 @@ class _MobilePlayerScreenState extends ConsumerState<MobilePlayerScreen>
 
   /// The subtitle on screen now, for a cast receiver.
   Future<CastSubtitle?> _castSubtitle() => castSubtitleForPlayer(
-        _player,
-        delaySeconds: _subtitleDelay,
-        headers: hlsInStreamRequestHeaders(
-          streamHeaders: _hlsMasterHeaders ?? widget.headers,
-          playbackHeaders: currentPlaybackHttpHeaders(_player),
-        ),
-      );
+    _player,
+    delaySeconds: _subtitleDelay,
+    headers: hlsInStreamRequestHeaders(
+      streamHeaders: _hlsMasterHeaders ?? widget.headers,
+      playbackHeaders: currentPlaybackHttpHeaders(_player),
+    ),
+  );
 
   /// The stream's first timestamp — where a cast subtitle's zero sits.
   Future<Duration> _castStartTime() => mpvStreamStartTime(_player);
@@ -611,7 +622,9 @@ class _MobilePlayerScreenState extends ConsumerState<MobilePlayerScreen>
     final caller = StackTrace.current;
     if (url != null && peakstormHlsNeedsRemountSeek(url, current, position)) {
       if (_isInitPlaybackRunning) {
-        _pendingRemountSeek = position < Duration.zero ? Duration.zero : position;
+        _pendingRemountSeek = position < Duration.zero
+            ? Duration.zero
+            : position;
         _positionNotifier.value = _pendingRemountSeek!;
         logPeakstormSeekTo(
           from: current,
@@ -632,7 +645,8 @@ class _MobilePlayerScreenState extends ConsumerState<MobilePlayerScreen>
           from: current,
           to: position,
           action: 'skip',
-          skipReason: 'open_resume_grace start=${widget.startPosition?.inSeconds}s',
+          skipReason:
+              'open_resume_grace start=${widget.startPosition?.inSeconds}s',
           caller: caller,
         );
         return;
@@ -692,10 +706,7 @@ class _MobilePlayerScreenState extends ConsumerState<MobilePlayerScreen>
     final pending = _pendingRemountSeek;
     if (pending == null || _disposed || _isInitPlaybackRunning) return;
     _pendingRemountSeek = null;
-    logPeakstormResume(
-      'flush pending remount seek',
-      target: pending,
-    );
+    logPeakstormResume('flush pending remount seek', target: pending);
     unawaited(_seekTo(pending));
   }
 
@@ -738,10 +749,13 @@ class _MobilePlayerScreenState extends ConsumerState<MobilePlayerScreen>
   // ── Next Episode State ────────────────────────────────────────────────────
   bool _isLoadingNextEp = false;
   bool _nearEndOfEpisode = false;
+
   /// Auto next countdown ring is running on the Next Episode chip.
   bool _autoNextCountdown = false;
+
   /// X on the chip — no auto next until the chip hides again.
   bool _autoNextDismissed = false;
+
   /// TV focus landed on the chip on its own (not by the user).
   bool _nextEpChipAutoFocus = false;
   bool _hasPrevEpisodeAdjacent = false;
@@ -752,6 +766,7 @@ class _MobilePlayerScreenState extends ConsumerState<MobilePlayerScreen>
   String? _activeSkipLabel;
   Duration? _activeSkipTarget;
   bool _skipDismissed = false;
+
   /// Auto-skip fires once per intro/recap end (avoids remount spam).
   Duration? _autoSkipLatchedTarget;
 
@@ -856,8 +871,7 @@ class _MobilePlayerScreenState extends ConsumerState<MobilePlayerScreen>
     // replacement player owns the engine now; leave its resolve alone.
     if (!TorrentStreamService().retainForExternalHandoff &&
         !TorrentStreamService().replacementPlayerAlive) {
-      final torrentId =
-          _activeMagnet ?? widget.magnetLink ?? widget.mediaPath;
+      final torrentId = _activeMagnet ?? widget.magnetLink ?? widget.mediaPath;
       TorrentStreamService().removeTorrent(torrentId);
       // [_exitPlayer] already scheduled LAN close; this covers forced pops.
       if (!_exitInProgress) {

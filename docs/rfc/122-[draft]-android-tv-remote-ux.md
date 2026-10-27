@@ -3,13 +3,13 @@
 **Status:** draft  
 **Depends on:** RFC-028 (TV shell Back policy, `R28-A29`), RFC-048 (TV focus graph)  
 **Area:** `apps/forja/lib/shell/tv/`, `apps/forja/lib/shared/theme/app_theme.dart` (`FocusableControl`), `apps/forja/lib/shared/player/controls/chrome/`, `packages/forja_foundation/lib/tokens/`  
-**Issues:** [101](../issues/101-[open]-player-back-lands-on-loading.md) · [119](../issues/119-[open]-android-tv-double-back-exit.md) · [135](../issues/135-[open]-android-tv-spatial-dpad-all-screens.md) · [139](../issues/139-[open]-android-tv-shell-focus-chrome-stutter.md) · [156](../issues/156-[open]-android-tv-hold-scroll-accel.md) · [171](../issues/171-[open]-android-tv-details-focus-after-player.md) · [180](../issues/180-[open]-android-tv-details-back-loses-catalog-focus.md) · [457](../issues/457-[open]-security-hardening-pack-trust-sandbox-proxy-stream-logs.md)
+**Issues:** [101](../issues/101-[open]-player-back-lands-on-loading.md) · [119](../issues/119-[open]-android-tv-double-back-exit.md) · [135](../issues/135-[open]-android-tv-spatial-dpad-all-screens.md) · [139](../issues/139-[open]-android-tv-shell-focus-chrome-stutter.md) · [156](../issues/156-[open]-android-tv-hold-scroll-accel.md) · [171](../issues/171-[open]-android-tv-details-focus-after-player.md) · [180](../issues/180-[open]-android-tv-details-back-loses-catalog-focus.md) · [457](../issues/457-[open]-security-hardening-pack-trust-sandbox-proxy-stream-logs.md) · [505](../issues/fixed/505-[fixed]-android-tv-player-back-exit-hint.md)
 
 ## Status at a glance
 
 | | |
 |--|--|
-| **Progress** | **14 / 14** components · **10 / 12** acceptance (leanback slice) |
+| **Progress** | **15 / 15** components · **10 / 13** acceptance (leanback slice) |
 | **Current slice** | T06 green unified focus chrome reverted (C14) — per-zone chrome restored; other C01–C13 work stays; A06 Live Sports and A09 security still owed on-device |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
@@ -34,6 +34,7 @@
 | 12 | R122-C12 | T12 — Security review of the branch diff plus the deep-link install and stream URL paths | ✅ |
 | 13 | R122-C13 | T13 — Keep the next verified sources as fallbacks after the first probe win (no "Playback failed" dead end when the first source dies); provider hop after fallbacks are exhausted | ✅ |
 | 14 | R122-C14 | Revert T06 green unified focus chrome — restore white card ring, label-only nav (no rail pill), pre-T06 chip / top-menu / mood chrome | ✅ |
+| 15 | R122-C15 | Restore player Back arm hint while playing (hide → “Press Back again to exit” → leave); loading still one-press leave — [issue 505](../issues/fixed/505-[fixed]-android-tv-player-back-exit-hint.md) | ✅ |
 
 ---
 
@@ -53,6 +54,7 @@
 | 10 | R122-A10 | Unit / widget tests for each coordinator change (details Back, player Back gate, row column hold, horizontal hold accel, column memory) | ✅ |
 | 11 | R122-A11 | Profile-build timing before / after (resolve → first frame) recorded in this RFC | ✅ |
 | 12 | R122-A12 | Leanback focus chrome matches pre-T06: white ring on posters, no green plate behind nav icons, chips / top menu / mood circles without the shared green ring + glow (C14) | ✅ |
+| 13 | R122-A13 | Leanback: while playing, Back hides chrome → arms **Press Back again to exit** → leaves (C15 / issue 505); loading still one-press leave | ⬜ |
 
 ---
 

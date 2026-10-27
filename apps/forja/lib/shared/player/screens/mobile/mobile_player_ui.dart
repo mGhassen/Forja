@@ -8,8 +8,11 @@ mixin _MobilePlayerUi on ConsumerState<MobilePlayerScreen> {
   // ─────────────────────────────────────────────────────────────────────────
 
   void _revealChrome() {
-    if (!_s._showControls) {
-      setState(() => _s._showControls = true);
+    if (!_s._showControls || _s._escapeExitArmed) {
+      setState(() {
+        _s._showControls = true;
+        _s._escapeExitArmed = false;
+      });
     }
     _syncChromeHideTimer();
   }
@@ -48,7 +51,10 @@ mixin _MobilePlayerUi on ConsumerState<MobilePlayerScreen> {
           _startHideTimer();
           return;
         }
-        setState(() => _s._showControls = false);
+        setState(() {
+          _s._showControls = false;
+          _s._escapeExitArmed = false;
+        });
         if (widget.tvRemoteEnabled) {
           playerTvClaimVideoKeyFocusAfterHide(
             _s._tvKeyFocus,
@@ -98,7 +104,10 @@ mixin _MobilePlayerUi on ConsumerState<MobilePlayerScreen> {
   }
 
   void _toggleControls() {
-    setState(() => _s._showControls = !_s._showControls);
+    setState(() {
+      _s._showControls = !_s._showControls;
+      if (_s._showControls) _s._escapeExitArmed = false;
+    });
     if (_s._showControls) {
       _startHideTimer();
       if (widget.tvRemoteEnabled) _claimPlayFocus();

@@ -43,7 +43,7 @@ void main() {
     expect(hidden, 0);
   });
 
-  test('consumeChromeOrExit: started once, re-buffering → hide then exit', () {
+  test('consumeChromeOrExit: started once, re-buffering → hide, arm, exit', () {
     // Surfaces pass a session-level flag: a zap / source switch re-buffer
     // after the first frame is still "started".
     var startedOnce = false;
@@ -52,14 +52,18 @@ void main() {
       framesFlowing = true;
       startedOnce = true;
     }
+
     frame();
     framesFlowing = false; // zap: per-source flag reset, session flag kept
     var chrome = true;
+    var armed = false;
     expect(
       PlayerBackExitGate.consumeChromeOrExit(
         chromeVisible: chrome,
         mediaStarted: startedOnce,
         hideChrome: () => chrome = false,
+        exitArmed: armed,
+        armExit: () => armed = true,
       ),
       isTrue,
     );
@@ -69,30 +73,46 @@ void main() {
         chromeVisible: chrome,
         mediaStarted: startedOnce,
         hideChrome: () {},
+        exitArmed: armed,
+        armExit: () => armed = true,
       ),
-      isFalse,
+      isTrue,
     );
-  });
-
-  test('consumeChromeOrExit: terminal failure after playback → one Back exits',
-      () {
-    const startedOnce = true;
-    const terminalFailure = true;
-    var hidden = 0;
+    expect(armed, isTrue);
     expect(
       PlayerBackExitGate.consumeChromeOrExit(
-        chromeVisible: true,
-        mediaStarted: startedOnce && !terminalFailure,
-        hideChrome: () => hidden++,
+        chromeVisible: chrome,
+        mediaStarted: startedOnce,
+        hideChrome: () {},
+        exitArmed: armed,
+        armExit: () => armed = true,
       ),
       isFalse,
     );
-    expect(hidden, 0);
   });
 
-  test('consumeChromeOrExit: playing → hide chrome, then exit', () {
+  test(
+    'consumeChromeOrExit: terminal failure after playback → one Back exits',
+    () {
+      const startedOnce = true;
+      const terminalFailure = true;
+      var hidden = 0;
+      expect(
+        PlayerBackExitGate.consumeChromeOrExit(
+          chromeVisible: true,
+          mediaStarted: startedOnce && !terminalFailure,
+          hideChrome: () => hidden++,
+        ),
+        isFalse,
+      );
+      expect(hidden, 0);
+    },
+  );
+
+  test('consumeChromeOrExit: playing → hide, arm, then exit', () {
     var chrome = true;
     var hidden = 0;
+    var armed = false;
 
     expect(
       PlayerBackExitGate.consumeChromeOrExit(
@@ -102,21 +122,59 @@ void main() {
           hidden++;
           chrome = false;
         },
+        exitArmed: armed,
+        armExit: () => armed = true,
       ),
       isTrue,
     );
     expect(hidden, 1);
     expect(chrome, isFalse);
+    expect(armed, isFalse);
 
     expect(
       PlayerBackExitGate.consumeChromeOrExit(
         chromeVisible: chrome,
         mediaStarted: true,
         hideChrome: () => hidden++,
+        exitArmed: armed,
+        armExit: () => armed = true,
+      ),
+      isTrue,
+    );
+    expect(armed, isTrue);
+    expect(hidden, 1);
+
+    expect(
+      PlayerBackExitGate.consumeChromeOrExit(
+        chromeVisible: chrome,
+        mediaStarted: true,
+        hideChrome: () => hidden++,
+        exitArmed: armed,
+        armExit: () => armed = true,
       ),
       isFalse,
     );
     expect(hidden, 1);
+  });
+
+  test('consumeChromeOrExit: without armExit stays hide-then-leave', () {
+    var chrome = true;
+    expect(
+      PlayerBackExitGate.consumeChromeOrExit(
+        chromeVisible: chrome,
+        mediaStarted: true,
+        hideChrome: () => chrome = false,
+      ),
+      isTrue,
+    );
+    expect(
+      PlayerBackExitGate.consumeChromeOrExit(
+        chromeVisible: chrome,
+        mediaStarted: true,
+        hideChrome: () {},
+      ),
+      isFalse,
+    );
   });
 
   testWidgets('TV Back while loading: single press exits the player', (
@@ -142,15 +200,21 @@ void main() {
     expect(chrome, isTrue);
   });
 
-  testWidgets('TV Back while playing: hide → exit; twins do not skip steps', (
+  testWidgets('TV Back while playing: hide → arm → exit; twins stay', (
     tester,
   ) async {
     var chrome = true;
+    var armed = false;
     PlayerBackExitGate.setTryFocusBack(() {
       return PlayerBackExitGate.consumeChromeOrExit(
         chromeVisible: chrome,
         mediaStarted: true,
-        hideChrome: () => chrome = false,
+        hideChrome: () {
+          chrome = false;
+          armed = false;
+        },
+        exitArmed: armed,
+        armExit: () => armed = true,
       );
     });
 
@@ -163,20 +227,32 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('player-body'), findsOneWidget);
     expect(chrome, isFalse);
+    expect(armed, isFalse);
 
-    // Twin under load must not exit on the same physical press.
+    // Twin under load must not arm/exit on the same physical press.
     await tester.runAsync(
       () => Future<void>.delayed(const Duration(milliseconds: 150)),
     );
     expect(ShellTvFocusCoordinator.handleShellBackKey(), isTrue);
     await tester.pumpAndSettle();
     expect(find.text('player-body'), findsOneWidget);
+    expect(armed, isFalse);
 
     await tester.runAsync(
       () => Future<void>.delayed(const Duration(milliseconds: 450)),
     );
 
-    // 2) Chrome hidden → leave. No arm step in between.
+    // 2) Chrome hidden → arm exit hint.
+    expect(ShellTvFocusCoordinator.handleShellBackKey(), isTrue);
+    await tester.pumpAndSettle();
+    expect(find.text('player-body'), findsOneWidget);
+    expect(armed, isTrue);
+
+    await tester.runAsync(
+      () => Future<void>.delayed(const Duration(milliseconds: 450)),
+    );
+
+    // 3) Armed → leave.
     expect(ShellTvFocusCoordinator.handleShellBackKey(), isTrue);
     await tester.pumpAndSettle();
     expect(find.text('player-body'), findsNothing);
@@ -235,10 +311,7 @@ Future<void> _pumpShell(WidgetTester tester) async {
           profile: ShellProfile.tv,
           config: shellPlatformConfigFor(ShellProfile.tv),
           child: const Stack(
-            children: [
-              SizedBox.expand(),
-              ShellOverlayNavigator(),
-            ],
+            children: [SizedBox.expand(), ShellOverlayNavigator()],
           ),
         ),
       ),
@@ -251,11 +324,7 @@ Future<void> _pushFakePlayer(WidgetTester tester) async {
   Navigator.of(
     shellOverlayNavigatorKey.currentContext!,
     rootNavigator: true,
-  ).push(
-    MaterialPageRoute<void>(
-      builder: (_) => const _FakePlayerRoute(),
-    ),
-  );
+  ).push(MaterialPageRoute<void>(builder: (_) => const _FakePlayerRoute()));
   await tester.pumpAndSettle();
 }
 

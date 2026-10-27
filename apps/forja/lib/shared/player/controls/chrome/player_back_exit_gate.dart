@@ -6,8 +6,8 @@ import 'package:forja/shell/bus/shell_bus.dart';
 /// 2. In-player overlays (search ladder, …) via [tryConsumePlayerOverlay].
 /// 3. No media started yet (resolving, first buffer, sources exhausted) →
 ///    leave at once. Media started: chrome visible → hide chrome only;
-///    chrome hidden → leave. One shell level per press, no arm step.
-/// The Back icon (OK / tap) still exits immediately.
+///    chrome hidden → arm "Press again to exit" (when [armExit] is wired);
+///    armed → leave. The Back icon (OK / tap) still exits immediately.
 abstract final class PlayerBackExitGate {
   static bool Function()? _tryFocusBack;
   static bool Function()? _tryConsumePlayerOverlay;
@@ -15,6 +15,7 @@ abstract final class PlayerBackExitGate {
   static bool _listening = false;
   static DateTime? _lastStayAt;
   static bool _exitCommitted = false;
+
   /// Desktop player HardwareKeyboard already consumed Escape this pulse —
   /// Shortcuts [_EscapeIntent] must not arm/exit again on the same key.
   static DateTime? _playerEscapeHandledAt;
@@ -170,17 +171,24 @@ abstract final class PlayerBackExitGate {
   /// a frame, kept across source switches / re-buffers, and false again on a
   /// terminal failure screen (sources exhausted, "Failed to stream"). Surfaces
   /// pass `startedOnce && !terminalFailure`. False → leave now. Chrome up →
-  /// hide only. Chrome down → leave.
+  /// hide only. Chrome down + [armExit] wired and not [exitArmed] → arm and
+  /// stay. Chrome down + armed (or no [armExit]) → leave.
   ///
   /// Return `true` to keep the player open.
   static bool consumeChromeOrExit({
     required bool chromeVisible,
     required bool mediaStarted,
     required VoidCallback hideChrome,
+    bool exitArmed = false,
+    VoidCallback? armExit,
   }) {
     if (!mediaStarted) return false;
     if (chromeVisible) {
       hideChrome();
+      return true;
+    }
+    if (armExit != null && !exitArmed) {
+      armExit();
       return true;
     }
     return false;

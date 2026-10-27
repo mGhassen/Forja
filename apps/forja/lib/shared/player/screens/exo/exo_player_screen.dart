@@ -15,6 +15,7 @@ import 'package:forja/shared/playback/open/player_source_resolve.dart';
 import 'package:forja/shared/player/controls/menus/player_app_menu.dart';
 import 'package:forja/shared/player/controls/chrome/player_back_exit_gate.dart';
 import 'package:forja/shared/player/controls/chrome/player_chrome_overlay.dart';
+import 'package:forja/shared/player/controls/chrome/player_escape_exit_hint.dart';
 import 'package:forja/shared/player/controls/chrome/player_next_episode_chip.dart';
 import 'package:forja/shared/player/controls/chrome/player_chrome_overlays.dart';
 import 'package:forja/shared/player/controls/chrome/player_vod_tv_transport.dart';
@@ -202,6 +203,7 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
   bool _isTv = PlatformInfo.isAndroidTv;
   bool _exitInProgress = false;
   bool _showControls = true;
+  bool _escapeExitArmed = false;
   bool _isPlaying = false;
 
   /// Paused because app left foreground — resume only if set (issue 134).
@@ -374,7 +376,15 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
         mediaStarted: _playbackStartedNotified && !_hasError,
         hideChrome: () {
           _hideTimer?.cancel();
-          setState(() => _showControls = false);
+          setState(() {
+            _showControls = false;
+            _escapeExitArmed = false;
+          });
+        },
+        exitArmed: _escapeExitArmed,
+        armExit: () {
+          if (!mounted || _disposed) return;
+          setState(() => _escapeExitArmed = true);
         },
       );
     });
@@ -1167,7 +1177,10 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
   }
 
   void _toggleControls() {
-    setState(() => _showControls = !_showControls);
+    setState(() {
+      _showControls = !_showControls;
+      if (_showControls) _escapeExitArmed = false;
+    });
     if (_showControls) {
       _syncChromeHideTimer();
       if (_isTv) _claimPlayFocus();
@@ -1381,8 +1394,11 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
   }
 
   void _revealChrome() {
-    if (!_showControls) {
-      setState(() => _showControls = true);
+    if (!_showControls || _escapeExitArmed) {
+      setState(() {
+        _showControls = true;
+        _escapeExitArmed = false;
+      });
     }
     _syncChromeHideTimer();
   }
@@ -1412,7 +1428,10 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
         _startHideTimer();
         return;
       }
-      setState(() => _showControls = false);
+      setState(() {
+        _showControls = false;
+        _escapeExitArmed = false;
+      });
       if (_isTv) {
         playerTvClaimVideoKeyFocusAfterHide(
           _tvKeyFocus,
@@ -2956,6 +2975,7 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
                   ),
                 ),
               ),
+              if (_escapeExitArmed) const PlayerEscapeExitHint(),
               // Outside the chrome: shows alone while chrome is hidden.
               if (_showNextEpChip)
                 Positioned(

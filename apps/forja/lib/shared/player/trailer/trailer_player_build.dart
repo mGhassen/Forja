@@ -98,9 +98,7 @@ mixin _TrailerPlayerBuild on State<TrailerPlayerScreen> {
                       fit: BoxFit.contain,
                       fill: Colors.black,
                       subtitleViewConfiguration:
-                          const SubtitleViewConfiguration(
-                        visible: true,
-                      ),
+                          const SubtitleViewConfiguration(visible: true),
                     ),
                   ),
                 ),
@@ -148,6 +146,7 @@ mixin _TrailerPlayerBuild on State<TrailerPlayerScreen> {
                   ),
                 ),
               ),
+              if (_s._escapeExitArmed) const PlayerEscapeExitHint(),
               // Above chrome so the top gradient does not eat caption clicks.
               DesktopWindowChrome.overlayDragStrip(
                 showCaption: _s._showControls,
@@ -217,9 +216,7 @@ mixin _TrailerPlayerBuild on State<TrailerPlayerScreen> {
           top: 0,
           left: 0,
           right: 0,
-          child: ExcludeFocus(
-            child: PlayerOverlayGradient(isTop: true),
-          ),
+          child: ExcludeFocus(child: PlayerOverlayGradient(isTop: true)),
         ),
         Positioned(
           top: top,
@@ -305,9 +302,7 @@ mixin _TrailerPlayerBuild on State<TrailerPlayerScreen> {
           top: 0,
           left: 0,
           right: 0,
-          child: ExcludeFocus(
-            child: PlayerOverlayGradient(isTop: true),
-          ),
+          child: ExcludeFocus(child: PlayerOverlayGradient(isTop: true)),
         ),
         Positioned(
           top: top,
@@ -377,8 +372,8 @@ mixin _TrailerPlayerBuild on State<TrailerPlayerScreen> {
                       icon: _s._showReplayControl
                           ? Icons.replay_rounded
                           : _s._playing
-                              ? Icons.pause_rounded
-                              : Icons.play_arrow_rounded,
+                          ? Icons.pause_rounded
+                          : Icons.play_arrow_rounded,
                       size: 80,
                       iconSize: 44,
                       onPressed: () {
@@ -428,10 +423,7 @@ mixin _TrailerPlayerBuild on State<TrailerPlayerScreen> {
           gradient: LinearGradient(
             begin: Alignment.bottomCenter,
             end: Alignment.topCenter,
-            colors: [
-              Colors.black.withValues(alpha: 0.92),
-              Colors.transparent,
-            ],
+            colors: [Colors.black.withValues(alpha: 0.92), Colors.transparent],
             stops: const [0.0, 1.0],
           ),
         ),
@@ -449,10 +441,7 @@ mixin _TrailerPlayerBuild on State<TrailerPlayerScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 if (widget.movie != null)
-                  PlayerTitleMeta(
-                    title: _s._trailer.name,
-                    movie: widget.movie,
-                  )
+                  PlayerTitleMeta(title: _s._trailer.name, movie: widget.movie)
                 else
                   Text(
                     _s._trailer.name,
@@ -593,9 +582,9 @@ mixin _TrailerPlayerBuild on State<TrailerPlayerScreen> {
     final tvType = ShellPaintScope.usesTvDensityOf(context);
 
     Widget ordered(int order, Widget child) => FocusTraversalOrder(
-          order: NumericFocusOrder(order.toDouble()),
-          child: child,
-        );
+      order: NumericFocusOrder(order.toDouble()),
+      child: child,
+    );
 
     return SizedBox(
       width: double.infinity,
@@ -615,13 +604,13 @@ mixin _TrailerPlayerBuild on State<TrailerPlayerScreen> {
                   icon: _s._showReplayControl
                       ? Icons.replay_rounded
                       : _s._playing
-                          ? Icons.pause_rounded
-                          : Icons.play_arrow_rounded,
+                      ? Icons.pause_rounded
+                      : Icons.play_arrow_rounded,
                   tooltip: _s._showReplayControl
                       ? 'Replay'
                       : _s._playing
-                          ? 'Pause'
-                          : 'Play',
+                      ? 'Pause'
+                      : 'Play',
                   onUpEdge: upToSeek,
                   onRightEdge: () => _s._rewindFocus.requestFocus(),
                   onPressed: () {
@@ -755,13 +744,13 @@ mixin _TrailerPlayerBuild on State<TrailerPlayerScreen> {
               icon: _s._showReplayControl
                   ? Icons.replay_rounded
                   : _s._playing
-                      ? Icons.pause_rounded
-                      : Icons.play_arrow_rounded,
+                  ? Icons.pause_rounded
+                  : Icons.play_arrow_rounded,
               tooltip: _s._showReplayControl
                   ? 'Replay'
                   : _s._playing
-                      ? 'Pause'
-                      : 'Play',
+                  ? 'Pause'
+                  : 'Play',
               onPressed: () {
                 if (!_s._ready) return;
                 unawaited(_s._togglePlayPause());
@@ -912,11 +901,11 @@ class _TrailerMoreVideosCardState extends State<_TrailerMoreVideosCard> {
   }
 
   bool _activeFor(bool hovered) => ShellInputPolicy.interactiveActive(
-        ShellScope.inputPolicyOf(context),
-        hovered: hovered,
-        focused: _focused,
-        context: context,
-      );
+    ShellScope.inputPolicyOf(context),
+    hovered: hovered,
+    focused: _focused,
+    context: context,
+  );
 
   @override
   void didUpdateWidget(covariant _TrailerMoreVideosCard oldWidget) {
@@ -947,15 +936,9 @@ class _TrailerMoreVideosCardState extends State<_TrailerMoreVideosCard> {
           ].join(' · ');
     final active = _activeFor(hovered);
     final tvType = ShellPaintScope.usesTvDensityOf(context);
-    final titleFs = tvType
-        ? ShellTokens.playerChromeTitleFontSizeTv
-        : 15.0;
-    final metaFs = tvType
-        ? ShellTokens.playerChromeMetaFontSizeTv
-        : 12.0;
-    final subFs = tvType
-        ? ShellTokens.playerChromeTimeFontSizeTv
-        : 11.0;
+    final titleFs = tvType ? ShellTokens.playerChromeTitleFontSizeTv : 15.0;
+    final metaFs = tvType ? ShellTokens.playerChromeMetaFontSizeTv : 12.0;
+    final subFs = tvType ? ShellTokens.playerChromeTimeFontSizeTv : 11.0;
     final edge = playerChromeScale(context, 12);
     final bottom = playerChromeScale(context, 10);
     final ring = playerChromeScale(context, 40);

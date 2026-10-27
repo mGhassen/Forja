@@ -31,7 +31,15 @@ mixin _MobilePlayerLifecycle
         mediaStarted: _s._sessionFirstConfirmedAt != null && !_s._hasError,
         hideChrome: () {
           _s._hideTimer?.cancel();
-          setState(() => _s._showControls = false);
+          setState(() {
+            _s._showControls = false;
+            _s._escapeExitArmed = false;
+          });
+        },
+        exitArmed: _s._escapeExitArmed,
+        armExit: () {
+          if (!mounted || _s._disposed) return;
+          setState(() => _s._escapeExitArmed = true);
         },
       );
     });

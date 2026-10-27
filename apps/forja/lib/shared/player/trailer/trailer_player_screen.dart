@@ -10,6 +10,7 @@ import 'package:forja/shared/platform/platform_info.dart';
 import 'package:forja/shared/player/controls/chrome/player_back_exit_gate.dart';
 import 'package:forja/shared/player/controls/chrome/player_chrome_overlay.dart';
 import 'package:forja/shared/player/controls/chrome/player_chrome_overlays.dart';
+import 'package:forja/shared/player/controls/chrome/player_escape_exit_hint.dart';
 import 'package:forja/shared/player/controls/menus/player_popup_panel.dart';
 import 'package:forja/shared/player/controls/tv/player_tv_key_scope.dart';
 import 'package:forja/shared/player/screens/shared_widgets.dart';
@@ -74,15 +75,18 @@ class _TrailerPlayerScreenState extends State<TrailerPlayerScreen>
   bool _ended = false;
   bool _muted = false;
   bool _ready = false;
+
   /// Session-level: a trailer became ready at least once (quality switch /
   /// next trailer reset [_ready] while re-resolving).
   bool _sessionHadFrame = false;
   bool _resolving = false;
   String? _resolveError;
+
   /// Native googlevideo failed (age-gate) — play via YouTube embed WebView.
   bool _embedFallback = false;
   bool _isFullscreen = false;
   bool _showControls = true;
+  bool _escapeExitArmed = false;
   double _volume = 100;
   double _volumeBeforeMute = 100;
   double _playbackRate = 1.0;
@@ -102,7 +106,9 @@ class _TrailerPlayerScreenState extends State<TrailerPlayerScreen>
   final FocusNode _subsFocus = FocusNode(debugLabel: 'trailer-subs');
   final FocusNode _qualityFocus = FocusNode(debugLabel: 'trailer-quality');
   final FocusNode _speedFocus = FocusNode(debugLabel: 'trailer-speed');
-  final FocusNode _playerMenuFocus = FocusNode(debugLabel: 'trailer-player-menu');
+  final FocusNode _playerMenuFocus = FocusNode(
+    debugLabel: 'trailer-player-menu',
+  );
   final FocusNode _nextTrailerFocus = FocusNode(debugLabel: 'trailer-next');
   final FocusNode _seekbarFocus = FocusNode(debugLabel: 'trailer-seekbar');
   final FocusNode _tvKeyFocus = FocusNode(debugLabel: 'trailer-player-tv-keys');
@@ -205,7 +211,15 @@ class _TrailerPlayerScreenState extends State<TrailerPlayerScreen>
         mediaStarted: _sessionHadFrame,
         hideChrome: () {
           _hideTimer?.cancel();
-          setState(() => _showControls = false);
+          setState(() {
+            _showControls = false;
+            _escapeExitArmed = false;
+          });
+        },
+        exitArmed: _escapeExitArmed,
+        armExit: () {
+          if (!mounted) return;
+          setState(() => _escapeExitArmed = true);
         },
       );
     });
@@ -251,8 +265,9 @@ class _TrailerPlayerScreenState extends State<TrailerPlayerScreen>
     if (!_playing) return;
     if (_ended || _autoNextActive || _showNextTrailerChip) return;
     if (playerChromeOverlayBlocksSeek()) return;
-    final hideAfter =
-        _tvFocus ? const Duration(seconds: 10) : const Duration(seconds: 3);
+    final hideAfter = _tvFocus
+        ? const Duration(seconds: 10)
+        : const Duration(seconds: 3);
     _hideTimer = Timer(hideAfter, () {
       if (!mounted || !_playing) return;
       if (_ended || _autoNextActive || _showNextTrailerChip) return;
@@ -260,7 +275,10 @@ class _TrailerPlayerScreenState extends State<TrailerPlayerScreen>
         _startHideTimer();
         return;
       }
-      setState(() => _showControls = false);
+      setState(() {
+        _showControls = false;
+        _escapeExitArmed = false;
+      });
       if (_tvFocus) {
         playerTvClaimVideoKeyFocusAfterHide(
           _tvKeyFocus,
@@ -271,12 +289,22 @@ class _TrailerPlayerScreenState extends State<TrailerPlayerScreen>
   }
 
   void _onPointerActivity() {
-    if (!_showControls) setState(() => _showControls = true);
+    if (!_showControls || _escapeExitArmed) {
+      setState(() {
+        _showControls = true;
+        _escapeExitArmed = false;
+      });
+    }
     _startHideTimer();
   }
 
   void _showChromeAndFocusPlay() {
-    if (!_showControls) setState(() => _showControls = true);
+    if (!_showControls || _escapeExitArmed) {
+      setState(() {
+        _showControls = true;
+        _escapeExitArmed = false;
+      });
+    }
     _startHideTimer();
     _claimPlayFocus();
   }
