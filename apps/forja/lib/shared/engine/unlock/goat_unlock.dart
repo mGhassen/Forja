@@ -72,23 +72,6 @@ class LiveGoatUnlock {
     return host == 'embedindia.st' || host.endsWith('.embedindia.st');
   }
 
-  /// BZH / volkamax player wrappers + gated CDN embeds (HTTP often 403).
-  static bool isBzhPlayerSniffUrl(String url) {
-    final host = Uri.tryParse(url.trim())?.host.toLowerCase() ?? '';
-    if (host.isEmpty) return false;
-    const hosts = <String>[
-      'zonalive.click',
-      '104game.click',
-      '18zone.click',
-      'ordernap.net',
-      'truckrefuse.net',
-      'tossequip.net',
-      'dembed.st',
-      'bstream.st',
-    ];
-    return hosts.any((h) => host == h || host.endsWith('.$h'));
-  }
-
   /// sportsembed.su client handshake → plaintext HLS URL.
   static Future<({String url, Map<String, String> headers})?>
   resolveSportsEmbed({required String embedUrl}) {
@@ -556,24 +539,29 @@ class LiveGoatUnlock {
     debugPrint(
       '[LiveGasmUnlock] wasm unlock empty — trying jw sniff path=$path',
     );
-    final sniffed = await _sniffJwEmbedPlaylist(embedUrl: embedUrl);
+    final sniffed = await _sniffEmbedPlaylist(embedUrl: embedUrl);
     return _acceptPlayableGasmUrl(sniffed, headers: playbackHeaders);
   }
 
+  /// Generic embed → m3u8 sniff. Pack decides when to call; host has no
+  /// pack/CDN allowlist — any `http(s)` URL is eligible.
   static Future<String?> sniffEmbed({
     required String embedUrl,
     String? referer,
   }) async {
-    if (!isEpiEmbedsUrl(embedUrl) &&
-        !isEmbedIndiaUrl(embedUrl) &&
-        !isBzhPlayerSniffUrl(embedUrl)) {
+    final embed = embedUrl.trim();
+    if (embed.isEmpty) return null;
+    final uri = Uri.tryParse(embed);
+    if (uri == null ||
+        (uri.scheme != 'http' && uri.scheme != 'https') ||
+        uri.host.isEmpty) {
       return null;
     }
-    return _sniffJwEmbedPlaylist(embedUrl: embedUrl, referer: referer);
+    return _sniffEmbedPlaylist(embedUrl: embed, referer: referer);
   }
 
-  /// Playlist sniff via headless WebView (JW poll + resource m3u8 capture).
-  static Future<String?> _sniffJwEmbedPlaylist({
+  /// Headless WebView (resource + player poll); Node JW sniff for epi/india.
+  static Future<String?> _sniffEmbedPlaylist({
     required String embedUrl,
     String? referer,
   }) async {
@@ -585,19 +573,15 @@ class LiveGoatUnlock {
         Platform.isWindows ||
         Platform.isAndroid ||
         Platform.isIOS) {
-      final viaWebView = await _sniffJwEmbedWebView(
+      final viaWebView = await _sniffEmbedWebView(
         embedUrl: embed,
         referer: (referer ?? embed).trim(),
       );
       if (viaWebView != null && viaWebView.isNotEmpty) return viaWebView;
     }
 
-    // Node JW sniff only for epi/embedindia — BZH CDNs need a real WebView.
-    if (isBzhPlayerSniffUrl(embed) &&
-        !isEpiEmbedsUrl(embed) &&
-        !isEmbedIndiaUrl(embed)) {
-      return null;
-    }
+    // sniff.mjs is JW-oriented — only used for known JW embed hosts.
+    if (!isEpiEmbedsUrl(embed) && !isEmbedIndiaUrl(embed)) return null;
 
     final node = await _findNodeBinary();
     if (node == null) {
@@ -619,7 +603,7 @@ class LiveGoatUnlock {
     }
   }
 
-  static Future<String?> _sniffJwEmbedWebView({
+  static Future<String?> _sniffEmbedWebView({
     required String embedUrl,
     required String referer,
   }) async {
