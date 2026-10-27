@@ -1,13 +1,15 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja/shared/engine/cache/engine_cache.dart';
+import 'package:forja/shared/engine/packs/registry/plugin_registry.dart';
 import 'package:forja/shared/engine/store/external_list_providers.dart';
 import 'package:rust/rust.dart';
 
 /// Bumps when [BookmarkStore.changeNotifier] changes.
-final bookmarkRevisionProvider = NotifierProvider<BookmarkRevisionNotifier, int>(
-  BookmarkRevisionNotifier.new,
-);
+final bookmarkRevisionProvider =
+    NotifierProvider<BookmarkRevisionNotifier, int>(
+      BookmarkRevisionNotifier.new,
+    );
 
 class BookmarkRevisionNotifier extends Notifier<int> {
   @override
@@ -53,6 +55,18 @@ void invalidateListHubFeeds(ProviderContainer? container) {
   listFeedEpochListenable.value++;
 }
 
+/// Bumped on identity rebind so [BookmarkHiddenKeysNotifier] drops A’s hides.
+final bookmarkHiddenKeysClearEpoch = ValueNotifier<int>(0);
+
+/// Account / profile [LocalDataScope] rebind — wipe keep-alive list feeds and
+/// flag every hub to clear-paint on next open. Disk rows are already scoped;
+/// process RAM (EngineCache + PackLayoutPainter) is not.
+void bustIdentityBoundHubUiCaches() {
+  bookmarkHiddenKeysClearEpoch.value++;
+  invalidateListHubFeeds(null);
+  PluginRegistry.bumpHubFeedEpoch(all: true);
+}
+
 /// Local bookmark rows (persist engine).
 final bookmarkItemsProvider = Provider<List<Map<String, dynamic>>>((ref) {
   ref.watch(bookmarkRevisionProvider);
@@ -68,7 +82,13 @@ final bookmarkHiddenKeysProvider =
 
 class BookmarkHiddenKeysNotifier extends Notifier<Set<String>> {
   @override
-  Set<String> build() => const {};
+  Set<String> build() {
+    final n = bookmarkHiddenKeysClearEpoch;
+    void listener() => state = const {};
+    n.addListener(listener);
+    ref.onDispose(() => n.removeListener(listener));
+    return const {};
+  }
 
   void addAll(Iterable<String> keys) {
     final next = {...state};

@@ -52,4 +52,5 @@ Only one GoTrue session is stored (`sb-{host}-auth-token`). Signing into another
 
 - Plan: multi-account session switch (local agent plan)
 - Related: [467](467-[open]-cross-account-simkl-connected-secrets-isolation.md) (Simkl secrets isolation across accounts)
+- Keep-alive My List bleed after switch: [502](502-[open]-account-switch-my-list-keep-alive-bleed.md)
 - Profile switch (not this): Who’s watching / `selectProfile`

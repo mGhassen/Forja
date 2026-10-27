@@ -6,6 +6,7 @@ import 'package:forja/shared/engine/packs/registry/plugin_registry.dart';
 import 'package:forja/shared/engine/packs/registry/plugin_script_disk_store.dart';
 import 'package:forja/shared/engine/portals/store/portal_catalog_shelf_store.dart';
 import 'package:forja/shared/engine/portals/store/storage.dart';
+import 'package:forja/shared/engine/store/list_providers.dart';
 import 'package:forja/shared/supabase/forja_secure_local_storage.dart';
 import 'package:forja/shared/supabase/forja_supabase.dart';
 import 'package:forja/shared/sync/models/account_features.dart';
@@ -971,6 +972,7 @@ class SyncService {
     required String? accountId,
     required String? profileId,
   }) async {
+    final previousScope = LocalDataScope.id;
     await LocalDataScope.configure(accountId: accountId, profileId: profileId);
     await PluginScriptDiskStore.configureScope(
       accountId: accountId,
@@ -986,6 +988,12 @@ class SyncService {
     await ProviderScoreMemory.syncIdentityScope();
     // Force pack/nav hosts to drop the previous identity's in-memory packs.
     PluginRegistry.instance.notifyChanged();
+    // Disk keys are scoped, but keep-alive My List / hub painters + EngineCache
+    // feed are process RAM — wipe + flag clear-paint reload so account B never
+    // paints account A's list (issue 502).
+    if (previousScope != LocalDataScope.id) {
+      bustIdentityBoundHubUiCaches();
+    }
   }
 
   /// Guest / signed-out local profile (`accounts/local/profiles/default`).
