@@ -806,18 +806,31 @@ class NuvioAddonsNotifier extends AsyncNotifier<List<NuvioAddon>> {
   @override
   Future<List<NuvioAddon>> build() async {
     final n = NuvioService.changeNotifier;
-    void listener() => ref.invalidateSelf();
+    // Same as EnginePacksNotifier — invalidateSelf remounts ExpansionTiles and
+    // leaves the header Switch painted with the pre-toggle value until leave/reenter.
+    var disposed = false;
+    void listener() {
+      Future.microtask(() {
+        if (disposed) return;
+        unawaited(reload());
+      });
+    }
+
     n.addListener(listener);
-    ref.onDispose(() => n.removeListener(listener));
+    ref.onDispose(() {
+      disposed = true;
+      n.removeListener(listener);
+    });
     return NuvioService.instance.listUserAddons();
   }
 
   Future<void> reload() async {
-    final previous = state;
-    state = const AsyncLoading<List<NuvioAddon>>().copyWithPrevious(previous);
-    state = await AsyncValue.guard(
+    // Do not paint AsyncLoading — ExpansionTile / switch chrome jump or stick.
+    final next = await AsyncValue.guard(
       () => NuvioService.instance.listUserAddons(),
     );
+    if (next.hasError && state.hasValue) return;
+    state = next;
   }
 }
 
