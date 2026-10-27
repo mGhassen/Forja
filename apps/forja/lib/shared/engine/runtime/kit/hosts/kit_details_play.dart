@@ -48,6 +48,7 @@ Future<void> openSourcesFromContext({
     movie: ctx.movie,
     season: ctx.season,
     episode: ctx.episode,
+    labelSeason: ctx.labelSeason,
     open: ctx.effectiveOpen,
     meta: ctx.metaItem,
     malId: ctx.malId,

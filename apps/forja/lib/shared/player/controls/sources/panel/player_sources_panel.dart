@@ -10,6 +10,7 @@ import 'package:forja/shared/downloads/download_service.dart';
 import 'package:forja/shared/downloads/download_guards.dart';
 import 'package:forja/shared/downloads/download_source_match.dart';
 import 'package:forja/shared/engine/runtime/open/meta_movie.dart';
+import 'package:forja/shared/playback/play_context.dart';
 import 'package:forja/shared/playback/sources_request_context.dart';
 import 'package:forja/shared/playback/stremio_stream_id.dart';
 import 'package:forja/shared/lan/lan_p2p_playback.dart';
@@ -88,6 +89,7 @@ class PlayerSourcesPanel {
     required Movie movie,
     int? season,
     int? episode,
+    int? labelSeason,
     String? currentMagnet,
     String? currentStreamUrl,
     String? currentPlayingCatalogUrl,
@@ -137,7 +139,8 @@ class PlayerSourcesPanel {
     _completer = Completer<void>();
     final direction = Directionality.of(context);
     final hostScope = ShellScope.maybeOf(context);
-    final useTv = ShellTokens.isTvLayout(context) ||
+    final useTv =
+        ShellTokens.isTvLayout(context) ||
         hostScope?.profile == ShellProfile.tv;
 
     // OverlayEntry is a sibling of the route, so it does not inherit the
@@ -170,6 +173,7 @@ class PlayerSourcesPanel {
             movie: movie,
             season: season,
             episode: episode,
+            labelSeason: labelSeason,
             currentMagnet: currentMagnet,
             currentStreamUrl: currentStreamUrl,
             currentPlayingCatalogUrl: currentPlayingCatalogUrl,
@@ -208,6 +212,7 @@ class _PlayerSourcesOverlay extends StatefulWidget {
     required this.onClose,
     this.season,
     this.episode,
+    this.labelSeason,
     this.currentMagnet,
     this.currentStreamUrl,
     this.currentPlayingCatalogUrl,
@@ -230,6 +235,7 @@ class _PlayerSourcesOverlay extends StatefulWidget {
   final Movie movie;
   final int? season;
   final int? episode;
+  final int? labelSeason;
   final String? currentMagnet;
   final String? currentStreamUrl;
   final String? currentPlayingCatalogUrl;
@@ -284,6 +290,7 @@ class _PlayerSourcesOverlayState extends State<_PlayerSourcesOverlay> {
           movie: widget.movie,
           season: widget.season,
           episode: widget.episode,
+          labelSeason: widget.labelSeason,
           currentMagnet: widget.currentMagnet,
           currentStreamUrl: widget.currentStreamUrl,
           currentPlayingCatalogUrl: widget.currentPlayingCatalogUrl,
@@ -318,6 +325,7 @@ class _PlayerSourcesBody extends ConsumerStatefulWidget {
     required this.onClose,
     this.season,
     this.episode,
+    this.labelSeason,
     this.currentMagnet,
     this.currentStreamUrl,
     this.currentPlayingCatalogUrl,
@@ -340,6 +348,7 @@ class _PlayerSourcesBody extends ConsumerStatefulWidget {
   final Movie movie;
   final int? season;
   final int? episode;
+  final int? labelSeason;
   final String? currentMagnet;
   final String? currentStreamUrl;
   final String? currentPlayingCatalogUrl;
@@ -1624,8 +1633,9 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
         enabledIds: enabledIds,
         scope: engineScope,
       );
-      final langKeys =
-          await PluginStreamLanguages.selectedKeys(widget.pluginId);
+      final langKeys = await PluginStreamLanguages.selectedKeys(
+        widget.pluginId,
+      );
       if (!mounted) return;
       setState(() {
         _enginePacks = packs;
@@ -2282,8 +2292,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
             _engineIdMatchesLanguages(pluginId);
       }
       return filters.contains(pluginId) &&
-          (_streamLanguageKeys.isEmpty ||
-              _engineIdMatchesLanguages(pluginId));
+          (_streamLanguageKeys.isEmpty || _engineIdMatchesLanguages(pluginId));
     }
     return _engineSelectedPluginIds.contains(pluginId) &&
         (_streamLanguageKeys.isEmpty || _engineIdMatchesLanguages(pluginId));
@@ -3268,7 +3277,8 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
     if (!_engineRacePluginIds.contains(pluginId)) return;
     final url = row['url']?.toString() ?? '';
     if (url.isEmpty) return;
-    final already = _engineStreams
+    final already =
+        _engineStreams
             .where((s) => engineStreamBelongsToPlugin(s, pluginId))
             .length +
         _enginePendingRows
@@ -3471,9 +3481,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
     _engineFetching = true;
     final gen = ++_engineFetchGen;
     final raceIds = _engineRacePluginIds;
-    _enginePoolLimit = engineSourcesBatchLimit(
-      selected: raceIds.length,
-    );
+    _enginePoolLimit = engineSourcesBatchLimit(selected: raceIds.length);
     setState(() {
       if (reset) {
         _engineStreams = [];
@@ -4176,12 +4184,12 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
     }
   }
 
-  String? get _episodeLabel {
-    if (widget.movie.mediaType != 'tv') return null;
-    final s = (widget.season ?? 1).toString().padLeft(2, '0');
-    final e = (widget.episode ?? 1).toString().padLeft(2, '0');
-    return 'S${s}E$e';
-  }
+  String? get _episodeLabel => sourcesEpisodeLabel(
+    mediaType: widget.movie.mediaType,
+    season: widget.season,
+    episode: widget.episode,
+    labelSeason: widget.labelSeason,
+  );
 
   @override
   Widget build(BuildContext context) {
@@ -4204,11 +4212,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
             mediaId: _downloadMediaId,
             ids: _sourcesCtx.ids.values,
           )
-        : _pinnedOfflineStreams(
-            stremio: stremio,
-            nuvio: nuvio,
-            engine: engine,
-          );
+        : _pinnedOfflineStreams(stremio: stremio, nuvio: nuvio, engine: engine);
     final totalCount =
         offline.length +
         torrents.length +
@@ -4222,7 +4226,9 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
         TorrentSourcesPanelChrome(
           kindFilter: _kindFilter,
           listOnly: widget.filesOnly,
-          showDownloaded: widget.filesOnly ? false : _titleHasCompletedDownloads,
+          showDownloaded: widget.filesOnly
+              ? false
+              : _titleHasCompletedDownloads,
           showTorrents: _showTorrents,
           showStremio: _showStremio,
           showNuvio: _showNuvio,
@@ -4427,7 +4433,8 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
             stream: stream,
           )
         : null;
-    final ownsDownload = dlTask != null &&
+    final ownsDownload =
+        dlTask != null &&
         streamRowOwnsDownloadTask(
           task: dlTask,
           mediaId: _downloadMediaId,
@@ -4444,9 +4451,8 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
             sameFile: sameFile && !ownsDownload,
           )
         : SourceDownloadChrome.none;
-    final dlLabel = dlTask != null &&
-            dlTask.isActive &&
-            (ownsDownload || sameFile)
+    final dlLabel =
+        dlTask != null && dlTask.isActive && (ownsDownload || sameFile)
         ? '${(dlTask.progressPercent * 100).clamp(0, 100).toStringAsFixed(0)}% · ${dlTask.speedLabel}'
         : null;
     return KeyedSubtree(
@@ -4561,7 +4567,8 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
       );
     }
     if (_error != null && totalCount == 0) {
-      final tv = ShellScope.metricsOf(context).usesTvDensity ||
+      final tv =
+          ShellScope.metricsOf(context).usesTvDensity ||
           ShellTokens.isTvLayout(context);
       final errBody = Center(
         child: Padding(
@@ -4695,7 +4702,8 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
         separatorBuilder: (_, _) => SizedBox(
           height: ShellTokens.chromeScale(
             6,
-            tv: ShellTokens.isTvLayout(context) ||
+            tv:
+                ShellTokens.isTvLayout(context) ||
                 ShellScope.metricsOf(context).usesTvDensity,
           ),
         ),

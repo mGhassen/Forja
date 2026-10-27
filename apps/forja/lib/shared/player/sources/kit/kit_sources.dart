@@ -30,15 +30,18 @@ bool kitHasPanelSources([KitPanelSourceFlags? flags]) {
   if (flags == null) {
     return caps.playSourceEngine;
   }
-  final torrent = flags.torrent &&
+  final torrent =
+      flags.torrent &&
       ((caps.playSourceTorrent && caps.builtinTorrentSearch) ||
           (!caps.localTorrentEngine && flags.torrent));
-  final stremio = flags.stremio &&
-      (caps.playSourceStremio ||
-          (!caps.localTorrentEngine && flags.stremio));
-  final nuvio = flags.nuvio &&
+  final stremio =
+      flags.stremio &&
+      (caps.playSourceStremio || (!caps.localTorrentEngine && flags.stremio));
+  final nuvio =
+      flags.nuvio &&
       (caps.playSourceNuvio || (!caps.localTorrentEngine && flags.nuvio));
-  final engine = flags.engine &&
+  final engine =
+      flags.engine &&
       (caps.playSourceEngine || (!caps.localTorrentEngine && flags.engine));
   return torrent || stremio || nuvio || engine;
 }
@@ -52,6 +55,7 @@ Future<void> openKitSources({
   required Movie movie,
   int? season,
   int? episode,
+  int? labelSeason,
   MetaOpen? open,
   MetaItem? meta,
   int? malId,
@@ -78,26 +82,26 @@ Future<void> openKitSources({
   final preferredPlugin = preferredEnginePluginId?.trim().isNotEmpty == true
       ? preferredEnginePluginId!.trim()
       : (epVid != null && epVid.isNotEmpty
-            ? providerIdFromEpisodeVideoId(epVid)
-            : null) ??
-          open?.extraString('source')?.trim();
+                ? providerIdFromEpisodeVideoId(epVid)
+                : null) ??
+            open?.extraString('source')?.trim();
   final preferredKind = open?.extraString('preferredSourcesKind')?.trim();
   return PlayerSourcesPanel.show(
     context: context,
     movie: movie,
     season: season,
     episode: episode,
+    labelSeason: labelSeason,
     open: open,
     meta: resolvedMeta,
     malId: malId,
     episodeVideoId: (epVid != null && epVid.isNotEmpty) ? epVid : null,
     pluginId: session?.pluginId,
-    engineCategory: engineCategory ??
-        engineCategoryForSession(session, movie),
+    engineCategory: engineCategory ?? engineCategoryForSession(session, movie),
     preferredEnginePluginId:
         (preferredPlugin != null && preferredPlugin.isNotEmpty)
-            ? preferredPlugin
-            : null,
+        ? preferredPlugin
+        : null,
     preferredKind: filesOnly
         ? 'downloaded'
         : ((preferredKind != null && preferredKind.isNotEmpty)
@@ -272,7 +276,12 @@ Future<void> _playTorrent({
       finishStreamLoadingSession(session);
       return;
     }
-    await fail(debridUserMessage(e, DebridPackBridge.activePluginLabel?.call() ?? 'Debrid'));
+    await fail(
+      debridUserMessage(
+        e,
+        DebridPackBridge.activePluginLabel?.call() ?? 'Debrid',
+      ),
+    );
     return;
   } finally {
     linkResolver.dispose();
@@ -339,10 +348,7 @@ Future<void> _playStremio({
   final stremioId = movie.imdbId;
   final stremioAddonBaseUrl = stream['_addonBaseUrl']?.toString();
 
-  final precheck = classifyStremioStream(
-    stream,
-    profile,
-  );
+  final precheck = classifyStremioStream(stream, profile);
 
   if (precheck is StremioResolveFailure) {
     ForjaToast.info(precheck.message);
@@ -364,8 +370,12 @@ Future<void> _playStremio({
       final drm = StreamDrmConfig.tryParse(stream['drm']);
       final playSource = StreamSource(
         url: proxied.url,
-        title: (stream['_addonName'] ?? stream['name'] ?? stream['title'] ?? 'Forja')
-            .toString(),
+        title:
+            (stream['_addonName'] ??
+                    stream['name'] ??
+                    stream['title'] ??
+                    'Forja')
+                .toString(),
         type: urlLooksLikeHls(proxied.url) ? 'hls' : 'mp4',
         headers: proxied.headers,
         providerId: catalogHttpPlayProviderId(stream),

@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| **Progress** | **17 / 18** |
+| **Progress** | **18 / 19** |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -36,6 +36,7 @@
 | 15 | I98-T15 | Walk OVA bridges (Slime Coleus); cap videos at Media.episodes vs absolute stream titles | ✅ |
 | 16 | I98-T16 | Season chip switch: stub params + forceRefresh; no prior-cour merge; hero season subtitle | ✅ |
 | 17 | I98-T17 | TMDB enrich fills anime episode stills for selected Season N without padding the list | ✅ |
+| 18 | I98-T18 | Sources footer / play loading use franchise chip season for labels; extract stays media-local S1 | ✅ |
 
 ---
 

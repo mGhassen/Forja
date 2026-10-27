@@ -19,8 +19,6 @@ class PluginLanguage {
 
   /// User-facing label for chips / dropdown.
   String get label {
-    // Spanish = one bucket (Sub ES + Latino / Castellano), not VOSTES vs Spanish.
-    if (code == 'es') return 'ES';
     if (kind == 'sub') {
       if (code == 'en') return 'VOST';
       return 'VOST${code.toUpperCase()}';
@@ -30,6 +28,7 @@ class PluginLanguage {
       'en' => 'VO',
       'fr' => 'VF',
       'it' => 'Italian',
+      'es' => 'Spanish',
       'de' => 'German',
       'pt' => 'Portuguese',
       'ar' => 'Arabic',
@@ -557,8 +556,8 @@ class EnginePack {
   /// flags stay as the user set them so cloud sync carries the same profile
   /// to devices that do support the plugin.
   bool isPluginAvailable(EnginePlugin p) => PlatformInfo.supportsPlugin(
-    platforms: p.platforms.isNotEmpty ? p.platforms : platforms,
-  );
+        platforms: p.platforms.isNotEmpty ? p.platforms : platforms,
+      );
 
   /// Every plugin in the pack is gated off on this device.
   bool get isUnavailableHere =>
@@ -771,7 +770,6 @@ class EnginePackRemoteCheck {
   });
 
   final Map<String, EnginePackUpdateInfo> updates;
-
   /// Source URLs whose remote (or local) manifest no longer exists.
   final Set<String> deprecatedUrls;
 
@@ -817,10 +815,10 @@ class EngineExtractResult {
 /// are both on. Use for Addon discovery, Connected services auth, and field
 /// injection — never flatten [EnginePack.plugins] without this gate.
 List<EnginePlugin> activePluginsFromPacks(Iterable<EnginePack> packs) => [
-  for (final pack in packs)
-    for (final p in pack.plugins)
-      if (pack.isPluginActive(p)) p,
-];
+      for (final pack in packs)
+        for (final p in pack.plugins)
+          if (pack.isPluginActive(p)) p,
+    ];
 
 Set<String> enabledEnginePluginIds(List<EnginePack> packs) => {
   for (final pack in packs)
@@ -1213,19 +1211,6 @@ String? engineStreamAudioCategory(Map<String, dynamic> stream) {
   final blob = '${stream['name'] ?? ''} ${stream['title'] ?? ''}';
   if (RegExp(r'\(SUB\)', caseSensitive: false).hasMatch(blob)) return 'sub';
   if (RegExp(r'\(DUB\)', caseSensitive: false).hasMatch(blob)) return 'dub';
-  // Spanish pack name tags before unified (SUB)/(DUB).
-  if (RegExp(
-    r'\(Sub\s*ES\)|subtitulado',
-    caseSensitive: false,
-  ).hasMatch(blob)) {
-    return 'sub';
-  }
-  if (RegExp(
-    r'\(Latino\)|\(Castellano\)|\(Catalán\)|doblaje',
-    caseSensitive: false,
-  ).hasMatch(blob)) {
-    return 'dub';
-  }
   return null;
 }
 

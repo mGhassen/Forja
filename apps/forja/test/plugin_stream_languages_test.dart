@@ -25,14 +25,6 @@ void main() {
         PluginLanguage.tryParse({'kind': 'dub', 'code': 'ar'})?.label,
         'Arabic',
       );
-      expect(
-        PluginLanguage.tryParse({'kind': 'dub', 'code': 'es'})?.label,
-        'ES',
-      );
-      expect(
-        PluginLanguage.tryParse({'kind': 'sub', 'code': 'es'})?.label,
-        'ES',
-      );
       expect(PluginLanguage.tryParseKey('sub:it')?.label, 'VOSTIT');
       expect(PluginLanguage.tryParse({'kind': 'raw', 'code': 'en'}), isNull);
     });
@@ -58,7 +50,9 @@ void main() {
               name: 'B',
               entry: 'b.js',
               types: const ['anime'],
-              languages: const [PluginLanguage(kind: 'sub', code: 'en')],
+              languages: const [
+                PluginLanguage(kind: 'sub', code: 'en'),
+              ],
             ),
           ],
         ),
@@ -84,7 +78,10 @@ void main() {
     });
 
     test('all sub → sub', () {
-      expect(PluginStreamLanguages.audioCategoryFromKeys({'sub:fr'}), 'sub');
+      expect(
+        PluginStreamLanguages.audioCategoryFromKeys({'sub:fr'}),
+        'sub',
+      );
     });
 
     test('mixed kinds → null', () {
@@ -93,24 +90,15 @@ void main() {
         isNull,
       );
     });
-
-    test('Spanish ES alone → null (sub + dub both keep)', () {
-      expect(PluginStreamLanguages.audioCategoryFromKeys({'dub:es'}), isNull);
-      expect(PluginStreamLanguages.audioCategoryFromKeys({'sub:es'}), isNull);
-      expect(
-        PluginStreamLanguages.audioCategoryFromKeys({'sub:es', 'dub:es'}),
-        isNull,
-      );
-    });
   });
 
   group('PluginStreamLanguages.pluginMatches', () {
     EnginePlugin plugin(List<PluginLanguage> langs) => EnginePlugin(
-      id: 'test-provider-a',
-      name: 'A',
-      entry: 'a.js',
-      languages: langs,
-    );
+          id: 'test-provider-a',
+          name: 'A',
+          entry: 'a.js',
+          languages: langs,
+        );
 
     test('empty selection matches all', () {
       expect(
@@ -173,7 +161,9 @@ void main() {
               name: 'Anime',
               entry: 'a.js',
               types: const ['anime'],
-              languages: const [PluginLanguage(kind: 'sub', code: 'ja')],
+              languages: const [
+                PluginLanguage(kind: 'sub', code: 'ja'),
+              ],
             ),
           ],
         ),
