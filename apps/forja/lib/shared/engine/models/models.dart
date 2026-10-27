@@ -28,7 +28,9 @@ class PluginLanguage {
       'en' => 'VO',
       'fr' => 'VF',
       'it' => 'Italian',
-      'es' => 'Spanish',
+      'es' => 'Castellano',
+      'lat' => 'Latino',
+      'ca' => 'Catalán',
       'de' => 'German',
       'pt' => 'Portuguese',
       'ar' => 'Arabic',
@@ -556,8 +558,8 @@ class EnginePack {
   /// flags stay as the user set them so cloud sync carries the same profile
   /// to devices that do support the plugin.
   bool isPluginAvailable(EnginePlugin p) => PlatformInfo.supportsPlugin(
-        platforms: p.platforms.isNotEmpty ? p.platforms : platforms,
-      );
+    platforms: p.platforms.isNotEmpty ? p.platforms : platforms,
+  );
 
   /// Every plugin in the pack is gated off on this device.
   bool get isUnavailableHere =>
@@ -770,6 +772,7 @@ class EnginePackRemoteCheck {
   });
 
   final Map<String, EnginePackUpdateInfo> updates;
+
   /// Source URLs whose remote (or local) manifest no longer exists.
   final Set<String> deprecatedUrls;
 
@@ -815,10 +818,10 @@ class EngineExtractResult {
 /// are both on. Use for Addon discovery, Connected services auth, and field
 /// injection — never flatten [EnginePack.plugins] without this gate.
 List<EnginePlugin> activePluginsFromPacks(Iterable<EnginePack> packs) => [
-      for (final pack in packs)
-        for (final p in pack.plugins)
-          if (pack.isPluginActive(p)) p,
-    ];
+  for (final pack in packs)
+    for (final p in pack.plugins)
+      if (pack.isPluginActive(p)) p,
+];
 
 Set<String> enabledEnginePluginIds(List<EnginePack> packs) => {
   for (final pack in packs)
@@ -1110,6 +1113,24 @@ String? engineLanguageLabel(String? raw) {
     case 'hin':
     case 'hindi':
       return 'Hindi';
+    case 'es':
+    case 'cast':
+    case 'castellano':
+      return 'Castellano';
+    case 'lat':
+    case 'latino':
+    case 'es-lat':
+    case 'es_la':
+      return 'Latino';
+    case 'ca':
+    case 'cat':
+    case 'catalan':
+    case 'catalán':
+      return 'Catalán';
+    case 'sub':
+      return 'Sub';
+    case 'dub':
+      return 'Dub';
     default:
       return s;
   }
