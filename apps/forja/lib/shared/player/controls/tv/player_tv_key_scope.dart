@@ -45,20 +45,26 @@ class PlayerTvKeyScope extends StatefulWidget {
   final VoidCallback onSeekBack;
   final VoidCallback onSeekForward;
   final VoidCallback onToggleControls;
+
   /// D-pad ↑ while chrome is not focused — show chrome and focus Back.
   final VoidCallback onFocusBack;
+
   /// D-pad ↓ while chrome is not focused — show chrome and focus Play.
   final VoidCallback onFocusPlay;
+
   /// Chrome already visible but focus fell on the video key node / was lost —
   /// reclaim Play only. Must not restart the idle-hide timer (Play icon rebuilds
   /// otherwise keep chrome stuck forever).
   final VoidCallback onClaimPlayFocus;
+
   /// Fired on D-pad / remote keys while chrome is visible so auto-hide can
   /// restart from idle (focus traversal alone does not touch the timer).
   final VoidCallback? onControlsActivity;
+
   /// A floating Skip / Next Episode chip is on screen. While chrome is hidden
   /// it owns D-pad focus instead of the video key node.
   final bool floatingChipVisible;
+
   /// Move focus onto the floating chip.
   final VoidCallback? onClaimFloatingChipFocus;
   final Widget child;
@@ -71,15 +77,15 @@ class _PlayerTvKeyScopeState extends State<PlayerTvKeyScope> {
   bool _ensureFocusScheduled = false;
 
   PlayerTvRemoteKeyHandler get _handler => PlayerTvRemoteKeyHandler(
-        onBack: widget.onBack,
-        onPlayPause: widget.onPlayPause,
-        onShowControls: widget.onShowControls,
-        onSeekBack: widget.onSeekBack,
-        onSeekForward: widget.onSeekForward,
-        onToggleControls: widget.onToggleControls,
-        onFocusBack: widget.onFocusBack,
-        onFocusPlay: widget.onFocusPlay,
-      );
+    onBack: widget.onBack,
+    onPlayPause: widget.onPlayPause,
+    onShowControls: widget.onShowControls,
+    onSeekBack: widget.onSeekBack,
+    onSeekForward: widget.onSeekForward,
+    onToggleControls: widget.onToggleControls,
+    onFocusBack: widget.onFocusBack,
+    onFocusPlay: widget.onFocusPlay,
+  );
 
   static bool _isVolumeKey(LogicalKeyboardKey key) =>
       key == LogicalKeyboardKey.audioVolumeUp ||
@@ -128,7 +134,11 @@ class _PlayerTvKeyScopeState extends State<PlayerTvKeyScope> {
 
   /// Chrome visible + empty / video-key focus → Play (reclaim only — do not
   /// go through [onFocusPlay], which restarts idle hide). Chrome hidden +
-  /// empty → video key node (←/→ reveal chrome; OK still works after idle hide).
+  /// floating chip → chip. Chrome hidden + empty → video key node.
+  ///
+  /// Chip *appearance* focus (chrome up or hidden) is owned by the host
+  /// (`_scheduleClaimFloatingChipFocus`) so we do not steal mid-chrome nav
+  /// every time focus flickers while a chip is already on screen.
   void _ensureFocus() {
     if (!mounted || !widget.enabled) return;
     // Menus own D-pad — never steal Play; if a refresh dropped focus out of
@@ -156,7 +166,7 @@ class _PlayerTvKeyScopeState extends State<PlayerTvKeyScope> {
     }
   }
 
-  /// Chrome hidden + floating chip up: the chip takes D-pad focus.
+  /// Chrome hidden + floating chip up: the chip keeps D-pad if focus is lost.
   bool get _floatingChipHoldsFocus =>
       !widget.showControls &&
       widget.floatingChipVisible &&

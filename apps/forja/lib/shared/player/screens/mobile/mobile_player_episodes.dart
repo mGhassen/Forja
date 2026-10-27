@@ -28,6 +28,8 @@ mixin _MobilePlayerEpisodes on ConsumerState<MobilePlayerScreen> {
           _s._nearEndOfEpisode = nearEnd;
           _onNearEndChanged(nearEnd);
         });
+        // Chip just mounted — park D-pad on it (chrome up or hidden).
+        if (nearEnd) _scheduleClaimFloatingChipFocus();
       }
     } else if (_s._nearEndOfEpisode) {
       setState(() {
@@ -101,16 +103,21 @@ mixin _MobilePlayerEpisodes on ConsumerState<MobilePlayerScreen> {
         _s._skipDismissed = false;
       });
       final skipAuto = SettingsService.autoSkipIntroNotifier.value;
-      if (skipAuto &&
+      final willAutoSkip =
+          skipAuto &&
           (label == 'Skip Intro' || label == 'Skip Recap') &&
           target != null &&
-          _s._autoSkipLatchedTarget != target) {
+          _s._autoSkipLatchedTarget != target;
+      if (willAutoSkip) {
         _s._autoSkipLatchedTarget = target;
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (!mounted || _s._disposed) return;
           if (_s._activeSkipLabel != label) return;
           _performSkip();
         });
+      } else if (label != null) {
+        // New Skip Intro / Recap / Credits / Preview — land D-pad on it.
+        _scheduleClaimFloatingChipFocus();
       }
       if (label == null) _s._autoSkipLatchedTarget = null;
     }
@@ -174,7 +181,17 @@ mixin _MobilePlayerEpisodes on ConsumerState<MobilePlayerScreen> {
     });
   }
 
-  /// Key scope claim while chrome is hidden — does not hold the countdown.
+  /// After the chip mounts — Next Episode preferred over Skip.
+  void _scheduleClaimFloatingChipFocus() {
+    if (!widget.tvRemoteEnabled) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || _s._disposed) return;
+      if (playerChromeOverlayBlocksFocusClaim()) return;
+      _claimFloatingChipFocus();
+    });
+  }
+
+  /// Key scope / appear claim — does not hold the countdown.
   void _claimNextEpChipFocus() {
     if (!_s._nextEpChipFocus.canRequestFocus) return;
     if (!_s._nextEpChipAutoFocus) {
@@ -224,8 +241,9 @@ mixin _MobilePlayerEpisodes on ConsumerState<MobilePlayerScreen> {
 
   bool get _showSkipChip => _s._activeSkipLabel != null && !_s._skipDismissed;
 
-  /// Chrome hidden: Next Episode first (it carries the countdown), else Skip.
+  /// Next Episode first (countdown), else Skip. Chrome up or hidden.
   void _claimFloatingChipFocus() {
+    if (playerChromeOverlayBlocksFocusClaim()) return;
     if (_showNextEpButton) {
       _claimNextEpChipFocus();
       return;

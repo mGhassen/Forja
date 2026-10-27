@@ -313,6 +313,64 @@ void main() {
     playFocus.dispose();
   });
 
+  testWidgets('host claim parks focus on Next Episode while chrome is visible', (
+    tester,
+  ) async {
+    final keyFocus = FocusNode(debugLabel: 'test-player-tv-keys');
+    final chipFocus = FocusNode(debugLabel: 'test-next-ep');
+    final playFocus = FocusNode(debugLabel: 'test-play');
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: PlayerTvKeyScope(
+            enabled: true,
+            focusNode: keyFocus,
+            showControls: true,
+            onBack: () {},
+            onPlayPause: () {},
+            onShowControls: () {},
+            onSeekBack: () {},
+            onSeekForward: () {},
+            onToggleControls: () {},
+            onFocusBack: () {},
+            onFocusPlay: () {},
+            onClaimPlayFocus: playFocus.requestFocus,
+            floatingChipVisible: true,
+            onClaimFloatingChipFocus: chipFocus.requestFocus,
+            child: Column(
+              children: [
+                Focus(focusNode: playFocus, child: const SizedBox.shrink()),
+                PlayerNextEpisodeChip(
+                  onPressed: () {},
+                  countdown: true,
+                  countdownPaused: true,
+                  onCancel: () {},
+                  focusNode: chipFocus,
+                  tvFocusable: true,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+    playFocus.requestFocus();
+    await tester.pump();
+    expect(playFocus.hasFocus, isTrue);
+
+    // Host appear-claim (chrome still up) — same path as Skip / Next Episode pop.
+    chipFocus.requestFocus();
+    await tester.pump();
+    expect(chipFocus.hasFocus, isTrue);
+    expect(playFocus.hasFocus, isFalse);
+
+    keyFocus.dispose();
+    chipFocus.dispose();
+    playFocus.dispose();
+  });
+
   testWidgets(
     'PlayerTvKeyScope gives the Next Episode chip focus when chrome is hidden',
     (tester) async {

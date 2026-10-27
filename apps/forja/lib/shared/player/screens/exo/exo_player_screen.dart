@@ -833,9 +833,12 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
           _durationNotifier.value = _duration;
         }
         _buffered = Duration(milliseconds: bufMs);
+        final nearEndAppeared = nearEnd && nearEnd != _nearEndOfEpisode;
         if (nearEnd != _nearEndOfEpisode) _onNearEndChanged(nearEnd);
         _nearEndOfEpisode = nearEnd;
         if (needsRepaint) setState(() {});
+        // Chip just mounted — park D-pad on it (chrome up or hidden).
+        if (nearEndAppeared) _scheduleClaimNextEpChipFocus();
         break;
       case 'ended':
         _isPlaying = false;
@@ -2223,8 +2226,19 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
     return true;
   }
 
-  /// Key scope claim while chrome is hidden — does not hold the countdown.
+  /// After the Next Episode chip mounts.
+  void _scheduleClaimNextEpChipFocus() {
+    if (!_isTv) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      if (playerChromeOverlayBlocksFocusClaim()) return;
+      _claimNextEpChipFocus();
+    });
+  }
+
+  /// Key scope / appear claim — does not hold the countdown.
   void _claimNextEpChipFocus() {
+    if (playerChromeOverlayBlocksFocusClaim()) return;
     if (!_nextEpChipFocus.canRequestFocus) return;
     if (!_nextEpChipAutoFocus) setState(() => _nextEpChipAutoFocus = true);
     _nextEpChipFocus.requestFocus();
