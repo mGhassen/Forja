@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| **Progress** | **20 / 21** |
+| **Progress** | **21 / 22** |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -39,6 +39,7 @@
 | 18 | I98-T18 | Sources footer / play loading parse pack chip label (Season N / OVA N / Special N); extract stays media-local S1 | ✅ |
 | 19 | I98-T19 | Season chip switch soft-swaps meta/eps in place (`isLoadingSeason`); no full-page `_loading` blank | ✅ |
 | 20 | I98-T20 | Season switch strips prior-cour logo/backdrops/enrich; skip seed art merge on soft switch | ✅ |
+| 21 | I98-T21 | Pack season sort: null/TBA dates last; tie-break on title season number (Witch Hat S1≠S3) | ✅ |
 
 ---
 
