@@ -150,6 +150,9 @@ class _PackDetailsHostState extends ConsumerState<PackDetailsHost> {
   /// Season-chip reload — skip stale cache and don't merge previous cour art.
   bool _packSeasonForceRefresh = false;
 
+  /// Soft franchise switch — keep details chrome; episode row shows skeleton.
+  bool _seasonSwitching = false;
+
   /// Apply [widget.initialSeason] / [widget.initialEpisode] only on first paint.
   bool _appliedInitialSeasonEpisode = false;
   int _detailsLoadGen = 0;
@@ -850,6 +853,7 @@ class _PackDetailsHostState extends ConsumerState<PackDetailsHost> {
       _layout = layout;
       _heroBackdrops = backdrops;
       _loading = false;
+      _seasonSwitching = false;
       _error = null;
       _selectedSeason = firstSeason;
       _selectedEpisode = firstEp;
@@ -878,7 +882,7 @@ class _PackDetailsHostState extends ConsumerState<PackDetailsHost> {
       _selectedSeason = season;
       _detailsOverrideId = link.id;
       _packSeasonForceRefresh = true;
-      _loading = true;
+      _seasonSwitching = true;
       _error = null;
       _watchProgress = null;
       _watchedEpisodes = {};
@@ -922,8 +926,10 @@ class _PackDetailsHostState extends ConsumerState<PackDetailsHost> {
     }
 
     final forceRefresh = _packSeasonForceRefresh;
+    // Franchise chip switch already painted the page — soft-swap, don't blank it.
+    final softSeasonSwitch = forceRefresh && _detail != null;
     final seedEnriched = !forceRefresh && hubMetaTmdbEnriched(widget.item);
-    if (!seedEnriched) {
+    if (!seedEnriched && !softSeasonSwitch) {
       setState(() {
         _loading = true;
         _error = null;
@@ -958,6 +964,7 @@ class _PackDetailsHostState extends ConsumerState<PackDetailsHost> {
       if (!mounted || loadGen != _detailsLoadGen) return;
       setState(() {
         _loading = false;
+        _seasonSwitching = false;
         _packSeasonForceRefresh = false;
         _error =
             notReady ??
@@ -1356,7 +1363,7 @@ class _PackDetailsHostState extends ConsumerState<PackDetailsHost> {
         seasonCount: seasons.length,
         selectedSeason: _selectedSeason,
         selectedEpisode: _selectedEpisode,
-        isLoadingSeason: false,
+        isLoadingSeason: _seasonSwitching,
         seasonData: null,
         fallbackPosterPath: show.poster,
         seasonPosters: _usesPackSeasons ? packSeasonPosters : const {},
