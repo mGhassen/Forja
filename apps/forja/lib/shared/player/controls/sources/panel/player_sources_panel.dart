@@ -89,7 +89,7 @@ class PlayerSourcesPanel {
     required Movie movie,
     int? season,
     int? episode,
-    int? labelSeason,
+    String? seasonLabel,
     String? currentMagnet,
     String? currentStreamUrl,
     String? currentPlayingCatalogUrl,
@@ -173,7 +173,7 @@ class PlayerSourcesPanel {
             movie: movie,
             season: season,
             episode: episode,
-            labelSeason: labelSeason,
+            seasonLabel: seasonLabel,
             currentMagnet: currentMagnet,
             currentStreamUrl: currentStreamUrl,
             currentPlayingCatalogUrl: currentPlayingCatalogUrl,
@@ -212,7 +212,7 @@ class _PlayerSourcesOverlay extends StatefulWidget {
     required this.onClose,
     this.season,
     this.episode,
-    this.labelSeason,
+    this.seasonLabel,
     this.currentMagnet,
     this.currentStreamUrl,
     this.currentPlayingCatalogUrl,
@@ -235,7 +235,7 @@ class _PlayerSourcesOverlay extends StatefulWidget {
   final Movie movie;
   final int? season;
   final int? episode;
-  final int? labelSeason;
+  final String? seasonLabel;
   final String? currentMagnet;
   final String? currentStreamUrl;
   final String? currentPlayingCatalogUrl;
@@ -290,7 +290,7 @@ class _PlayerSourcesOverlayState extends State<_PlayerSourcesOverlay> {
           movie: widget.movie,
           season: widget.season,
           episode: widget.episode,
-          labelSeason: widget.labelSeason,
+          seasonLabel: widget.seasonLabel,
           currentMagnet: widget.currentMagnet,
           currentStreamUrl: widget.currentStreamUrl,
           currentPlayingCatalogUrl: widget.currentPlayingCatalogUrl,
@@ -325,7 +325,7 @@ class _PlayerSourcesBody extends ConsumerStatefulWidget {
     required this.onClose,
     this.season,
     this.episode,
-    this.labelSeason,
+    this.seasonLabel,
     this.currentMagnet,
     this.currentStreamUrl,
     this.currentPlayingCatalogUrl,
@@ -348,7 +348,7 @@ class _PlayerSourcesBody extends ConsumerStatefulWidget {
   final Movie movie;
   final int? season;
   final int? episode;
-  final int? labelSeason;
+  final String? seasonLabel;
   final String? currentMagnet;
   final String? currentStreamUrl;
   final String? currentPlayingCatalogUrl;
@@ -4188,7 +4188,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
     mediaType: widget.movie.mediaType,
     season: widget.season,
     episode: widget.episode,
-    labelSeason: widget.labelSeason,
+    seasonLabel: widget.seasonLabel,
   );
 
   @override

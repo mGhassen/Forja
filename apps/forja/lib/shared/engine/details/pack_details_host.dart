@@ -1098,7 +1098,9 @@ class _PackDetailsHostState extends ConsumerState<PackDetailsHost> {
       episode: ep,
       season: season,
       episodeNumber: epNum,
-      labelSeason: _usesPackSeasons ? _selectedSeason : null,
+      seasonLabel: _usesPackSeasons
+          ? _packSeasonLink(_selectedSeason)?.label
+          : null,
       videos: _videos,
       episodeVideoId: progressVideoId,
       extras: mergedExtras,
@@ -1177,7 +1179,9 @@ class _PackDetailsHostState extends ConsumerState<PackDetailsHost> {
       episode: ep,
       season: _playbackSeason,
       episodeNumber: _selectedEpisode,
-      labelSeason: _usesPackSeasons ? _selectedSeason : null,
+      seasonLabel: _usesPackSeasons
+          ? _packSeasonLink(_selectedSeason)?.label
+          : null,
       videos: _videos,
       extras: _playFilterExtras,
       audioCategory: _effectiveAudioCategory,

@@ -12,7 +12,7 @@ PlayContext catalogPlayContextFromMeta({
   MetaVideo? episode,
   int? episodeNumber,
   int? season,
-  int? labelSeason,
+  String? seasonLabel,
   String? episodeVideoId,
   List<MetaVideo>? videos,
   Map<String, dynamic> extras = const {},
@@ -26,7 +26,7 @@ PlayContext catalogPlayContextFromMeta({
   final ep = episode;
   final epNum = ep?.episode ?? episodeNumber ?? 1;
   final seasonNum = ep?.season ?? season ?? 1;
-  final labelSeasonNum = labelSeason ?? seasonNum;
+  final chipLabel = (seasonLabel ?? '').trim();
   final isMovie = _metaIsMovie(meta);
   final isTv = !isMovie;
   final open = meta.open;
@@ -56,7 +56,7 @@ PlayContext catalogPlayContextFromMeta({
     metaOpen: open,
     season: isTv ? seasonNum : null,
     episode: isTv ? epNum : (isMovie ? null : epNum),
-    labelSeason: isTv ? labelSeasonNum : null,
+    seasonLabel: isTv && chipLabel.isNotEmpty ? chipLabel : null,
     malId: malId,
     episodeVideoIdByNumber: episodeIds,
     audioCategory: audioCategory ?? extras['category']?.toString(),
@@ -68,8 +68,9 @@ PlayContext catalogPlayContextFromMeta({
     loadingSubtitle: isMovie
         ? null
         : playbackLoadingEpisodeSubtitle(
-            season: isTv ? labelSeasonNum : null,
+            season: isTv ? seasonNum : null,
             episode: epNum,
+            seasonLabel: isTv && chipLabel.isNotEmpty ? chipLabel : null,
           ),
   );
 }

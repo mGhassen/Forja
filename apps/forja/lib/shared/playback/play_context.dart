@@ -11,7 +11,7 @@ class PlayContext {
     this.metaOpen,
     this.season,
     this.episode,
-    this.labelSeason,
+    this.seasonLabel,
     this.malId,
     this.episodeVideoIdByNumber = const {},
     this.audioCategory,
@@ -32,8 +32,8 @@ class PlayContext {
   final int? season;
   final int? episode;
 
-  /// Franchise / UI season for badges when it differs from [season].
-  final int? labelSeason;
+  /// Pack franchise chip label (`Season 2`, `OVA 1`, `Special 1`) for UI codes.
+  final String? seasonLabel;
   final int? malId;
   final Map<int, String> episodeVideoIdByNumber;
   final String? audioCategory;
@@ -48,21 +48,47 @@ class PlayContext {
 }
 
 /// Loading-overlay episode line: season + episode when both known.
-String? playbackLoadingEpisodeSubtitle({int? season, int? episode}) {
+String? playbackLoadingEpisodeSubtitle({
+  int? season,
+  int? episode,
+  String? seasonLabel,
+}) {
   if (episode == null) return null;
+  final label = (seasonLabel ?? '').trim();
+  if (label.isNotEmpty) return '$label · Episode $episode';
   if (season != null) return 'Season $season · Episode $episode';
   return 'Episode $episode';
 }
 
-/// Sources footer / chrome: `S02E01`. Uses [labelSeason] when set (franchise UI).
+final _seasonLabelCode = RegExp(
+  r'^(?:(OVA)|(Special)|Season)\s*(\d+)\b',
+  caseSensitive: false,
+);
+
+/// Pack chip → Sources code prefix: `S02` / `OVA01` / `SPECIAL01`.
+String? sourcesSeasonCodeFromLabel(String? seasonLabel) {
+  final label = (seasonLabel ?? '').trim();
+  if (label.isEmpty) return null;
+  final m = _seasonLabelCode.firstMatch(label);
+  if (m == null) return null;
+  final n = (int.tryParse(m.group(3) ?? '') ?? 0).clamp(1, 99);
+  final nn = n.toString().padLeft(2, '0');
+  if (m.group(1) != null) return 'OVA$nn';
+  if (m.group(2) != null) return 'SPECIAL$nn';
+  return 'S$nn';
+}
+
+/// Sources footer / chrome: `S02E01`, `OVA01E01`, `SPECIAL01E01`.
 String? sourcesEpisodeLabel({
   required String mediaType,
   int? season,
   int? episode,
-  int? labelSeason,
+  String? seasonLabel,
 }) {
   if (mediaType != 'tv') return null;
-  final s = (labelSeason ?? season ?? 1).toString().padLeft(2, '0');
   final e = (episode ?? 1).toString().padLeft(2, '0');
+  final fromLabel = sourcesSeasonCodeFromLabel(seasonLabel);
+  if (fromLabel != null) return '${fromLabel}E$e';
+  final s = (season ?? 1).toString().padLeft(2, '0');
   return 'S${s}E$e';
 }
