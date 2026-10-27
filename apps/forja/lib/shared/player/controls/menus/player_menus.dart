@@ -88,11 +88,7 @@ void showTracksMenu(
                 ),
               ),
             ),
-            Divider(
-              color: PlayerPopupTokens.border,
-              height: 1,
-              thickness: 0.5,
-            ),
+            Divider(color: PlayerPopupTokens.border, height: 1, thickness: 0.5),
             Flexible(
               child: ListView.builder(
                 shrinkWrap: true,
@@ -163,31 +159,30 @@ void showPlayerSettingsMenu({
     anchorContext: anchorContext,
     width: 340,
     maxHeight: 560,
-    // Column (not ListView) - same as audio/quality so TV linear D-pad
-    // walks every row without scrollable focus gaps.
-    child: Padding(
+    // ListView like Audio — shrinkWrap hugs short lists; scrolls when the
+    // anchored maxHeight clips (tablet / desktop). NavRow ensureVisible keeps
+    // TV D-pad walking every row.
+    child: ListView(
+      shrinkWrap: true,
       padding: const EdgeInsets.fromLTRB(10, 10, 10, 12),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          for (var i = 0; i < entries.length; i++) ...[
-            if (i != 0) const SizedBox(height: 8),
-            PlayerPopupNavRow(
-              icon: entries[i].icon,
-              title: entries[i].title,
-              subtitle: entries[i].subtitle,
-              value: entries[i].value,
-              onTap: () => _openPlayerSettingsPage(
-                context: context,
-                anchorContext: anchorContext,
-                rootTitle: title,
-                buildEntries: buildEntries,
-                index: i,
-              ),
+      children: [
+        for (var i = 0; i < entries.length; i++) ...[
+          if (i != 0) const SizedBox(height: 8),
+          PlayerPopupNavRow(
+            icon: entries[i].icon,
+            title: entries[i].title,
+            subtitle: entries[i].subtitle,
+            value: entries[i].value,
+            onTap: () => _openPlayerSettingsPage(
+              context: context,
+              anchorContext: anchorContext,
+              rootTitle: title,
+              buildEntries: buildEntries,
+              index: i,
             ),
-          ],
+          ),
         ],
-      ),
+      ],
     ),
   );
 }
