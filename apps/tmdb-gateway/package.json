@@ -5,8 +5,8 @@
   "type": "module",
   "description": "Forja TMDB API + image gateway (Vercel + local)",
   "scripts": {
-    "dev": "node --env-file=../../.env --env-file=.env.local src/local.js",
-    "start": "node --env-file=../../.env --env-file=.env.local src/local.js",
+    "dev": "node --env-file=../../.env --env-file=.env --env-file=.env.local src/local.js",
+    "start": "node --env-file=../../.env --env-file=.env --env-file=.env.local src/local.js",
     "test": "node --test src/proxy.test.js"
   },
   "engines": {
