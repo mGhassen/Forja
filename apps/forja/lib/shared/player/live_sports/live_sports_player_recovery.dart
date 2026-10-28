@@ -15,7 +15,7 @@ mixin _LiveSportsPlayerRecovery on _LiveSportsPlayerEngineCore {
   bool _giveUpDeadStalkerStream();
   void _initPlayerInstances();
   Future<void> _applyMpvTunables();
-  Future<void> _enginePlay({bool allowCast = true});
+  Future<void> _enginePlay();
   void _armTransientHwDecodeIgnore();
   void _logHealthyHold(String reason);
   void _logHold(String reason, {required bool healthy});

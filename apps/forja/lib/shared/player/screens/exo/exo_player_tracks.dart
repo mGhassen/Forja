@@ -321,7 +321,6 @@ mixin _ExoPlayerTracks on ConsumerState<ExoPlayerScreen> {
     );
     if (!mounted) return;
     setState(() {
-      _s._userPickedExternalSubtitle = false;
       _s._selectedExternalSubUrl = null;
       _s._providerExternalSubUrls = merged.providerUrls;
       _s._externalSubtitles = merged.external;

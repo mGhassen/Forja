@@ -1352,8 +1352,8 @@ List<Map<String, dynamic>>? catalogStreamExternalSubtitles(
       'name': name,
       'display': name,
       if (sourceName != null && sourceName.isNotEmpty) 'sourceName': sourceName,
-      if (referer != null) 'referer': referer,
-      if (origin != null) 'origin': origin,
+      'referer': ?referer,
+      'origin': ?origin,
     });
   }
   return out.isEmpty ? null : out;

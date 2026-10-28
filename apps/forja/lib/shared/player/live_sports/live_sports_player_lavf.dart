@@ -6,7 +6,7 @@ part of 'live_sports_player_screen.dart';
 /// Live Sports lavf reconnect — v1.5.36 direct string always.
 mixin _LiveSportsPlayerLavf on _LiveSportsPlayerEngineCore {
   void _armTransientHwDecodeIgnore();
-  Future<void> _enginePlay({bool allowCast = true});
+  Future<void> _enginePlay();
   void _applyCacheAheadSample(double aheadSecs, {required String source});
 
   Future<void> _applyStreamLavfReconnect(
@@ -31,9 +31,9 @@ mixin _LiveSportsPlayerLavf on _LiveSportsPlayerEngineCore {
       await p.setProperty(
         'demuxer-lavf-o',
         'fflags=+genpts+igndts,'
-        'http_multiple=1,'
-        'probesize=5000000,'
-        'analyzeduration=5000000',
+            'http_multiple=1,'
+            'probesize=5000000,'
+            'analyzeduration=5000000',
       );
     }
   }

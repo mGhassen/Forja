@@ -1391,8 +1391,9 @@ mixin _PtPlayerUi on ConsumerState<PtPlayerScreen> {
                                         formatPlayerSubtitleOverlayText(
                                           snap.data ?? const [],
                                         );
-                                    if (text.isEmpty)
+                                    if (text.isEmpty) {
                                       return const SizedBox.shrink();
+                                    }
                                     return _buildIptvCuePositioned(text);
                                   },
                                 ),
@@ -1402,8 +1403,9 @@ mixin _PtPlayerUi on ConsumerState<PtPlayerScreen> {
                                   builder: (context, lines, _) {
                                     final text =
                                         formatPlayerSubtitleOverlayText(lines);
-                                    if (text.isEmpty)
+                                    if (text.isEmpty) {
                                       return const SizedBox.shrink();
+                                    }
                                     return _buildIptvCuePositioned(text);
                                   },
                                 ),

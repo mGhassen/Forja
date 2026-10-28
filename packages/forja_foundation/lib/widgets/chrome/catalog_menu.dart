@@ -120,7 +120,7 @@ class CatalogMenu extends StatelessWidget {
             ),
           ],
           const Spacer(),
-          if (countChip != null) countChip,
+          ?countChip,
           if (hasTrail) ...[if (countChip != null) SizedBox(width: gap), trail],
         ],
       );
@@ -148,7 +148,7 @@ class CatalogMenu extends StatelessWidget {
             ),
           ],
           const Spacer(),
-          if (countChip != null) countChip,
+          ?countChip,
           if (hasTrail) ...[if (countChip != null) SizedBox(width: gap), trail],
         ],
       );

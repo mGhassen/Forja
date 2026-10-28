@@ -542,8 +542,8 @@ mixin _LiveSportsPlayerEngine on _LiveSportsPlayerEngineCore {
     setState(() {});
   }
 
-  Future<void> _enginePlay({bool allowCast = true}) async {
-    if (allowCast && await CastingService.instance.setPlayingIfCasting(true)) {
+  Future<void> _enginePlay() async {
+    if (await CastingService.instance.setPlayingIfCasting(true)) {
       if (!_s._disposed) {
         _s._playing = true;
         if (mounted) setState(() {});

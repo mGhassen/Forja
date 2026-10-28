@@ -1061,22 +1061,6 @@ class _AddonRemoveRowState extends State<_AddonRemoveRow> {
   }
 }
 
-/// IconButton on touch/desktop; [shellFocusableTap] on TV so D-pad owns focus.
-Widget _settingsTvIconButton(
-  BuildContext context, {
-  required String tooltip,
-  required IconData icon,
-  required VoidCallback? onPressed,
-  Color color = ForjaShellColors.textPrimary,
-}) {
-  return SettingsIconButton(
-    tooltip: tooltip,
-    icon: icon,
-    onPressed: onPressed,
-    color: color,
-  );
-}
-
 /// Trash → Yes/No in place (same pattern as IPTV portal delete).
 class _AddonRemoveActions extends StatefulWidget {
   const _AddonRemoveActions({

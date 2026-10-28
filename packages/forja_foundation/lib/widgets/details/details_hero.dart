@@ -621,8 +621,9 @@ class _DetailsHeroMainColumn extends StatelessWidget {
     required bool showSeriesProgress,
   }) {
     var reserved = 0.0;
-    if (actionRow != null)
+    if (actionRow != null) {
       reserved += _actionGap + ShellTokens.shellButtonHeight;
+    }
     if (belowActionRow != null) reserved += belowActionRowGap;
     if (showProgress) reserved += 14 + _progressBlockHeight;
     if (showSeriesProgress) {

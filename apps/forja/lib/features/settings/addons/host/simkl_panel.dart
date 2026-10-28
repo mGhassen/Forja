@@ -170,6 +170,7 @@ class _SettingsSimklPanelState extends ConsumerState<SettingsSimklPanel> {
   Future<void> _sync() async {
     if (_isSyncing || !mounted) return;
     final mode = _listSyncMode ?? await _service.getListSyncMode();
+    if (!mounted) return;
     if (mode == null) {
       ForjaToast.error('Pick how lists sync first');
       return;

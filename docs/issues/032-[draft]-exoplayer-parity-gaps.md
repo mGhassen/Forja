@@ -43,3 +43,5 @@
 **Shipped on Exo:** floating `PlayerPopupPanel` menus for Episodes (hub + TMDB), Audio, Subtitles, Quality, lean Settings (speed + fit), and Player (engine / external); **Sources** 2-column server/stream dialog (issue [105](105-[open]-exoplayer-sources-dialog-missing.md)); catalog link **Sources** panel for torrent / Stremio / Nuvio; **Auto failover** on dead streams (siblings → next provider / reload — issue [249](249-[open]-exoplayer-auto-failover.md)). Native bridge exposes `getTracks` / `selectTrack` / `setRate` / `setResizeMode`. **PiP** and **Cast** chrome buttons are hidden on Exo (not stubbed toasts).
 
 **Still media_kit-only (or open):** ASS/SSA styling, torrent localhost, seek preview, PiP, separate `audioUrl`. Users can switch **Settings → Built-in engine → MediaKit** when needed.
+
+IntroDB seek-bar color zones: [517](fixed/517-[fixed]-exo-introdb-seekbar-zones.md).

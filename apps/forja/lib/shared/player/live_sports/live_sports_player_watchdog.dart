@@ -11,7 +11,7 @@ mixin _LiveSportsPlayerWatchdog on _LiveSportsPlayerEngineCore {
   bool get _livePlaybackProfile;
   bool get _liveSportsSurface;
   void _syncPlaybackBannerVisibility();
-  Future<void> _enginePlay({bool allowCast = true});
+  Future<void> _enginePlay();
 
   /// Sample cache health every watchdog tick (MediaKit).
   ///
@@ -135,7 +135,8 @@ mixin _LiveSportsPlayerWatchdog on _LiveSportsPlayerEngineCore {
         return;
       }
       if (drops > _s._stallFrameDropBaseline + 2 &&
-          _s._cacheAheadSecs >= _LiveSportsPlayerScreenState._minHealthyCacheSecs) {
+          _s._cacheAheadSecs >=
+              _LiveSportsPlayerScreenState._minHealthyCacheSecs) {
         _s._livePaintMissStreak = 2;
       }
     } catch (_) {}
@@ -286,8 +287,7 @@ mixin _LiveSportsPlayerWatchdog on _LiveSportsPlayerEngineCore {
 
   /// Live Sports / Forja Live on MediaKit — playhead often stuck at 0 while
   /// HLS paints; do not treat idle position as a frozen feed.
-  bool get _mediaKitLiveProfile =>
-      _livePlaybackProfile && _s._mediaKitBackend;
+  bool get _mediaKitLiveProfile => _livePlaybackProfile && _s._mediaKitBackend;
 
   /// AVPlayer / VLC — no demuxer-cache or playhead ticks like mpv/Exo.
   /// Stall reopen from empty cache / frozen position is wrong (false recovery).
@@ -311,7 +311,8 @@ mixin _LiveSportsPlayerWatchdog on _LiveSportsPlayerEngineCore {
     if (since == null) return false;
     if (_playheadRecentlyMoved) return false;
     if ((!_mediaKitLiveProfile || !_stallReopenRecovery) &&
-        _s._cacheAheadSecs >= _LiveSportsPlayerScreenState._minHealthyCacheSecs) {
+        _s._cacheAheadSecs >=
+            _LiveSportsPlayerScreenState._minHealthyCacheSecs) {
       return false;
     }
     return DateTime.now().difference(since) >=
@@ -406,12 +407,12 @@ mixin _LiveSportsPlayerWatchdog on _LiveSportsPlayerEngineCore {
   }
 
   bool get _hlsColdOpenHold => iptvHlsColdOpenHold(
-        url: _activePlayUrl,
-        playbackStarted: _playbackStarted,
-        openedAt: _s._openedAt,
-        now: DateTime.now(),
-        grace: _LiveSportsPlayerScreenState._hlsColdOpenGrace,
-      );
+    url: _activePlayUrl,
+    playbackStarted: _playbackStarted,
+    openedAt: _s._openedAt,
+    now: DateTime.now(),
+    grace: _LiveSportsPlayerScreenState._hlsColdOpenGrace,
+  );
 
   bool get _streamWorking {
     if (!_bufferedRecovery) return false;
@@ -442,7 +443,8 @@ mixin _LiveSportsPlayerWatchdog on _LiveSportsPlayerEngineCore {
         }
         return false;
       }
-      if (_s._cacheAheadSecs >= _LiveSportsPlayerScreenState._minHealthyCacheSecs) {
+      if (_s._cacheAheadSecs >=
+          _LiveSportsPlayerScreenState._minHealthyCacheSecs) {
         return true;
       }
       if (_playheadRecentlyMoved) return true;
@@ -480,7 +482,8 @@ mixin _LiveSportsPlayerWatchdog on _LiveSportsPlayerEngineCore {
       }
       return false;
     }
-    if (_s._cacheAheadSecs >= _LiveSportsPlayerScreenState._minHealthyCacheSecs) {
+    if (_s._cacheAheadSecs >=
+        _LiveSportsPlayerScreenState._minHealthyCacheSecs) {
       return true;
     }
     if (_playheadRecentlyMoved) return true;
@@ -502,7 +505,9 @@ mixin _LiveSportsPlayerWatchdog on _LiveSportsPlayerEngineCore {
     _s._bufferingClearAt = null;
     if (since != null) {
       final ms = now.difference(since).inMilliseconds;
-      if (ms >= 500) debugPrint('[Live Sports Player] buffering window ${ms}ms');
+      if (ms >= 500) {
+        debugPrint('[Live Sports Player] buffering window ${ms}ms');
+      }
     }
   }
 
@@ -559,21 +564,20 @@ mixin _LiveSportsPlayerWatchdog on _LiveSportsPlayerEngineCore {
       }
 
       // VOD MediaKit mid-stream: lavf + cache-pause own truncations.
-      if (_s.widget.vodPlayback &&
-          _s._mediaKitBackend &&
-          _playbackStarted) {
+      if (_s.widget.vodPlayback && _s._mediaKitBackend && _playbackStarted) {
         if (_streamWorking) _clearBufferingChrome();
         return;
       }
 
       // Detector 1: long buffering — only if cache is empty / not working.
-      final emptyUnderrun = _s._cacheAheadSecs <
+      final emptyUnderrun =
+          _s._cacheAheadSecs <
           _LiveSportsPlayerScreenState._liveEmptyUnderrunCacheSecs;
       final bufferGrace = emptyUnderrun
           ? _LiveSportsPlayerScreenState._liveEmptyBufferingUnderrun
           : (_s._lastPos > Duration.zero
-              ? const Duration(milliseconds: 12000)
-              : const Duration(milliseconds: 25000));
+                ? const Duration(milliseconds: 12000)
+                : const Duration(milliseconds: 25000));
       if (_s._userPlayWhenReady &&
           _s._bufferingSince != null &&
           now.difference(_s._bufferingSince!) > bufferGrace) {
@@ -608,9 +612,7 @@ mixin _LiveSportsPlayerWatchdog on _LiveSportsPlayerEngineCore {
           );
           return;
         }
-      } else if (_liveSportsSurface &&
-          _s._userPlayWhenReady &&
-          _s._playing) {
+      } else if (_liveSportsSurface && _s._userPlayWhenReady && _s._playing) {
         if (_playheadRecentlyMoved && !_sustainedEmptyBufferingUnderrun) {
           _s._livePaintMissStreak = 0;
           return;
@@ -620,7 +622,8 @@ mixin _LiveSportsPlayerWatchdog on _LiveSportsPlayerEngineCore {
           _ensureBufferingChrome(now);
           if (frozenFor >= _LiveSportsPlayerScreenState._liveEmptyPauseReopen) {
             if (_s._livePaintMissStreak < 2) return;
-            final empty = _s._cacheAheadSecs <
+            final empty =
+                _s._cacheAheadSecs <
                 _LiveSportsPlayerScreenState._minHealthyCacheSecs;
             if (!empty && !_stallReopenRecovery) {
               _logHealthyHold('paint idle, cache hold');
@@ -630,7 +633,7 @@ mixin _LiveSportsPlayerWatchdog on _LiveSportsPlayerEngineCore {
               reason: empty
                   ? 'live underrun, cache empty'
                   : 'live vo freeze, paint stalled '
-                      '(cache=${_s._cacheAheadSecs.toStringAsFixed(1)}s)',
+                        '(cache=${_s._cacheAheadSecs.toStringAsFixed(1)}s)',
             );
             return;
           }

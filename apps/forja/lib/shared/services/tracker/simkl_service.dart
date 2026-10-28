@@ -384,10 +384,10 @@ class SimklService {
     rows.removeWhere((row) => _tombstoneMatches(row, keys, tmdbId, anilistId));
     rows.add({
       'hideKeys': keys.toList(growable: false),
-      if (tmdbId != null) 'tmdbId': tmdbId,
+      'tmdbId': ?tmdbId,
       if (mediaType != null && mediaType.isNotEmpty) 'mediaType': mediaType,
       if (imdbId != null && imdbId.isNotEmpty) 'imdbId': imdbId,
-      if (anilistId != null) 'anilistId': anilistId,
+      'anilistId': ?anilistId,
     });
     await _writeListDeleteTombstones(rows);
   }

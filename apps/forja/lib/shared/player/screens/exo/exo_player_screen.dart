@@ -254,7 +254,6 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
   List<Map<String, String>>? _lateSubsQueue;
   int _lateSubsGen = -1;
   String? _selectedExternalSubUrl;
-  bool _userPickedExternalSubtitle = false;
 
   /// Bumped per online subtitle pick; a download that finishes after a newer
   /// pick started is dropped.
@@ -282,6 +281,9 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
   Duration _duration = Duration.zero;
   Duration _buffered = Duration.zero;
   bool _nearEndOfEpisode = false;
+
+  /// IntroDB intro/recap/credits/preview — seek-bar zone paint (MediaKit parity).
+  IntroDbResponse? _introDbData;
 
   /// Auto next countdown ring is running on the Next Episode chip.
   bool _autoNextCountdown = false;
@@ -416,6 +418,7 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
     unawaited(_loadSubtitlePrefs());
     unawaited(_loadPlayerAutoPins());
     unawaited(_refreshAdjacentEpisodeFlags());
+    unawaited(_fetchIntroDbTimestamps());
     playerChromeOnOverlayDismissed = () {
       if (mounted) _syncChromeHideTimer();
     };
@@ -603,7 +606,6 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
     _preferredSubtitleApplied = false;
     _exoReady = false;
     _selectedExternalSubUrl = null;
-    _userPickedExternalSubtitle = false;
     // A late batch belongs to one open — never attach it to the next one.
     _lateSubsQueue = null;
     _lateSubsGen = -1;
@@ -922,6 +924,19 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
               e.toString().trim(),
         ];
         break;
+    }
+  }
+
+  Future<void> _fetchIntroDbTimestamps() async {
+    if (widget.movie == null || _playingOfflineDownload) return;
+    final data = await IntroDbService().getTimestamps(
+      tmdbId: widget.movie!.id,
+      season: widget.selectedSeason,
+      episode: widget.selectedEpisode,
+      imdbId: widget.movie!.imdbId,
+    );
+    if (mounted && data != null && data.hasAnySegments) {
+      setState(() => _introDbData = data);
     }
   }
 
@@ -2648,8 +2663,9 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
                             position: _position,
                             bufferedPosition: _buffered,
                             zones: buildSeekBarZones(
+                              introDb: _introDbData,
                               duration: _duration,
-                              hasNextEpisode: widget.hasNextEpisode,
+                              hasNextEpisode: _hasNextEpisodeAdjacent,
                             ),
                             tvFocusable: true,
                             focusNode: _seekFocus,
@@ -2671,8 +2687,9 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
                                 position: _position,
                                 bufferedPosition: _buffered,
                                 zones: buildSeekBarZones(
+                                  introDb: _introDbData,
                                   duration: _duration,
-                                  hasNextEpisode: widget.hasNextEpisode,
+                                  hasNextEpisode: _hasNextEpisodeAdjacent,
                                 ),
                                 onSeek: (t) {
                                   unawaited(_seekTo(t));

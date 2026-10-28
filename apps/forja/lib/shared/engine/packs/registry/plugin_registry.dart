@@ -1359,7 +1359,7 @@ class PluginRegistry {
               }
               missing.add(path);
               debugPrint('[PluginInstall] empty $path after $attempt attempts');
-              return null;
+              return;
             }
             byPathBytes[path] = bytes;
             // JS entry/prelude need UTF-8 text; binary (.wasm) stays bytes-only.
@@ -1373,11 +1373,11 @@ class PluginRegistry {
               }
             }
             tick(packLabel);
-            return null;
+            return;
           } on ManifestGoneException catch (e) {
             missing.add(path);
             debugPrint('[PluginInstall] gone $path: $e');
-            return null;
+            return;
           } on PackSourceRefusedException {
             // Plain-http script URL: fail the install with the policy
             // message instead of retrying. Installed packs are untouched.
@@ -1394,10 +1394,10 @@ class PluginRegistry {
             }
             missing.add(path);
             debugPrint('[PluginInstall] failed $path: $lastError');
-            return null;
+            return;
           }
         }
-        return null;
+        return;
       },
     );
 

@@ -1390,8 +1390,9 @@ mixin _LiveSportsPlayerUi on ConsumerState<LiveSportsPlayerScreen> {
                                         formatPlayerSubtitleOverlayText(
                                           snap.data ?? const [],
                                         );
-                                    if (text.isEmpty)
+                                    if (text.isEmpty) {
                                       return const SizedBox.shrink();
+                                    }
                                     return _buildIptvCuePositioned(text);
                                   },
                                 ),
@@ -1401,8 +1402,9 @@ mixin _LiveSportsPlayerUi on ConsumerState<LiveSportsPlayerScreen> {
                                   builder: (context, lines, _) {
                                     final text =
                                         formatPlayerSubtitleOverlayText(lines);
-                                    if (text.isEmpty)
+                                    if (text.isEmpty) {
                                       return const SizedBox.shrink();
+                                    }
                                     return _buildIptvCuePositioned(text);
                                   },
                                 ),

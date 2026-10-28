@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:forja/shell/core/forja_shell_platform.dart';
@@ -31,9 +32,9 @@ const double _gap = 16;
 const double _viewportW = 400;
 const int _count = 10;
 
-/// Hand-built rail: 10 cards, viewport fits ~2. [cacheExtent] builds every
-/// card so the test can focus far indices directly (the coordinator only
-/// ever focuses mounted cards in the app).
+/// Hand-built rail: 10 cards, viewport fits ~2. [scrollCacheExtent] builds
+/// every card so the test can focus far indices directly (the coordinator
+/// only ever focuses mounted cards in the app).
 Widget _plainRail(
   List<FocusNode> nodes,
   ScrollController scroll, {
@@ -46,7 +47,7 @@ Widget _plainRail(
       controller: scroll,
       scrollDirection: Axis.horizontal,
       padding: padding,
-      cacheExtent: 4000,
+      scrollCacheExtent: ScrollCacheExtent.pixels(4000),
       itemCount: _count,
       separatorBuilder: (_, _) => const SizedBox(width: _gap),
       itemBuilder: (_, i) => FocusableControl(
