@@ -813,6 +813,7 @@ class PackPaintTree extends StatelessWidget {
     Map<String, dynamic> node, {
     required Map<String, dynamic> props,
   }) {
+    Widget? chrome;
     Widget? menu;
     Widget? tabs;
     Widget? feed;
@@ -825,6 +826,12 @@ class PackPaintTree extends StatelessWidget {
           (child['type'] ?? '').toString(),
           child,
         );
+        if (t == LayoutTypes.topBar) {
+          // Pack search / chrome on list hubs (My List) — same CatalogTopChrome
+          // + eventSearch path as IPTV / Live Sports.
+          chrome = _chromeTopBar(context, child);
+          continue;
+        }
         final painted = PackPaintTree(
           spec: child,
           pluginId: pluginId,
@@ -842,6 +849,7 @@ class PackPaintTree extends StatelessWidget {
     }
     return TabsCardsBlock.fromProps(
       props,
+      chrome: chrome,
       menu: menu,
       tabs: tabs,
       cards:

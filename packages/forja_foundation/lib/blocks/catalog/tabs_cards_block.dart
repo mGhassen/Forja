@@ -3,14 +3,16 @@ import 'package:forja_foundation/blocks/props_map.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 
-/// Prebuilt page: filter chrome ([menu] + [tabs]) over an expand [cards] grid.
+/// Prebuilt page: optional top chrome + [menu] + [tabs] over an expand [cards]
+/// grid.
 ///
-/// My List shape (kind underline menu → status tabs → poster grid) — **not** a
-/// `myList*` product type. Host paints real menu/tabs children; this block only
-/// stacks them.
+/// List-hub shape (optional search chrome → kind underline menu → status tabs →
+/// poster grid) — **not** a product type. Host paints real children; this block
+/// only stacks them.
 ///
 /// ```
-/// ┌──── menu (kinds, optional) ───┐
+/// ┌──── chrome (optional topBar) ─┐
+/// ├──── menu (kinds, optional) ───┤
 /// ├──── tabs (status) ────────────┤
 /// │                               │
 /// │         cards (grid)          │
@@ -72,6 +74,7 @@ class TabsCardsPageScope extends InheritedWidget {
 class TabsCardsBlock extends StatefulWidget {
   const TabsCardsBlock({
     super.key,
+    this.chrome,
     this.menu,
     this.tabs,
     required this.cards,
@@ -80,11 +83,13 @@ class TabsCardsBlock extends StatefulWidget {
 
   factory TabsCardsBlock.fromProps(
     Map<String, dynamic> props, {
+    Widget? chrome,
     Widget? menu,
     Widget? tabs,
     required Widget cards,
   }) {
     return TabsCardsBlock(
+      chrome: chrome,
       menu: menu,
       tabs: tabs,
       cards: cards,
@@ -92,6 +97,8 @@ class TabsCardsBlock extends StatefulWidget {
     );
   }
 
+  /// Optional pack `kit.topBar` (e.g. list search).
+  final Widget? chrome;
   final Widget? menu;
   final Widget? tabs;
   final Widget cards;
@@ -119,6 +126,7 @@ class _TabsCardsBlockState extends State<TabsCardsBlock> {
     final column = Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        ?widget.chrome,
         ?widget.menu,
         ?widget.tabs,
         Expanded(child: widget.cards),

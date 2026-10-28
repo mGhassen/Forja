@@ -39,8 +39,7 @@ enum LayoutArtifact {
   mood(LayoutArtifactId.mood),
   continueWatching(LayoutArtifactId.continueWatching),
   because(LayoutArtifactId.because),
-  verticalFilters(LayoutArtifactId.verticalFilters),
-  ;
+  verticalFilters(LayoutArtifactId.verticalFilters);
 
   const LayoutArtifact(this.id);
 
@@ -78,8 +77,7 @@ abstract final class LayoutMap {
   static LayoutArtifact? artifactFor(
     String rawType, [
     Map<String, dynamic>? spec,
-  ]) =>
-      layoutArtifactFor(rawType, spec);
+  ]) => layoutArtifactFor(rawType, spec);
 
   /// Human map for docs / gallery — **mounted** paint only.
   ///
@@ -109,7 +107,7 @@ abstract final class LayoutMap {
     'catalogBody': 'CatalogBody (blocks)',
     'columnsHeader': 'ColumnsHeaderBlock (header + side + body)',
     'topBody': 'TopBodyBlock (top + bodyTop + grid)',
-    'tabsCards': 'TabsCardsBlock (menu? + tabs + cards)',
+    'tabsCards': 'TabsCardsBlock (chrome? + menu? + tabs + cards)',
     'search': 'CatalogSearchPage (blocks)',
     'posterCard': 'InteractivePosterCard',
     'channelCard': 'CatalogChannelCard',

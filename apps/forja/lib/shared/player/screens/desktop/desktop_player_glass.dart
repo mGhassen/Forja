@@ -23,12 +23,9 @@ extension _HwDecModeX on _HwDecMode {
   };
 
   /// media_kit TextureHW vs TextureSW — SW must flip this, not only `hwdec`.
-  /// macOS TextureHW (TextureGL) mis-maps chroma on some streams → pink/green;
-  /// same soft display as desktop PiP.
-  bool get enableHardwareAcceleration {
-    if (Platform.isMacOS) return false;
-    return this != _HwDecMode.software;
-  }
+  /// macOS TextureHW is fixed in AimesSoft media-kit (8-bit GL↔BGRA +
+  /// host tone-map); HW+/COPY use TextureHW. SW keeps TextureSW.
+  bool get enableHardwareAcceleration => this != _HwDecMode.software;
 
   bool get softTexture => !enableHardwareAcceleration;
 

@@ -17,10 +17,7 @@ void main() {
       expect(layoutArtifactFor('menu'), LayoutArtifact.menu);
       expect(layoutArtifactFor('hero'), LayoutArtifact.hero);
       expect(layoutArtifactFor('mood'), LayoutArtifact.mood);
-      expect(
-        layoutArtifactFor('continue'),
-        LayoutArtifact.continueWatching,
-      );
+      expect(layoutArtifactFor('continue'), LayoutArtifact.continueWatching);
       expect(layoutArtifactFor('because'), LayoutArtifact.because);
       expect(
         layoutArtifactFor('vertical_filters'),
@@ -28,14 +25,8 @@ void main() {
       );
       expect(layoutArtifactFor('unknown.slot'), isNull);
       expect(LayoutArtifact.hero.id, LayoutArtifactId.hero);
-      expect(
-        LayoutMap.slotToArtifactName[LayoutTypes.stack],
-        'LayoutStack',
-      );
-      expect(
-        LayoutMap.slotToArtifactName[LayoutTypes.hero],
-        'CinematicHero',
-      );
+      expect(LayoutMap.slotToArtifactName[LayoutTypes.stack], 'LayoutStack');
+      expect(LayoutMap.slotToArtifactName[LayoutTypes.hero], 'CinematicHero');
       expect(LayoutMap.slotToArtifactName.containsKey('iptvCatalog'), isFalse);
     });
   });
@@ -96,7 +87,9 @@ void main() {
       expect(find.text('Nothing here'), findsOneWidget);
     });
 
-    testWidgets('MatchDetailsPage.fromProps builds DetailsHero', (tester) async {
+    testWidgets('MatchDetailsPage.fromProps builds DetailsHero', (
+      tester,
+    ) async {
       await tester.pumpWidget(
         _wrap(
           MatchDetailsPage.fromProps({
@@ -129,51 +122,54 @@ void main() {
     testWidgets('EntryDetails.fromProps', (tester) async {
       await tester.pumpWidget(
         _wrap(
-          EntryDetails.fromProps(
-            {'title': 'Entry', 'emptyMessage': 'Empty'},
-            body: const Text('Panel'),
-          ),
+          EntryDetails.fromProps({
+            'title': 'Entry',
+            'emptyMessage': 'Empty',
+          }, body: const Text('Panel')),
         ),
       );
       expect(find.text('Entry'), findsOneWidget);
       expect(find.text('Panel'), findsOneWidget);
     });
 
-    testWidgets('ColumnsHeaderBlock.fromProps builds chrome + rail + empty grid',
-        (tester) async {
-      await tester.pumpWidget(
-        _wrap(
-          ColumnsHeaderBlock.fromProps({
-            'sideWidth': 120,
-            'actions': [
-              {
-                'id': 'catalog',
-                'label': 'Section',
-                'style': 'shelf',
-                'default': 'live',
-                'items': [
-                  {'id': 'live', 'label': 'Live'},
-                  {'id': 'movies', 'label': 'Movies'},
-                ],
-              },
-            ],
-            'sideItems': [
-              {'id': 'all', 'label': 'All'},
-              {'id': 'sports', 'label': 'Sports'},
-            ],
-            'selectedSideId': 'all',
-            'emptyTitle': 'No channels',
-          }),
-        ),
-      );
-      expect(find.text('Live'), findsWidgets);
-      expect(find.text('All'), findsWidgets);
-      expect(find.text('Sports'), findsWidgets);
-      expect(find.text('No channels'), findsOneWidget);
-    });
+    testWidgets(
+      'ColumnsHeaderBlock.fromProps builds chrome + rail + empty grid',
+      (tester) async {
+        await tester.pumpWidget(
+          _wrap(
+            ColumnsHeaderBlock.fromProps({
+              'sideWidth': 120,
+              'actions': [
+                {
+                  'id': 'catalog',
+                  'label': 'Section',
+                  'style': 'shelf',
+                  'default': 'live',
+                  'items': [
+                    {'id': 'live', 'label': 'Live'},
+                    {'id': 'movies', 'label': 'Movies'},
+                  ],
+                },
+              ],
+              'sideItems': [
+                {'id': 'all', 'label': 'All'},
+                {'id': 'sports', 'label': 'Sports'},
+              ],
+              'selectedSideId': 'all',
+              'emptyTitle': 'No channels',
+            }),
+          ),
+        );
+        expect(find.text('Live'), findsWidgets);
+        expect(find.text('All'), findsWidgets);
+        expect(find.text('Sports'), findsWidgets);
+        expect(find.text('No channels'), findsOneWidget);
+      },
+    );
 
-    testWidgets('TopBodyBlock.fromProps builds chrome + kinds + empty',
-        (tester) async {
+    testWidgets('TopBodyBlock.fromProps builds chrome + kinds + empty', (
+      tester,
+    ) async {
       await tester.pumpWidget(
         _wrap(
           TopBodyBlock.fromProps({
@@ -209,6 +205,24 @@ void main() {
       expect(find.text('Your list is empty'), findsOneWidget);
     });
 
+    testWidgets('TabsCardsBlock stacks optional chrome above menu', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        _wrap(
+          TabsCardsBlock.fromProps(
+            const {},
+            chrome: const Text('Search'),
+            menu: const Text('Film'),
+            cards: const Center(child: Text('grid')),
+          ),
+        ),
+      );
+      expect(find.text('Search'), findsOneWidget);
+      expect(find.text('Film'), findsOneWidget);
+      expect(find.text('grid'), findsOneWidget);
+    });
+
     testWidgets('TabsCardsBlock drops the menu below the window title', (
       tester,
     ) async {
@@ -220,7 +234,9 @@ void main() {
             child: const Scaffold(
               body: TabsCardsBlock(
                 menu: Padding(
-                  padding: EdgeInsets.only(top: ShellTokens.tabHeaderTopPadding),
+                  padding: EdgeInsets.only(
+                    top: ShellTokens.tabHeaderTopPadding,
+                  ),
                   child: Text('Film'),
                 ),
                 cards: SizedBox.expand(),
@@ -234,11 +250,20 @@ void main() {
     });
 
     test('layout_map lists mounted block types', () {
-      expect(LayoutMap.slotToArtifactName['catalogBody'], contains('CatalogBody'));
-      expect(LayoutMap.slotToArtifactName['columnsHeader'], contains('ColumnsHeader'));
+      expect(
+        LayoutMap.slotToArtifactName['catalogBody'],
+        contains('CatalogBody'),
+      );
+      expect(
+        LayoutMap.slotToArtifactName['columnsHeader'],
+        contains('ColumnsHeader'),
+      );
       expect(LayoutMap.slotToArtifactName['topBody'], contains('TopBody'));
       expect(LayoutMap.slotToArtifactName['tabsCards'], contains('TabsCards'));
-      expect(LayoutMap.slotToArtifactName['matchDetails'], contains('MatchDetailsPage'));
+      expect(
+        LayoutMap.slotToArtifactName['matchDetails'],
+        contains('MatchDetailsPage'),
+      );
       expect(LayoutMap.slotToArtifactName.containsKey('iptvCatalog'), isFalse);
     });
   });
