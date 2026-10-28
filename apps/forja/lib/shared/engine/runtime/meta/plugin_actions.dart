@@ -395,7 +395,12 @@ class MetaRuntime {
     final meta = data['meta'];
     final enrichParams = <String, dynamic>{...follow};
     if (meta is Map) {
-      enrichParams['meta'] = Map<String, dynamic>.from(meta);
+      final enrichMeta = Map<String, dynamic>.from(meta);
+      final seasons = data['seasons'];
+      if (seasons is List && seasons.isNotEmpty) {
+        enrichMeta['seasons'] = List<dynamic>.from(seasons);
+      }
+      enrichParams['meta'] = enrichMeta;
     }
     final merged = await _mergeEnrichAnswer(
       sourcePluginId: sourcePluginId,
@@ -489,7 +494,14 @@ class MetaRuntime {
     } else {
       final meta = data['meta'];
       if (meta is! Map) return envelope;
-      enrichParams['meta'] = Map<String, dynamic>.from(meta);
+      final enrichMeta = Map<String, dynamic>.from(meta);
+      // Pack season chips live on data.seasons; companion enrich needs the
+      // selected chip on meta to map TMDB Season N (not default Season 1).
+      final seasons = data['seasons'];
+      if (seasons is List && seasons.isNotEmpty) {
+        enrichMeta['seasons'] = List<dynamic>.from(seasons);
+      }
+      enrichParams['meta'] = enrichMeta;
     }
 
     final merged = await _mergeEnrichAnswer(

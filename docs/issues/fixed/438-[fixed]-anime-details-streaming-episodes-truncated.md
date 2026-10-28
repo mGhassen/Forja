@@ -4,7 +4,7 @@
 **Priority:** P1  
 **Severity:** High  
 **Area:** anime · details · AniList `streamingEpisodes` · TMDB enrich  
-**Related:** [100](../100-[open]-anime-details-cast-recs-trailers.md) · [210](../210-[open]-episode-watched-list-simkl-follow.md) · [353](353-[fixed]-iptv-series-details-missing-episodes.md)
+**Related:** [100](../100-[open]-anime-details-cast-recs-trailers.md) · [210](../210-[open]-episode-watched-list-simkl-follow.md) · [353](353-[fixed]-iptv-series-details-missing-episodes.md) · [513](513-[fixed]-anime-season1-franchise-stream-titles.md)
 
 ## Status at a glance
 

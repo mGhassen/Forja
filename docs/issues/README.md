@@ -549,6 +549,8 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [510-[open]-…](510-[open]-megaplay-pngstrip-vod-prefetch-desync.md) | MegaPlay PNG-strip VOD wrong prefetch → freeze/desync | P1 | High | open | 2/2 · A 0/2 | [187](187-[open]-android-tv-mediakit-vod-cache-empty.md) · [498](fixed/498-[fixed]-mediakit-hls-av-desync-after-hiccup.md) |
 | [511-[fixed]-…](fixed/511-[fixed]-stremio-addon-feature-chips-desktop-double-tap.md) | Stremio Sources / Live Sports chips dead on desktop | P1 | High | fixed | Complete · 1/1 · A 0/1 | [RFC-050](../rfc/050-[open]-stremio-addon-feature-targets.md) |
 | [512-[fixed]-…](fixed/512-[fixed]-iptv-epg-view-button-dead.md) | IPTV EPG view button does nothing | P1 | High | fixed | Complete · 1/1 · A 0/1 | [RFC-041](../rfc/041-[open]-iptv-live-epg-guide.md) · [434](fixed/434-[fixed]-live-sports-sports-tv-shelf.md) |
+| [513-[fixed]-…](fixed/513-[fixed]-anime-season1-franchise-stream-titles.md) | Anime Season 1 shows franchise-absolute stream titles (Slime E49+) | P1 | High | fixed | Complete · 2/2 · A 1/2 | [098](098-[open]-anime-details-season-chain.md) · [438](fixed/438-[fixed]-anime-details-streaming-episodes-truncated.md) |
+| [514-[fixed]-…](fixed/514-[fixed]-anime-tmdb-enrich-wrong-season-stills.md) | Anime TMDB enrich paints Season 1 titles on later season chips | P1 | High | fixed | Complete · 3/3 · A 1/2 | [098](098-[open]-anime-details-season-chain.md) · [513](fixed/513-[fixed]-anime-season1-franchise-stream-titles.md) |
 
 **Migration parity (draft):** [018](018-[draft]-migration-playback-parity-unverified.md) → [019](019-[draft]-webstreamr-enginejobs-e2e-test-gap.md)–[022](022-[draft]-playback-widget-integration-tests.md).
 
