@@ -10,7 +10,7 @@
 
 | | |
 |--|--|
-| **Progress** | **Complete · 3 / 3** fix · **0 / 2** acceptance |
+| **Progress** | **Complete · 4 / 4** fix · **0 / 2** acceptance |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -24,6 +24,7 @@ On multi-cour anime details, switching Season / OVA chips updates hero art and e
 
 1. Soft season stub used `MetaItem.copyWith` and cleared art/videos but kept prior `open` / `id` / TMDB `ids` — hero `ListFollowTarget.uniqueId` stayed on the old AniList Media (`pack_details_host` season switch).
 2. Hero pin read `BookmarkStore.resolvedStatus` (TMDB alias). Sibling cours often share franchise TMDB → prior cour status painted after load too.
+3. `upsertCatalog` / `_dropTmdbAliases` deleted sibling `catalog_anime_*` rows that share franchise TMDB when pinning another cour — local pin lost on season switch-back.
 
 ## Fix tasks
 
@@ -32,6 +33,7 @@ On multi-cour anime details, switching Season / OVA chips updates hero art and e
 | 1 | I509-T01 | Soft season stub = fresh MetaItem with new `open`/`id` (no prior ids) | ✅ |
 | 2 | I509-T02 | Anime hero pin skips TMDB alias (`tmdbId: null` when surface/mediaType anime) | ✅ |
 | 3 | I509-T03 | `ValueKey(uniqueId)` on hero pin; close menu when uid changes | ✅ |
+| 4 | I509-T04 | Stop TMDB alias drop from wiping anime per-Media local pins (+ rust tests) | ✅ |
 
 ## Acceptance
 

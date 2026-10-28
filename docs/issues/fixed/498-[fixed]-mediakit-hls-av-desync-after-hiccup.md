@@ -44,3 +44,4 @@ Anime MegaPlay-family streams: after ~10s a brief freeze → video speeds / jump
 
 - [187](../187-[open]-android-tv-mediakit-vod-cache-empty.md) — ATV VOD `cache-pause=yes`
 - [357](../357-[open]-iptv-vod-mediakit-ipdigi-parity.md) — IPTV VOD `initial-audio-sync`
+- [510](../510-[open]-megaplay-pngstrip-vod-prefetch-desync.md) — MegaPlay `pngWrapTs` strip prefetch was warming VOD **tail**; A01 still fails until that lands

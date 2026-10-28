@@ -35,9 +35,11 @@ class PlayerNextEpisodeChip extends StatefulWidget {
   final VoidCallback? onCancel;
   final FocusNode? focusNode;
   final bool tvFocusable;
+
   /// D-pad ↑ / ↓ from the chip. Return true when focus moved.
   final bool Function()? onArrowUp;
   final bool Function()? onArrowDown;
+
   /// False when the host moved focus here on its own (TV chip appearing) —
   /// that focus must not hold the countdown until the user presses a key.
   final bool pauseOnFocus;
@@ -58,6 +60,7 @@ class _PlayerNextEpisodeChipState extends State<PlayerNextEpisodeChip>
   final ValueNotifier<bool> _cancelHovered = ValueNotifier(false);
   bool _mainFocused = false;
   bool _cancelFocused = false;
+
   /// User pressed a key on the chip since the countdown started.
   bool _userNavigated = false;
 
@@ -132,8 +135,8 @@ class _PlayerNextEpisodeChipState extends State<PlayerNextEpisodeChip>
     final move = key == LogicalKeyboardKey.arrowUp
         ? widget.onArrowUp
         : key == LogicalKeyboardKey.arrowDown
-            ? widget.onArrowDown
-            : null;
+        ? widget.onArrowDown
+        : null;
     if (move != null && move()) return KeyEventResult.handled;
     return KeyEventResult.ignored;
   }
@@ -293,14 +296,15 @@ class _PlayerNextEpisodeChipState extends State<PlayerNextEpisodeChip>
             context,
             PlayerFloatingChipMetrics.cancelPadH,
           ),
-          vertical: playerChromeScale(context, PlayerFloatingChipMetrics.padV),
         ),
-        child: Icon(
-          Icons.close_rounded,
-          color: fg,
-          size: ShellPaintScope.iconOf(
-            context,
-            PlayerFloatingChipMetrics.iconSize,
+        child: Center(
+          child: Icon(
+            Icons.close_rounded,
+            color: fg,
+            size: ShellPaintScope.iconOf(
+              context,
+              PlayerFloatingChipMetrics.iconSize,
+            ),
           ),
         ),
       ),
@@ -362,41 +366,43 @@ class _PlayerNextEpisodeChipState extends State<PlayerNextEpisodeChip>
         ),
         child: ClipRRect(
           borderRadius: BorderRadius.circular(PlayerFloatingChipMetrics.radius),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              _part(
-                hovered: _mainHovered,
-                body: _mainBody,
-                onTap: widget.onPressed,
-                focusNode: _mainNode,
-                onKey: _onMainKey,
-                onFocusChange: (f) {
-                  if (!mounted) return;
-                  setState(() => _mainFocused = f);
-                  _syncRing(restart: false);
-                },
-              ),
-              if (_showCancel) ...[
-                Container(
-                  width: 1,
-                  height: PlayerFloatingChipMetrics.ringSize,
-                  color: ForjaShellColors.borderSubtle,
-                ),
+          child: IntrinsicHeight(
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
                 _part(
-                  hovered: _cancelHovered,
-                  body: _cancelBody,
-                  onTap: _cancel,
-                  focusNode: _cancelNode,
-                  onKey: _onCancelKey,
+                  hovered: _mainHovered,
+                  body: _mainBody,
+                  onTap: widget.onPressed,
+                  focusNode: _mainNode,
+                  onKey: _onMainKey,
                   onFocusChange: (f) {
                     if (!mounted) return;
-                    setState(() => _cancelFocused = f);
+                    setState(() => _mainFocused = f);
                     _syncRing(restart: false);
                   },
                 ),
+                if (_showCancel) ...[
+                  const ColoredBox(
+                    color: ForjaShellColors.borderSubtle,
+                    child: SizedBox(width: 1),
+                  ),
+                  _part(
+                    hovered: _cancelHovered,
+                    body: _cancelBody,
+                    onTap: _cancel,
+                    focusNode: _cancelNode,
+                    onKey: _onCancelKey,
+                    onFocusChange: (f) {
+                      if (!mounted) return;
+                      setState(() => _cancelFocused = f);
+                      _syncRing(restart: false);
+                    },
+                  ),
+                ],
               ],
-            ],
+            ),
           ),
         ),
       ),

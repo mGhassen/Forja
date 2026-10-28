@@ -196,7 +196,24 @@ class BookmarkStore {
   static String catalogEntryId(String pluginId, String openId) =>
       'catalog_${pluginId}_$openId';
 
-  /// Drop sibling rows that share TMDB identity with [keepUniqueId].
+  /// True when this row is AniList / anime-hub scoped (per-Media pin).
+  static bool _rowIsAnimeScoped(Map<String, dynamic> e) {
+    final mt = (e['mediaType'] ?? '').toString().trim().toLowerCase();
+    if (mt == 'anime') return true;
+    for (final k in ['open', 'metaOpen', 'catalogOpen']) {
+      final o = e[k];
+      if (o is Map && (o['surface'] ?? '').toString().trim() == 'anime') {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  /// Drop TMDB twin (`tmdb_movie_*` / `tmdb_tv_*`) and non-anime catalog
+  /// duplicates that share TMDB identity with [keepUniqueId].
+  ///
+  /// Anime cours share a franchise TMDB id but each AniList Media has its own
+  /// `catalog_*` pin — never wipe those siblings.
   void _dropTmdbAliases({
     required String keepUniqueId,
     required int tmdbId,
@@ -208,6 +225,7 @@ class BookmarkStore {
     _items.removeWhere((e) {
       final uid = e['uniqueId']?.toString() ?? '';
       if (uid == keepUniqueId) return false;
+      if (_rowIsAnimeScoped(e)) return false;
       if (uid == mid) return true;
       final raw = e['tmdbId'];
       final id = raw is int ? raw : int.tryParse(raw?.toString() ?? '');
@@ -268,7 +286,12 @@ class BookmarkStore {
     row.remove('anilistId');
     row.remove('kisskhId');
     _items.removeWhere((e) => e['uniqueId'] == uniqueId);
-    if (tmdbId != null && aliasMt != null) {
+    // Anime pins are per AniList Media — skip TMDB collapse even when enrich
+    // stamped a franchise tmdbId + tmdbMediaType tv.
+    final animeScoped =
+        mediaType.trim().toLowerCase() == 'anime' ||
+        (open['surface'] ?? '').toString().trim() == 'anime';
+    if (!animeScoped && tmdbId != null && aliasMt != null) {
       _dropTmdbAliases(
         keepUniqueId: uniqueId,
         tmdbId: tmdbId,

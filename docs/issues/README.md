@@ -497,7 +497,7 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [223-[fixed]-…](fixed/223-[fixed]-live-streamic-raw-embed-format-fail.md) | Live Providers raw embed → format fail loop | P1 | High | fixed | Complete · 6/6 · A 3/3 | — |
 | [459-[fixed]-…](fixed/459-[fixed]-packs-onboarding-ignores-cloud-onboarded.md) | Packs onboarding ignores cloud onboarded on new device | P1 | High | fixed | Complete · 3/3 · A 0/2 | [RFC-080](../rfc/fixed/080-[fixed]-post-login-packs-onboarding.md) |
 | [460-[fixed]-…](fixed/460-[fixed]-android-tv-iptv-nav-enter-shelf-while-loading.md) | Android TV IPTV nav enter stuck on rail while portal loading | P1 | High | fixed | Complete · 3/3 · A 0/1 | [301](301-[open]-iptv-dpad-focus-hover-chrome.md) |
-| [461-[open]-…](461-[open]-desktop-vod-sw-decode-keeps-hw-texture-pink-green.md) | Desktop VOD SW decode kept HW texture (pink/green) | P1 | High | open | 5/6 · A 0/2 | — |
+| [461-[open]-…](461-[open]-desktop-vod-sw-decode-keeps-hw-texture-pink-green.md) | Desktop VOD SW decode kept HW texture (pink/green) | P1 | High | open | 6/7 · A 0/2 | [510](510-[open]-megaplay-pngstrip-vod-prefetch-desync.md) |
 | [462-[fixed]-…](fixed/462-[fixed]-details-hero-sub-dub-dpad.md) | Details hero SUB/DUB D-pad + language dropdown | P1 | High | fixed | Complete · 2/2 · A 0/2 | [425](425-[open]-home-stream-language-filter.md) |
 | [463-[fixed]-…](fixed/463-[fixed]-my-list-tv-poster-subtitle-compact.md) | My List TV posters hide year • type (compact grid) | P1 | High | fixed | Complete · 3/3 · A 1/1 | — |
 | [464-[fixed]-…](fixed/464-[fixed]-iptv-portals-panel-insert-order-new-badge.md) | IPTV Portals panel insert-date order + NEW badge | P1 | Medium | fixed | Complete · 4/4 · A 0/2 | — |
@@ -545,7 +545,8 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [506-[fixed]-…](fixed/506-[fixed]-android-tv-player-skip-next-ep-chip-autofocus.md) | ATV Skip / Next Episode chips autofocus on appear | P2 | Medium | fixed | Complete · 2/2 · A 0/2 | [122](../rfc/122-[draft]-android-tv-remote-ux.md) |
 | [507-[open]-…](507-[open]-exo-hls-instream-subtitles-no-cues.md) | Exo HLS In-stream subtitles show no cues | P1 | High | open | 2/2 · A 1/2 | [495](fixed/495-[fixed]-mediakit-hls-instream-no-cues-menu-twins.md) · [230](230-[open]-android-tv-exo-subtitles-invisible.md) |
 | [508-[fixed]-…](fixed/508-[fixed]-atv-online-subtitle-exo-mime-mediakit-loading.md) | ATV online (Wyzie) Exo empty cues + MediaKit no loading | P1 | High | fixed | Complete · 3/3 · A 0/2 | [230](230-[open]-android-tv-exo-subtitles-invisible.md) · [458](fixed/458-[fixed]-exo-online-subtitle-pick-no-op-and-menu-twins.md) |
-| [509-[fixed]-…](fixed/509-[fixed]-anime-season-switch-pin-stale.md) | Anime season switch My List pin stuck on prior cour | P2 | Medium | fixed | Complete · 3/3 · A 0/2 | [098](098-[open]-anime-details-season-chain.md) |
+| [509-[fixed]-…](fixed/509-[fixed]-anime-season-switch-pin-stale.md) | Anime season switch My List pin stuck / wiped on sibling pin | P2 | Medium | fixed | Complete · 4/4 · A 0/2 | [098](098-[open]-anime-details-season-chain.md) |
+| [510-[open]-…](510-[open]-megaplay-pngstrip-vod-prefetch-desync.md) | MegaPlay PNG-strip VOD wrong prefetch → freeze/desync | P1 | High | open | 2/2 · A 0/2 | [187](187-[open]-android-tv-mediakit-vod-cache-empty.md) · [498](fixed/498-[fixed]-mediakit-hls-av-desync-after-hiccup.md) |
 
 **Migration parity (draft):** [018](018-[draft]-migration-playback-parity-unverified.md) → [019](019-[draft]-webstreamr-enginejobs-e2e-test-gap.md)–[022](022-[draft]-playback-widget-integration-tests.md).
 

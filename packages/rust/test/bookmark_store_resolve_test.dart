@@ -71,8 +71,10 @@ void main() {
     );
 
     expect(BookmarkStore().items.length, 1);
-    expect(BookmarkStore().items.single['uniqueId'],
-        BookmarkStore.catalogEntryId('home', '1396'));
+    expect(
+      BookmarkStore().items.single['uniqueId'],
+      BookmarkStore.catalogEntryId('home', '1396'),
+    );
     expect(BookmarkStore().items.single['listStatus'], 'watching');
   });
 
@@ -148,4 +150,81 @@ void main() {
     expect(BookmarkStore.normalizeTmdbMediaType('film'), 'movie');
     expect(BookmarkStore.normalizeTmdbMediaType('anime'), isNull);
   });
+
+  test('anime cours sharing franchise TMDB keep separate pins', () async {
+    await BookmarkStore().upsertCatalog(
+      pluginId: 'anime',
+      open: {'surface': 'anime', 'id': '101'},
+      uniqueId: BookmarkStore.catalogEntryId('anime', '101'),
+      mediaType: 'anime',
+      title: 'Slime S1',
+      posterPath: '',
+      listStatus: 'completed',
+      tmdbId: 99901,
+      tmdbMediaType: 'tv',
+    );
+    await BookmarkStore().upsertCatalog(
+      pluginId: 'anime',
+      open: {'surface': 'anime', 'id': '202'},
+      uniqueId: BookmarkStore.catalogEntryId('anime', '202'),
+      mediaType: 'anime',
+      title: 'Slime S2',
+      posterPath: '',
+      listStatus: 'watching',
+      tmdbId: 99901,
+      tmdbMediaType: 'tv',
+    );
+
+    expect(BookmarkStore().items.length, 2);
+    expect(
+      BookmarkStore().itemOf(
+        BookmarkStore.catalogEntryId('anime', '101'),
+      )?['listStatus'],
+      'completed',
+    );
+    expect(
+      BookmarkStore().itemOf(
+        BookmarkStore.catalogEntryId('anime', '202'),
+      )?['listStatus'],
+      'watching',
+    );
+  });
+
+  test(
+    'upsertMovie does not wipe anime pins that share franchise TMDB',
+    () async {
+      await BookmarkStore().upsertCatalog(
+        pluginId: 'anime',
+        open: {'surface': 'anime', 'id': '101'},
+        uniqueId: BookmarkStore.catalogEntryId('anime', '101'),
+        mediaType: 'anime',
+        title: 'Slime S1',
+        posterPath: '',
+        listStatus: 'completed',
+        tmdbId: 99901,
+        tmdbMediaType: 'tv',
+      );
+
+      await BookmarkStore().upsertMovie(
+        tmdbId: 99901,
+        title: 'Slime franchise',
+        posterPath: '',
+        mediaType: 'tv',
+        listStatus: 'watching',
+      );
+
+      expect(
+        BookmarkStore().itemOf(
+          BookmarkStore.catalogEntryId('anime', '101'),
+        )?['listStatus'],
+        'completed',
+      );
+      expect(
+        BookmarkStore().itemOf(
+          BookmarkStore.movieId(99901, 'tv'),
+        )?['listStatus'],
+        'watching',
+      );
+    },
+  );
 }

@@ -538,11 +538,8 @@ pub fn hls_playlist_is_image_bait(body: &str) -> bool {
     uris > 0
 }
 
-/// Last [n] media segment URLs in a playlist. Skips variant playlists.
-pub fn hls_tail_media_urls(body: &str, playlist_url: &str, n: usize) -> Vec<String> {
-    if n == 0 {
-        return Vec::new();
-    }
+/// All media segment URLs in a playlist. Skips variant playlists.
+pub fn hls_media_segment_urls(body: &str, playlist_url: &str) -> Vec<String> {
     let (base_path_s, server_base_s) = hls_join_bases(playlist_url);
     let base_path = base_path_s.as_str();
     let server_base = server_base_s.as_str();
@@ -558,11 +555,61 @@ pub fn hls_tail_media_urls(body: &str, playlist_url: &str, n: usize) -> Vec<Stri
         }
         urls.push(resolve_url(trimmed, base_path, server_base));
     }
+    urls
+}
+
+/// Last [n] media segment URLs in a playlist. Skips variant playlists.
+pub fn hls_tail_media_urls(body: &str, playlist_url: &str, n: usize) -> Vec<String> {
+    if n == 0 {
+        return Vec::new();
+    }
+    let mut urls = hls_media_segment_urls(body, playlist_url);
     if urls.len() > n {
         urls.split_off(urls.len() - n)
     } else {
         urls
     }
+}
+
+/// First [n] media segment URLs (VOD cold-open cushion).
+pub fn hls_head_media_urls(body: &str, playlist_url: &str, n: usize) -> Vec<String> {
+    if n == 0 {
+        return Vec::new();
+    }
+    let mut urls = hls_media_segment_urls(body, playlist_url);
+    if urls.len() > n {
+        urls.truncate(n);
+    }
+    urls
+}
+
+/// Prefetch window for PNG-strip: VOD (`#EXT-X-ENDLIST`) → head; live → tail.
+///
+/// MegaPlay VOD playlists list the whole episode. Prefetching the *tail*
+/// warmed the end of the file while the player starved at segment 0 — freeze
+/// every ~10s, then video-sync snap / lipsync break.
+pub fn hls_prefetch_media_urls(body: &str, playlist_url: &str, n: usize) -> Vec<String> {
+    if body.lines().any(|l| l.trim() == "#EXT-X-ENDLIST") {
+        hls_head_media_urls(body, playlist_url, n)
+    } else {
+        hls_tail_media_urls(body, playlist_url, n)
+    }
+}
+
+/// Next [n] media URLs after [after_url] in [ordered] (playhead-driven prefetch).
+pub fn hls_next_media_urls(ordered: &[String], after_url: &str, n: usize) -> Vec<String> {
+    if n == 0 || ordered.is_empty() {
+        return Vec::new();
+    }
+    let Some(i) = ordered.iter().position(|u| u == after_url) else {
+        return Vec::new();
+    };
+    let start = i + 1;
+    if start >= ordered.len() {
+        return Vec::new();
+    }
+    let end = (start + n).min(ordered.len());
+    ordered[start..end].to_vec()
 }
 
 const AHEAD_MAX_SEGS: usize = 8;
@@ -615,6 +662,8 @@ struct HlsAheadInner {
     order: VecDeque<String>,
     total: usize,
     slots: HashMap<String, Arc<SegSlot>>,
+    /// Latest media-playlist segment order (absolute URLs) for playhead prefetch.
+    playlist_segs: Vec<String>,
 }
 
 #[derive(Clone)]
@@ -629,6 +678,7 @@ impl Default for HlsAheadCache {
                 order: VecDeque::new(),
                 total: 0,
                 slots: HashMap::new(),
+                playlist_segs: Vec::new(),
             })),
         }
     }
@@ -693,6 +743,16 @@ impl HlsAheadCache {
                 guard.slots.remove(&url);
             }
         });
+    }
+
+    async fn remember_media_urls(&self, urls: Vec<String>) {
+        let mut guard = self.inner.lock().await;
+        guard.playlist_segs = urls;
+    }
+
+    async fn next_after(&self, after_url: &str, n: usize) -> Vec<String> {
+        let guard = self.inner.lock().await;
+        hls_next_media_urls(&guard.playlist_segs, after_url, n)
     }
 }
 
@@ -797,7 +857,25 @@ async fn fetch_and_store_segment(
     Ok(seg)
 }
 
-fn schedule_png_ahead(
+const PNG_PREFETCH_SEGS: usize = 8;
+
+fn spawn_png_prefetch(state: ProxyState, urls: Vec<String>, custom: HashMap<String, String>) {
+    if urls.is_empty() {
+        return;
+    }
+    tokio::spawn(async move {
+        let futs = urls.into_iter().map(|url| {
+            let state = state.clone();
+            let custom = custom.clone();
+            async move {
+                let _ = ensure_stripped_segment(&state, &url, &custom).await;
+            }
+        });
+        futures_util::future::join_all(futs).await;
+    });
+}
+
+async fn schedule_png_ahead(
     state: &ProxyState,
     body: &str,
     playlist_url: &str,
@@ -807,16 +885,25 @@ fn schedule_png_ahead(
     if strip != Some("png") {
         return;
     }
-    let urls = hls_tail_media_urls(body, playlist_url, 4);
-    if urls.is_empty() {
-        return;
-    }
+    let ordered = hls_media_segment_urls(body, playlist_url);
+    let urls = hls_prefetch_media_urls(body, playlist_url, PNG_PREFETCH_SEGS);
+    // Remember before returning the playlist so the first segment request can
+    // already schedule next-after (no race with a background remember).
+    state.hls_ahead.remember_media_urls(ordered).await;
+    spawn_png_prefetch(
+        state.clone(),
+        urls,
+        parse_custom_headers(Some(headers_json)),
+    );
+}
+
+fn schedule_png_next_after(state: &ProxyState, after_url: &str, custom: &HashMap<String, String>) {
     let state = state.clone();
-    let custom = parse_custom_headers(Some(headers_json));
+    let after = after_url.to_string();
+    let custom = custom.clone();
     tokio::spawn(async move {
-        for url in urls {
-            let _ = ensure_stripped_segment(&state, &url, &custom).await;
-        }
+        let urls = state.hls_ahead.next_after(&after, PNG_PREFETCH_SEGS).await;
+        spawn_png_prefetch(state, urls, custom);
     });
 }
 
@@ -1149,7 +1236,7 @@ async fn finish_hls_proxy_body(
             headers_json,
             effective_strip,
         );
-        schedule_png_ahead(state, &body, target_url, headers_json, effective_strip);
+        schedule_png_ahead(state, &body, target_url, headers_json, effective_strip).await;
         return playlist_response(rewritten, range);
     }
     if strip == Some("png") {
@@ -1202,6 +1289,9 @@ pub async fn hls_proxy_handler(
         && !target_url.to_ascii_lowercase().contains("/playlist/")
     {
         let seg = ensure_stripped_segment(&state, &target_url, &custom).await?;
+        // Keep the strip cushion ahead of the playhead (VOD head prefetch alone
+        // only covers cold open).
+        schedule_png_next_after(&state, &target_url, &custom);
         return stripped_segment_response(&seg);
     }
 
@@ -1300,7 +1390,7 @@ pub async fn hls_proxy_handler(
             headers_json,
             effective_strip,
         );
-        schedule_png_ahead(&state, &body, &target_url, headers_json, effective_strip);
+        schedule_png_ahead(&state, &body, &target_url, headers_json, effective_strip).await;
         return playlist_response(rewritten, client_range.as_deref());
     }
 
@@ -1629,6 +1719,58 @@ nested.m3u8
                 "https://cdn.example/c.png".to_string(),
             ]
         );
+    }
+
+    #[test]
+    fn vod_prefetch_uses_head_not_tail() {
+        const BODY: &str = "\
+#EXTM3U
+#EXTINF:10,
+seg0.ts
+#EXTINF:10,
+seg1.ts
+#EXTINF:10,
+seg2.ts
+#EXTINF:10,
+seg99.ts
+#EXT-X-ENDLIST
+";
+        let urls = hls_prefetch_media_urls(BODY, "https://cdn.example/ep/index.m3u8", 2);
+        assert_eq!(
+            urls,
+            vec![
+                "https://cdn.example/ep/seg0.ts".to_string(),
+                "https://cdn.example/ep/seg1.ts".to_string(),
+            ]
+        );
+        let live = BODY.replace("#EXT-X-ENDLIST\n", "");
+        let live_urls = hls_prefetch_media_urls(&live, "https://cdn.example/ep/index.m3u8", 2);
+        assert_eq!(
+            live_urls,
+            vec![
+                "https://cdn.example/ep/seg2.ts".to_string(),
+                "https://cdn.example/ep/seg99.ts".to_string(),
+            ]
+        );
+    }
+
+    #[test]
+    fn next_media_urls_follow_playhead() {
+        let ordered = vec![
+            "https://cdn/a.ts".to_string(),
+            "https://cdn/b.ts".to_string(),
+            "https://cdn/c.ts".to_string(),
+            "https://cdn/d.ts".to_string(),
+        ];
+        assert_eq!(
+            hls_next_media_urls(&ordered, "https://cdn/b.ts", 2),
+            vec![
+                "https://cdn/c.ts".to_string(),
+                "https://cdn/d.ts".to_string(),
+            ]
+        );
+        assert!(hls_next_media_urls(&ordered, "https://cdn/missing.ts", 2).is_empty());
+        assert!(hls_next_media_urls(&ordered, "https://cdn/d.ts", 2).is_empty());
     }
 
     #[test]

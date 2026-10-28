@@ -702,9 +702,10 @@ class _DesktopPlayerScreenState extends ConsumerState<DesktopPlayerScreen>
 
   // ── Feature State ────────────────────────────────────────────────────────
   // macOS: soft texture by default (TextureHW pink/green — issue 461).
-  _HwDecMode _hwDecMode = Platform.isMacOS
-      ? _HwDecMode.software
-      : _HwDecMode.autoSafe;
+  // macOS keeps soft TextureSW (issue 461 chroma). Default decode is
+  // auto-copy (VideoToolbox → RAM) — full SW decode starves MegaPlay
+  // PNG-strip HLS and snaps lipsync after every underrun (issue 510).
+  _HwDecMode _hwDecMode = _HwDecMode.autoSafe;
   bool _loopEnabled = false;
   double _subtitleDelay = 0.0;
   double _subtitleSize = 44.0;

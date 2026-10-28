@@ -10,7 +10,7 @@
 
 | | |
 |--|--|
-| **Progress** | **5 / 6** fix · **0 / 2** acceptance |
+| **Progress** | **6 / 7** fix · **0 / 2** acceptance |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -34,6 +34,7 @@ Desktop always created `VideoController` with `enableHardwareAcceleration: true`
 | 4 | I461-T04 | Native VideoOutput.swift force TextureSW on macOS (pub-cache AimesSoft media-kit) | ✅ |
 | 5 | I461-T05 | Desktop mpv HDR→SDR tone-map (tone-mapping/target-prim/trc) for 4K green/magenta | ✅ |
 | 6 | I461-T06 | Root: upstream TextureHW chroma + lasting fork patch (pub-cache wipe risk) | ⬜ |
+| 7 | I461-T07 | Keep soft TextureSW; default decode → `autoSafe` (VT copy-back) — full SW starved MegaPlay strip HLS ([510](510-[open]-megaplay-pngstrip-vod-prefetch-desync.md)) | ✅ |
 
 ## Acceptance
 
