@@ -4,7 +4,11 @@ import {
   cacheGetImage,
   cachePutImage,
   cacheConfigured,
+  jsonCacheConfigured,
+  imageCacheConfigured,
+  purgeExpiredCaches,
 } from "./cache.js";
+import { r2Configured } from "./r2.js";
 
 
 const TMDB_API = "https://api.themoviedb.org";
@@ -105,6 +109,12 @@ export function classifyPath(pathname) {
   if (path === "health" || path.startsWith("health/")) {
     return { kind: "health", rest: path.slice("health".length).replace(/^\/+/, "") };
   }
+  if (
+    path === "internal/purge-expired" ||
+    path.startsWith("internal/purge-expired/")
+  ) {
+    return { kind: "purge", rest: "" };
+  }
   if (path === "3" || path.startsWith("3/")) {
     return { kind: "api", rest: path.slice(2).replace(/^\/+/, "") };
   }
@@ -112,6 +122,20 @@ export function classifyPath(pathname) {
     return { kind: "image", rest: path.slice(3).replace(/^\/+/, "") };
   }
   return { kind: "other", rest: path };
+}
+
+/** Bearer for Vercel Cron (`CRON_SECRET`) or `TMDB_CACHE_PURGE_SECRET`. */
+export function purgeAuthorized(request) {
+  const expected = (
+    process.env.TMDB_CACHE_PURGE_SECRET ||
+    process.env.CRON_SECRET ||
+    ""
+  ).trim();
+  if (!expected) return false;
+  const auth = String(request.headers.get("authorization") || "");
+  const m = /^Bearer\s+(.+)$/i.exec(auth);
+  if (!m) return false;
+  return m[1].trim() === expected;
 }
 
 export function cacheKeyFor(kind, rest, searchParams) {
@@ -166,8 +190,24 @@ export async function handleRequest(request) {
       apiKeyCount: keys.length,
       hasBearer: Boolean(bearer()),
       cache: cacheConfigured(),
+      jsonCache: jsonCacheConfigured(),
+      imageCache: imageCacheConfigured(),
+      r2: r2Configured(),
       publicOrigin: publicOrigin(),
     });
+  }
+
+  if (kind === "purge") {
+    if (!purgeAuthorized(request)) {
+      return json({ error: "Unauthorized" }, 401);
+    }
+    try {
+      const result = await purgeExpiredCaches();
+      return json({ ok: true, ...result });
+    } catch (err) {
+      console.error("[tmdb-gateway] purge failed", err);
+      return json({ error: "Purge failed", detail: String(err) }, 500);
+    }
   }
 
   if (kind === "other") {

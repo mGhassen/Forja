@@ -18,6 +18,24 @@ test("classifyPath strips api prefix and detects kinds", () => {
   assert.equal(classifyPath("/t/p/w500/abc.jpg").kind, "image");
   assert.equal(classifyPath("/t/p/w500/abc.jpg").rest, "w500/abc.jpg");
   assert.equal(classifyPath("/health").kind, "health");
+  assert.equal(classifyPath("/internal/purge-expired").kind, "purge");
+});
+
+test("purgeAuthorized accepts matching Bearer", async () => {
+  const { purgeAuthorized } = await import("./proxy.js");
+  const prev = process.env.TMDB_CACHE_PURGE_SECRET;
+  process.env.TMDB_CACHE_PURGE_SECRET = "test-purge-secret";
+  delete process.env.CRON_SECRET;
+  const ok = new Request("http://localhost/internal/purge-expired", {
+    headers: { Authorization: "Bearer test-purge-secret" },
+  });
+  const bad = new Request("http://localhost/internal/purge-expired", {
+    headers: { Authorization: "Bearer wrong" },
+  });
+  assert.equal(purgeAuthorized(ok), true);
+  assert.equal(purgeAuthorized(bad), false);
+  if (prev === undefined) delete process.env.TMDB_CACHE_PURGE_SECRET;
+  else process.env.TMDB_CACHE_PURGE_SECRET = prev;
 });
 
 test("isAllowedApiPath allowlist", () => {

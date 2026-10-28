@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| **Progress** | **10 / 11** fix · **2 / 5** acceptance |
+| **Progress** | **12 / 13** fix · **2 / 5** acceptance |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -34,6 +34,8 @@ Direct `api.themoviedb.org` is blocked or flaky in some regions. Home already ow
 | 9 | I302-T09 | Gateway images use Storage (not Postgres bytea) | ✅ |
 | 10 | I302-T10 | Stream providers + Live Sports / cover helpers use gateway API + image hosts | ✅ |
 | 11 | I302-T11 | Host `crates/tmdb` + Dart image bases + `host.tmdb` inject default to gateway (keyless) | ✅ |
+| 12 | I302-T12 | Image blobs on R2 `forja-tmdb` (Postgres `tmdb_image_cache` meta); cold cutover from Supabase Storage | ✅ |
+| 13 | I302-T13 | Hourly `/internal/purge-expired` — expired JSON rows + image rows and R2 objects | ✅ |
 
 ---
 
@@ -53,5 +55,7 @@ Direct `api.themoviedb.org` is blocked or flaky in some regions. Home already ow
 
 - Gateway: [`apps/tmdb-gateway/`](../../apps/tmdb-gateway/) — env from Forja `.env` + `SUPABASE_SERVICE_ROLE_KEY` + `TMDB_GATEWAY_PUBLIC_URL`
 - Migration: `*_tmdb_response_cache.sql` (JSON) + `*_tmdb_image_storage_cache.sql` (Storage bucket + meta) — create only; apply needs ops approval
-- Images: Storage bucket `tmdb-images`; JSON: Postgres `tmdb_response_cache`
+- Images: R2 `forja-tmdb` + Postgres `tmdb_image_cache`; JSON: Postgres `tmdb_response_cache` (Supabase Storage `tmdb-images` is legacy / orphaned after T12)
+- Purge: Vercel cron hourly → `GET /internal/purge-expired` with `TMDB_CACHE_PURGE_SECRET` or `CRON_SECRET`
+- Cutover ops: set R2 + purge secret on Vercel; `TRUNCATE public.tmdb_image_cache;` after deploy
 - Out of scope this slice: Arabic / Aflem / Shahid hub packs (feature scope)

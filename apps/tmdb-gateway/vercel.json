@@ -3,9 +3,23 @@
   "rewrites": [
     { "source": "/health", "destination": "/api?__p=health" },
     { "source": "/health/:path*", "destination": "/api?__p=health/:path*" },
+    {
+      "source": "/internal/purge-expired",
+      "destination": "/api?__p=internal/purge-expired"
+    },
+    {
+      "source": "/internal/purge-expired/:path*",
+      "destination": "/api?__p=internal/purge-expired/:path*"
+    },
     { "source": "/3", "destination": "/api?__p=3" },
     { "source": "/3/:path*", "destination": "/api?__p=3/:path*" },
     { "source": "/t/p", "destination": "/api?__p=t/p" },
     { "source": "/t/p/:path*", "destination": "/api?__p=t/p/:path*" }
+  ],
+  "crons": [
+    {
+      "path": "/internal/purge-expired",
+      "schedule": "0 * * * *"
+    }
   ]
 }

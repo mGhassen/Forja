@@ -1,12 +1,20 @@
 /**
- * Supabase cache for TMDB gateway.
+ * TMDB gateway cache.
  * - API JSON → Postgres `tmdb_response_cache`
- * - Images → Storage bucket `tmdb-images` + Postgres `tmdb_image_cache` metadata
+ * - Images → R2 bucket (`R2_TMDB_BUCKET`) + Postgres `tmdb_image_cache` metadata
  */
+
+import {
+  r2Configured,
+  r2GetObject,
+  r2PutObject,
+  r2DeleteObject,
+  r2DeleteObjects,
+} from "./r2.js";
 
 const JSON_TABLE = "tmdb_response_cache";
 const IMAGE_TABLE = "tmdb_image_cache";
-const IMAGE_BUCKET = "tmdb-images";
+const PURGE_BATCH = 500;
 
 function supabaseConfig() {
   const url = (process.env.SUPABASE_URL || "").trim().replace(/\/$/, "");
@@ -28,8 +36,19 @@ function headers(key, extra = {}) {
   };
 }
 
-export function cacheConfigured() {
+/** JSON cache (Postgres) ready. */
+export function jsonCacheConfigured() {
   return Boolean(supabaseConfig());
+}
+
+/** Image cache needs Postgres meta + R2. */
+export function imageCacheConfigured() {
+  return Boolean(supabaseConfig()) && r2Configured();
+}
+
+/** True when any shared cache backend is configured. */
+export function cacheConfigured() {
+  return jsonCacheConfigured();
 }
 
 /**
@@ -126,7 +145,7 @@ export function imageStoragePath(rest) {
  */
 export async function cacheGetImage(cacheKey, rest) {
   const cfg = supabaseConfig();
-  if (!cfg) return null;
+  if (!cfg || !r2Configured()) return null;
 
   const qs = new URLSearchParams({
     select: "storage_path,content_type,expires_at",
@@ -151,21 +170,16 @@ export async function cacheGetImage(cacheKey, rest) {
     }
 
     const path = String(row.storage_path || imageStoragePath(rest));
-    const objRes = await fetch(
-      `${cfg.url}/storage/v1/object/${IMAGE_BUCKET}/${path}`,
-      { headers: headers(cfg.key) },
-    );
-    if (!objRes.ok) {
-      console.warn("[tmdb-cache] image object get HTTP", objRes.status);
+    const obj = await r2GetObject(path);
+    if (!obj) {
+      console.warn("[tmdb-cache] image object miss in R2", path);
+      void deleteImageMeta(cacheKey);
       return null;
     }
-    const buf = Buffer.from(await objRes.arrayBuffer());
     return {
-      body: buf,
+      body: obj.body,
       contentType: String(
-        row.content_type ||
-          objRes.headers.get("content-type") ||
-          "application/octet-stream",
+        row.content_type || obj.contentType || "application/octet-stream",
       ),
     };
   } catch (err) {
@@ -183,7 +197,7 @@ export async function cacheGetImage(cacheKey, rest) {
  */
 export async function cachePutImage(cacheKey, rest, body, contentType, ttlSeconds) {
   const cfg = supabaseConfig();
-  if (!cfg) return;
+  if (!cfg || !r2Configured()) return;
 
   const buf = toBuffer(body);
   const path = imageStoragePath(rest);
@@ -191,26 +205,8 @@ export async function cachePutImage(cacheKey, rest, body, contentType, ttlSecond
   const ct = contentType || "image/jpeg";
 
   try {
-    const uploadRes = await fetch(
-      `${cfg.url}/storage/v1/object/${IMAGE_BUCKET}/${path}`,
-      {
-        method: "POST",
-        headers: headers(cfg.key, {
-          "Content-Type": ct,
-          "x-upsert": "true",
-        }),
-        body: buf,
-      },
-    );
-    if (!uploadRes.ok) {
-      const text = await uploadRes.text().catch(() => "");
-      console.warn(
-        "[tmdb-cache] image upload HTTP",
-        uploadRes.status,
-        text.slice(0, 200),
-      );
-      return;
-    }
+    const ok = await r2PutObject(path, buf, ct);
+    if (!ok) return;
 
     const payload = {
       cache_key: cacheKey,
@@ -240,6 +236,112 @@ export async function cachePutImage(cacheKey, rest, body, contentType, ttlSecond
   }
 }
 
+/**
+ * Delete expired JSON rows and expired image meta + R2 objects.
+ * @returns {Promise<{ jsonDeleted: number, imagesDeleted: number }>}
+ */
+export async function purgeExpiredCaches() {
+  const jsonDeleted = await purgeExpiredJson();
+  const imagesDeleted = await purgeExpiredImages();
+  return { jsonDeleted, imagesDeleted };
+}
+
+async function purgeExpiredJson() {
+  const cfg = supabaseConfig();
+  if (!cfg) return 0;
+
+  let total = 0;
+  const now = new Date().toISOString();
+  for (;;) {
+    const qs = new URLSearchParams({
+      select: "cache_key",
+      expires_at: `lte.${now}`,
+      limit: String(PURGE_BATCH),
+    });
+    try {
+      const listRes = await fetch(`${cfg.url}/rest/v1/${JSON_TABLE}?${qs}`, {
+        headers: headers(cfg.key),
+      });
+      if (!listRes.ok) {
+        console.warn("[tmdb-cache] json purge list HTTP", listRes.status);
+        break;
+      }
+      const rows = await listRes.json();
+      if (!Array.isArray(rows) || !rows.length) break;
+      const keys = rows.map((r) => r.cache_key).filter(Boolean);
+      const inList = keys.map((k) => `"${String(k).replace(/"/g, '\\"')}"`).join(",");
+      const delRes = await fetch(
+        `${cfg.url}/rest/v1/${JSON_TABLE}?cache_key=in.(${inList})`,
+        {
+          method: "DELETE",
+          headers: headers(cfg.key, { Prefer: "return=minimal" }),
+        },
+      );
+      if (!delRes.ok) {
+        console.warn("[tmdb-cache] json purge delete HTTP", delRes.status);
+        break;
+      }
+      total += keys.length;
+      if (keys.length < PURGE_BATCH) break;
+    } catch (err) {
+      console.warn("[tmdb-cache] json purge failed", err);
+      break;
+    }
+  }
+  return total;
+}
+
+async function purgeExpiredImages() {
+  const cfg = supabaseConfig();
+  if (!cfg) return 0;
+
+  let total = 0;
+  const now = new Date().toISOString();
+  for (;;) {
+    const qs = new URLSearchParams({
+      select: "cache_key,storage_path",
+      expires_at: `lte.${now}`,
+      limit: String(PURGE_BATCH),
+    });
+    try {
+      const listRes = await fetch(`${cfg.url}/rest/v1/${IMAGE_TABLE}?${qs}`, {
+        headers: headers(cfg.key),
+      });
+      if (!listRes.ok) {
+        console.warn("[tmdb-cache] image purge list HTTP", listRes.status);
+        break;
+      }
+      const rows = await listRes.json();
+      if (!Array.isArray(rows) || !rows.length) break;
+
+      const paths = rows.map((r) => r.storage_path).filter(Boolean);
+      if (r2Configured() && paths.length) {
+        await r2DeleteObjects(paths);
+      }
+
+      const keys = rows.map((r) => r.cache_key).filter(Boolean);
+      const inList = keys.map((k) => `"${String(k).replace(/"/g, '\\"')}"`).join(",");
+      const delRes = await fetch(
+        `${cfg.url}/rest/v1/${IMAGE_TABLE}?cache_key=in.(${inList})`,
+        {
+          method: "DELETE",
+          headers: headers(cfg.key, { Prefer: "return=minimal" }),
+        },
+      );
+      if (!delRes.ok) {
+        console.warn("[tmdb-cache] image purge delete HTTP", delRes.status);
+        break;
+      }
+      total += keys.length;
+      if (keys.length < PURGE_BATCH) break;
+    } catch (err) {
+      console.warn("[tmdb-cache] image purge failed", err);
+      break;
+    }
+  }
+  return total;
+}
+
 /** @deprecated use cacheGetJson — kept for older call sites */
 export const cacheGet = cacheGetJson;
 /** @deprecated use cachePutJson */
@@ -258,7 +360,7 @@ async function deleteJsonRow(cacheKey) {
   }
 }
 
-async function deleteImage(cacheKey, storagePath) {
+async function deleteImageMeta(cacheKey) {
   const cfg = supabaseConfig();
   if (!cfg) return;
   try {
@@ -266,15 +368,15 @@ async function deleteImage(cacheKey, storagePath) {
       `${cfg.url}/rest/v1/${IMAGE_TABLE}?cache_key=eq.${encodeURIComponent(cacheKey)}`,
       { method: "DELETE", headers: headers(cfg.key) },
     );
-    if (storagePath) {
-      await fetch(`${cfg.url}/storage/v1/object/${IMAGE_BUCKET}`, {
-        method: "DELETE",
-        headers: headers(cfg.key, { "Content-Type": "application/json" }),
-        body: JSON.stringify({ prefixes: [storagePath] }),
-      });
-    }
   } catch {
     /* ignore */
+  }
+}
+
+async function deleteImage(cacheKey, storagePath) {
+  await deleteImageMeta(cacheKey);
+  if (storagePath) {
+    await r2DeleteObject(storagePath);
   }
 }
 
