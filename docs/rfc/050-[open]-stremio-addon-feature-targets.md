@@ -8,7 +8,7 @@
 
 | | |
 |--|--|
-| **Progress** | **4 / 4** components · **8 / 10** acceptance |
+| **Progress** | **4 / 4** components · **9 / 11** acceptance |
 | **Current slice** | Catalog chip per live Stremio addon + Providers id match; smoke R50-A06 / R50-A07 remain |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
@@ -40,6 +40,7 @@
 | 8 | R50-A08 | Stremio sport metas parse kickoff (`releaseInfo` / `released` / description) into `dateMs`; grid + timeline sort live-first then chronological | ✅ |
 | 9 | R50-A09 | Disable addon in Settings → stays installed; skipped for streams / catalogs / Live Matches; re-enable restores | ✅ |
 | 10 | R50-A10 | Live Sports **Catalog** picker lists each live-targeted Stremio addon by name; selecting it shows that addon’s sport catalogs on the schedule grid | ✅ |
+| 11 | R50-A11 | Desktop: Sources / Live Sports chips toggle once per click (no double-tap cancel) — [511](../issues/fixed/511-[fixed]-stremio-addon-feature-chips-desktop-double-tap.md) | ✅ |
 
 ---
 

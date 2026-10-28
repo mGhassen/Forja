@@ -20,6 +20,7 @@ import 'package:forja_foundation/components/switch.dart';
 import 'package:forja/shell/focus/shell_focusable_tap.dart';
 import 'package:forja_foundation/tokens/forja_settings_tokens.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
+
 /// Stremio addons, Nuvio scrapers, Jackett, and Prowlarr (Sources → Forja addons).
 class SettingsForjaAddonsSection extends ConsumerStatefulWidget {
   const SettingsForjaAddonsSection({
@@ -717,8 +718,9 @@ class _NuvioAddonTile extends StatelessWidget {
       children: [
         Builder(
           builder: (context) {
-            final tvFocus =
-                ShellScope.inputPolicyOf(context).useFocusableMoodChips;
+            final tvFocus = ShellScope.inputPolicyOf(
+              context,
+            ).useFocusableMoodChips;
             void toggle(bool val) {
               if (addon.scrapers.isEmpty) return;
               unawaited(
@@ -823,10 +825,7 @@ class _NuvioAddonTile extends StatelessWidget {
 /// Mounted only while the lean addon row is expanded — fetches scrapers then
 /// [NuvioService.changeNotifier] rebuilds the parent with real toggles.
 class _NuvioLeanHydrateBody extends StatefulWidget {
-  const _NuvioLeanHydrateBody({
-    required this.manifestUrl,
-    required this.name,
-  });
+  const _NuvioLeanHydrateBody({required this.manifestUrl, required this.name});
 
   final String manifestUrl;
   final String name;
@@ -1098,12 +1097,11 @@ class _AddonRemoveActionsState extends State<_AddonRemoveActions> {
   bool _localConfirming = false;
   bool _yesHasFocus = false;
   DateTime? _confirmEnteredAt;
-  late final FocusNode _trashFocus =
-      FocusNode(debugLabel: 'addon-remove-trash');
-  late final FocusNode _yesFocus =
-      FocusNode(debugLabel: 'addon-remove-yes');
-  late final FocusNode _noFocus =
-      FocusNode(debugLabel: 'addon-remove-no');
+  late final FocusNode _trashFocus = FocusNode(
+    debugLabel: 'addon-remove-trash',
+  );
+  late final FocusNode _yesFocus = FocusNode(debugLabel: 'addon-remove-yes');
+  late final FocusNode _noFocus = FocusNode(debugLabel: 'addon-remove-no');
 
   static const _confirmArmDelay = Duration(milliseconds: 450);
 
@@ -1252,41 +1250,46 @@ class _AddonFeatureChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Desktop hybrid also sets useFocusableMoodChips — same as ForjaShellChip:
+    // FocusableControl owns the tap. Nested InkWell(onTap) double-fires
+    // (pointerDown + InkWell up) and toggles features twice → looks dead.
     final tv = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
-    final chip = Material(
-      color: selected
-          ? ForjaShellColors.chipSelectedBg
-          : ForjaShellColors.surfaceElevated,
-      borderRadius: BorderRadius.circular(8),
-      child: InkWell(
-        onTap: onTap,
+    final face = Container(
+      padding: SettingsTokens.categoryChipPadOf(context),
+      decoration: BoxDecoration(
+        color: selected
+            ? ForjaShellColors.chipSelectedBg
+            : ForjaShellColors.surfaceElevated,
         borderRadius: BorderRadius.circular(8),
-        canRequestFocus: !tv,
-        child: Container(
-          padding: SettingsTokens.categoryChipPadOf(context),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(
-              color: selected
-                  ? ForjaShellColors.chipSelectedBorder
-                  : ForjaShellColors.borderSubtle,
-            ),
-          ),
-          child: Text(
-            label,
-            style: TextStyle(
-              fontSize: SettingsTokens.typeSizeOf(context, 12),
-              fontWeight: FontWeight.w600,
-              color: selected
-                  ? ForjaShellColors.textPrimary
-                  : ForjaShellColors.textSecondary,
-            ),
-          ),
+        border: Border.all(
+          color: selected
+              ? ForjaShellColors.chipSelectedBorder
+              : ForjaShellColors.borderSubtle,
+        ),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          fontSize: SettingsTokens.typeSizeOf(context, 12),
+          fontWeight: FontWeight.w600,
+          color: selected
+              ? ForjaShellColors.textPrimary
+              : ForjaShellColors.textSecondary,
         ),
       ),
     );
 
-    if (!tv) return chip;
+    if (!tv) {
+      return Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(8),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(8),
+          child: face,
+        ),
+      );
+    }
 
     return shellFocusableTap(
       context: context,
@@ -1299,7 +1302,12 @@ class _AddonFeatureChip extends StatelessWidget {
       tvTabId: 'settings',
       tvZone: ShellTvZone.settings,
       ensureVisibleMode: ShellPaintEnsureVisible.item,
-      child: chip,
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(8),
+        clipBehavior: Clip.antiAlias,
+        child: face,
+      ),
     );
   }
 }
@@ -1325,7 +1333,13 @@ class _TestResult extends StatelessWidget {
           ),
           const SizedBox(width: 8),
           Expanded(
-            child: Text(message, style: TextStyle(color: color, fontSize: SettingsTokens.typeSizeOf(context, 13))),
+            child: Text(
+              message,
+              style: TextStyle(
+                color: color,
+                fontSize: SettingsTokens.typeSizeOf(context, 13),
+              ),
+            ),
           ),
         ],
       ),
@@ -1382,7 +1396,8 @@ class _FocusWhiteSwitchState extends State<_FocusWhiteSwitch> {
           value: widget.value,
           scale: Switch.settingsScale,
           onChanged: null,
-          emphasized: _focused ||
+          emphasized:
+              _focused ||
               _hovered ||
               SettingsExpandHeaderChrome.activeOf(context),
         ),
