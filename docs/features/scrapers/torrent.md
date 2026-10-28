@@ -6,7 +6,7 @@
 
 When you open a movie or series in torrent mode, Forja searches the **enabled** built-in providers in parallel (Knaben, The Pirate Bay, UIndex, Torrents CSV, Nyaa, YTS, SolidTorrents, TheRARBG, and Torrentio when an IMDb id is available). Indexers ship in the **ForjaHQ Torrent** plugin pack (`plugins/torrent/manifest.json`) — install it under **Settings → Sources → Forja** like other engine packs. Rows appear as each provider returns — a slow indexer no longer holds the whole list empty. Results are deduplicated by infohash and merged into the torrent list. Each row shows which provider found it.
 
-**Hub packs:** set `open.torrentEp: true` when releases are named by episode number (`Title 05`) instead of western `SxxExx`. Anime and Asian Drama packs do this. When enrich matched TMDB with an IMDb id, Torrentio runs as usual.
+**Hub packs:** set `open.torrentEp: true` for anime-style episode search. Queries use a short series name plus franchise `SxxExx` (season chip when present) and absolute `Title 05`, then drop rows whose scene tags disagree. When enrich matched TMDB with an IMDb id, Torrentio runs as usual.
 
 **IDs:** Sources maps catalog `meta.ids` (and pack extract ctx) into torrent search — title query for most indexers, `imdbId` for Torrentio. Indexers declare `searchInputs` in the torrent pack manifest (`query` vs `imdbId`).
 

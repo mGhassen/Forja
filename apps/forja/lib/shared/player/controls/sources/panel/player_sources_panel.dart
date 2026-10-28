@@ -2724,10 +2724,12 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
       season: season,
       episode: episode,
       torrentEp: _torrentEp,
+      seasonLabel: widget.seasonLabel,
     );
     if (passes.isEmpty) return;
     final bagIds = ctx.ids;
     final imdb = ctx.torrent?.imdbId;
+    final filterSeason = passes.first.season ?? season;
 
     var closed = false;
     var paintSeq = 0;
@@ -2736,6 +2738,18 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
       (_) => <Map<String, dynamic>>[],
     );
 
+    List<TorrentResult> paintFiltered(List<Map<String, dynamic>> merged) {
+      final rows = filterTorrentsForEpisode(
+        merged.map(TorrentResult.fromJson),
+        season: filterSeason,
+        episode: episode,
+      );
+      if (_torrentDedupeByMagnetOnly) {
+        return TorrentSearchProviders.dedupeTorrentResultsByMagnet(rows);
+      }
+      return rows;
+    }
+
     void paintRaw(int seq) {
       if (!mounted || gen != _searchGen || closed || seq != paintSeq) return;
       final merged = <Map<String, dynamic>>[
@@ -2743,13 +2757,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
       ];
       if (merged.isEmpty) return;
       _scheduleCoalescedPaint(() {
-        if (_torrentDedupeByMagnetOnly) {
-          _results = TorrentSearchProviders.dedupeTorrentResultsByMagnet(
-            merged.map(TorrentResult.fromJson).toList(),
-          );
-        } else {
-          _results = merged.map(TorrentResult.fromJson).toList();
-        }
+        _results = paintFiltered(merged);
       });
     }
 
@@ -2779,7 +2787,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
     if (!mounted || gen != _searchGen) return;
     _flushCoalescedPaint();
     setState(() {
-      _results = _torrentResultsFromRaw([
+      _results = paintFiltered([
         for (var i = soFarByPass.length - 1; i >= 0; i--) ...soFarByPass[i],
       ]);
     });
@@ -3564,6 +3572,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
         season: season,
         episode: episode,
         torrentEp: _torrentEp,
+        seasonLabel: widget.seasonLabel,
       );
       final results = await Future.wait([
         for (final pass in passes) jackett.search(baseUrl, apiKey, pass.query),
@@ -3574,7 +3583,14 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
           combined[r.magnet] = r;
         }
       }
-      return combined.values.toList();
+      final filterSeason = passes.isNotEmpty
+          ? (passes.first.season ?? season)
+          : season;
+      return filterTorrentsForEpisode(
+        combined.values,
+        season: filterSeason,
+        episode: episode,
+      );
     }
 
     final query = _year.isNotEmpty
@@ -3611,6 +3627,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
         season: season,
         episode: episode,
         torrentEp: _torrentEp,
+        seasonLabel: widget.seasonLabel,
       );
       final results = await Future.wait([
         for (final pass in passes)
@@ -3622,7 +3639,14 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
           combined[r.magnet] = r;
         }
       }
-      return combined.values.toList();
+      final filterSeason = passes.isNotEmpty
+          ? (passes.first.season ?? season)
+          : season;
+      return filterTorrentsForEpisode(
+        combined.values,
+        season: filterSeason,
+        episode: episode,
+      );
     }
 
     final query = _year.isNotEmpty
