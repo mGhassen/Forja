@@ -5,7 +5,7 @@ Forja-owned TMDB **API + image** reverse proxy. Home pack points `config.base` /
 **Cache:**
 - `/3/*` JSON → Postgres `tmdb_response_cache`
 - `/t/p/*` images → Cloudflare R2 bucket `forja-tmdb` + Postgres `tmdb_image_cache` metadata
-- Hourly purge (`/internal/purge-expired`) deletes expired JSON rows and expired image rows **plus** matching R2 objects
+- Daily purge (`/internal/purge-expired`, 04:00 UTC) deletes expired JSON rows and expired image rows **plus** matching R2 objects (Hobby cron limit)
 
 ## Routes
 
@@ -14,7 +14,7 @@ Forja-owned TMDB **API + image** reverse proxy. Home pack points `config.base` /
 | `GET /health` | Credential + cache status |
 | `GET /3/*` | `https://api.themoviedb.org/3/*` (keyless; server injects key) |
 | `GET /t/p/*` | `https://image.tmdb.org/t/p/*` |
-| `GET /internal/purge-expired` | TTL purge (Bearer secret; Vercel Cron hourly) |
+| `GET /internal/purge-expired` | TTL purge (Bearer secret; Vercel Cron daily 04:00 UTC) |
 
 `/3/configuration*` rewrites `images.secure_base_url` / `base_url` to this gateway’s `/t/p/`.
 
@@ -74,7 +74,7 @@ Apply migrations before relying on cache (ops approval):
 1. Import this directory as a Vercel project (root: `apps/tmdb-gateway`)
 2. Set env vars above + custom domain `tmdb.forjahq.xyz`
 3. Framework preset: **Other**. Deployment Protection: **off** for Production.
-4. Cron: Production plan with crons enabled; set `CRON_SECRET` or `TMDB_CACHE_PURGE_SECRET` so hourly `GET /internal/purge-expired` is authorized.
+4. Cron: Hobby allows **daily** only (`0 4 * * *`). Set `CRON_SECRET` or `TMDB_CACHE_PURGE_SECRET` so `GET /internal/purge-expired` is authorized.
 5. Deploy — routes go through `api/index.js` via `vercel.json` rewrites
 
 ### Cutover from Supabase Storage
@@ -94,4 +94,4 @@ Apply migrations before relying on cache (ops approval):
 | `/t/p/*` | 7d (R2) |
 | Errors | not stored |
 
-Expired entries are removed by the hourly purge (row + R2 object). Lazy delete on read remains as a safety net.
+Expired entries are removed by the daily purge (row + R2 object). Lazy delete on read remains as a safety net.
