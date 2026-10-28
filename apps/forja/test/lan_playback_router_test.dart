@@ -44,17 +44,20 @@ void main() {
     await LanPrefs.instance.clearServer();
   });
 
-  test('ATV unpaired torrent route is unavailable; HTTP is playDirect', () async {
-    PlatformPlayback.override = PlaybackProfile.androidTv;
-    expect(
-      await LanPlaybackRouter.routeTorrent(PlaybackProfile.androidTv),
-      LanRouteDecision.unavailable,
-    );
-    expect(
-      await LanPlaybackRouter.routeDirectUrl(),
-      LanRouteDecision.playDirect,
-    );
-  });
+  test(
+    'ATV unpaired torrent route is unavailable; HTTP is playDirect',
+    () async {
+      PlatformPlayback.override = PlaybackProfile.androidTv;
+      expect(
+        await LanPlaybackRouter.routeTorrent(PlaybackProfile.androidTv),
+        LanRouteDecision.unavailable,
+      );
+      expect(
+        await LanPlaybackRouter.routeDirectUrl(),
+        LanRouteDecision.playDirect,
+      );
+    },
+  );
 
   test('desktop torrent route stays localEngine', () async {
     expect(
@@ -64,6 +67,21 @@ void main() {
     expect(
       await LanPlaybackRouter.routeDirectUrl(),
       LanRouteDecision.playDirect,
+    );
+  });
+
+  test('ATV prefers desktop only when LAN addon enabled', () async {
+    PlatformPlayback.override = PlaybackProfile.androidTv;
+    await LanPrefs.instance.setServer(
+      host: '192.168.1.10',
+      port: 8787,
+      serverId: 'test-server',
+    );
+    await LanPrefs.instance.setToken('tok');
+    await LanPrefs.instance.setLanServerEnabled(false);
+    expect(
+      await LanPlaybackRouter.shouldPreferDesktop(PlaybackProfile.androidTv),
+      isFalse,
     );
   });
 }

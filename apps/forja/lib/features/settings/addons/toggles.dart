@@ -18,6 +18,7 @@ import 'package:forja_foundation/components/switch.dart';
 import 'package:forja/shell/core/forja_shell_scope.dart';
 import 'package:forja/shell/core/forja_shell_input_policy.dart';
 import 'package:forja/shell/focus/shell_focusable_tap.dart';
+
 /// Current on/off for an Addons master row (same sources as [AddonMasterToggle]).
 bool addonMasterEnabled({
   required String addonId,
@@ -96,7 +97,9 @@ Future<bool> setAddonMasterEnabled(
             break;
           }
         }
-        ref.read(settingsDebridProvider.notifier).patch(
+        ref
+            .read(settingsDebridProvider.notifier)
+            .patch(
               (s) => s.copyWith(
                 enabled: id.isNotEmpty,
                 pluginId: id,
@@ -105,7 +108,9 @@ Future<bool> setAddonMasterEnabled(
             );
       } else {
         await settings.setMagnetResolvePluginId('');
-        ref.read(settingsDebridProvider.notifier).patch(
+        ref
+            .read(settingsDebridProvider.notifier)
+            .patch(
               (s) => s.copyWith(enabled: false, pluginId: '', pluginLabel: ''),
             );
       }
@@ -119,7 +124,8 @@ Future<bool> setAddonMasterEnabled(
           await LanPrefs.instance.setLanServerEnabled(true);
         }
       } else {
-        await LanServerService.instance.stop();
+        await LanServerService.instance.stopAndClearPairing();
+        LanPairingPresence.instance.notifyChanged();
       }
   }
 
@@ -200,11 +206,11 @@ class _AddonMasterToggleState extends ConsumerState<AddonMasterToggle> {
   }
 
   bool _chromeActiveFor(bool hovered) => ShellInputPolicy.interactiveActive(
-        ShellScope.inputPolicyOf(context),
-        hovered: hovered,
-        focused: _focused,
-        context: context,
-      );
+    ShellScope.inputPolicyOf(context),
+    hovered: hovered,
+    focused: _focused,
+    context: context,
+  );
 
   @override
   void didUpdateWidget(covariant AddonMasterToggle oldWidget) {
@@ -293,11 +299,11 @@ class _AddonMasterToggleState extends ConsumerState<AddonMasterToggle> {
     final enabled = optimistic ?? computed;
 
     Widget switchChrome(bool hovered) => Switch(
-          value: enabled,
-          onChanged: null,
-          scale: Switch.settingsScale,
-          emphasized: _chromeActiveFor(hovered),
-        );
+      value: enabled,
+      onChanged: null,
+      scale: Switch.settingsScale,
+      emphasized: _chromeActiveFor(hovered),
+    );
 
     if (widget.chromeOnly) {
       return Padding(
@@ -349,9 +355,7 @@ class _AddonMasterToggleState extends ConsumerState<AddonMasterToggle> {
               width: 56,
               height: 44,
               child: Center(
-                child: IgnorePointer(
-                  child: switchChrome(_hoveredN.value),
-                ),
+                child: IgnorePointer(child: switchChrome(_hoveredN.value)),
               ),
             ),
           ),

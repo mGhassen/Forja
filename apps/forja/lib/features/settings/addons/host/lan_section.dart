@@ -19,6 +19,7 @@ import 'package:forja/shell/feedback/forja_toast.dart';
 import 'package:forja/shell/focus/shell_focusable_tap.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/tokens/forja_settings_tokens.dart';
+
 /// Settings → LAN — one-time desktop↔TV trust (RFC-022).
 class LanSettingsSection extends ConsumerStatefulWidget {
   const LanSettingsSection({super.key});
@@ -293,7 +294,9 @@ class _LanSettingsSectionState extends ConsumerState<LanSettingsSection> {
         return;
       }
     } else {
-      await LanServerService.instance.stop();
+      await LanServerService.instance.stopAndClearPairing();
+      LanPairingPresence.instance.notifyChanged();
+      _refreshPlaySourceGates();
     }
     await _load();
   }
@@ -565,7 +568,10 @@ class _LanSettingsSectionState extends ConsumerState<LanSettingsSection> {
           _devices.isEmpty
               ? 'No TVs or phones paired yet.'
               : 'Revoke to force that device to pair again.',
-          style: TextStyle(color: ForjaShellColors.textSecondary, fontSize: SettingsTokens.typeSizeOf(context, 12)),
+          style: TextStyle(
+            color: ForjaShellColors.textSecondary,
+            fontSize: SettingsTokens.typeSizeOf(context, 12),
+          ),
         ),
         const SizedBox(height: 8),
         if (_devices.isEmpty)
@@ -714,7 +720,10 @@ class _LanSettingsSectionState extends ConsumerState<LanSettingsSection> {
       ),
       Text(
         'Torrents opened by paired TVs/phones. Delete removes the cached download.',
-        style: TextStyle(color: ForjaShellColors.textSecondary, fontSize: SettingsTokens.typeSizeOf(context, 12)),
+        style: TextStyle(
+          color: ForjaShellColors.textSecondary,
+          fontSize: SettingsTokens.typeSizeOf(context, 12),
+        ),
       ),
       const SizedBox(height: 4),
       Text(

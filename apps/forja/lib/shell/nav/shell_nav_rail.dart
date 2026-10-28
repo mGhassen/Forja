@@ -185,10 +185,14 @@ class _ShellNavRailState extends State<ShellNavRail> {
     super.initState();
     _syncNavOrder();
     LanPairingPresence.instance.refresh();
-    // Desktop learns about a new TV pair via the engine store — light poll.
-    _lanPairPoll = Timer.periodic(const Duration(seconds: 5), (_) {
-      LanPairingPresence.instance.notifyChanged();
-    });
+    // Desktop only: peer list / session marks update via local engine store.
+    // Clients (ATV/phone) must not poll — each tick probes HTTP and can run
+    // sync mDNS browse on the UI isolate (issue 516 freezes).
+    if (LanServerService.canRunServer) {
+      _lanPairPoll = Timer.periodic(const Duration(seconds: 5), (_) {
+        LanPairingPresence.instance.notifyChanged();
+      });
+    }
   }
 
   @override

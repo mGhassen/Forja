@@ -42,19 +42,20 @@ class LanPresence {
       session == LanSessionMark.playing;
 
   Color get serverColor => switch (server) {
-        LanServerMark.off => Colors.transparent,
-        LanServerMark.up => ForjaShellColors.brandGreen,
-        LanServerMark.down => _lanDown,
-      };
+    LanServerMark.off => Colors.transparent,
+    LanServerMark.up => ForjaShellColors.brandGreen,
+    LanServerMark.down => _lanDown,
+  };
 
   Color get sessionColor => switch (session) {
-        LanSessionMark.none => Colors.transparent,
-        LanSessionMark.waiting => _lanAmber,
-        LanSessionMark.idle =>
-          ForjaShellColors.textSecondary.withValues(alpha: 0.7),
-        LanSessionMark.paired || LanSessionMark.playing =>
-          ForjaShellColors.brandGreen,
-      };
+    LanSessionMark.none => Colors.transparent,
+    LanSessionMark.waiting => _lanAmber,
+    LanSessionMark.idle => ForjaShellColors.textSecondary.withValues(
+      alpha: 0.7,
+    ),
+    LanSessionMark.paired ||
+    LanSessionMark.playing => ForjaShellColors.brandGreen,
+  };
 
   bool get sessionPulse =>
       session == LanSessionMark.waiting || session == LanSessionMark.playing;
@@ -172,11 +173,7 @@ class LanPresence {
     required List<Map<String, dynamic>> history,
     DateTime? now,
   }) {
-    if (devicePlaying(
-      deviceId: deviceId,
-      active: active,
-      history: history,
-    )) {
+    if (devicePlaying(deviceId: deviceId, active: active, history: history)) {
       return LanDeviceTalk.playing;
     }
     return deviceOnline(lastSeen, now: now)
@@ -196,19 +193,20 @@ class LanPresence {
 
 extension LanDeviceTalkX on LanDeviceTalk {
   Color get color => switch (this) {
-        LanDeviceTalk.idle =>
-          ForjaShellColors.textSecondary.withValues(alpha: 0.55),
-        LanDeviceTalk.active || LanDeviceTalk.playing =>
-          ForjaShellColors.brandGreen,
-      };
+    LanDeviceTalk.idle => ForjaShellColors.textSecondary.withValues(
+      alpha: 0.55,
+    ),
+    LanDeviceTalk.active ||
+    LanDeviceTalk.playing => ForjaShellColors.brandGreen,
+  };
 
   bool get pulse => this == LanDeviceTalk.playing;
 
   String get shortLabel => switch (this) {
-        LanDeviceTalk.idle => 'Idle',
-        LanDeviceTalk.active => 'Active',
-        LanDeviceTalk.playing => 'Playing',
-      };
+    LanDeviceTalk.idle => 'Idle',
+    LanDeviceTalk.active => 'Active',
+    LanDeviceTalk.playing => 'Playing',
+  };
 }
 
 /// Live LAN presence for the nav-rail profile mark.
@@ -247,17 +245,26 @@ class LanPairingPresence {
       );
     }
 
+    // Addon master off → no rail mark / no health probes (pairing cleared on
+    // disable; this also covers stale prefs).
+    if (!await LanPrefs.instance.isLanServerEnabled()) {
+      return LanPresence.hidden;
+    }
     final paired = await LanPrefs.instance.isPaired;
     if (!paired) return LanPresence.hidden;
+    // verifyPairedConnection already /health + /status (probe touches status).
     final online = await LanClientService.instance.verifyPairedConnection();
     var serving = false;
     if (online) {
       final host = await LanPrefs.instance.serverHost;
       final port = await LanPrefs.instance.serverPort;
       if (host != null && port != null) {
-        final payload =
-            await LanClientService.instance.pingStatusJson(host, port);
-        serving = payload != null &&
+        final payload = await LanClientService.instance.pingStatusJson(
+          host,
+          port,
+        );
+        serving =
+            payload != null &&
             (payload['info_hash']?.toString().isNotEmpty ?? false);
       }
     }
@@ -282,6 +289,7 @@ class LanPresenceMark extends StatelessWidget {
   final LanPresence presence;
   final double size;
   final bool bordered;
+
   /// Session `|` beside the dot. Desktop server only — clients are a single reachability dot.
   final bool showBar;
 
@@ -312,11 +320,13 @@ class LanPresenceMark extends StatelessWidget {
         ],
       ],
     );
-    final tip = showBar ? presence.tooltip : switch (presence.server) {
-      LanServerMark.off => '',
-      LanServerMark.up => 'Desktop online',
-      LanServerMark.down => 'Desktop offline',
-    };
+    final tip = showBar
+        ? presence.tooltip
+        : switch (presence.server) {
+            LanServerMark.off => '',
+            LanServerMark.up => 'Desktop online',
+            LanServerMark.down => 'Desktop offline',
+          };
     if (tip.isEmpty) return mark;
     return Tooltip(message: tip, child: mark);
   }
@@ -356,11 +366,7 @@ class LanPresenceMark extends StatelessWidget {
 
 /// Single device talk dot (Settings paired-devices list).
 class LanDeviceTalkDot extends StatelessWidget {
-  const LanDeviceTalkDot({
-    super.key,
-    required this.talk,
-    this.size = 9,
-  });
+  const LanDeviceTalkDot({super.key, required this.talk, this.size = 9});
 
   final LanDeviceTalk talk;
   final double size;

@@ -552,10 +552,11 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [513-[fixed]-…](fixed/513-[fixed]-anime-season1-franchise-stream-titles.md) | Anime Season 1 shows franchise-absolute stream titles (Slime E49+) | P1 | High | fixed | Complete · 2/2 · A 1/2 | [098](098-[open]-anime-details-season-chain.md) · [438](fixed/438-[fixed]-anime-details-streaming-episodes-truncated.md) |
 | [514-[fixed]-…](fixed/514-[fixed]-anime-tmdb-enrich-wrong-season-stills.md) | Anime TMDB enrich paints Season 1 titles on later season chips | P1 | High | fixed | Complete · 3/3 · A 1/2 | [098](098-[open]-anime-details-season-chain.md) · [513](fixed/513-[fixed]-anime-season1-franchise-stream-titles.md) |
 | [515-[fixed]-…](fixed/515-[fixed]-anime-torrent-query-bloated-title.md) | Anime torrent search bloated cour title → 0 Nyaa rows | P1 | High | fixed | Complete · 4/4 · A 0/2 | [216](fixed/216-[fixed]-anime-hub-torrent-search-empty.md) · [RFC-054](../rfc/054-[partial]-torrent-search-providers.md) |
+| [516-[fixed]-…](fixed/516-[fixed]-atv-lan-presence-poll-ui-freeze.md) | ATV LAN presence poll freezes UI while paired | P0 | High | fixed | Complete · 3/3 · A 0/2 | [481](fixed/481-[fixed]-android-tv-lan-discover-mdns.md) · [RFC-022](../rfc/022-[open]-lan-server-client.md) |
 
 **Migration parity (draft):** [018](018-[draft]-migration-playback-parity-unverified.md) → [019](019-[draft]-webstreamr-enginejobs-e2e-test-gap.md)–[022](022-[draft]-playback-widget-integration-tests.md).
 
-**LAN (RFC-022):** [026](026-[open]-lan-stream-playback-bearer-token.md) blocks playback · [027](027-[draft]-lan-server-client-manual-qa.md)–[030](030-[draft]-lan-hdr-passthrough-unverified.md) verification / gaps · [481](fixed/481-[fixed]-android-tv-lan-discover-mdns.md) ATV Discover mDNS.
+**LAN (RFC-022):** [026](026-[open]-lan-stream-playback-bearer-token.md) blocks playback · [027](027-[draft]-lan-server-client-manual-qa.md)–[030](030-[draft]-lan-hdr-passthrough-unverified.md) verification / gaps · [481](fixed/481-[fixed]-android-tv-lan-discover-mdns.md) ATV Discover mDNS · [516](fixed/516-[fixed]-atv-lan-presence-poll-ui-freeze.md) ATV presence poll freeze.
 
 ## Related
 

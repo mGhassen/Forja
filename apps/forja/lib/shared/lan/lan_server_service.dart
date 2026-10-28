@@ -12,11 +12,9 @@ class LanServerService {
   static final LanServerService instance = LanServerService._();
 
   static bool get canRunServer =>
-      !kIsWeb &&
-      (Platform.isWindows || Platform.isMacOS || Platform.isLinux);
+      !kIsWeb && (Platform.isWindows || Platform.isMacOS || Platform.isLinux);
 
-  bool get isRunning =>
-      Engine.isReady && RustLib.instance.lanServerPort() > 0;
+  bool get isRunning => Engine.isReady && RustLib.instance.lanServerPort() > 0;
 
   int get port => Engine.isReady ? RustLib.instance.lanServerPort() : 0;
 
@@ -63,7 +61,9 @@ class LanServerService {
 
     var usedEphemeral = false;
     if (p <= 0 && preferred > 0 && _isBindConflict(lastStartError())) {
-      debugPrint('[LAN] port $preferred busy — ephemeral fallback (sticky kept)');
+      debugPrint(
+        '[LAN] port $preferred busy — ephemeral fallback (sticky kept)',
+      );
       p = _startOnce(bindMode, 0);
       usedEphemeral = p > 0;
     }
@@ -85,14 +85,12 @@ class LanServerService {
     return false;
   }
 
-  int _startOnce(int bindMode, int preferredPort) =>
-      RustLib.instance.lanServerStart(
-        bindMode: bindMode,
-        preferredPort: preferredPort,
-      );
+  int _startOnce(int bindMode, int preferredPort) => RustLib.instance
+      .lanServerStart(bindMode: bindMode, preferredPort: preferredPort);
 
-  String lastStartError() =>
-      Engine.isReady ? RustLib.instance.lanServerLastError() : 'engine not ready';
+  String lastStartError() => Engine.isReady
+      ? RustLib.instance.lanServerLastError()
+      : 'engine not ready';
 
   /// True when the LAN listen socket itself could not bind.
   static bool _isBindConflict(String err) {
@@ -113,6 +111,19 @@ class LanServerService {
       RustLib.instance.lanServerStop();
     }
     await LanPrefs.instance.setLanServerEnabled(false);
+  }
+
+  /// Stop listening, revoke every paired device, and clear client prefs.
+  ///
+  /// Call when the LAN addon master is turned off so pairing does not linger.
+  /// Caller should [LanPairingPresence.notifyChanged] after.
+  Future<void> stopAndClearPairing() async {
+    for (final d in listDevices()) {
+      final id = d['device_id']?.toString() ?? '';
+      if (id.isNotEmpty) revokeDevice(id);
+    }
+    await stop();
+    await LanPrefs.instance.clearServer();
   }
 
   String refreshPairingCode() =>

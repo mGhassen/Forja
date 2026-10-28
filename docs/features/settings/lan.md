@@ -16,6 +16,8 @@ Pairing means **this TV trusts that desktop**. Do it once on the same Wi‑Fi.
 2. Note the **desktop address** (`IP:port`) and the **6-digit pairing code**
 3. Keep Forja running
 
+Turning **LAN** off on the desktop stops the server and **revokes all paired devices** (TVs must pair again).
+
 Paired TVs and phones appear under **Paired devices** with a per-device talk dot and a short line under the name: **Active** (green) = recent traffic; **Idle** (grey) = still trusted, not talking right now (the server is still up — another device can pair/play); **Playing** (green, pulsing) = that device is streaming a LAN torrent. Date and device id sit on their own lines below. Use the **reload** icon if a device just paired and the list still says waiting. **Revoke** forces that device to pair again.
 
 The profile name on the nav rail uses a LAN mark: **desktop** (the server) shows **● |** — a **dot** (listening) then a bold **vertical bar** (session: amber pulse = waiting for a pair, green = paired, grey = idle, green pulse = playing). Idle greys only the bar — the server dot stays green so you can still connect. **Android TV / phone** (clients) show only the **dot**: green = desktop reachable, red = unreachable.
@@ -33,7 +35,7 @@ The desktop reuses the same LAN **port** across toggles and app restarts. If the
 
 On Android TV, **OK** on a field opens the keyboard and the page scrolls so the field stays visible above it.
 
-Status shows **Paired** with a status **dot**: green = desktop reachable, red = desktop down. The screen periodically re-checks the desktop (and rediscovers it if the port changed). Use the **reload** icon next to the status to re-check now (D-pad focusable on Android TV). Unpair anytime from the same screen. The TV nav profile name uses the same single dot.
+Status shows **Paired** with a status **dot**: green = desktop reachable, red = desktop down. Re-check from the LAN screen **reload** icon (D-pad focusable on Android TV) or after pair/unpair — the TV does not poll the desktop every few seconds from the nav rail. Unpair anytime from the same screen, or turn off the **LAN** addon (that also clears pairing). The TV nav profile name uses the same single dot.
 
 ## Every night — watch
 

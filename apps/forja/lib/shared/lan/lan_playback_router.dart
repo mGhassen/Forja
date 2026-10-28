@@ -4,12 +4,7 @@ import 'lan_client_service.dart';
 import 'lan_prefs.dart';
 import 'lan_server_service.dart';
 
-enum LanRouteDecision {
-  playDirect,
-  desktopServes,
-  localEngine,
-  unavailable,
-}
+enum LanRouteDecision { playDirect, desktopServes, localEngine, unavailable }
 
 /// Playback routing for LAN server/client (RFC-022 §4).
 class LanPlaybackRouter {
@@ -26,14 +21,14 @@ class LanPlaybackRouter {
   /// a paired LAN server is online.
   static Future<bool> shouldPreferDesktop(PlaybackProfile profile) async {
     if (isDesktopServer) return false;
+    if (!await LanPrefs.instance.isLanServerEnabled()) return false;
     if (profile.localTorrentEngine &&
         await LanPrefs.instance.allowLocalTorrentOnDevice()) {
       return false;
     }
     // Phones keep localTorrentEngine=true; still prefer desktop when paired
     // unless the user opted into local torrent above.
-    if (profile.localTorrentEngine &&
-        !await LanPrefs.instance.isPaired) {
+    if (profile.localTorrentEngine && !await LanPrefs.instance.isPaired) {
       return false;
     }
     return isServerOnline();
