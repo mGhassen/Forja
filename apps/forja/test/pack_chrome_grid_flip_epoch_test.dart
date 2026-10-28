@@ -25,6 +25,7 @@ Widget _chrome({
     pageFeedFuture: null,
     rowPrefetch: KitRowPrefetchLane(),
     searchHitKindIds: hits,
+    searchHitCounts: ValueNotifier(const {}),
     onEventQuery: (_) {},
     onBumpRefresh: ({bool forceNetwork = true}) {},
     onClearCatalog: () {},
@@ -100,8 +101,9 @@ void main() {
     );
   });
 
-  testWidgets('schedule feed epoch ignores portalStoreKey hydrate',
-      (tester) async {
+  testWidgets('schedule feed epoch ignores portalStoreKey hydrate', (
+    tester,
+  ) async {
     const scheduleSpec = {
       'kindMenu': 'kind',
       'catalogMenu': 'catalog',
@@ -141,8 +143,9 @@ void main() {
     );
   });
 
-  testWidgets('grid flip epoch changes when Live category changes',
-      (tester) async {
+  testWidgets('grid flip epoch changes when Live category changes', (
+    tester,
+  ) async {
     final selections = <String, String>{
       'catalog': 'live',
       'cats': '10',
@@ -173,16 +176,15 @@ void main() {
     );
   });
 
-  testWidgets('effective category prefers peek over LayoutScope first snap',
-      (tester) async {
+  testWidgets('effective category prefers peek over LayoutScope first snap', (
+    tester,
+  ) async {
     final selections = <String, String>{
       'catalog': 'live',
       'cats': '10',
       'sort': 'playlist',
     };
-    CategoryBarActionHost.cachedLiveListParams = {
-      'portalStoreKey': 'portal-a',
-    };
+    CategoryBarActionHost.cachedLiveListParams = {'portalStoreKey': 'portal-a'};
     IptvCatalogLand.seedLastCategoryMemForTest('portal-a', '30');
 
     await tester.pumpWidget(
@@ -206,15 +208,11 @@ void main() {
     );
   });
 
-  testWidgets('effective category search with empty cats skips peek',
-      (tester) async {
-    final selections = <String, String>{
-      'catalog': 'live',
-      'sort': 'playlist',
-    };
-    CategoryBarActionHost.cachedLiveListParams = {
-      'portalStoreKey': 'portal-a',
-    };
+  testWidgets('effective category search with empty cats skips peek', (
+    tester,
+  ) async {
+    final selections = <String, String>{'catalog': 'live', 'sort': 'playlist'};
+    CategoryBarActionHost.cachedLiveListParams = {'portalStoreKey': 'portal-a'};
     IptvCatalogLand.seedLastCategoryMemForTest('portal-a', '30');
 
     await tester.pumpWidget(
@@ -244,16 +242,15 @@ void main() {
     );
   });
 
-  testWidgets('effective category keeps mid-search pick over peek',
-      (tester) async {
+  testWidgets('effective category keeps mid-search pick over peek', (
+    tester,
+  ) async {
     final selections = <String, String>{
       'catalog': 'live',
       'cats': '20',
       'sort': 'playlist',
     };
-    CategoryBarActionHost.cachedLiveListParams = {
-      'portalStoreKey': 'portal-a',
-    };
+    CategoryBarActionHost.cachedLiveListParams = {'portalStoreKey': 'portal-a'};
     IptvCatalogLand.seedLastCategoryMemForTest('portal-a', '30');
 
     await tester.pumpWidget(

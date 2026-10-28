@@ -159,14 +159,10 @@ class ShellNavRail extends StatefulWidget {
 }
 
 class _ShellNavRailState extends State<ShellNavRail> {
-  bool _mouseInRail = false;
-  bool _focusInRail = false;
   bool _coldStartNavFocusDone = false;
   bool _coldStartNavFocusScheduled = false;
   String _profileLabel = 'Guest';
   Timer? _lanPairPoll;
-
-  bool get _railEngaged => _mouseInRail || _focusInRail;
 
   List<String> get _navIds =>
       widget.visibleIds.where((id) => id != 'settings').toList();
@@ -174,17 +170,6 @@ class _ShellNavRailState extends State<ShellNavRail> {
   int? _indexForId(String id) {
     final idx = widget.visibleIds.indexOf(id);
     return idx >= 0 ? idx : null;
-  }
-
-  void _syncFocusInRail() {
-    // Desktop hover: rail-wide engage shrinks idle icons. TV must not —
-    // parent setState rebuilds every nav item on content↔rail focus moves.
-    final policy = ShellScope.maybeOf(context)?.inputPolicy;
-    if (policy != null && policy.instantFocusChrome) return;
-    final engaged = ShellTvFocus.anyNavFocused;
-    if (engaged != _focusInRail) {
-      setState(() => _focusInRail = engaged);
-    }
   }
 
   void _onActiveProfile(SyncProfile? profile) {
@@ -315,8 +300,6 @@ class _ShellNavRailState extends State<ShellNavRail> {
                   itemSpacing: itemSpacing,
                   iconSize: iconSize,
                   labelSlotHeight: labelSlotHeight,
-                  railEngaged: _railEngaged,
-                  onFocusChanged: _syncFocusInRail,
                   pageDirection: widget.pageDirection,
                 );
               },
@@ -344,119 +327,109 @@ class _ShellNavRailState extends State<ShellNavRail> {
                 SizedBox(height: metrics.navRailLogoGap),
               ],
               Expanded(
-                child: MouseRegion(
-                  onEnter: (_) => setState(() => _mouseInRail = true),
-                  onExit: (_) => setState(() => _mouseInRail = false),
-                  child: LayoutBuilder(
-                    builder: (context, constraints) {
-                      final padV = isTv
-                          ? ShellTokens.navRailNavPadVTv
-                          : ShellTokens.navRailScrollPadV;
-                      final profileSpacing = isTv
-                          ? ShellTokens.navRailProfileSpacingTv
-                          : metrics.navRailItemSpacing;
-                      final profileLabelSlot = math.max(
-                        preferredLabelSlot,
-                        LanPresenceMark.railSlotHeight(tv: isTv),
-                      );
-                      final showBoostedProfile =
-                          settingsIndex != null && showDesktopProfile;
-                      // Peer-size profile only in compact shell (☰ drawer width).
-                      final compactShell = ShellTokens.usesCompactNavDrawer(
-                        context,
-                      );
-                      final profileIconSize =
-                          showBoostedProfile && !compactShell
-                          ? preferredIconSize *
-                                shellNavRailProfileAvatarScale(context)
-                          : preferredIconSize;
+                child: LayoutBuilder(
+                  builder: (context, constraints) {
+                    final padV = isTv
+                        ? ShellTokens.navRailNavPadVTv
+                        : ShellTokens.navRailScrollPadV;
+                    final profileSpacing = isTv
+                        ? ShellTokens.navRailProfileSpacingTv
+                        : metrics.navRailItemSpacing;
+                    final profileLabelSlot = math.max(
+                      preferredLabelSlot,
+                      LanPresenceMark.railSlotHeight(tv: isTv),
+                    );
+                    final showBoostedProfile =
+                        settingsIndex != null && showDesktopProfile;
+                    // Peer-size profile only in compact shell (☰ drawer width).
+                    final compactShell = ShellTokens.usesCompactNavDrawer(
+                      context,
+                    );
+                    final profileIconSize = showBoostedProfile && !compactShell
+                        ? preferredIconSize *
+                              shellNavRailProfileAvatarScale(context)
+                        : preferredIconSize;
 
-                      // Paint at hover size; idle AnimatedScale downscales —
-                      // upscaling a smaller SVG was the stutter/flash.
-                      final profilePaintSize =
-                          profileIconSize * ShellTokens.navRailIconHoverScale;
+                    // Paint at hover size; idle AnimatedScale downscales —
+                    // upscaling a smaller SVG was the stutter/flash.
+                    final profilePaintSize =
+                        profileIconSize * ShellTokens.navRailIconHoverScale;
 
-                      final navColumn = buildNavColumn(
-                        itemSpacing: metrics.navRailItemSpacing,
-                        iconSize: preferredIconSize,
-                        labelSlotHeight: preferredLabelSlot,
-                      );
+                    final navColumn = buildNavColumn(
+                      itemSpacing: metrics.navRailItemSpacing,
+                      iconSize: preferredIconSize,
+                      labelSlotHeight: preferredLabelSlot,
+                    );
 
-                      final oneItem = shellNavRailItemContentHeight(
-                        context,
-                        iconSize: preferredIconSize,
-                        labelFontSize: preferredLabelFont,
-                        labelSlotHeight: preferredLabelSlot,
-                      );
-                      final navExtent =
-                          _navIds.length *
-                          (oneItem + metrics.navRailItemSpacing);
+                    final oneItem = shellNavRailItemContentHeight(
+                      context,
+                      iconSize: preferredIconSize,
+                      labelFontSize: preferredLabelFont,
+                      labelSlotHeight: preferredLabelSlot,
+                    );
+                    final navExtent =
+                        _navIds.length * (oneItem + metrics.navRailItemSpacing);
 
-                      return Column(
-                        children: [
-                          Expanded(
-                            child: LayoutBuilder(
-                              builder: (context, navBox) {
-                                // Fixed icon size and gap. Extra hubs scroll;
-                                // the profile stays pinned. When the icons
-                                // fit, skip the scroll view so desktop does
-                                // not paint a bar, and center them.
-                                if (navExtent <= navBox.maxHeight) {
-                                  return navColumn;
-                                }
-                                return SingleChildScrollView(
-                                  padding: EdgeInsets.symmetric(vertical: padV),
-                                  child: navColumn,
-                                );
-                              },
-                            ),
+                    return Column(
+                      children: [
+                        Expanded(
+                          child: LayoutBuilder(
+                            builder: (context, navBox) {
+                              // Fixed icon size and gap. Extra hubs scroll;
+                              // the profile stays pinned. When the icons
+                              // fit, skip the scroll view so desktop does
+                              // not paint a bar, and center them.
+                              if (navExtent <= navBox.maxHeight) {
+                                return navColumn;
+                              }
+                              return SingleChildScrollView(
+                                padding: EdgeInsets.symmetric(vertical: padV),
+                                child: navColumn,
+                              );
+                            },
                           ),
-                          if (settingsIndex != null)
-                            ValueListenableBuilder<LanPresence>(
-                              valueListenable:
-                                  LanPairingPresence.instance.status,
-                              builder: (context, lanPresence, _) {
-                                return _ShellNavRailItem(
-                                  key: const ValueKey('nav-rail-settings'),
-                                  pageDirection: widget.pageDirection,
-                                  destination: navDestinations['settings']!,
-                                  label: showDesktopProfile
-                                      ? _profileLabel
-                                      : null,
-                                  icon: showDesktopProfile
-                                      ? ForjaActiveProfileAvatar(
-                                          size: profilePaintSize,
-                                          showBorder: false,
-                                          onProfile: _onActiveProfile,
-                                        )
-                                      : null,
-                                  labelPresence: showDesktopProfile
-                                      ? lanPresence
-                                      : LanPresence.hidden,
-                                  customIconSize: showDesktopProfile
-                                      ? profileIconSize
-                                      : null,
-                                  iconSize: preferredIconSize,
-                                  labelFontSize: preferredLabelFont,
-                                  labelSlotHeight: profileLabelSlot,
-                                  alwaysShowLabel: showDesktopProfile,
-                                  desaturateCustomIconWhenIdle:
-                                      showDesktopProfile,
-                                  selected:
-                                      settingsIndex == widget.selectedIndex,
-                                  onTap: () {
-                                    widget.onDestinationSelected(settingsIndex);
-                                  },
-                                  itemSpacing: profileSpacing,
-                                  railEngaged: _railEngaged,
-                                  onFocusChanged: _syncFocusInRail,
-                                );
-                              },
-                            ),
-                        ],
-                      );
-                    },
-                  ),
+                        ),
+                        if (settingsIndex != null)
+                          ValueListenableBuilder<LanPresence>(
+                            valueListenable: LanPairingPresence.instance.status,
+                            builder: (context, lanPresence, _) {
+                              return _ShellNavRailItem(
+                                key: const ValueKey('nav-rail-settings'),
+                                pageDirection: widget.pageDirection,
+                                destination: navDestinations['settings']!,
+                                label: showDesktopProfile
+                                    ? _profileLabel
+                                    : null,
+                                icon: showDesktopProfile
+                                    ? ForjaActiveProfileAvatar(
+                                        size: profilePaintSize,
+                                        showBorder: false,
+                                        onProfile: _onActiveProfile,
+                                      )
+                                    : null,
+                                labelPresence: showDesktopProfile
+                                    ? lanPresence
+                                    : LanPresence.hidden,
+                                customIconSize: showDesktopProfile
+                                    ? profileIconSize
+                                    : null,
+                                iconSize: preferredIconSize,
+                                labelFontSize: preferredLabelFont,
+                                labelSlotHeight: profileLabelSlot,
+                                alwaysShowLabel: showDesktopProfile,
+                                desaturateCustomIconWhenIdle:
+                                    showDesktopProfile,
+                                selected: settingsIndex == widget.selectedIndex,
+                                onTap: () {
+                                  widget.onDestinationSelected(settingsIndex);
+                                },
+                                itemSpacing: profileSpacing,
+                              );
+                            },
+                          ),
+                      ],
+                    );
+                  },
                 ),
               ),
               if (settingsIndex != null)
@@ -783,8 +756,6 @@ class _ShellNavRailItem extends StatefulWidget {
     required this.selected,
     required this.onTap,
     required this.itemSpacing,
-    required this.railEngaged,
-    required this.onFocusChanged,
     this.label,
     this.icon,
     this.labelPresence = LanPresence.hidden,
@@ -801,8 +772,6 @@ class _ShellNavRailItem extends StatefulWidget {
   final bool selected;
   final VoidCallback onTap;
   final double itemSpacing;
-  final bool railEngaged;
-  final VoidCallback onFocusChanged;
   final String? label;
   final Widget? icon;
 
@@ -984,17 +953,11 @@ class _ShellNavRailItemState extends State<_ShellNavRailItem> {
     // Pack icons are also painted at hover size. Hover is 1 so the bitmap
     // is never enlarged. A filtered upscale bakes in the paint offset and
     // Impeller flashes and slides the glyph when the rail is on the right.
+    // Selected alone stays small — only hover/focus grows the glyph.
     if (itemActive) {
       return _pressed ? ShellTokens.navRailIconPressScale : 1;
     }
-    final idle = small / big;
-    // TV: selected stays big, idle stays small — no rail-engage shrink cascade.
-    if (policy.instantFocusChrome) {
-      return widget.selected ? 1 : idle;
-    }
-    // Desktop: selected tab stays enlarged while browsing page content.
-    if (!widget.railEngaged) return widget.selected ? 1 : idle;
-    return idle;
+    return small / big;
   }
 
   Duration _chromeAnim(ShellInputPolicy policy) => policy.instantFocusChrome
@@ -1098,14 +1061,16 @@ class _ShellNavRailItemState extends State<_ShellNavRailItem> {
         : active
         ? ForjaShellColors.iconHover
         : ForjaShellColors.iconMuted;
-    // Profile (custom avatar) skips icon tint but still greens the label on
-    // hover/focus — same language as destination-accent tabs.
+    // Profile (custom avatar) skips icon tint but greens the label on
+    // hover/focus — brand green, not the slate settings accent.
     final labelColor = useDestinationAccent
         ? (widget.selected || active
               ? destinationAccent
               : ForjaShellColors.iconMuted)
         : active
-        ? destinationAccent
+        ? (widget.icon != null
+              ? ForjaShellColors.brandGreen
+              : destinationAccent)
         : selectedFocused
         ? Colors.white
         : widget.selected
@@ -1169,7 +1134,6 @@ class _ShellNavRailItemState extends State<_ShellNavRailItem> {
         debugLabel: 'nav-${widget.destination.id}',
         onFocusChange: (focused) {
           setState(() => _focused = focused);
-          widget.onFocusChanged();
           if (focused) {
             WidgetsBinding.instance.addPostFrameCallback((_) {
               if (!mounted) return;

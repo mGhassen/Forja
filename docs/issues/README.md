@@ -548,6 +548,7 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [509-[fixed]-…](fixed/509-[fixed]-anime-season-switch-pin-stale.md) | Anime season switch My List pin stuck / wiped on sibling pin | P2 | Medium | fixed | Complete · 4/4 · A 0/2 | [098](098-[open]-anime-details-season-chain.md) |
 | [510-[open]-…](510-[open]-megaplay-pngstrip-vod-prefetch-desync.md) | MegaPlay PNG-strip VOD wrong prefetch → freeze/desync | P1 | High | open | 2/2 · A 0/2 | [187](187-[open]-android-tv-mediakit-vod-cache-empty.md) · [498](fixed/498-[fixed]-mediakit-hls-av-desync-after-hiccup.md) |
 | [511-[fixed]-…](fixed/511-[fixed]-stremio-addon-feature-chips-desktop-double-tap.md) | Stremio Sources / Live Sports chips dead on desktop | P1 | High | fixed | Complete · 1/1 · A 0/1 | [RFC-050](../rfc/050-[open]-stremio-addon-feature-targets.md) |
+| [512-[fixed]-…](fixed/512-[fixed]-iptv-epg-view-button-dead.md) | IPTV EPG view button does nothing | P1 | High | fixed | Complete · 1/1 · A 0/1 | [RFC-041](../rfc/041-[open]-iptv-live-epg-guide.md) · [434](fixed/434-[fixed]-live-sports-sports-tv-shelf.md) |
 
 **Migration parity (draft):** [018](018-[draft]-migration-playback-parity-unverified.md) → [019](019-[draft]-webstreamr-enginejobs-e2e-test-gap.md)–[022](022-[draft]-playback-widget-integration-tests.md).
 

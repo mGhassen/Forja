@@ -28,35 +28,38 @@ class _DependentState extends State<_Dependent> {
 void main() {
   final selected = ValueNotifier<Map<String, dynamic>?>(null);
   final hits = ValueNotifier<Set<String>>(const {});
+  final counts = ValueNotifier<Map<String, int>>(const {});
   final lane = KitRowPrefetchLane();
   const child = _Dependent(onDeps: _count);
 
   Widget scope(String epoch) => PackChromeScope(
-        eventQuery: '',
-        refreshEpoch: 0,
-        chromeFilterEpoch: epoch,
-        viewStyle: 'cards',
-        dynamicBarItems: const {},
-        selectedListItem: selected,
-        searchHitKindIds: hits,
-        shellTabVisible: true,
-        eagerLoadKeys: const {},
-        pageFeedRailIds: const {},
-        pageFeedFuture: null,
-        rowPrefetch: lane,
-        onEventQuery: (_) {},
-        onBumpRefresh: ({bool forceNetwork = true}) {},
-        onClearCatalog: () {},
-        onViewStyle: (_) {},
-        onDynamicBarItems: (_, _) {},
-        onSelectListItem: (_) {},
-        child: child,
-      );
+    eventQuery: '',
+    refreshEpoch: 0,
+    chromeFilterEpoch: epoch,
+    viewStyle: 'cards',
+    dynamicBarItems: const {},
+    selectedListItem: selected,
+    searchHitKindIds: hits,
+    searchHitCounts: counts,
+    shellTabVisible: true,
+    eagerLoadKeys: const {},
+    pageFeedRailIds: const {},
+    pageFeedFuture: null,
+    rowPrefetch: lane,
+    onEventQuery: (_) {},
+    onBumpRefresh: ({bool forceNetwork = true}) {},
+    onClearCatalog: () {},
+    onViewStyle: (_) {},
+    onDynamicBarItems: (_, _) {},
+    onSelectListItem: (_) {},
+    child: child,
+  );
 
   setUp(() => _deps = 0);
 
-  testWidgets('filter epoch change notifies rails without a page feed',
-      (tester) async {
+  testWidgets('filter epoch change notifies rails without a page feed', (
+    tester,
+  ) async {
     await tester.pumpWidget(scope('|'));
     expect(_deps, 1);
 

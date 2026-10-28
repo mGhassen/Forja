@@ -145,10 +145,10 @@ import 'package:forja_foundation/widgets/feedback/catalog_loading_ticker.dart';
   }
 
   // rail / ranked / row / default poster section
-  final titleBarW =
-      title.isEmpty ? 140.0 : title.length * 10.0;
-  final titleBarClamped =
-      titleBarW < 80 ? 80.0 : (titleBarW > 220 ? 220.0 : titleBarW);
+  final titleBarW = title.isEmpty ? 140.0 : title.length * 10.0;
+  final titleBarClamped = titleBarW < 80
+      ? 80.0
+      : (titleBarW > 220 ? 220.0 : titleBarW);
   return (
     placeholder: catalogPosterRowSkeleton(
       context: context,
@@ -175,8 +175,8 @@ import 'package:forja_foundation/widgets/feedback/catalog_loading_ticker.dart';
   final catalogMenu = (spec['catalogMenu'] ?? '').toString().trim();
   var section = '';
   if (catalogMenu.isNotEmpty) {
-    section =
-        (LayoutScope.maybeOf(context)?.selectedId(catalogMenu) ?? '').trim();
+    section = (LayoutScope.maybeOf(context)?.selectedId(catalogMenu) ?? '')
+        .trim();
     if (section.isEmpty) section = 'all';
   }
 
@@ -229,7 +229,8 @@ class PackLoadedPaint extends StatefulWidget {
   final Map<String, dynamic> params;
   final Map<String, dynamic> fallbackSpec;
   final Widget Function(BuildContext context, Map<String, dynamic> merged)
-      builder;
+  builder;
+
   /// Hero bleed rail (Featured) — keep mounted over the hero skeleton while
   /// spotlight loads so the first-row skeleton sits on the darker backdrop.
   final Widget? loadingBottomChild;
@@ -240,8 +241,11 @@ class PackLoadedPaint extends StatefulWidget {
 
   /// Last successful paint per IPTV Live / Movies / Series shelf (portal-scoped).
   /// Exact [_resolved] keys include kind/sort/query — too narrow for shelf flips.
-  static final Map<String, ({MetaEnvelope env, Map<String, dynamic> feedParams})>
-      _sectionResolved = {};
+  static final Map<
+    String,
+    ({MetaEnvelope env, Map<String, dynamic> feedParams})
+  >
+  _sectionResolved = {};
 
   /// Memo a settled envelope. A failed fetch (offline, upstream down) is
   /// dropped instead, so the next bind refetches rather than replaying the
@@ -276,30 +280,38 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
   String _scopeEpoch = '';
   String _catalogSection = '';
   int _appliedRefreshEpoch = 0;
+
   /// First [didChangeDependencies] adopts chrome refreshEpoch without force —
   /// Sports↔TV showWhen remounts must not treat a prior Refresh as force.
   bool _refreshEpochSeeded = false;
+
   /// Catalog / sport / horizon / search last started on a progressive schedule.
   /// A later chrome bump with the same key keeps the painted feed.
   String _appliedProgressiveSchedule = '';
   int _appliedHoldEpoch = 0;
+
   /// When set, skip auto-_bind until [PackChromeScope.refreshEpoch] advances past it.
   int? _holdAtRefreshEpoch;
   int _bindGen = 0;
   StreamSubscription<MetaEnvelope>? _progressiveSub;
+
   /// Bumped on every progressive start / cancel; a stale fan-out compares
   /// against it to stop scraping and to stop writing the busy chip.
   int _progressiveRunGen = 0;
+
   /// Captured while the context is active so a cancel from `dispose` can still
   /// clear this instance's busy chip.
   ProviderContainer? _scheduleBusyContainer;
+
   /// Coalesce progressive setState to the next frame (avoids mouse_tracker
   /// re-entrancy when scrape ticks land under the cursor).
   MetaEnvelope? _progressivePending;
   bool _progressivePaintScheduled = false;
   int _progressivePaintGen = 0;
+
   /// Skip warmPaintKey restore on the next [_bind] (Live category / Favorites flip).
   bool _skipWarmRestore = false;
+
   /// Page-feed epoch last painted via [_promotePageFeedRailIfReady] — when the
   /// chrome filter epoch advances, promote must replace non-empty envelopes.
   String _promotedPageFeedEpoch = '';
@@ -321,8 +333,8 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
   /// Includes [catalogChromeFilterEpoch] so Films / TV / Categories cannot
   /// warm-restore the previous mixed page-feed slice.
   String get _warmPaintKey {
-    final rail =
-        (widget.params['rail'] ?? widget.fallbackSpec['rail'] ?? '').toString();
+    final rail = (widget.params['rail'] ?? widget.fallbackSpec['rail'] ?? '')
+        .toString();
     final id = (widget.fallbackSpec['id'] ?? '').toString();
     return [
       widget.pluginId,
@@ -348,10 +360,12 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
 
   String _catalogSectionOf() {
     final scope = LayoutScope.maybeOf(context);
-    final sectionMenu =
-        (widget.fallbackSpec['sectionMenu'] ?? '').toString().trim();
-    final catalogMenu =
-        (widget.fallbackSpec['catalogMenu'] ?? '').toString().trim();
+    final sectionMenu = (widget.fallbackSpec['sectionMenu'] ?? '')
+        .toString()
+        .trim();
+    final catalogMenu = (widget.fallbackSpec['catalogMenu'] ?? '')
+        .toString()
+        .trim();
     final shelf = sectionMenu.isEmpty
         ? ''
         : (scope?.selectedId(sectionMenu) ?? '').trim();
@@ -393,8 +407,9 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
       feedParams: Map<String, dynamic>.from(_lastFeedParams),
     );
     if (PackLoadedPaint._sectionResolved.length > 24) {
-      PackLoadedPaint._sectionResolved
-          .remove(PackLoadedPaint._sectionResolved.keys.first);
+      PackLoadedPaint._sectionResolved.remove(
+        PackLoadedPaint._sectionResolved.keys.first,
+      );
     }
   }
 
@@ -413,10 +428,10 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
     // catalog only (issue 439).
     if (!_refreshEpochSeeded) {
       _refreshEpochSeeded = true;
-      final hubReloadForce = (chrome?.refreshForceNetwork ?? false) &&
+      final hubReloadForce =
+          (chrome?.refreshForceNetwork ?? false) &&
           !(chrome?.refreshKeepPainted ?? false);
-      _appliedRefreshEpoch =
-          hubReloadForce ? refreshEpoch - 1 : refreshEpoch;
+      _appliedRefreshEpoch = hubReloadForce ? refreshEpoch - 1 : refreshEpoch;
     }
     final holdEpoch = chrome?.catalogHoldEpoch ?? 0;
     final refreshBumped = refreshEpoch > _appliedRefreshEpoch;
@@ -524,8 +539,8 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
     }
     _catalogSection = section;
 
-    final held = _holdAtRefreshEpoch != null &&
-        refreshEpoch <= _holdAtRefreshEpoch!;
+    final held =
+        _holdAtRefreshEpoch != null && refreshEpoch <= _holdAtRefreshEpoch!;
 
     // Back to a hub that already painted. Do not start a catalog fetch
     // just because the tab became visible again.
@@ -580,10 +595,12 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
         scope: LayoutScope.maybeOf(context),
         eventQuery: PackChromeScope.maybeOf(context)?.eventQuery,
       );
-      final softLand = _appliedKindId.isEmpty ||
+      final softLand =
+          _appliedKindId.isEmpty ||
           _appliedKindId == 'all' ||
           _appliedFlipEpoch.isEmpty;
-      final gridFlip = _appliedFlipEpoch.isNotEmpty &&
+      final gridFlip =
+          _appliedFlipEpoch.isNotEmpty &&
           flipEpoch != _appliedFlipEpoch &&
           !shelfSectionFlipped &&
           !softLand &&
@@ -647,11 +664,7 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
       final cur = _envelope!.data?['items'];
       if (cur is List && cur.isNotEmpty) return;
     }
-    final env = MetaEnvelope(
-      ok: true,
-      action: 'rail',
-      data: {'items': items},
-    );
+    final env = MetaEnvelope(ok: true, action: 'rail', data: {'items': items});
     final key = [
       widget.pluginId,
       'pageFeed',
@@ -667,13 +680,11 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
 
   /// Empty grid while a Live category / Favorites page loads — no cover ticker.
   MetaEnvelope _categoryFlipPlaceholderEnvelope(LayoutScope? scope) {
-    final kindMenu =
-        (widget.fallbackSpec['kindMenu'] ?? '').toString().trim();
-    final kind =
-        kindMenu.isEmpty ? '' : (scope?.selectedId(kindMenu) ?? '').trim();
-    final data = <String, dynamic>{
-      'items': <dynamic>[],
-    };
+    final kindMenu = (widget.fallbackSpec['kindMenu'] ?? '').toString().trim();
+    final kind = kindMenu.isEmpty
+        ? ''
+        : (scope?.selectedId(kindMenu) ?? '').trim();
+    final data = <String, dynamic>{'items': <dynamic>[]};
     if (kind == PortalLiveCatalog.favoritesId || kind == 'favorites') {
       data['emptyTitle'] = 'No favorites';
       data['emptyDescription'] = 'Star a live channel to keep it here.';
@@ -793,8 +804,10 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
 
   ProviderContainer? _scheduleBusyContainerOrNull() {
     try {
-      return _scheduleBusyContainer ??=
-          ProviderScope.containerOf(context, listen: false);
+      return _scheduleBusyContainer ??= ProviderScope.containerOf(
+        context,
+        listen: false,
+      );
     } catch (_) {
       return _scheduleBusyContainer;
     }
@@ -804,8 +817,12 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
     final container = _scheduleBusyContainerOrNull();
     if (container == null) return;
     try {
-      container.read(liveScheduleFeedBusyProvider(widget.pluginId).notifier).state =
-          (busy: busy, label: label);
+      container
+          .read(liveScheduleFeedBusyProvider(widget.pluginId).notifier)
+          .state = (
+        busy: busy,
+        label: label,
+      );
     } catch (_) {}
   }
 
@@ -862,69 +879,75 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
     var paintedOnce = false;
     final runGen = ++_progressiveRunGen;
     _scheduleBusyContainerOrNull();
-    _progressiveSub = loadLiveScheduleProgressive(
-      hubPluginId: widget.pluginId,
-      packSourceUrl: widget.packSourceUrl,
-      feedParams: runParams,
-      forceRefresh: force,
-      setBusy: _setScheduleBusy,
-      isCancelled: () => !mounted || runGen != _progressiveRunGen,
-    ).listen(
-      (env) {
-        if (!mounted || gen != _bindGen) return;
-        last = env;
-        PackLoadedPaint._resolved[key] = env;
-        paintedOnce = true;
-        _progressivePending = env;
-        if (_progressivePaintScheduled) return;
-        _progressivePaintScheduled = true;
-        final paintGen = ++_progressivePaintGen;
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (paintGen != _progressivePaintGen) return;
-          _progressivePaintScheduled = false;
-          if (!mounted || gen != _bindGen) return;
-          final pending = _progressivePending;
-          if (pending == null) return;
-          _progressivePending = null;
-          setState(() {
-            _envelope = pending;
-          });
-        });
-      },
-      onError: (Object e, StackTrace st) {
-        debugPrint('[PackLoadedPaint] progressive feed: $e\n$st');
-        if (!completer.isCompleted) {
-          completer.complete(
-            MetaEnvelope.failure(
-              MetaErrorCode.upstream,
-              message: '${widget.pluginId} progressive feed failed',
-              action: widget.action,
-            ),
-          );
-        }
-        PackLoadedPaint._memo.remove(key);
-        if (!mounted || gen != _bindGen) return;
-        _setScheduleBusy(busy: false, label: null);
-        setState(() => _inFlight = null);
-      },
-      onDone: () {
-        final env = last ??
-            const MetaEnvelope(ok: true, action: 'feed', data: {'items': []});
-        if (env.ok) {
-          PackLoadedPaint._resolved[key] = env;
-        } else {
-          PackLoadedPaint._resolved.remove(key);
-          PackLoadedPaint._memo.remove(key);
-        }
-        if (!completer.isCompleted) completer.complete(env);
-        if (!mounted || gen != _bindGen) return;
-        setState(() {
-          if (!paintedOnce) _envelope = env;
-          _inFlight = null;
-        });
-      },
-      cancelOnError: false,
-    );
+    _progressiveSub =
+        loadLiveScheduleProgressive(
+          hubPluginId: widget.pluginId,
+          packSourceUrl: widget.packSourceUrl,
+          feedParams: runParams,
+          forceRefresh: force,
+          setBusy: _setScheduleBusy,
+          isCancelled: () => !mounted || runGen != _progressiveRunGen,
+        ).listen(
+          (env) {
+            if (!mounted || gen != _bindGen) return;
+            last = env;
+            PackLoadedPaint._resolved[key] = env;
+            paintedOnce = true;
+            _progressivePending = env;
+            if (_progressivePaintScheduled) return;
+            _progressivePaintScheduled = true;
+            final paintGen = ++_progressivePaintGen;
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (paintGen != _progressivePaintGen) return;
+              _progressivePaintScheduled = false;
+              if (!mounted || gen != _bindGen) return;
+              final pending = _progressivePending;
+              if (pending == null) return;
+              _progressivePending = null;
+              setState(() {
+                _envelope = pending;
+              });
+            });
+          },
+          onError: (Object e, StackTrace st) {
+            debugPrint('[PackLoadedPaint] progressive feed: $e\n$st');
+            if (!completer.isCompleted) {
+              completer.complete(
+                MetaEnvelope.failure(
+                  MetaErrorCode.upstream,
+                  message: '${widget.pluginId} progressive feed failed',
+                  action: widget.action,
+                ),
+              );
+            }
+            PackLoadedPaint._memo.remove(key);
+            if (!mounted || gen != _bindGen) return;
+            _setScheduleBusy(busy: false, label: null);
+            setState(() => _inFlight = null);
+          },
+          onDone: () {
+            final env =
+                last ??
+                const MetaEnvelope(
+                  ok: true,
+                  action: 'feed',
+                  data: {'items': []},
+                );
+            if (env.ok) {
+              PackLoadedPaint._resolved[key] = env;
+            } else {
+              PackLoadedPaint._resolved.remove(key);
+              PackLoadedPaint._memo.remove(key);
+            }
+            if (!completer.isCompleted) completer.complete(env);
+            if (!mounted || gen != _bindGen) return;
+            setState(() {
+              if (!paintedOnce) _envelope = env;
+              _inFlight = null;
+            });
+          },
+          cancelOnError: false,
+        );
     PackLoadedPaint._memo[key] = completer.future;
     return null;
   }
@@ -969,15 +992,16 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
     }
     final chrome = PackChromeScope.maybeOf(context);
     final scope = LayoutScope.maybeOf(context);
-    final kindMenu =
-        (widget.fallbackSpec['kindMenu'] ?? '').toString().trim();
-    final kind =
-        kindMenu.isEmpty ? '' : (scope?.selectedId(kindMenu) ?? '').trim();
+    final kindMenu = (widget.fallbackSpec['kindMenu'] ?? '').toString().trim();
+    final kind = kindMenu.isEmpty
+        ? ''
+        : (scope?.selectedId(kindMenu) ?? '').trim();
     final needsLiveLists = widget.action == 'feed' || widget.action == 'rail';
     final syntheticKind = PortalLiveCatalog.isSyntheticId(kind);
     final vodPaged = packChromeVodPagedFeed(widget.fallbackSpec, scope);
-    final catalogMenu =
-        (widget.fallbackSpec['catalogMenu'] ?? '').toString().trim();
+    final catalogMenu = (widget.fallbackSpec['catalogMenu'] ?? '')
+        .toString()
+        .trim();
     final section = catalogMenu.isEmpty
         ? ''
         : (scope?.selectedId(catalogMenu) ?? '').trim().toLowerCase();
@@ -1037,9 +1061,7 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
           // Sync rail before feed — same frame as remembered category params.
           landScope.onSelect(kindMenu, landKind, toggle: false);
         }
-        final future = _runWithParams(
-          chrome: PackChromeScope.maybeOf(context),
-        );
+        final future = _runWithParams(chrome: PackChromeScope.maybeOf(context));
         if (future == null) {
           if (!completer.isCompleted) {
             completer.complete(
@@ -1082,7 +1104,8 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
     if (needsLiveLists && syntheticKind) {
       final cached = CategoryBarActionHost.cachedLiveListParams;
       final portalKey = (cached['portalStoreKey'] ?? '').toString().trim();
-      final listsWarm = portalKey.isNotEmpty &&
+      final listsWarm =
+          portalKey.isNotEmpty &&
           cached['favorites'] is List &&
           cached['watched'] is List;
       if (listsWarm) {
@@ -1104,9 +1127,7 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
           }
           return;
         }
-        final future = _runWithParams(
-          chrome: PackChromeScope.maybeOf(context),
-        );
+        final future = _runWithParams(chrome: PackChromeScope.maybeOf(context));
         if (future == null) {
           if (!completer.isCompleted) {
             completer.complete(
@@ -1168,7 +1189,8 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
     final refreshEpoch = chrome?.refreshEpoch ?? 0;
     final epochBumped = refreshEpoch > _appliedRefreshEpoch;
     final forceNetwork = chrome?.refreshForceNetwork ?? false;
-    final force = (epochBumped && forceNetwork) ||
+    final force =
+        (epochBumped && forceNetwork) ||
         params['force'] == true ||
         widget.params['force'] == true;
     if (epochBumped) {
@@ -1178,8 +1200,9 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
         ? <String, dynamic>{...params, 'force': true}
         : params;
     _lastFeedParams = Map<String, dynamic>.from(runParams);
-    final rail =
-        (runParams['rail'] ?? widget.params['rail'] ?? '').toString().trim();
+    final rail = (runParams['rail'] ?? widget.params['rail'] ?? '')
+        .toString()
+        .trim();
     final feedFuture = chrome?.pageFeedFuture;
     final syncRails = chrome?.pageFeedRails;
     if (!force &&
@@ -1202,11 +1225,7 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
       }
       final feedErr = chrome.pageFeedError;
       if (feedErr != null) {
-        final env = MetaEnvelope(
-          ok: false,
-          action: 'rail',
-          error: feedErr,
-        );
+        final env = MetaEnvelope(ok: false, action: 'rail', error: feedErr);
         PackLoadedPaint._settle(key, _warmPaintKey, env);
         return Future.value(env);
       }
@@ -1257,11 +1276,7 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
             },
             onError: (Object e, StackTrace _) {
               final env = e is MetaEnvelope && !e.ok
-                  ? MetaEnvelope(
-                      ok: false,
-                      action: 'rail',
-                      error: e.error,
-                    )
+                  ? MetaEnvelope(ok: false, action: 'rail', error: e.error)
                   : MetaEnvelope.failure(
                       MetaErrorCode.upstream,
                       message: e.toString(),
@@ -1306,11 +1321,7 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
           },
           onError: (Object e, StackTrace _) {
             final env = e is MetaEnvelope && !e.ok
-                ? MetaEnvelope(
-                    ok: false,
-                    action: 'rail',
-                    error: e.error,
-                  )
+                ? MetaEnvelope(ok: false, action: 'rail', error: e.error)
                 : MetaEnvelope.failure(
                     MetaErrorCode.upstream,
                     message: e.toString(),
@@ -1392,24 +1403,25 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
       PackLoadedPaint._memo.remove(key);
     }
     final refresh = force || bustBecauseCache;
-    final future = packOpaqueRun(
-      pluginId: widget.pluginId,
-      action: widget.action,
-      params: runParams,
-      packSourceUrl: widget.packSourceUrl,
-      forceRefresh: refresh,
-    ).then((env) {
-      // Never sticky-cache an empty Because envelope when seeds were sent —
-      // a prior failed recommendations call would hide the row forever.
-      if (_isUnusableBecauseCache(env, runParams)) {
-        PackLoadedPaint._resolved.remove(key);
-        PackLoadedPaint._resolved.remove(_warmPaintKey);
-        PackLoadedPaint._memo.remove(key);
-        return env;
-      }
-      PackLoadedPaint._settle(key, _warmPaintKey, env);
-      return env;
-    });
+    final future =
+        packOpaqueRun(
+          pluginId: widget.pluginId,
+          action: widget.action,
+          params: runParams,
+          packSourceUrl: widget.packSourceUrl,
+          forceRefresh: refresh,
+        ).then((env) {
+          // Never sticky-cache an empty Because envelope when seeds were sent —
+          // a prior failed recommendations call would hide the row forever.
+          if (_isUnusableBecauseCache(env, runParams)) {
+            PackLoadedPaint._resolved.remove(key);
+            PackLoadedPaint._resolved.remove(_warmPaintKey);
+            PackLoadedPaint._memo.remove(key);
+            return env;
+          }
+          PackLoadedPaint._settle(key, _warmPaintKey, env);
+          return env;
+        });
     PackLoadedPaint._memo[key] = future;
     if (PackLoadedPaint._memo.length > 96) {
       final drop = PackLoadedPaint._memo.keys.first;
@@ -1513,7 +1525,8 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
     if (data.containsKey('coverBody')) {
       merged['coverBody'] = data['coverBody'];
     }
-    final pageSize = catalogRailPageSizeFrom(data) ??
+    final pageSize =
+        catalogRailPageSizeFrom(data) ??
         catalogRailPageSizeFrom(widget.fallbackSpec) ??
         kMetaRailPageSizeFallback;
     final items = data['items'];
@@ -1525,7 +1538,8 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
       merged['hasMore'] = itemCount >= pageSize;
     }
     merged['pageSize'] = pageSize;
-    final maxPages = catalogRailMaxPagesFrom(data) ??
+    final maxPages =
+        catalogRailMaxPagesFrom(data) ??
         catalogRailMaxPagesFrom(widget.fallbackSpec);
     if (maxPages != null) merged['maxPages'] = maxPages;
     // Opaque next-page handle (not `load` — that would re-enter PackLoadedPaint).
@@ -1538,10 +1552,7 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
       pageParams.remove('force');
       pageParams.remove('refresh');
       if (maxPages != null) pageParams['maxPages'] = maxPages;
-      merged['pageLoad'] = {
-        'action': widget.action,
-        'params': pageParams,
-      };
+      merged['pageLoad'] = {'action': widget.action, 'params': pageParams};
     }
     merged.remove('load');
     _publishDynamicKinds(context, merged);
@@ -1554,32 +1565,79 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
 
   /// IPTV paged search: category rail filters via [PackChromeScope.searchHitKindIds].
   /// Shelf-wide ids come from catalog_page `hitCategoryIds` (not just this page).
-  void _publishSearchHitKinds(
-    BuildContext context,
-    Map<String, dynamic> data,
-  ) {
+  /// My List search: `statusCounts` → [PackChromeScope.searchHitCounts].
+  void _publishSearchHitKinds(BuildContext context, Map<String, dynamic> data) {
     final chrome = PackChromeScope.maybeOf(context);
     final notifier = chrome?.searchHitKindIds;
-    if (notifier == null) return;
+    final countsNotifier = chrome?.searchHitCounts;
     final q = (chrome?.eventQuery ?? '').trim();
     if (q.isEmpty) return;
 
-    final hits = <String>{};
-    final raw = data['hitCategoryIds'] ?? data['hit_category_ids'];
-    if (raw is List) {
-      for (final e in raw) {
-        final id = e.toString().trim();
-        if (id.isNotEmpty && id != 'all') hits.add(id);
+    if (notifier != null) {
+      final hits = <String>{};
+      final raw = data['hitCategoryIds'] ?? data['hit_category_ids'];
+      if (raw is List) {
+        for (final e in raw) {
+          final id = e.toString().trim();
+          if (id.isNotEmpty && id != 'all') hits.add(id);
+        }
+      }
+      if (hits.isNotEmpty && !setEquals(notifier.value, hits)) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted) return;
+          if (!setEquals(notifier.value, hits)) {
+            notifier.value = Set<String>.from(hits);
+          }
+        });
       }
     }
-    if (hits.isEmpty) return;
-    if (setEquals(notifier.value, hits)) return;
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      if (!setEquals(notifier.value, hits)) {
-        notifier.value = Set<String>.from(hits);
+
+    if (countsNotifier != null) {
+      final rawCounts = data['statusCounts'] ?? data['searchCounts'];
+      if (rawCounts is Map) {
+        final fromPack = <String, int>{};
+        for (final e in rawCounts.entries) {
+          final id = e.key.toString().trim();
+          if (id.isEmpty) continue;
+          final n = e.value is num
+              ? (e.value as num).toInt()
+              : int.tryParse(e.value.toString()) ?? 0;
+          if (n > 0) fromPack[id] = n;
+        }
+        // Keep paint-side kind counts (movie/tv/…) — pack only sends status ids.
+        final keptKinds = <String, int>{
+          for (final e in countsNotifier.value.entries)
+            if (!_isMyListStatusId(e.key)) e.key: e.value,
+        };
+        final next = <String, int>{...keptKinds, ...fromPack};
+        if (!mapEquals(countsNotifier.value, next)) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (!mounted) return;
+            final kept = <String, int>{
+              for (final e in countsNotifier.value.entries)
+                if (!_isMyListStatusId(e.key)) e.key: e.value,
+            };
+            final merged = <String, int>{...kept, ...fromPack};
+            if (!mapEquals(countsNotifier.value, merged)) {
+              countsNotifier.value = merged;
+            }
+          });
+        }
       }
-    });
+    }
+  }
+
+  static bool _isMyListStatusId(String id) {
+    switch (id) {
+      case 'plantowatch':
+      case 'watching':
+      case 'hold':
+      case 'completed':
+      case 'dropped':
+        return true;
+      default:
+        return false;
+    }
   }
 
   /// Last successful paint — keep on screen while a soft reload runs.
@@ -1588,8 +1646,9 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
   bool? _lastCover;
   void _syncCompositionCover(bool cover) {
     final kindMenu = (widget.fallbackSpec['kindMenu'] ?? '').toString().trim();
-    final catalogMenu =
-        (widget.fallbackSpec['catalogMenu'] ?? '').toString().trim();
+    final catalogMenu = (widget.fallbackSpec['catalogMenu'] ?? '')
+        .toString()
+        .trim();
     // Only IPTV-style composition lists (cats + grid) — not Home rails.
     if (kindMenu.isEmpty && catalogMenu.isEmpty) return;
     if (_lastCover == cover) return;
@@ -1615,19 +1674,21 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
     // Live IPTV rich rail owns Favorites / Watched + pin order via
     // CategoryBarActionHost. Overwriting barItems with feed `kinds` (portal
     // groups only) dropped synthetics and triggered seed-churn reloads.
-    final catalogMenu =
-        (widget.fallbackSpec['catalogMenu'] ?? '').toString().trim();
+    final catalogMenu = (widget.fallbackSpec['catalogMenu'] ?? '')
+        .toString()
+        .trim();
     final section = catalogMenu.isEmpty
         ? ''
         : (LayoutScope.maybeOf(context)?.selectedId(catalogMenu) ?? '')
-            .trim()
-            .toLowerCase();
+              .trim()
+              .toLowerCase();
     final liveShelf = section.isEmpty || section == 'live';
     if (liveShelf) {
       final prev = chrome.barItems(barId);
       if (prev != null &&
-          prev.any((e) =>
-              PortalLiveCatalog.isSyntheticId((e['id'] ?? '').toString()))) {
+          prev.any(
+            (e) => PortalLiveCatalog.isSyntheticId((e['id'] ?? '').toString()),
+          )) {
         return;
       }
     }
@@ -1647,9 +1708,10 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
         if (raw is! Map) continue;
         final id = (raw['id'] ?? raw['category_id'] ?? '').toString().trim();
         if (id.isEmpty || id == 'all' || !seen.add(id)) continue;
-        final label = (raw['label'] ?? raw['name'] ?? raw['category_name'] ?? id)
-            .toString()
-            .trim();
+        final label =
+            (raw['label'] ?? raw['name'] ?? raw['category_name'] ?? id)
+                .toString()
+                .trim();
         items.add({
           'id': id,
           'label': catalogKitCategoryLabel(id, label: label),
@@ -1673,23 +1735,23 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
       final kind = _dynamicKindOf(item);
       if (kind.isEmpty || kind == 'all' || kind == 'live_match') continue;
       if (!kinds.contains(kind)) kinds.add(kind);
-      final cn = (item['categoryName'] ??
-              item['category'] ??
-              (item['paint'] is Map && (item['paint'] as Map)['props'] is Map
-                  ? ((item['paint'] as Map)['props'] as Map)['categoryLabel']
-                  : null) ??
-              '')
-          .toString()
-          .trim();
+      final cn =
+          (item['categoryName'] ??
+                  item['category'] ??
+                  (item['paint'] is Map &&
+                          (item['paint'] as Map)['props'] is Map
+                      ? ((item['paint'] as Map)['props']
+                            as Map)['categoryLabel']
+                      : null) ??
+                  '')
+              .toString()
+              .trim();
       if (cn.isNotEmpty) labels.putIfAbsent(kind, () => cn);
     }
     if (kinds.isEmpty) return;
     final items = <Map<String, dynamic>>[
       for (final id in kinds)
-        {
-          'id': id,
-          'label': catalogKitCategoryLabel(id, label: labels[id]),
-        },
+        {'id': id, 'label': catalogKitCategoryLabel(id, label: labels[id])},
     ];
     _scheduleDynamicBarPublish(context, chrome, barId, items);
   }
@@ -1757,12 +1819,7 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
       clipBehavior: Clip.none,
       children: [
         skeleton,
-        Positioned(
-          left: 0,
-          right: 0,
-          bottom: 0,
-          child: bottom,
-        ),
+        Positioned(left: 0, right: 0, bottom: 0, child: bottom),
       ],
     );
   }

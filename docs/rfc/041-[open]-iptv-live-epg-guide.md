@@ -58,5 +58,6 @@ Add a Lume-style programme guide as an alternate **view mode** for the Live cata
 
 ## Related
 
+- [512](../issues/fixed/512-[fixed]-iptv-epg-view-button-dead.md) — View↔EPG dead after `viewMenu` gate (pack opt-in)
 - [iptv-xtream.md](../features/live/iptv-xtream.md)
 - Lume LiveTV EPG (reference UX only — AGPL; do not copy code)

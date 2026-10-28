@@ -90,6 +90,8 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
   final ValueNotifier<Set<String>> _searchHitKinds = ValueNotifier<Set<String>>(
     const {},
   );
+  final ValueNotifier<Map<String, int>> _searchHitCounts =
+      ValueNotifier<Map<String, int>>(const {});
 
   /// Category selected before opening Search (restored on clear).
   String? _categoryBeforeSearch;
@@ -244,6 +246,7 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
     _scroll.dispose();
     _selectedListItem.dispose();
     _searchHitKinds.dispose();
+    _searchHitCounts.dispose();
     final tab = widget.tabId?.trim();
     if (tab != null && tab.isNotEmpty) {
       VerticalFiltersRegistry.unregister(tab);
@@ -1535,6 +1538,7 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
       ),
       selectedListItem: _selectedListItem,
       searchHitKindIds: _searchHitKinds,
+      searchHitCounts: _searchHitCounts,
       shellTabVisible: shellTabVisible,
       eagerLoadKeys: _eagerLoadKeys,
       pageFeedRailIds: _pageFeedRailIds,
@@ -1554,6 +1558,7 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
             _categoryBeforeSearch = _layoutSelections['cats'];
             _layoutSelections.remove('cats');
             _searchHitKinds.value = const {};
+            _searchHitCounts.value = const {};
           } else if (prev.isNotEmpty && next.isEmpty) {
             final current = (_layoutSelections['cats'] ?? '').trim();
             if (current.isEmpty) {
@@ -1564,6 +1569,7 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
             }
             _categoryBeforeSearch = null;
             _searchHitKinds.value = const {};
+            _searchHitCounts.value = const {};
           }
         });
       },

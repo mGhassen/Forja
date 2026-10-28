@@ -575,6 +575,10 @@ void main() {
       find.byKey(const ValueKey('nav-profile-avatar-color')),
       findsOneWidget,
     );
+    expect(
+      tester.widget<Text>(find.text('Guest')).style?.color,
+      ForjaShellColors.brandGreen,
+    );
     // Hover must not remount the avatar (would flash default forge artwork).
     expect(find.byType(ForjaProfileAvatar), findsOneWidget);
     expect(

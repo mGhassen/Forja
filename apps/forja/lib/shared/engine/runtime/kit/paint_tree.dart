@@ -813,7 +813,6 @@ class PackPaintTree extends StatelessWidget {
     Map<String, dynamic> node, {
     required Map<String, dynamic> props,
   }) {
-    Widget? chrome;
     Widget? menu;
     Widget? tabs;
     Widget? feed;
@@ -826,12 +825,6 @@ class PackPaintTree extends StatelessWidget {
           (child['type'] ?? '').toString(),
           child,
         );
-        if (t == LayoutTypes.topBar) {
-          // Pack search / chrome on list hubs (My List) — same CatalogTopChrome
-          // + eventSearch path as IPTV / Live Sports.
-          chrome = _chromeTopBar(context, child);
-          continue;
-        }
         final painted = PackPaintTree(
           spec: child,
           pluginId: pluginId,
@@ -849,7 +842,6 @@ class PackPaintTree extends StatelessWidget {
     }
     return TabsCardsBlock.fromProps(
       props,
-      chrome: chrome,
       menu: menu,
       tabs: tabs,
       cards:
@@ -1828,12 +1820,32 @@ class PackPaintTree extends StatelessWidget {
               for (final e in hits)
                 if (_itemKind(e).isNotEmpty) _itemKind(e),
             };
+            final kindCounts = <String, int>{};
+            for (final e in hits) {
+              final k = _itemListKind(e);
+              if (k.isEmpty) continue;
+              kindCounts[k] = (kindCounts[k] ?? 0) + 1;
+            }
             final notifier = chrome?.searchHitKindIds;
             if (notifier != null && !setEquals(notifier.value, hitKinds)) {
               // Defer — setState during build is illegal.
               WidgetsBinding.instance.addPostFrameCallback((_) {
                 if (!setEquals(notifier.value, hitKinds)) {
                   notifier.value = Set<String>.from(hitKinds);
+                }
+              });
+            }
+            final countsNotifier = chrome?.searchHitCounts;
+            if (countsNotifier != null) {
+              WidgetsBinding.instance.addPostFrameCallback((_) {
+                // Keep pack status-tab counts; refresh kind-chip counts.
+                final keptStatus = <String, int>{
+                  for (final e in countsNotifier.value.entries)
+                    if (_isMyListStatusId(e.key)) e.key: e.value,
+                };
+                final merged = <String, int>{...keptStatus, ...kindCounts};
+                if (!mapEquals(countsNotifier.value, merged)) {
+                  countsNotifier.value = merged;
                 }
               });
             }
@@ -2673,6 +2685,34 @@ class PackPaintTree extends StatelessWidget {
     return '';
   }
 
+  /// My List kind chips (movie / tv / anime / asian_drama) — [_itemKind] skips
+  /// movie|tv so IPTV category matching stays clean.
+  String _itemListKind(Map<String, dynamic> item) {
+    for (final key in [item['kind'], item['type'], item['mediaType']]) {
+      final v = (key ?? '').toString().trim().toLowerCase();
+      if (v == 'movie' || v == 'tv' || v == 'anime' || v == 'asian_drama') {
+        return v;
+      }
+      if (v == 'drama' || v == 'series') {
+        return v == 'series' ? 'tv' : 'asian_drama';
+      }
+    }
+    return _itemKind(item);
+  }
+
+  static bool _isMyListStatusId(String id) {
+    switch (id) {
+      case 'plantowatch':
+      case 'watching':
+      case 'hold':
+      case 'completed':
+      case 'dropped':
+        return true;
+      default:
+        return false;
+    }
+  }
+
   String _itemStreamId(Map<String, dynamic> item) {
     final props = PackPaintArtifact.propsOf(item);
     final open = item['open'];
@@ -2820,12 +2860,90 @@ class PackPaintTree extends StatelessWidget {
 
   Widget _chromeMenu(BuildContext context, Map<String, dynamic> spec) {
     if (layoutItemsFromSpec(spec).isEmpty) return const SizedBox.shrink();
-    return CatalogMenu(spec: spec);
+    final chrome = PackChromeScope.maybeOf(context);
+    final countsListenable = chrome?.searchHitCounts;
+    final trailing = _menuEventSearchTrailing(context, spec);
+    if (countsListenable == null) {
+      return CatalogMenu(spec: spec, trailing: trailing);
+    }
+    return ValueListenableBuilder<Map<String, int>>(
+      valueListenable: countsListenable,
+      builder: (context, counts, _) {
+        final q = (chrome?.eventQuery ?? '').trim();
+        return CatalogMenu(
+          spec: spec,
+          itemCounts: q.isEmpty ? null : counts,
+          trailing: trailing,
+        );
+      },
+    );
+  }
+
+  /// Pack `kit.menu.search: { action: eventSearch, … }` — same expanding
+  /// search as IPTV, painted trailing on the kind menu row.
+  Widget? _menuEventSearchTrailing(
+    BuildContext context,
+    Map<String, dynamic> spec,
+  ) {
+    final raw = spec['search'];
+    if (raw is! Map) return null;
+    final search = Map<String, dynamic>.from(raw);
+    final verb = (search['action'] ?? search['id'] ?? '')
+        .toString()
+        .trim()
+        .toLowerCase();
+    if (verb != 'eventsearch') return null;
+    final tab = (tabId ?? '').trim();
+    if (tab.isEmpty) return null;
+    final tooltip = (search['label'] ?? 'Search').toString().trim();
+    final hint = (search['placeholder'] ?? search['hint'] ?? 'Search…')
+        .toString()
+        .trim();
+    final items = layoutItemsFromSpec(spec);
+    final scope = LayoutScope.maybeOf(context);
+    final focusDown = scope?.resolveFocusEdge(
+      spec['focusDown']?.toString(),
+      down: true,
+    );
+    return ShellPaintTvTabScope(
+      tabId: tab,
+      child: KitEventListSearch(
+        tooltip: tooltip.isEmpty ? 'Search' : tooltip,
+        placeholder: hint.isEmpty ? 'Search…' : hint,
+        tvItemIndex: items.length,
+        onDownEdge: focusDown,
+        collapsedSize: PackPaintArtifact.packLength(
+          context,
+          search['collapsedSize'],
+        ),
+        expandedWidth: PackPaintArtifact.packLength(
+          context,
+          search['expandedWidth'],
+        ),
+        fontSize: PackPaintArtifact.packLength(context, search['fontSize']),
+        iconSize: PackPaintArtifact.packLength(context, search['iconSize']),
+        fieldIconSize: PackPaintArtifact.packLength(
+          context,
+          search['fieldIconSize'],
+        ),
+      ),
+    );
   }
 
   Widget _chromeTabs(BuildContext context, Map<String, dynamic> spec) {
     if (layoutItemsFromSpec(spec).isEmpty) return const SizedBox.shrink();
-    return CatalogTabs(spec: spec);
+    final chrome = PackChromeScope.maybeOf(context);
+    final countsListenable = chrome?.searchHitCounts;
+    if (countsListenable == null) {
+      return CatalogTabs(spec: spec);
+    }
+    return ValueListenableBuilder<Map<String, int>>(
+      valueListenable: countsListenable,
+      builder: (context, counts, _) {
+        final q = (chrome?.eventQuery ?? '').trim();
+        return CatalogTabs(spec: spec, counts: q.isEmpty ? null : counts);
+      },
+    );
   }
 
   /// Prefer first portal/mood group — skip pack "All" and `__synthetic__` rows.

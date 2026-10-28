@@ -11,6 +11,7 @@ class ForjaStatusTabs extends StatelessWidget {
     required this.selected,
     required this.onSelect,
     this.tabs,
+    this.counts,
     this.rowId,
     this.sortOrder = 1,
     this.onUp,
@@ -24,6 +25,9 @@ class ForjaStatusTabs extends StatelessWidget {
   final String selected;
   final ValueChanged<String> onSelect;
   final List<({String id, String title})>? tabs;
+
+  /// Optional search hit counts keyed by tab id — shown when > 0.
+  final Map<String, int>? counts;
   final String? rowId;
   final int sortOrder;
   final VoidCallback? onUp;
@@ -61,8 +65,8 @@ class ForjaStatusTabs extends StatelessWidget {
               : ShellTokens.compactChromeLeadingInset(context),
           inShellTopBar
               ? (tvDensity
-                  ? ShellTokens.kitTopBarStatusRowTopGapTv
-                  : ShellTokens.kitTopBarStatusRowTopGap)
+                    ? ShellTokens.kitTopBarStatusRowTopGapTv
+                    : ShellTokens.kitTopBarStatusRowTopGap)
               : 0,
           ShellTokens.bodyHorizontalPadding,
           0,
@@ -78,7 +82,10 @@ class ForjaStatusTabs extends StatelessWidget {
                 for (var i = 0; i < statusTabs.length; i++)
                   Expanded(
                     child: _StatusTab(
-                      label: statusTabs[i].title,
+                      label: _statusTabLabel(
+                        statusTabs[i].title,
+                        counts?[statusTabs[i].id],
+                      ),
                       fontSize: tvDensity ? ShellTokens.tvBodyFontSize : 13.0,
                       selected: statusTabs[i].id == selected,
                       listIndex: i,
@@ -99,6 +106,11 @@ class ForjaStatusTabs extends StatelessWidget {
       ),
     );
   }
+}
+
+String _statusTabLabel(String title, int? count) {
+  if (count == null || count <= 0) return title;
+  return '$title · $count';
 }
 
 class _StatusTab extends StatefulWidget {
@@ -152,8 +164,8 @@ class _StatusTabState extends State<_StatusTab> {
   Widget _label(bool hovered) {
     // Hover / focus → brand green (including over the selected tab).
     // Selected idle → white; underline stays green when selected.
-    final focusHover = hovered ||
-        ShellPaintScope.focusStyledOf(context, focused: _focused);
+    final focusHover =
+        hovered || ShellPaintScope.focusStyledOf(context, focused: _focused);
     final Color color;
     final FontWeight weight;
     if (focusHover) {

@@ -10,12 +10,16 @@ class CatalogTabs extends StatelessWidget {
   const CatalogTabs({
     super.key,
     required this.spec,
+    this.counts,
     this.inShellTopBar = false,
     this.tabsBuilder,
     this.wrapRow,
   });
 
   final Map<String, dynamic> spec;
+
+  /// Optional search hit counts keyed by tab id.
+  final Map<String, int>? counts;
   final bool inShellTopBar;
 
   /// Host builds custom status chrome. Receives items + selection.
@@ -24,7 +28,8 @@ class CatalogTabs extends StatelessWidget {
     required List<({String id, String label})> items,
     required String selected,
     required ValueChanged<String> onSelect,
-  })? tabsBuilder;
+  })?
+  tabsBuilder;
 
   final Widget Function(Widget child)? wrapRow;
 
@@ -35,7 +40,8 @@ class CatalogTabs extends StatelessWidget {
   Widget build(BuildContext context) {
     if (_items.isEmpty) return const SizedBox.shrink();
     final scope = LayoutScope.of(context);
-    final selected = scope.selectedId(_widgetId) ??
+    final selected =
+        scope.selectedId(_widgetId) ??
         spec['default']?.toString() ??
         _items.first.id;
     final tabId = (scope.tabId ?? ShellPaintTvTabScope.tabIdOf(context) ?? '')
@@ -57,13 +63,15 @@ class CatalogTabs extends StatelessWidget {
         tabId: tabId.isEmpty ? 'page' : tabId,
         rowId: _widgetId,
         sortOrder: 1,
-        tabs: [
-          for (final tab in _items) (id: tab.id, title: tab.label),
-        ],
+        tabs: [for (final tab in _items) (id: tab.id, title: tab.label)],
+        counts: counts,
         selected: selected,
         onSelect: onSelect,
         onUp: scope.resolveFocusEdge(spec['focusUp']?.toString(), last: true),
-        onDown: scope.resolveFocusEdge(spec['focusDown']?.toString(), down: true),
+        onDown: scope.resolveFocusEdge(
+          spec['focusDown']?.toString(),
+          down: true,
+        ),
         onLeft: scope.resolveFocusEdge(spec['focusLeft']?.toString()),
         onRight: scope.resolveFocusEdge(
           spec['focusRight']?.toString(),

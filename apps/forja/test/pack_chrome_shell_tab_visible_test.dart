@@ -14,6 +14,7 @@ PackChromeScope _chrome({
     dynamicBarItems: const {},
     selectedListItem: ValueNotifier(null),
     searchHitKindIds: ValueNotifier(const {}),
+    searchHitCounts: ValueNotifier(const {}),
     shellTabVisible: shellTabVisible,
     eagerLoadKeys: const {},
     pageFeedRailIds: const {},
@@ -31,14 +32,8 @@ PackChromeScope _chrome({
 
 void main() {
   test('PackChromeScope notifies when shellTabVisible flips', () {
-    final a = _chrome(
-      shellTabVisible: true,
-      child: const SizedBox.shrink(),
-    );
-    final b = _chrome(
-      shellTabVisible: false,
-      child: const SizedBox.shrink(),
-    );
+    final a = _chrome(shellTabVisible: true, child: const SizedBox.shrink());
+    final b = _chrome(shellTabVisible: false, child: const SizedBox.shrink());
     expect(b.updateShouldNotify(a), isTrue);
     expect(a.updateShouldNotify(b), isTrue);
     expect(a.updateShouldNotify(a), isFalse);

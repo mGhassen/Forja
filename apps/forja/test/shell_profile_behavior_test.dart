@@ -89,7 +89,9 @@ AnimatedScale _navItemScale(WidgetTester tester, String id) {
 }
 
 void main() {
-  testWidgets('desktop hero action row has no FittedBox (R28-A08)', (tester) async {
+  testWidgets('desktop hero action row has no FittedBox (R28-A08)', (
+    tester,
+  ) async {
     await tester.pumpWidget(
       _wrapProfile(
         profile: ShellProfile.desktop,
@@ -100,19 +102,26 @@ void main() {
     expect(find.byType(FittedBox), findsNothing);
   });
 
-  testWidgets('tv hero action row does not wrap actions in FittedBox (R28-A09)',
-      (tester) async {
-    await tester.pumpWidget(
-      _wrapProfile(
-        profile: ShellProfile.tv,
-        child: Builder(builder: _heroActionRowHarness),
-      ),
-    );
+  testWidgets(
+    'tv hero action row does not wrap actions in FittedBox (R28-A09)',
+    (tester) async {
+      await tester.pumpWidget(
+        _wrapProfile(
+          profile: ShellProfile.tv,
+          child: Builder(builder: _heroActionRowHarness),
+        ),
+      );
 
-    expect(find.byType(FittedBox), findsNothing);
-  });
+      expect(find.byType(FittedBox), findsNothing);
+    },
+  );
 
-  testWidgets('desktop nav rail scales on hover not keyboard focus (R28-A08)', (tester) async {
+  testWidgets('desktop nav rail scales on hover not keyboard focus (R28-A08)', (
+    tester,
+  ) async {
+    // Painted at hover size; idle AnimatedScale is idle/hover.
+    final idle =
+        ShellTokens.navRailIconIdleScale / ShellTokens.navRailIconHoverScale;
     await tester.pumpWidget(
       _wrapProfile(
         profile: ShellProfile.desktop,
@@ -125,10 +134,7 @@ void main() {
     );
 
     await _focusNavItem(tester, 'search');
-    expect(
-      _navItemScale(tester, 'search').scale,
-      ShellTokens.navRailIconIdleScale,
-    );
+    expect(_navItemScale(tester, 'search').scale, idle);
 
     final searchIcon = find.byIcon(Icons.apps_outlined);
     final gesture = await tester.createGesture(kind: PointerDeviceKind.mouse);
@@ -137,10 +143,7 @@ void main() {
     await gesture.moveTo(tester.getCenter(searchIcon));
     await tester.pumpAndSettle();
 
-    expect(
-      _navItemScale(tester, 'search').scale,
-      ShellTokens.navRailIconHoverScale,
-    );
+    expect(_navItemScale(tester, 'search').scale, 1);
   });
 
   testWidgets('nav press cancel during filter wrap does not throw', (
@@ -190,8 +193,9 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets('tv nav rail scales on keyboard focus (R28-A09)',
-      (tester) async {
+  testWidgets('tv nav rail scales on keyboard focus (R28-A09)', (tester) async {
+    final idle =
+        ShellTokens.navRailIconIdleScale / ShellTokens.navRailIconHoverScale;
     await tester.pumpWidget(
       _wrapProfile(
         profile: ShellProfile.tv,
@@ -203,33 +207,36 @@ void main() {
       ),
     );
 
+    // Selected tab stays small until D-pad focus lands on it.
+    expect(_navItemScale(tester, 'home').scale, idle);
+
     await _focusNavItem(tester, 'search');
-    expect(
-      _navItemScale(tester, 'search').scale,
-      ShellTokens.navRailIconHoverScale,
-    );
+    expect(_navItemScale(tester, 'search').scale, 1);
+    expect(_navItemScale(tester, 'home').scale, idle);
   });
 
-  testWidgets('tv mood chips use FocusableControl; desktop uses InkWell (R28-A09/A08)',
-      (tester) async {
-    await tester.pumpWidget(
-      _wrapProfile(
-        profile: ShellProfile.desktop,
-        child: Builder(builder: _moodChipHarness),
-      ),
-    );
-    expect(find.byType(FocusableControl), findsNothing);
-    expect(find.byType(InkWell), findsOneWidget);
+  testWidgets(
+    'tv mood chips use FocusableControl; desktop uses InkWell (R28-A09/A08)',
+    (tester) async {
+      await tester.pumpWidget(
+        _wrapProfile(
+          profile: ShellProfile.desktop,
+          child: Builder(builder: _moodChipHarness),
+        ),
+      );
+      expect(find.byType(FocusableControl), findsNothing);
+      expect(find.byType(InkWell), findsOneWidget);
 
-    await tester.pumpWidget(
-      _wrapProfile(
-        profile: ShellProfile.tv,
-        child: Builder(builder: _moodChipHarness),
-      ),
-    );
-    expect(find.byType(FocusableControl), findsOneWidget);
-    expect(find.byType(InkWell), findsNothing);
-  });
+      await tester.pumpWidget(
+        _wrapProfile(
+          profile: ShellProfile.tv,
+          child: Builder(builder: _moodChipHarness),
+        ),
+      );
+      expect(find.byType(FocusableControl), findsOneWidget);
+      expect(find.byType(InkWell), findsNothing);
+    },
+  );
 
   test('maybeWrapFocusTraversal only wraps when enabled (R28-A10)', () {
     const child = Text('app');
@@ -247,18 +254,21 @@ void main() {
     expect(wrapped, isA<Shortcuts>());
   });
 
-  test('PlatformChannel boot sets PlatformInfo TV alignment (R28-A01)', () async {
-    PlatformChannel.debugOverrideProfile = PlatformProfile.androidTv;
-    addTearDown(() {
-      PlatformChannel.debugOverrideProfile = null;
-      ShellTokens.nativeAndroidTvDetected = false;
-      SettingsService.configurePlatformProfile(PlatformProfile.phone);
-    });
+  test(
+    'PlatformChannel boot sets PlatformInfo TV alignment (R28-A01)',
+    () async {
+      PlatformChannel.debugOverrideProfile = PlatformProfile.androidTv;
+      addTearDown(() {
+        PlatformChannel.debugOverrideProfile = null;
+        ShellTokens.nativeAndroidTvDetected = false;
+        SettingsService.configurePlatformProfile(PlatformProfile.phone);
+      });
 
-    await PlatformChannel.initialize();
-    expect(ShellTokens.nativeAndroidTvDetected, isTrue);
-    expect(PlatformInfo.isAndroidTv, isTrue);
-  });
+      await PlatformChannel.initialize();
+      expect(ShellTokens.nativeAndroidTvDetected, isTrue);
+      expect(PlatformInfo.isAndroidTv, isTrue);
+    },
+  );
 
   testWidgets(
     'nativeAndroidTvDetected resolves TV profile on Android wide layout',

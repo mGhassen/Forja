@@ -20,10 +20,7 @@ bool packChromeKindReloadsFeed(Map<String, dynamic> listSpec) {
 /// IPTV Live/Movies/Series/Channels — category/sort/search must re-query
 /// `catalog_page` (host shelf). Live used to paint-filter a full feed; under
 /// issue 290 the feed is one page, so paint-filter leaves other cats empty.
-bool packChromeVodPagedFeed(
-  Map<String, dynamic> listSpec,
-  LayoutScope? scope,
-) {
+bool packChromeVodPagedFeed(Map<String, dynamic> listSpec, LayoutScope? scope) {
   final catalogMenu = (listSpec['catalogMenu'] ?? '').toString().trim();
   if (catalogMenu.isEmpty) return false;
   final section = (scope?.selectedId(catalogMenu) ?? '').trim().toLowerCase();
@@ -67,9 +64,7 @@ Map<String, dynamic> packChromeFeedParams(
 }) {
   final scope = LayoutScope.maybeOf(context);
   final chrome = PackChromeScope.maybeOf(context);
-  final params = <String, dynamic>{
-    ...baseParams,
-  };
+  final params = <String, dynamic>{...baseParams};
   // Hub tab id is not a feed page index — only stamp numeric pagination pages.
   final basePage = baseParams['page'];
   if (basePage is num ||
@@ -93,15 +88,18 @@ Map<String, dynamic> packChromeFeedParams(
 
   final statusTab = (listSpec['statusTab'] ?? '').toString().trim();
   if (statusTab.isNotEmpty) {
-    params['status'] = scope?.selectedId(statusTab) ??
+    params['status'] =
+        scope?.selectedId(statusTab) ??
         listSpec['default']?.toString() ??
         params['status'] ??
         'plantowatch';
     params['listStatus'] = params['status'];
     // Hide keys until Simkl refetch catches a local remove.
     try {
-      final hidden = ProviderScope.containerOf(context, listen: false)
-          .read(bookmarkHiddenKeysProvider);
+      final hidden = ProviderScope.containerOf(
+        context,
+        listen: false,
+      ).read(bookmarkHiddenKeysProvider);
       if (hidden.isNotEmpty) {
         params['hiddenKeys'] = hidden.toList(growable: false);
       }
@@ -183,7 +181,11 @@ Map<String, dynamic> packChromeFeedParams(
   // View (cards / guide / list) is paint-only — do not put it in feed params
   // (that re-fetched IPTV catalog on every Cards↔EPG flip).
 
-  if (q.isNotEmpty && (kindReloadsFeed || vodPaged)) params['q'] = q;
+  // My List status strip: pass q so the pack can count hits per status tab.
+  final listStatusSearch = statusTab.isNotEmpty;
+  if (q.isNotEmpty && (kindReloadsFeed || vodPaged || listStatusSearch)) {
+    params['q'] = q;
+  }
 
   // Live category lists (Favorites / pins / order) — IPTV catalog pages only.
   // Schedule feeds (kind + horizon) do not read these. Stamping portal
@@ -273,22 +275,25 @@ String packChromeGridFlipEpoch(
   final status = statusTab.isEmpty
       ? ''
       : (scope?.selectedId(statusTab) ??
-          listSpec['default']?.toString() ??
-          'plantowatch');
+            listSpec['default']?.toString() ??
+            'plantowatch');
   final listEpoch = statusTab.trim().isEmpty
       ? ''
       : '${listFeedEpochListenable.value}';
 
-  final eventQ = kindBustsFeed ? (chrome?.eventQuery ?? '') : '';
+  final listStatusSearch = statusTab.trim().isNotEmpty;
+  final eventQ = (kindBustsFeed || listStatusSearch)
+      ? (chrome?.eventQuery ?? '')
+      : '';
   final kindPart = kindBustsFeed
       ? (vodPaged
-          ? iptvEffectiveCategoryId(
-              listSpec: listSpec,
-              scope: scope,
-              vodPaged: true,
-              eventQuery: eventQ,
-            )
-          : sel('kindMenu'))
+            ? iptvEffectiveCategoryId(
+                listSpec: listSpec,
+                scope: scope,
+                vodPaged: true,
+                eventQuery: eventQ,
+              )
+            : sel('kindMenu'))
       : '';
 
   return [
@@ -324,11 +329,7 @@ String packChromeSelectionEpoch(
   final portalEpoch = vodPaged ? portalStoreKey : '';
 
   return [
-    packChromeGridFlipEpoch(
-      context,
-      listSpec: listSpec,
-      tabId: tabId,
-    ),
+    packChromeGridFlipEpoch(context, listSpec: listSpec, tabId: tabId),
     '${chrome?.refreshEpoch ?? 0}',
     portalEpoch,
   ].join('|');

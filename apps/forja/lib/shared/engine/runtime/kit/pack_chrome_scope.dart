@@ -27,6 +27,7 @@ class PackChromeScope extends InheritedWidget {
     this.pageFeedError,
     required this.rowPrefetch,
     required this.searchHitKindIds,
+    required this.searchHitCounts,
     required this.onEventQuery,
     required this.onBumpRefresh,
     required this.onClearCatalog,
@@ -63,6 +64,9 @@ class PackChromeScope extends InheritedWidget {
 
   /// Kind ids with hits for the active [eventQuery] (legacy IPTV sidebar filter).
   final ValueNotifier<Set<String>> searchHitKindIds;
+
+  /// Per chrome-id hit counts while searching (status tabs / kind menu).
+  final ValueNotifier<Map<String, int>> searchHitCounts;
 
   /// Whether this hub tab is the selected shell tab (KeepAlive may stay mounted).
   final bool shellTabVisible;
@@ -101,7 +105,7 @@ class PackChromeScope extends InheritedWidget {
   final VoidCallback onClearCatalog;
   final void Function(String style) onViewStyle;
   final void Function(String barId, List<Map<String, dynamic>> items)
-      onDynamicBarItems;
+  onDynamicBarItems;
   final void Function(Map<String, dynamic>? item) onSelectListItem;
 
   static PackChromeScope? maybeOf(BuildContext context) {
@@ -145,6 +149,7 @@ class PackChromeScope extends InheritedWidget {
         viewStyle != oldWidget.viewStyle ||
         !identical(selectedListItem, oldWidget.selectedListItem) ||
         !identical(searchHitKindIds, oldWidget.searchHitKindIds) ||
+        !identical(searchHitCounts, oldWidget.searchHitCounts) ||
         // Hide must notify — PackLoadedPaint / LazyViewportGate gate on this.
         // Hide path cancels binds (no skeleton); show path does not auto-_bind
         // unless refreshEpoch / filters also change.
