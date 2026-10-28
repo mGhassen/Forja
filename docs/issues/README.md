@@ -497,7 +497,7 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [223-[fixed]-…](fixed/223-[fixed]-live-streamic-raw-embed-format-fail.md) | Live Providers raw embed → format fail loop | P1 | High | fixed | Complete · 6/6 · A 3/3 | — |
 | [459-[fixed]-…](fixed/459-[fixed]-packs-onboarding-ignores-cloud-onboarded.md) | Packs onboarding ignores cloud onboarded on new device | P1 | High | fixed | Complete · 3/3 · A 0/2 | [RFC-080](../rfc/fixed/080-[fixed]-post-login-packs-onboarding.md) |
 | [460-[fixed]-…](fixed/460-[fixed]-android-tv-iptv-nav-enter-shelf-while-loading.md) | Android TV IPTV nav enter stuck on rail while portal loading | P1 | High | fixed | Complete · 3/3 · A 0/1 | [301](301-[open]-iptv-dpad-focus-hover-chrome.md) |
-| [461-[open]-…](461-[open]-desktop-vod-sw-decode-keeps-hw-texture-pink-green.md) | Desktop VOD SW decode kept HW texture (pink/green) | P1 | High | open | 6/7 · A 0/2 | [510](510-[open]-megaplay-pngstrip-vod-prefetch-desync.md) |
+| [461-[open]-…](461-[open]-desktop-vod-sw-decode-keeps-hw-texture-pink-green.md) | Desktop VOD SW decode kept HW texture (pink/green) | P1 | High | open | 7/8 · A 0/3 | [510](510-[open]-megaplay-pngstrip-vod-prefetch-desync.md) |
 | [462-[fixed]-…](fixed/462-[fixed]-details-hero-sub-dub-dpad.md) | Details hero SUB/DUB D-pad + language dropdown | P1 | High | fixed | Complete · 2/2 · A 0/2 | [425](425-[open]-home-stream-language-filter.md) |
 | [463-[fixed]-…](fixed/463-[fixed]-my-list-tv-poster-subtitle-compact.md) | My List TV posters hide year • type (compact grid) | P1 | High | fixed | Complete · 3/3 · A 1/1 | — |
 | [464-[fixed]-…](fixed/464-[fixed]-iptv-portals-panel-insert-order-new-badge.md) | IPTV Portals panel insert-date order + NEW badge | P1 | Medium | fixed | Complete · 4/4 · A 0/2 | — |

@@ -10,7 +10,7 @@
 
 | | |
 |--|--|
-| **Progress** | **6 / 7** fix · **0 / 2** acceptance |
+| **Progress** | **7 / 8** fix · **0 / 3** acceptance |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -33,8 +33,9 @@ Desktop always created `VideoController` with `enableHardwareAcceleration: true`
 | 3 | I461-T03 | macOS desktop: force soft TextureSW always + default Video decode SW (match PiP) | ✅ |
 | 4 | I461-T04 | Native VideoOutput.swift force TextureSW on macOS (pub-cache AimesSoft media-kit) | ✅ |
 | 5 | I461-T05 | Desktop mpv HDR→SDR tone-map (tone-mapping/target-prim/trc) for 4K green/magenta | ✅ |
-| 6 | I461-T06 | Root: upstream TextureHW chroma + lasting fork patch (pub-cache wipe risk) | ⬜ |
-| 7 | I461-T07 | Keep soft TextureSW; default decode → `autoSafe` (VT copy-back) — full SW starved MegaPlay strip HLS ([510](510-[open]-megaplay-pngstrip-vod-prefetch-desync.md)) | ✅ |
+| 6 | I461-T06 | Root: upstream TextureHW chroma — 8-bit GL↔BGRA + `GL_RGBA8` FBO in AimesSoft `media-kit` (Workspace clone + pub-cache); **push/pin lasting ref still open** | 🔄 |
+| 7 | I461-T07 | Interim: soft TextureSW + default decode `autoSafe` (VT copy-back) while T06 unfinished — MegaPlay strip ([510](510-[open]-megaplay-pngstrip-vod-prefetch-desync.md)) | ✅ |
+| 8 | I461-T08 | Host: stop forcing soft TextureSW on macOS; HW+/COPY → TextureHW again (Dart `enableHardwareAcceleration`) | ✅ |
 
 ## Acceptance
 
@@ -42,6 +43,7 @@ Desktop always created `VideoController` with `enableHardwareAcceleration: true`
 |--:|----|-------------|--------|
 | 1 | I461-A01 | Full restart → Carrie (or failing title) shows normal colors; log `VideoOutput: enableHardwareAcceleration: false` + `TextureSW: resize` | ⬜ |
 | 2 | I461-A02 | UI chrome stays correct; picture is not pink/green | ⬜ |
+| 3 | I461-A03 | macOS HW+: log `enableHardwareAcceleration: true` + `TextureGL`/`TextureHW` resize; colors correct (no pink/green); AimesSoft ref pinned (not dirty pub-cache only) | ⬜ |
 
 ## Links
 
