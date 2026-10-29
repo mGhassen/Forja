@@ -444,9 +444,9 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
   /// Official pack install still running — Forja tab only; other kinds stay live.
   bool _enginePacksLoading = false;
 
-  /// True until [_bootstrap] paints pack/addon/indexer chip lists. Open frames
-  /// with empty chips must not show “Select at least one provider” / empty list.
-  bool _chromeHydrating = true;
+  /// True only when the visible kind still has no chip inventory after sync
+  /// seed (cold pack/addon mem). Warm installs paint chips on frame 0.
+  bool _chromeHydrating = false;
   int _engineFetchGen = 0;
   final Set<String> _engineInFlightPluginIds = {};
   final Set<Future<void>> _enginePoolTasks = {};
@@ -794,7 +794,10 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
       _kindFilter = 'downloaded';
     }
 
-    // Paint cached rows immediately (chips still wait on pack/addon lists).
+    // Paint chip inventories from warm mem / catalog — no prefs awaits.
+    final chipsSeeded = _seedChipListsFromMemory();
+
+    // Paint cached rows immediately.
     switch (_kindFilter) {
       case 'engine':
         final cached = CatalogSourcesSessionCache.readEngine(_catalogCacheKey);
@@ -839,6 +842,41 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
           }
         }
     }
+
+    _armInitialFetchFlagsForVisibleKind();
+    // Spinner only when this kind’s inventory is still cold — not when installed
+    // packs are already in mem (user-visible chips must paint on frame 0).
+    _chromeHydrating = !chipsSeeded;
+  }
+
+  /// Sync: Forja / Torrents / Nuvio / Stremio chip lists from process mem.
+  /// Returns whether the **visible** kind’s inventory was warm.
+  bool _seedChipListsFromMemory() {
+    final packs = EngineService.instance.peekSourcesPanelPacks();
+    if (packs != null) {
+      _enginePacks = packs;
+    }
+    final torrentPeeked = syncTorrentSearchCatalogFromPeek();
+    final torrentIds = enabledTorrentSearchPluginIds();
+    if (torrentIds.isNotEmpty || torrentPeeked) {
+      _enabledTorrentProviders = torrentIds;
+    }
+    final nuvio = NuvioService.instance.peekSourcesPanelAddons();
+    if (nuvio != null) {
+      _nuvioAddons = nuvio;
+    }
+    final stremio = StremioService.peekStreamAddons();
+    if (stremio != null) {
+      _streamAddons = stremio;
+    }
+    return switch (_kindFilter) {
+      'downloaded' => true,
+      'engine' => packs != null,
+      'torrents' => torrentPeeked || torrentIds.isNotEmpty,
+      'nuvio' => nuvio != null,
+      'stremio' => stremio != null,
+      _ => true,
+    };
   }
 
   @override

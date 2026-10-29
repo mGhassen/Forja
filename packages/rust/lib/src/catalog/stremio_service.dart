@@ -34,8 +34,9 @@ bool stremioStatusShouldCooldown(int statusCode) {
 }
 
 ({String baseUrl, String? queryParams}) _splitStremioAddonUrl(String url) {
-  final m = jsonDecode(RustLib.instance.splitStremioAddonUrlJson(url))
-      as Map<String, dynamic>;
+  final m =
+      jsonDecode(RustLib.instance.splitStremioAddonUrlJson(url))
+          as Map<String, dynamic>;
   return (
     baseUrl: m['base_url'] as String,
     queryParams: m['query_params'] as String?,
@@ -88,8 +89,9 @@ List<Map<String, dynamic>> _parseStremioCatalog(String body) {
 }
 
 Map<String, dynamic>? _parseStremioMeta(String body) {
-  final parsed = jsonDecode(RustLib.instance.parseStremioMetaJson(body))
-      as Map<String, dynamic>;
+  final parsed =
+      jsonDecode(RustLib.instance.parseStremioMetaJson(body))
+          as Map<String, dynamic>;
   if (parsed.containsKey('error')) return null;
   final meta = parsed['meta'];
   if (meta is! Map) return null;
@@ -184,8 +186,9 @@ class StremioService {
   }
 
   @visibleForTesting
-  static ({String baseUrl, String? queryParams}) debugSplitAddonUrl(String url) =>
-      _splitAddonUrl(url);
+  static ({String baseUrl, String? queryParams}) debugSplitAddonUrl(
+    String url,
+  ) => _splitAddonUrl(url);
 
   /// Builds a full resource URL, correctly re-appending any addon query params.
   String _buildResourceUrl(String addonBaseUrl, String resourcePath) {
@@ -200,8 +203,10 @@ class StremioService {
     manifestUrl = _normalizeStremioManifestUrl(manifestUrl);
 
     try {
-      final response =
-          await _rustGet(Uri.parse(manifestUrl), timeout: const Duration(seconds: 10));
+      final response = await _rustGet(
+        Uri.parse(manifestUrl),
+        timeout: const Duration(seconds: 10),
+      );
       if (response.statusCode == 200) {
         final body = response.body;
         final parsed = _parseStremioManifest(body);
@@ -230,7 +235,7 @@ class StremioService {
   Future<List<dynamic>> getStreams({
     required String baseUrl,
     required String type, // 'movie' or 'series'
-    required String id,   // tt... or tt...:s:e
+    required String id, // tt... or tt...:s:e
   }) async {
     final encodedId = id.contains('/') ? Uri.encodeComponent(id) : id;
     final resourcePath = '/stream/$type/$encodedId.json';
@@ -258,7 +263,9 @@ class StremioService {
       if (stremioStatusShouldCooldown(response.statusCode)) {
         _streamFailedUntil[url] = now.add(_failTtl);
       }
-      debugPrint('[StremioService] Stream fetch HTTP ${response.statusCode} ($url)');
+      debugPrint(
+        '[StremioService] Stream fetch HTTP ${response.statusCode} ($url)',
+      );
     } catch (e) {
       if (!live() || stremioErrorIsCancelled(e)) return [];
       _streamFailedUntil[url] = now.add(_failTtl);
@@ -302,12 +309,16 @@ class StremioService {
   /// Avoid hammering dead lean rows; TTL so a transient fail can recover.
   final Map<String, DateTime> _hydrateFailedUntil = {};
   final Map<String, DateTime> _streamFailedUntil = {};
+
   /// Host-level catalog cooldown (429 / 5xx) so Search does not stampede.
   final Map<String, DateTime> _catalogFailedUntil = {};
   static const _failTtl = Duration(seconds: 45);
   static const _hydrateConcurrency = 4;
   Future<List<Map<String, dynamic>>>? _hydrateInFlight;
   Future<void> _hydratePersistChain = Future.value();
+
+  /// Last Sources stream-resource addon list — sync peek for first-frame chips.
+  static List<Map<String, dynamic>>? _streamAddonsMem;
 
   static bool _hasManifestResources(Map<String, dynamic> addon) {
     final manifest = addon['manifest'];
@@ -373,6 +384,7 @@ class StremioService {
         out[i] = await _hydrateOneAddon(addons[i], now);
       }
     }
+
     final n = addons.length < _hydrateConcurrency
         ? addons.length
         : _hydrateConcurrency;
@@ -446,6 +458,9 @@ class StremioService {
     return addon;
   }
 
+  /// Sync peek of the last stream-resource [getAddonsForResource] — null if cold.
+  static List<Map<String, dynamic>>? peekStreamAddons() => _streamAddonsMem;
+
   /// Helper to get all installed addons that support a specific resource.
   /// Optionally filters by content [type] (e.g. 'movie', 'series').
   ///
@@ -457,7 +472,7 @@ class StremioService {
     String feature = StremioAddonFeatures.vod,
   }) async {
     final allAddons = await hydrateInstalledAddons();
-    return allAddons.where((addon) {
+    final filtered = allAddons.where((addon) {
       if (!StremioAddonFeatures.isEnabled(addon)) return false;
       if (!StremioAddonFeatures.read(addon).contains(feature)) return false;
       final manifest = addon['manifest'];
@@ -487,6 +502,12 @@ class StremioService {
         return false;
       });
     }).toList();
+    if (resourceName == 'stream' &&
+        feature == StremioAddonFeatures.vod &&
+        type == null) {
+      _streamAddonsMem = filtered;
+    }
+    return filtered;
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -556,11 +577,14 @@ class StremioService {
 
         // Skip catalogs that REQUIRE special extras we can't provide
         // (e.g. Cinemeta's lastVideosIds / calendarVideosIds)
-        final unfulfillable = required.where((n) => n != 'genre' && n != 'search');
+        final unfulfillable = required.where(
+          (n) => n != 'genre' && n != 'search',
+        );
         if (unfulfillable.isNotEmpty) continue;
 
         // ── Genres: prefer top-level, fall back to extra[genre].options ──
-        List<String> genres = (cat['genres'] as List?)?.cast<String>() ?? <String>[];
+        List<String> genres =
+            (cat['genres'] as List?)?.cast<String>() ?? <String>[];
         if (genres.isEmpty) {
           for (final e in extra) {
             if (e is Map && e['name'] == 'genre' && e['options'] is List) {
@@ -701,7 +725,10 @@ class StremioService {
   }
 
   /// Extracts idPrefixes for a specific resource from a manifest.
-  List<String> _getIdPrefixes(Map<String, dynamic> manifest, String resourceName) {
+  List<String> _getIdPrefixes(
+    Map<String, dynamic> manifest,
+    String resourceName,
+  ) {
     final resources = manifest['resources'] as List? ?? [];
     // Check resource-level idPrefixes first
     for (final r in resources) {
@@ -723,7 +750,9 @@ class StremioService {
   Future<List<Map<String, dynamic>>> searchAllAddons(String query) async {
     if (query.trim().isEmpty) return [];
     final catalogs = await getAllCatalogs();
-    final searchable = catalogs.where((c) => c['supportsSearch'] == true).toList();
+    final searchable = catalogs
+        .where((c) => c['supportsSearch'] == true)
+        .toList();
 
     final List<Map<String, dynamic>> allResults = [];
     final futures = <Future>[];
@@ -731,18 +760,20 @@ class StremioService {
     for (final cat in searchable) {
       futures.add(
         getCatalog(
-          baseUrl: cat['addonBaseUrl'],
-          type: cat['catalogType'],
-          id: cat['catalogId'],
-          search: query,
-        ).then((metas) {
-          for (final m in metas) {
-            m['_addonName'] = cat['addonName'];
-            m['_addonBaseUrl'] = cat['addonBaseUrl'];
-            m['_catalogType'] = cat['catalogType'];
-          }
-          allResults.addAll(metas);
-        }).catchError((_) {}),
+              baseUrl: cat['addonBaseUrl'],
+              type: cat['catalogType'],
+              id: cat['catalogId'],
+              search: query,
+            )
+            .then((metas) {
+              for (final m in metas) {
+                m['_addonName'] = cat['addonName'];
+                m['_addonBaseUrl'] = cat['addonBaseUrl'];
+                m['_catalogType'] = cat['catalogType'];
+              }
+              allResults.addAll(metas);
+            })
+            .catchError((_) {}),
       );
     }
     await Future.wait(futures);
@@ -756,7 +787,12 @@ class StremioService {
     required String catalogId,
     required String query,
   }) async {
-    return getCatalog(baseUrl: baseUrl, type: type, id: catalogId, search: query);
+    return getCatalog(
+      baseUrl: baseUrl,
+      type: type,
+      id: catalogId,
+      search: query,
+    );
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
@@ -779,7 +815,9 @@ class StremioService {
     }
 
     // detail link
-    final detailMatch = RegExp(r'stremio:///detail/([^/]+)/([^/?]+)(?:/([^/?]+))?').firstMatch(u);
+    final detailMatch = RegExp(
+      r'stremio:///detail/([^/]+)/([^/?]+)(?:/([^/?]+))?',
+    ).firstMatch(u);
     if (detailMatch != null) {
       return {
         'action': 'detail',
@@ -799,7 +837,9 @@ class StremioService {
     }
 
     // discover link
-    final discoverMatch = RegExp(r'stremio:///discover/([^/]+)/([^/]+)/([^/?]+)(.*)').firstMatch(u);
+    final discoverMatch = RegExp(
+      r'stremio:///discover/([^/]+)/([^/]+)/([^/?]+)(.*)',
+    ).firstMatch(u);
     if (discoverMatch != null) {
       return {
         'action': 'discover',
@@ -862,12 +902,10 @@ class StremioService {
       sport.add(Map<String, dynamic>.from(c));
     }
     if (sport.isEmpty) return const [];
-    final preferred = sport
-        .where((c) {
-          final id = c['id']?.toString() ?? '';
-          return id == 'sports_live' || id == 'sports_today';
-        })
-        .toList();
+    final preferred = sport.where((c) {
+      final id = c['id']?.toString() ?? '';
+      return id == 'sports_live' || id == 'sports_today';
+    }).toList();
     return preferred.isNotEmpty ? preferred : sport;
   }
 
@@ -905,8 +943,8 @@ class StremioService {
     }
 
     final url = (stream['url']?.toString() ?? '').toLowerCase();
-    final needsStreamedCatalog = url.contains('recaps.dev') ||
-        url.contains('strmd.st');
+    final needsStreamedCatalog =
+        url.contains('recaps.dev') || url.contains('strmd.st');
     if (!needsStreamedCatalog) return headers;
 
     final hasReferer = headers.keys.any((k) => k.toLowerCase() == 'referer');

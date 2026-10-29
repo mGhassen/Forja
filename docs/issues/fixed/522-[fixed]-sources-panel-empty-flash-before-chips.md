@@ -1,4 +1,4 @@
-# 522 — Sources panel empty flash before provider chips
+# 522 — Sources provider chips not instant on open
 
 **Status:** fixed  
 **Priority:** P1  
@@ -10,7 +10,7 @@
 
 | | |
 |--|--|
-| **Progress** | **Complete · 4 / 4** fix · **0 / 2** acceptance |
+| **Progress** | **Complete · 6 / 6** fix · **0 / 2** acceptance |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -24,23 +24,25 @@
 | 2 | I522-T02 | Forja pack-install loading counts as list fetching even with empty selection | ✅ |
 | 3 | I522-T03 | Arm visible-kind fetch flags in the same frame hydrate clears / kind switches — no empty gap before ensure awaits | ✅ |
 | 4 | I522-T04 | Cancel clears chrome hydrate; ensure* still starts when only armed (no in-flight ids yet) | ✅ |
+| 5 | I522-T05 | Sync-seed chip lists on open from peekPacks / torrent catalog / Nuvio+Stremio mem (installed → instant chips) | ✅ |
+| 6 | I522-T06 | Details warm fills pack/addon/torrent chip inventories before Sources open | ✅ |
 
 ## Acceptance
 
 | # | ID | Description | Status |
 |--:|----|-------------|--------|
-| 1 | I522-A01 | ATV: open Sources on a title — spinner until chips appear; no “Select at least one provider” / “No matching sources” flash | ⬜ |
-| 2 | I522-A02 | Desktop/phone: same open path — no empty-copy flash before chips | ⬜ |
+| 1 | I522-A01 | ATV: open Sources on a title with packs already installed — provider chips visible on first paint (no empty wait) | ⬜ |
+| 2 | I522-A02 | Desktop/phone: same — chips instant when inventories are warm | ⬜ |
 
 ---
 
 ## Symptom
 
-On Android TV (released), opening Sources shows no provider chips and briefly paints empty copy (“no streams” / select-provider / no matches), freezes a beat, then chips and streams appear.
+On Android TV (released), opening Sources shows no provider chips and briefly paints empty copy, freezes a beat, then chips and streams appear — even though providers are already installed.
 
 ## Root cause
 
-`PlayerSourcesPanel` seeded kind/cache rows but left chip lists empty until `_bootstrap` awaited prefs + packs/addons. `_isFetching` was false in that window (and Forja pack-install required a non-empty selection), so `totalCount == 0` painted empty copy instead of the loading spinner. Chip row is hidden when `providerOptions.isEmpty`.
+`_seedOptimisticChrome` only seeded kind tabs + stream cache. Chip inventories (`_enginePacks` / torrent catalog / Nuvio / Stremio) waited on `_bootstrap` prefs awaits. Packs were in `peekPacks` mem but unused on open. Spinner-only was the wrong fix; chips must sync-seed from warm mem.
 
 ## Links
 

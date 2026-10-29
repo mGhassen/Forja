@@ -270,10 +270,21 @@ class EngineService {
     purgeRemovedImmediately: purgeRemovedImmediately,
   );
 
+  /// Sync Sources Forja chips when [PluginRegistry.peekPacks] is warm — null if cold.
+  List<EnginePack>? peekSourcesPanelPacks() {
+    final packs = PluginRegistry.instance.peekPacks();
+    if (packs == null) return null;
+    return _sourcesPanelPacksFrom(packs);
+  }
+
   Future<List<EnginePack>> listSourcesPanelPacks() async {
     // Never block Play/Sources on network install / lean hydrate.
     unawaited(PluginRegistry.instance.ensureOfficialInstalled());
     final packs = await PluginRegistry.instance.listPacksRaw();
+    return _sourcesPanelPacksFrom(packs);
+  }
+
+  static List<EnginePack> _sourcesPanelPacksFrom(List<EnginePack> packs) {
     final vod = [
       for (final p in packs)
         if (p.enabled && p.plugins.any((pl) => pl.enabled && pl.isVodCatalog))
