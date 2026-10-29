@@ -86,15 +86,20 @@ class _SettingsHubScaffoldState extends ConsumerState<SettingsHubScaffold> {
     if (oldWidget.selectedId != widget.selectedId) {
       _detailReturnFocus = null;
       _detailReturnCategoryId = null;
+      // Defer notifier writes — didUpdateWidget runs mid-build.
       if (widget.selectedId != SettingsCategoryId.sources) {
         SettingsAddonDrill.clearReturnFocus();
-        SettingsAddonDrill.close();
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          SettingsAddonDrill.close();
+        });
       }
       if (widget.selectedId != SettingsCategoryId.forjaPacks &&
           SettingsPackPromptDrill.isOpen &&
           !SettingsPackPromptDrill.isApplying) {
         SettingsPackPromptDrill.clearReturnFocus();
-        unawaited(SettingsPackPromptDrill.dismissWithoutApply());
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          unawaited(SettingsPackPromptDrill.dismissWithoutApply());
+        });
       }
     }
   }
