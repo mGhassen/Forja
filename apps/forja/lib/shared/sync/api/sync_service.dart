@@ -559,6 +559,7 @@ class SyncService {
     );
     if (response.session != null) {
       await persistActiveSessionToVault();
+      await _logSessionDurability('password');
     }
     _notifyIdentityChanged();
     return response;
@@ -724,9 +725,49 @@ class SyncService {
       throw const AuthException('Web login did not return usable tokens.');
     }
 
-    AuthResponse response;
+    // Emulator / flaky DNS can fail the first getUser during setSession; retry
+    // before telling the portal the handoff failed.
+    const maxAttempts = 3;
+    Object? lastError;
+    for (var attempt = 1; attempt <= maxAttempts; attempt++) {
+      try {
+        final response = await _setBrowserSession(
+          client,
+          accessToken: accessToken,
+          refreshToken: refreshToken,
+        );
+        if (response.session == null) {
+          throw const AuthException(
+            'Web login did not return a usable session.',
+          );
+        }
+        await persistActiveSessionToVault();
+        await _logSessionDurability('browser');
+        _notifyIdentityChanged();
+        return response;
+      } catch (e) {
+        lastError = e;
+        if (!isRetryableAuthNetworkError(e) || attempt == maxAttempts) {
+          rethrow;
+        }
+        debugPrint(
+          '[Sync] browser setSession attempt $attempt/$maxAttempts failed '
+          '($e); retrying',
+        );
+        await Future<void>.delayed(Duration(milliseconds: 250 * attempt));
+      }
+    }
+    // Unreachable — loop always returns or rethrows.
+    throw lastError ?? const AuthException('Web login failed.');
+  }
+
+  Future<AuthResponse> _setBrowserSession(
+    SupabaseClient client, {
+    required String accessToken,
+    required String refreshToken,
+  }) async {
     try {
-      response = await client.auth.setSession(
+      return await client.auth.setSession(
         refreshToken,
         accessToken: accessToken,
       );
@@ -736,15 +777,12 @@ class SyncService {
         '[Sync] setSession(access) failed (${e.code ?? e.message}); '
         'falling back to refresh-only',
       );
-      response = await client.auth.setSession(refreshToken);
+      return client.auth.setSession(refreshToken);
     }
+  }
 
-    if (response.session == null) {
-      throw const AuthException('Web login did not return a usable session.');
-    }
-    await persistActiveSessionToVault();
-    // Android TV: EncryptedSharedPreferences alone can drop the session;
-    // ForjaPlatformSecureStore dual-writes a prefs vault. Verify after apply.
+  /// Confirm GoTrue LocalStorage can round-trip the session (Android file vault).
+  Future<void> _logSessionDurability(String source) async {
     try {
       final host = Uri.tryParse(ForjaSupabase.url)?.host ?? 'forja';
       final ls = ForjaSecureLocalStorage(
@@ -752,19 +790,17 @@ class SyncService {
       );
       final persisted = await ls.hasAccessToken();
       debugPrint(
-        '[Sync] browser tokens applied signedIn=true persisted=$persisted',
+        '[Sync] $source tokens applied signedIn=true persisted=$persisted',
       );
       if (!persisted) {
         debugPrint(
-          '[Sync] WARNING: session not durable after setSession - '
+          '[Sync] WARNING: session not durable after $source sign-in — '
           'cold start may return to sign-in',
         );
       }
     } catch (e) {
-      debugPrint('[Sync] persist check failed: $e');
+      debugPrint('[Sync] persist check failed ($source): $e');
     }
-    _notifyIdentityChanged();
-    return response;
   }
 
   static bool _canFallbackBrowserTokenRefresh(AuthException e) {

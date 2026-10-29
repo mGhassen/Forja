@@ -207,6 +207,19 @@ class DesktopBrowserAuth {
               return;
             }
 
+            // Overlapping Return-to-Forja while setSession is in flight.
+            if (applyingTokens) {
+              await _writeCallbackResponse(
+                request,
+                title: 'Sign-in in progress',
+                body:
+                    'Forja is still applying the session. Keep this tab open '
+                    'and tap Return to Forja again in a moment.',
+                ok: false,
+              );
+              return;
+            }
+
             applyingTokens = true;
             try {
               if (onTokens != null) {
@@ -226,19 +239,16 @@ class DesktopBrowserAuth {
                 ),
               );
             } catch (e, st) {
+              // Keep the loopback up so the portal can retry Return to Forja.
+              // Finishing here used to close the server → "Could not reach".
               debugPrint('[DesktopBrowserAuth] apply tokens failed: $e\n$st');
               await _writeCallbackResponse(
                 request,
                 title: 'Sign-in failed',
                 body:
                     'Forja could not apply the session. Keep this tab open and '
-                    'tap Return to Forja, or try Web login again from the app.',
+                    'tap Return to Forja again.',
                 ok: false,
-              );
-              finish(
-                DesktopBrowserAuthResult.failure(
-                  'Web login failed to apply the session. Try again.',
-                ),
               );
             } finally {
               applyingTokens = false;
