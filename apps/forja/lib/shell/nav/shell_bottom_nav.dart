@@ -11,11 +11,12 @@ import 'package:google_fonts/google_fonts.dart';
 
 /// Touch shell bottom bar.
 ///
-/// Shows at most [ShellTokens.bottomNavMaxSlots] slots. With more tabs, the
-/// last slot is "More" and opens a sheet listing the rest, in the same order
-/// as [visibleIds] (Settings → Features). Landscape phones get a compact bar
-/// with icon and label side by side. The bar pads itself for the bottom and
-/// side system insets (gesture pill, 3-button nav, cutouts).
+/// Shows every painted tab. When they fit, slots share the width evenly.
+/// When they overflow, the row scrolls horizontally (same idea as the
+/// desktop/TV rail) and the selected tab is scrolled into view. Landscape
+/// phones use a compact bar with icon and label side by side. The bar pads
+/// itself for the bottom and side system insets (gesture pill, 3-button nav,
+/// cutouts).
 ///
 /// Item chrome matches [ShellNavRail]: destination accent + underline on
 /// select, hover/focus color + icon scale — no Material pill / ink wash.
@@ -31,16 +32,6 @@ class ShellBottomNav extends StatefulWidget {
   final int selectedIndex;
   final ValueChanged<int> onItemTapped;
 
-  /// Synthetic slot id — never a pack or core nav id.
-  static const moreSlotId = '__shell_bottom_nav_more__';
-
-  static const _moreDestination = NavDestination(
-    id: moreSlotId,
-    icon: Icons.more_horiz_rounded,
-    activeIcon: Icons.more_horiz_rounded,
-    label: 'More',
-  );
-
   /// Landscape phones use the compact bar.
   static bool compactOf(BuildContext context) =>
       MediaQuery.orientationOf(context) == Orientation.landscape;
@@ -50,63 +41,73 @@ class ShellBottomNav extends StatefulWidget {
       ? ShellTokens.bottomNavHeightCompact
       : ShellTokens.bottomNavHeight;
 
-  /// Splits [visibleIds] into bar slots and "More" sheet entries.
-  ///
-  /// Indexes stay indexes into [visibleIds]. Ids without a destination are
-  /// skipped (they never painted).
-  static ({List<int> bar, List<int> more}) slotsFor(List<String> visibleIds) {
-    final painted = <int>[
-      for (var i = 0; i < visibleIds.length; i++)
-        if (navDestinationFor(visibleIds[i]) != null) i,
-    ];
-    if (painted.length <= ShellTokens.bottomNavMaxSlots) {
-      return (bar: painted, more: const <int>[]);
-    }
-    final split = ShellTokens.bottomNavMaxSlots - 1;
-    return (bar: painted.sublist(0, split), more: painted.sublist(split));
-  }
+  static double itemWidthOf(BuildContext context) => compactOf(context)
+      ? ShellTokens.bottomNavItemWidthCompact
+      : ShellTokens.bottomNavItemWidth;
+
+  /// Indexes into [visibleIds] that have a destination (paintable tabs).
+  static List<int> paintedIndexes(List<String> visibleIds) => [
+    for (var i = 0; i < visibleIds.length; i++)
+      if (navDestinationFor(visibleIds[i]) != null) i,
+  ];
 
   @override
   State<ShellBottomNav> createState() => _ShellBottomNavState();
 }
 
 class _ShellBottomNavState extends State<ShellBottomNav> {
-  /// The sheet pops a nav id, resolved against the ids current when it
-  /// closes: tabs can change while it is open (pack install, sign-in).
-  Future<void> _openMoreSheet(BuildContext context, List<int> more) async {
-    final direction = Directionality.of(context);
-    // Snapshot: the route builder re-runs on rebuilds, and [more] indexes
-    // this list, not a later one.
-    final ids = widget.visibleIds;
-    final selectedIndex = widget.selectedIndex;
-    final pickedId = await showModalBottomSheet<String>(
-      context: context,
-      backgroundColor: AppTheme.bgDark,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(
-          top: Radius.circular(ShellTokens.bottomNavMoreSheetRadius),
-        ),
-      ),
-      builder: (sheetContext) => Directionality(
-        textDirection: direction,
-        child: _BottomNavMoreSheet(
-          visibleIds: ids,
-          indexes: more,
-          selectedIndex: selectedIndex,
-        ),
-      ),
+  final ScrollController _scrollController = ScrollController();
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback(
+      (_) => _ensureSelectedVisible(),
     );
-    if (pickedId == null || !mounted) return;
-    final idx = widget.visibleIds.indexOf(pickedId);
-    if (idx >= 0) widget.onItemTapped(idx);
+  }
+
+  @override
+  void didUpdateWidget(covariant ShellBottomNav oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.selectedIndex != widget.selectedIndex ||
+        oldWidget.visibleIds != widget.visibleIds) {
+      WidgetsBinding.instance.addPostFrameCallback(
+        (_) => _ensureSelectedVisible(),
+      );
+    }
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _ensureSelectedVisible() {
+    if (!mounted || !_scrollController.hasClients) return;
+    final painted = ShellBottomNav.paintedIndexes(widget.visibleIds);
+    final slot = painted.indexOf(widget.selectedIndex);
+    if (slot < 0) return;
+    final itemW = ShellBottomNav.itemWidthOf(context);
+    final target = slot * itemW;
+    final position = _scrollController.position;
+    final viewStart = position.pixels;
+    final viewEnd = viewStart + position.viewportDimension;
+    if (target >= viewStart && target + itemW <= viewEnd) return;
+    final aligned = target.clamp(0.0, position.maxScrollExtent).toDouble();
+    _scrollController.animateTo(
+      aligned,
+      duration: ShellTokens.navSelectionAnimation,
+      curve: Curves.easeOutCubic,
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     final compact = ShellBottomNav.compactOf(context);
     final insets = MediaQuery.paddingOf(context);
-    final slots = ShellBottomNav.slotsFor(widget.visibleIds);
-    final moreSelected = slots.more.contains(widget.selectedIndex);
+    final painted = ShellBottomNav.paintedIndexes(widget.visibleIds);
+    final itemW = ShellBottomNav.itemWidthOf(context);
 
     return DecoratedBox(
       decoration: BoxDecoration(
@@ -121,45 +122,89 @@ class _ShellBottomNavState extends State<ShellBottomNav> {
         ),
         child: SizedBox(
           height: ShellBottomNav.barHeightOf(context),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              for (final idx in slots.bar)
-                Expanded(
-                  child: _BottomNavItem(
-                    destination: navDestinationFor(widget.visibleIds[idx])!,
-                    selected: widget.selectedIndex == idx,
-                    compact: compact,
-                    showPackUpdateBadge: widget.visibleIds[idx] == 'settings',
-                    onTap: () => widget.onItemTapped(idx),
-                    onLongPress:
-                        VerticalFiltersRegistry.hasFilters(
-                          widget.visibleIds[idx],
-                        )
-                        ? () => VerticalFiltersRegistry.showMenu(
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              if (painted.isEmpty) return const SizedBox.shrink();
+              final needScroll = painted.length * itemW > constraints.maxWidth;
+              final children = [
+                for (final idx in painted)
+                  SizedBox(
+                    width: needScroll
+                        ? itemW
+                        : constraints.maxWidth / painted.length,
+                    child: _BottomNavItem(
+                      destination: navDestinationFor(widget.visibleIds[idx])!,
+                      selected: widget.selectedIndex == idx,
+                      compact: compact,
+                      showPackUpdateBadge: widget.visibleIds[idx] == 'settings',
+                      onTap: () => widget.onItemTapped(idx),
+                      onLongPress:
+                          VerticalFiltersRegistry.hasFilters(
                             widget.visibleIds[idx],
                           )
-                        : null,
-                    shareFilterMenuTapGroup: VerticalFiltersRegistry.hasFilters(
-                      widget.visibleIds[idx],
+                          ? () => VerticalFiltersRegistry.showMenu(
+                              widget.visibleIds[idx],
+                            )
+                          : null,
+                      shareFilterMenuTapGroup:
+                          VerticalFiltersRegistry.hasFilters(
+                            widget.visibleIds[idx],
+                          ),
                     ),
                   ),
-                ),
-              if (slots.more.isNotEmpty)
-                Expanded(
-                  child: _BottomNavItem(
-                    key: const ValueKey(ShellBottomNav.moreSlotId),
-                    destination: ShellBottomNav._moreDestination,
-                    selected: moreSelected,
-                    compact: compact,
-                    showPackUpdateBadge: slots.more.any(
-                      (i) => widget.visibleIds[i] == 'settings',
-                    ),
-                    reloadHold: false,
-                    onTap: () => _openMoreSheet(context, slots.more),
+              ];
+              if (!needScroll) {
+                return Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: children,
+                );
+              }
+              return Stack(
+                children: [
+                  ListView(
+                    controller: _scrollController,
+                    scrollDirection: Axis.horizontal,
+                    children: children,
                   ),
-                ),
-            ],
+                  const Positioned(
+                    left: 0,
+                    top: 0,
+                    bottom: 0,
+                    child: _BottomNavEdgeFade(left: true),
+                  ),
+                  const Positioned(
+                    right: 0,
+                    top: 0,
+                    bottom: 0,
+                    child: _BottomNavEdgeFade(left: false),
+                  ),
+                ],
+              );
+            },
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _BottomNavEdgeFade extends StatelessWidget {
+  const _BottomNavEdgeFade({required this.left});
+
+  final bool left;
+
+  @override
+  Widget build(BuildContext context) {
+    return IgnorePointer(
+      child: SizedBox(
+        width: ShellTokens.bottomNavFadeWidth,
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: left ? Alignment.centerLeft : Alignment.centerRight,
+              end: left ? Alignment.centerRight : Alignment.centerLeft,
+              colors: [AppTheme.bgDark, AppTheme.bgDark.withValues(alpha: 0)],
+            ),
           ),
         ),
       ),
@@ -192,10 +237,10 @@ class _BottomNavItem extends StatefulWidget {
   /// without the tap counting as outside and hiding the menu.
   final bool shareFilterMenuTapGroup;
 
-  /// Settings slot (or "More" holding Settings): pack update badge.
+  /// Settings slot: pack update badge.
   final bool showPackUpdateBadge;
 
-  /// Hold-to-reload a tab. Off for "More" (not a tab).
+  /// Hold-to-reload a tab.
   final bool reloadHold;
 
   @override
@@ -255,20 +300,11 @@ class _BottomNavItemState extends State<_BottomNavItem> {
     final destinationAccent =
         navDestinationAccentColors[widget.destination.id] ??
         ForjaShellColors.brandGreen;
-    // Synthetic "More" has no pack accent — mute idle, brand green when lit.
-    final useDestinationAccent =
-        widget.destination.id != ShellBottomNav.moreSlotId;
     final chromeAnim = ShellTokens.navSelectionAnimation;
-    final iconColor = useDestinationAccent
-        ? (isSelected || active
-              ? destinationAccent
-              : ForjaShellColors.iconMuted)
-        : isSelected || active
-        ? ForjaShellColors.brandGreen
-        : ForjaShellColors.iconMuted;
-    final underlineColor = useDestinationAccent
+    final iconColor = isSelected || active
         ? destinationAccent
-        : ForjaShellColors.navUnderline;
+        : ForjaShellColors.iconMuted;
+    final underlineColor = destinationAccent;
     final labelSize = compact
         ? ShellTokens.bottomNavLabelSizeCompact
         : ShellTokens.bottomNavLabelSize;
@@ -415,160 +451,5 @@ class _BottomNavItemState extends State<_BottomNavItem> {
       );
     }
     return item;
-  }
-}
-
-/// Tabs past the bar slots — same icons and labels as the bar. Pops with the
-/// picked nav id.
-class _BottomNavMoreSheet extends StatelessWidget {
-  const _BottomNavMoreSheet({
-    required this.visibleIds,
-    required this.indexes,
-    required this.selectedIndex,
-  });
-
-  final List<String> visibleIds;
-  final List<int> indexes;
-  final int selectedIndex;
-
-  @override
-  Widget build(BuildContext context) {
-    return SafeArea(
-      top: false,
-      left: false,
-      right: false,
-      child: ListView(
-        shrinkWrap: true,
-        padding: const EdgeInsets.symmetric(
-          vertical: ShellTokens.bottomNavMoreSheetPadV,
-        ),
-        children: [
-          for (final idx in indexes)
-            _BottomNavMoreRow(
-              key: ValueKey('bottom-nav-more-${visibleIds[idx]}'),
-              destination: navDestinationFor(visibleIds[idx])!,
-              selected: idx == selectedIndex,
-              showPackUpdateBadge: visibleIds[idx] == 'settings',
-              onTap: () => Navigator.of(context).pop(visibleIds[idx]),
-              onLongPress: VerticalFiltersRegistry.hasFilters(visibleIds[idx])
-                  ? () {
-                      final id = visibleIds[idx];
-                      Navigator.of(context).pop(id);
-                      VerticalFiltersRegistry.showMenu(id);
-                    }
-                  : null,
-            ),
-        ],
-      ),
-    );
-  }
-}
-
-class _BottomNavMoreRow extends StatefulWidget {
-  const _BottomNavMoreRow({
-    super.key,
-    required this.destination,
-    required this.selected,
-    required this.showPackUpdateBadge,
-    required this.onTap,
-    this.onLongPress,
-  });
-
-  final NavDestination destination;
-  final bool selected;
-  final bool showPackUpdateBadge;
-  final VoidCallback onTap;
-  final VoidCallback? onLongPress;
-
-  @override
-  State<_BottomNavMoreRow> createState() => _BottomNavMoreRowState();
-}
-
-class _BottomNavMoreRowState extends State<_BottomNavMoreRow> {
-  bool _hover = false;
-
-  @override
-  Widget build(BuildContext context) {
-    final active = _hover;
-    final accent =
-        navDestinationAccentColors[widget.destination.id] ??
-        ForjaShellColors.brandGreen;
-    final color = widget.selected || active
-        ? accent
-        : ForjaShellColors.iconMuted;
-    Widget icon = NavDestinationIcon(
-      destination: widget.destination,
-      selected: widget.selected,
-      color: color,
-      size: ShellTokens.bottomNavMoreIconSize,
-    );
-    if (widget.showPackUpdateBadge) {
-      icon = PackUpdateNavChrome(
-        expanded: active,
-        badgeSize: ShellTokens.packUpdateBadgeSizeBottomNav,
-        child: icon,
-      );
-    }
-    return MouseRegion(
-      onEnter: (_) => setState(() => _hover = true),
-      onExit: (_) => setState(() => _hover = false),
-      cursor: SystemMouseCursors.click,
-      child: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: widget.onTap,
-        onLongPress: widget.onLongPress,
-        child: Container(
-          height: ShellTokens.bottomNavMoreRowHeight,
-          padding:
-              EdgeInsetsDirectional.only(
-                start: ShellTokens.bodyHorizontalPadding,
-                end: ShellTokens.bodyHorizontalPadding,
-              ).add(
-                EdgeInsets.only(
-                  left: MediaQuery.paddingOf(context).left,
-                  right: MediaQuery.paddingOf(context).right,
-                ),
-              ),
-          child: Row(
-            children: [
-              Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  icon,
-                  const SizedBox(height: ShellTokens.navRailIconUnderlineGap),
-                  AnimatedContainer(
-                    duration: ShellTokens.navSelectionAnimation,
-                    curve: Curves.easeOutCubic,
-                    height: ShellTokens.shellNavUnderlineHeight,
-                    width: widget.selected
-                        ? ShellTokens.shellNavUnderlineWidth
-                        : 0,
-                    decoration: BoxDecoration(
-                      color: widget.selected ? accent : Colors.transparent,
-                      borderRadius: BorderRadius.circular(
-                        ShellTokens.shellNavUnderlineRadius,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(width: ShellTokens.bottomNavMoreRowGap),
-              Expanded(
-                child: Text(
-                  widget.destination.label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.plusJakartaSans(
-                    color: color,
-                    fontSize: ShellTokens.bottomNavMoreLabelSize,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
   }
 }

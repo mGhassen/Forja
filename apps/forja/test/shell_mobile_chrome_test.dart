@@ -117,32 +117,40 @@ void main() {
     }
   });
 
-  group('bottom bar slots', () {
-    test('five or fewer tabs all sit in the bar', () {
-      final slots = ShellBottomNav.slotsFor([..._hubs.take(4), 'settings']);
-      expect(slots.bar, [0, 1, 2, 3, 4]);
-      expect(slots.more, isEmpty);
-    });
-
-    test('more than five tabs: four in the bar, rest under More in order', () {
-      final slots = ShellBottomNav.slotsFor([..._hubs, 'settings']);
-      expect(slots.bar, [0, 1, 2, 3]);
-      expect(slots.more, [4, 5, 6]);
+  group('bottom bar painted indexes', () {
+    test('every destination id is painted in order', () {
+      expect(ShellBottomNav.paintedIndexes([..._hubs.take(4), 'settings']), [
+        0,
+        1,
+        2,
+        3,
+        4,
+      ]);
+      expect(ShellBottomNav.paintedIndexes([..._hubs, 'settings']), [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+      ]);
     });
 
     test('ids without a destination never take a slot', () {
-      final slots = ShellBottomNav.slotsFor([
-        _hubs[0],
-        'no_such_tab',
-        ..._hubs.skip(1),
-        'settings',
-      ]);
-      expect(slots.bar, [0, 2, 3, 4]);
-      expect(slots.more, [5, 6, 7]);
+      expect(
+        ShellBottomNav.paintedIndexes([
+          _hubs[0],
+          'no_such_tab',
+          ..._hubs.skip(1),
+          'settings',
+        ]),
+        [0, 2, 3, 4, 5, 6, 7],
+      );
     });
   });
 
-  testWidgets('seven tabs: bar shows four tabs and More; Settings in sheet', (
+  testWidgets('many tabs: bar scrolls; Settings selectable in the row', (
     tester,
   ) async {
     final ids = [..._hubs, 'settings'];
@@ -150,51 +158,34 @@ void main() {
     await _pump(tester, _scaffold(ids, onSelected: (i) => picked = i));
 
     expect(find.text('Hub 1'), findsOneWidget);
-    expect(find.text('Hub 4'), findsOneWidget);
-    expect(find.text('Hub 5'), findsNothing);
-    expect(find.text('Settings'), findsNothing);
-    expect(find.text('More'), findsOneWidget);
-    expect(find.byType(SingleChildScrollView), findsNothing);
+    expect(find.text('More'), findsNothing);
+    expect(find.byType(ListView), findsWidgets);
 
-    await tester.tap(find.text('More'));
+    final scrollable = find.descendant(
+      of: find.byType(ShellBottomNav),
+      matching: find.byType(Scrollable),
+    );
+    expect(scrollable, findsOneWidget);
+    await tester.drag(scrollable, const Offset(-400, 0));
     await tester.pumpAndSettle();
-    expect(find.text('Hub 5'), findsOneWidget);
-    expect(find.text('Hub 6'), findsOneWidget);
-    expect(find.text('Settings'), findsOneWidget);
 
+    expect(find.text('Settings'), findsOneWidget);
     await tester.tap(find.text('Settings'));
     await tester.pumpAndSettle();
     expect(picked, ids.indexOf('settings'));
-    expect(find.text('Hub 5'), findsNothing);
   });
 
-  testWidgets('More pick resolves against the tabs current at close', (
+  testWidgets('selected overflow tab keeps its own accent underline', (
     tester,
   ) async {
     final ids = [..._hubs, 'settings'];
-    int? picked;
-    await _pump(tester, _scaffold(ids, onSelected: (i) => picked = i));
-    await tester.tap(find.text('More'));
-    await tester.pumpAndSettle();
-
-    // A tab lands ahead of Settings while the sheet is open.
-    final changed = [_hubs.first, 'inserted', ..._hubs.skip(1), 'settings'];
-    await tester.pumpWidget(
-      _wrap(_scaffold(changed, onSelected: (i) => picked = i)),
-    );
-    await tester.tap(find.text('Settings'));
-    await tester.pumpAndSettle();
-    expect(picked, changed.indexOf('settings'));
-  });
-
-  testWidgets('active tab inside More highlights More', (tester) async {
-    final ids = [..._hubs, 'settings'];
     await _pump(tester, _scaffold(ids, selectedIndex: 5));
+    await tester.pumpAndSettle();
 
-    final more = tester.widget<Text>(find.text('More'));
-    expect(more.style?.color, ForjaShellColors.brandGreen);
-    final first = tester.widget<Text>(find.text('Hub 1'));
-    expect(first.style?.color, ForjaShellColors.iconMuted);
+    // Selected slot is scrolled into view; its accent stays on that tab.
+    expect(find.text('Hub 6'), findsOneWidget);
+    final selected = tester.widget<Text>(find.text('Hub 6'));
+    expect(selected.style?.color, _accents[_hubs[5]]);
   });
 
   testWidgets('selected tab uses destination accent + underline', (

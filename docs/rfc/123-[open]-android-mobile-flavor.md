@@ -149,7 +149,7 @@
 
 | # | ID | Description | Status |
 |--:|----|-------------|--------|
-| 22 | R123-C22 | Bottom tab bar: at most 5 slots with a More sheet for the rest; compact bar in landscape (icon beside label); clears the gesture bar | 🔄 |
+| 22 | R123-C22 | Bottom tab bar: all tabs in a horizontal scroll row (selected stays in view); compact bar in landscape (icon beside label); clears the gesture bar | ✅ |
 | 23 | R123-C23 | Edge-to-edge with the status bar visible; hub top bar readable over bright art and solid once scrolled; toasts and update banner sit above the tab bar | 🔄 |
 | 24 | R123-C24 | Phone details: full-width labeled Play / Resume SxEy, labeled secondary actions (Sources, Trailer, My List, SUB/DUB), vertical episode list, larger back button, solid title bar on scroll, landscape keeps overview and genres; title and logo never overlap while loading (all platforms) | 🔄 |
 | 25 | R123-C25 | Phone player: control bar with Episodes, Audio & subtitles, source, More (Quality, Settings, Volume, Previous episode, Lock); double-tap seek with +10 s feedback; menus open below the top bar; exit restores portrait and the status bar | 🔄 |
@@ -162,7 +162,7 @@
 
 | # | ID | Description | Status |
 |--:|----|-------------|--------|
-| 25 | R123-A25 | Phone AVD, portrait and landscape: bottom bar shows 5 slots; More sheet opens the remaining tabs | ✅ |
+| 25 | R123-A25 | Phone AVD, portrait and landscape: bottom bar scrolls when tabs overflow; selected tab stays visible (no More sheet) | ⬜ |
 | 26 | R123-A26 | Phone AVD: hub top bar turns solid on scroll | ✅ |
 | 27 | R123-A27 | Phone AVD: details show stacked labeled actions and a vertical episode list | ✅ |
 | 28 | R123-A28 | Phone AVD: player shows the phone control bar; More menu opens with its items | ✅ |
@@ -175,6 +175,7 @@
 | 35 | R123-A35 | Long-press on a poster opens the Play / Details / My List sheet | ✅ |
 | 36 | R123-A36 | Real phone: status bar returns after leaving the player | ⬜ |
 | 37 | R123-A37 | Device acceptance of slice 7 on a real phone | ⬜ |
+| 38 | R123-A38 | Phone AVD, many hub tabs: bottom bar scrolls; selected tab visible and underlined (no More sheet) | ⬜ |
 
 ---
 

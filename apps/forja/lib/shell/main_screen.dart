@@ -563,10 +563,15 @@ class _MainScreenState extends ConsumerState<MainScreen>
       debugPrint('[MainScreen] navbar visible=$visible');
     }
     final applyDefaultTab = ShellBus.selectDefaultTabOnNextNavLoad;
+    // Overlay (phone Settings category page, hub details) must not outlive a
+    // remapped index — that painted Account while Anime was selected (526).
+    final overlayOpen = shellOverlayCanPop();
+    final previousId = _selectedIndex < _visibleIds.length
+        ? _visibleIds[_selectedIndex]
+        : null;
+    var remappedAwayFromCurrent = false;
     setState(() {
-      final currentId = _selectedIndex < _visibleIds.length
-          ? _visibleIds[_selectedIndex]
-          : null;
+      final currentId = previousId;
       final hadFeatureTabs = _visibleIds.any((id) => id != 'settings');
       // Stay in real Settings when the last feature tab is unchecked while
       // already there. Do not clear dismissed mid-edit (that flashed the
@@ -584,13 +589,40 @@ class _MainScreenState extends ConsumerState<MainScreen>
       // (same as profile switch) — issue 253.
       // Do not promote when the user already opened Settings (pack remove /
       // install must not yank Forja Packs → Home / IPTV).
+      final intentionalSettings =
+          currentId == 'settings' && _emptyFeaturesBodyDismissed;
+      // Keep Settings selected while an overlay is up (Account category push)
+      // or the user opened Settings — default-tab arm must not desync chrome.
+      final holdSettingsSelection =
+          intentionalSettings || (overlayOpen && currentId == 'settings');
       final promoteFromSettingsOnly =
           !hadFeatureTabs &&
           visible.isNotEmpty &&
           currentId == 'settings' &&
           defaultTab != 'settings' &&
           !_emptyFeaturesBodyDismissed;
-      if (!_initialNavResolved || applyDefaultTab || promoteFromSettingsOnly) {
+      if (holdSettingsSelection &&
+          (_initialNavResolved || applyDefaultTab || promoteFromSettingsOnly)) {
+        _initialNavResolved = true;
+        if (applyDefaultTab) {
+          ShellBus.selectDefaultTabOnNextNavLoad = false;
+        }
+        final settingsIdx = _visibleIds.indexOf('settings');
+        if (settingsIdx >= 0) {
+          _selectedIndex = settingsIdx;
+          _mountedTabIds.add('settings');
+          _touchTab('settings');
+        } else if (currentId != null) {
+          final newIndex = _visibleIds.indexOf(currentId);
+          if (newIndex >= 0) {
+            _selectedIndex = newIndex;
+          } else if (_selectedIndex >= _visibleIds.length) {
+            _selectedIndex = _visibleIds.length - 1;
+          }
+        }
+      } else if (!_initialNavResolved ||
+          applyDefaultTab ||
+          promoteFromSettingsOnly) {
         if (applyDefaultTab) {
           // Fresh tab trees for the incoming profile's settings/portals.
           _tabCache.clear();
@@ -608,6 +640,7 @@ class _MainScreenState extends ConsumerState<MainScreen>
         );
         if (_selectedIndex < _visibleIds.length) {
           final tabId = _visibleIds[_selectedIndex];
+          remappedAwayFromCurrent = currentId != null && currentId != tabId;
           _mountedTabIds.add(tabId);
           _touchTab(tabId);
           _applyTabShellChrome(tabId);
@@ -643,6 +676,11 @@ class _MainScreenState extends ConsumerState<MainScreen>
       _evictTabsNotInNavbar(_visibleIds);
       _enforceTabCap();
     });
+    // Match [_selectTab]: never leave a category/details overlay over a
+    // different hub after a default-tab remap.
+    if (remappedAwayFromCurrent) {
+      popShellOverlayUntilRoot();
+    }
     _syncCurrentNavTab();
   }
 

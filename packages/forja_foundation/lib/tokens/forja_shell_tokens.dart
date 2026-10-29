@@ -20,24 +20,13 @@ abstract final class ShellTokens {
   static const double bottomNavIconLabelGap = 4;
   static const double bottomNavFadeIconSize = 12;
 
-  /// Touch bottom bar: most slots shown at once. Past it, the last slot is
-  /// "More" and opens a sheet with the remaining tabs in Features order.
-  static const int bottomNavMaxSlots = 5;
-
   /// Landscape phone bottom bar: icon and label side by side.
   static const double bottomNavHeightCompact = 56;
+  static const double bottomNavItemWidthCompact = 128;
   static const double bottomNavIconSizeCompact = 26;
   static const double bottomNavIconPaddingHCompact = 10;
   static const double bottomNavIconLabelGapCompact = 8;
   static const double bottomNavLabelSizeCompact = 12;
-
-  /// "More" sheet rows (tabs past [bottomNavMaxSlots]).
-  static const double bottomNavMoreRowHeight = 56;
-  static const double bottomNavMoreIconSize = 28;
-  static const double bottomNavMoreLabelSize = 15;
-  static const double bottomNavMoreRowGap = 16;
-  static const double bottomNavMoreSheetRadius = 16;
-  static const double bottomNavMoreSheetPadV = 8;
 
   /// Fixed desktop nav rail width (no hover expand).
   static const double navRailWidth = 120;
