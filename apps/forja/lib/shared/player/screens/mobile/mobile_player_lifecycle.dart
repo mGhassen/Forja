@@ -170,6 +170,7 @@ mixin _MobilePlayerLifecycle
 
     // ── System UI ────────────────────────────────────────────────────────
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+    if (_s._phoneChrome) PhonePlayerSystemUi.attach();
     // Orientation is set in addPostFrameCallback below - after the
     // first frame renders - to avoid fighting the portrait lock while
     // the widget tree is still building.
@@ -190,13 +191,16 @@ mixin _MobilePlayerLifecycle
     // Track like IPTV/desktop so engine hot-swap can await MediaKit teardown
     // before Exo mounts (issue 129 zoomed crop after MediaKit → Exo).
     unawaited(MpvExclusiveSession.instance.prepareForVideoPlayer());
+    // Phone SW-decode safe-mode: keep the Player RAM window lean (32 MiB).
+    // Matching ATV's 128 MiB VOD cushion here OOMs / kills the process on
+    // open (issue 524) — same class as ATV VOD fat-cache death (issue 163).
+    // ATV MediaKit keeps 128 MiB for HLS prefetch (issue 187).
+    final phoneSafe = _s._androidMediaKitSafeMode;
     _s._player = MpvExclusiveSession.instance.trackPlayer(
       Player(
-        configuration: const PlayerConfiguration(
+        configuration: PlayerConfiguration(
           logLevel: MPVLogLevel.warn,
-          // Match VOD `demuxer-max-bytes=128MiB`. media_kit default is 32MB
-          // and `cache-on-disk=yes` — both starve ATV HLS prefetch (issue 187).
-          bufferSize: 128 * 1024 * 1024,
+          bufferSize: (phoneSafe ? 32 : 128) * 1024 * 1024,
           // libass enabled so ASS/SSA subtitles render natively on the video.
           // For SRT/VTT we dynamically set sub-visibility=no so our custom
           // Flutter overlay still handles those.
@@ -225,23 +229,6 @@ mixin _MobilePlayerLifecycle
         androidAttachSurfaceAfterVideoParameters: false,
       ),
     );
-
-    // ── Ripple animation ─────────────────────────────────────────────────
-    _s._rippleController = AnimationController(
-      vsync: _s,
-      duration: const Duration(milliseconds: 420),
-    );
-    _s._rippleScale = Tween<double>(begin: 0.4, end: 1.6).animate(
-      CurvedAnimation(parent: _s._rippleController, curve: Curves.easeOut),
-    );
-    _s._rippleOpacity = Tween<double>(begin: 0.55, end: 0.0).animate(
-      CurvedAnimation(parent: _s._rippleController, curve: Curves.easeOut),
-    );
-    _s._rippleController.addStatusListener((status) {
-      if (status == AnimationStatus.completed) {
-        if (mounted) setState(() => _s._showRipple = false);
-      }
-    });
 
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (!mounted) return;
@@ -628,7 +615,12 @@ mixin _MobilePlayerLifecycle
       setState(() => _s._showVideoSurface = false);
       await WidgetsBinding.instance.endOfFrame;
     }
-    if (!PlatformInfo.isAndroidTv) {
+    if (_s._phoneChrome) {
+      // Phone: portrait + edge-to-edge system bars (status bar back) before
+      // the pop, so the page underneath never lays out landscape-immersive.
+      // The portrait lock is released after the route is gone.
+      await PhonePlayerSystemUi.restoreForExit();
+    } else if (!PlatformInfo.isAndroidTv) {
       // Unlock orientation so the rest of the app follows system settings.
       await SystemChrome.setPreferredOrientations([]);
       // Let the rotation finish before popping - avoids BLASTBufferQueue
@@ -636,11 +628,8 @@ mixin _MobilePlayerLifecycle
       await Future.delayed(const Duration(milliseconds: 300));
       await SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
     }
-    if (!mounted) {
-      _popPlayerRoute(nav: nav, result: result);
-      return;
-    }
     _popPlayerRoute(nav: nav, result: result);
+    if (_s._phoneChrome) PhonePlayerSystemUi.scheduleOrientationRelease();
   }
 
   void _popPlayerRoute({NavigatorState? nav, Duration? result}) {

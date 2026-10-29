@@ -46,11 +46,11 @@ on:
         type: boolean
         default: true
       platform_android_tv_arm64:
-        description: "Android TV — arm64 only"
+        description: "Android TV + mobile APKs — arm64"
         type: boolean
         default: false
       platform_android_tv_armeabi_v7a:
-        description: "Android TV — armeabi-v7a only"
+        description: "Android TV + mobile APKs — armeabi-v7a"
         type: boolean
         default: false
 
@@ -592,7 +592,7 @@ jobs:
           path: dist/Forja-${{ needs.resolve_version.outputs.version }}-linux-x86_64.AppImage
 
   build_android_tv:
-    name: Android TV
+    name: Android (TV + mobile)
     if: ${{ inputs.platform_android_tv_arm64 || inputs.platform_android_tv_armeabi_v7a }}
     needs: resolve_version
     runs-on: ubuntu-latest
@@ -679,7 +679,7 @@ jobs:
             exit 1
           fi
 
-      - name: Build Android TV APKs
+      - name: Build Android APKs (tv + mobile flavors)
         working-directory: ${{ env.APP_DIR }}
         env:
           FORJA_KEY_ALIAS: ${{ secrets.FORJA_KEY_ALIAS }}
@@ -696,10 +696,21 @@ jobs:
           IFS=,
           target_platform="${targets[*]}"
           unset IFS
-          echo "Building target-platform=$target_platform"
+          # Existing-tag releases older than the formFactor split have no
+          # product flavors — build the single (TV) APK the old way.
+          if grep -q 'productFlavors' android/app/build.gradle.kts; then
+            flavors=(tv mobile)
+          else
+            flavors=(legacy)
+          fi
           flutter pub get
-          ../../scripts/ci_with_heartbeat.sh "android tv release" \
+          for flavor in "${flavors[@]}"; do
+          flavor_args=()
+          [[ "$flavor" != legacy ]] && flavor_args=(--flavor "$flavor")
+          echo "Building flavor=$flavor target-platform=$target_platform"
+          ../../scripts/ci_with_heartbeat.sh "android $flavor release" \
             flutter build apk --release --split-per-abi \
+            "${flavor_args[@]}" \
             --target-platform "$target_platform" \
             --dart-define=SUPABASE_URL="$SUPABASE_URL" \
             --dart-define=SUPABASE_PUBLISHABLE_KEY="$SUPABASE_PUBLISHABLE_KEY" \
@@ -714,8 +725,9 @@ jobs:
             -PFORJA_KEYSTORE_PASSWORD="${{ secrets.FORJA_KEYSTORE_PASSWORD }}" \
             -PFORJA_KEY_ALIAS="${FORJA_KEY_ALIAS:-forja}" \
             -PFORJA_KEY_PASSWORD="${{ secrets.FORJA_KEY_PASSWORD }}"
+          done
 
-      - name: Package Android TV APKs
+      - name: Package Android APKs
         env:
           WANT_ARM64: ${{ inputs.platform_android_tv_arm64 }}
           WANT_V7A: ${{ inputs.platform_android_tv_armeabi_v7a }}
@@ -723,14 +735,20 @@ jobs:
           abis=()
           [[ "$WANT_ARM64" == "true" ]] && abis+=(arm64)
           [[ "$WANT_V7A" == "true" ]] && abis+=(armeabi-v7a)
-          ./scripts/package_android_tv_apk.sh \
-            "${{ needs.resolve_version.outputs.version }}" \
-            "${abis[@]}"
+          ver="${{ needs.resolve_version.outputs.version }}"
+          if [[ -f scripts/package_android_apk.sh ]] && \
+            grep -q 'productFlavors' apps/forja/android/app/build.gradle.kts; then
+            for flavor in tv mobile; do
+              ./scripts/package_android_apk.sh "$flavor" "$ver" "${abis[@]}"
+            done
+          else
+            ./scripts/package_android_tv_apk.sh "$ver" "${abis[@]}"
+          fi
 
       - uses: actions/upload-artifact@v4
         with:
-          name: Forja-Android-TV-apks
-          path: dist/Forja-${{ needs.resolve_version.outputs.version }}-android-tv-*.apk
+          name: Forja-Android-apks
+          path: dist/Forja-${{ needs.resolve_version.outputs.version }}-android-*.apk
           if-no-files-found: error
 
   # Platforms are independent: publish whatever succeeded. Failed platforms do not
@@ -762,7 +780,7 @@ jobs:
           echo "macOS x86_64:          ${{ needs.build_macos_x86_64.result }}"
           echo "Windows:               ${{ needs.build_windows.result }}"
           echo "Linux:                 ${{ needs.build_linux.result }}"
-          echo "Android TV:            ${{ needs.build_android_tv.result }}"
+          echo "Android TV + mobile:   ${{ needs.build_android_tv.result }}"
           failed=0
           for result in \
             "${{ needs.build_macos_arm64.result }}" \

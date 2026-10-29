@@ -490,12 +490,25 @@ class _ListStatusPinState extends State<ListStatusPin> {
     // Card overlays: keep the icon flush with the rating badge (no 40×40
     // focus pad that vertically centers the pin below the score).
     if (!widget.useFocusableChips || widget.excludeFromTvTraversal) {
+      // Touch: the icon stays small but the finger target meets 48 dp. The
+      // box grows toward the card body (the card clip would cut it at the
+      // corner), keeping the icon flush with the rating badge.
+      final touch = ShellPaintScope.usesMobileDensityOf(context);
+      final hit = touch
+          ? SizedBox.square(
+              dimension: ShellTokens.touchMinHitSize,
+              child: Align(
+                alignment: AlignmentDirectional.topStart,
+                child: child,
+              ),
+            )
+          : child;
       // Claim mouse-down so the card's pointer-down open does not fire.
       return PointerDownClaim(
         child: GestureDetector(
           onTap: onTap,
           behavior: HitTestBehavior.opaque,
-          child: child,
+          child: hit,
         ),
       );
     }

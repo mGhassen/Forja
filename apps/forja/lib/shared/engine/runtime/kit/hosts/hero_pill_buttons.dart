@@ -8,6 +8,18 @@ import 'package:forja_foundation/widgets/details/hero_pill_surfaces.dart';
 export 'package:forja_foundation/widgets/details/hero_pill_surfaces.dart'
     show HeroPillPlayTone, HeroMagnetIcon;
 
+/// Phone hero actions: every pill under this scope shows its label at rest
+/// (touch has no hover to reveal it). TV / desktop never mount it.
+class HeroPillLabelScope extends InheritedWidget {
+  const HeroPillLabelScope({super.key, required super.child});
+
+  static bool showsLabels(BuildContext context) =>
+      context.dependOnInheritedWidgetOfExactType<HeroPillLabelScope>() != null;
+
+  @override
+  bool updateShouldNotify(HeroPillLabelScope oldWidget) => false;
+}
+
 /// Primary hero CTA - pill with optional icon + label (Play, Watch Now, Resume).
 class HeroPillPlayButton extends StatelessWidget {
   const HeroPillPlayButton({
@@ -29,6 +41,7 @@ class HeroPillPlayButton extends StatelessWidget {
     this.onRightEdge,
     this.tvRowId,
     this.tvItemIndex,
+    this.expand = false,
   });
 
   final String label;
@@ -36,6 +49,9 @@ class HeroPillPlayButton extends StatelessWidget {
   final Widget? iconWidget;
   final VoidCallback? onTap;
   final bool primary;
+
+  /// Fill the parent width with the label always shown (phone primary CTA).
+  final bool expand;
   final HeroPillPlayTone? tone;
   final bool alwaysShowLabel;
   final bool autoFocus;
@@ -92,32 +108,38 @@ class HeroPillPlayButton extends StatelessWidget {
           }
         : null;
 
+    final labelScope = HeroPillLabelScope.showsLabels(context);
+    final interactive = ForjaInteractive(
+      onTap: onTap,
+      autoFocus: autoFocus,
+      focusNode: focusNode,
+      onKeyEvent: effectiveOnKey,
+      tvMeta: tvMeta,
+      hoverScale: 1.03,
+      pressScale: 0.97,
+      // Bottom-left so TV focus scale grows into the action gap, not into
+      // the hero ClipRect / bottom inset (which ate the glass border).
+      scaleAlignment: AlignmentDirectional.bottomStart.resolve(
+        Directionality.of(context),
+      ),
+      builder: (active, pressed) {
+        return HeroPillPlaySurface(
+          style: style,
+          active: active,
+          pressed: pressed,
+          expanded: alwaysShowLabel || expand || labelScope || active,
+          label: label,
+          leading: leading,
+          fill: expand,
+        );
+      },
+    );
+    if (expand) return interactive;
     return Align(
       alignment: AlignmentDirectional.centerStart,
-      child: ForjaInteractive(
-        onTap: onTap,
-        autoFocus: autoFocus,
-        focusNode: focusNode,
-        onKeyEvent: effectiveOnKey,
-        tvMeta: tvMeta,
-        hoverScale: 1.03,
-        pressScale: 0.97,
-        // Bottom-left so TV focus scale grows into the action gap, not into
-        // the hero ClipRect / bottom inset (which ate the glass border).
-        scaleAlignment: AlignmentDirectional.bottomStart.resolve(
-          Directionality.of(context),
-        ),
-        builder: (active, pressed) {
-          return HeroPillPlaySurface(
-            style: style,
-            active: active,
-            pressed: pressed,
-            expanded: alwaysShowLabel || active,
-            label: label,
-            leading: leading,
-          );
-        },
-      ),
+      // Phone action wrap: hug the pill instead of taking a whole line.
+      widthFactor: labelScope ? 1 : null,
+      child: interactive,
     );
   }
 }
@@ -472,7 +494,7 @@ class _HeroPillGroupedSlot extends StatelessWidget {
             iconWidget: iconWidget,
             active: active,
             pressed: pressed,
-            compact: !active,
+            compact: !active && !HeroPillLabelScope.showsLabels(context),
             isFirst: isFirst,
             isLast: isLast,
           );

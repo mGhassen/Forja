@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja/shared/downloads/download_library_panel.dart';
 import 'package:forja/shared/engine/runtime/kit/hosts/hero_pill_buttons.dart';
+import 'package:forja/shared/engine/runtime/kit/hosts/kit_card_quick_actions.dart';
 import 'package:forja/shared/engine/runtime/kit/hosts/kit_list_status_hero.dart';
 import 'package:forja/shared/engine/runtime/kit/hosts/kit_details_play.dart';
 import 'package:forja/shared/engine/runtime/kit/hosts/kit_list_entry.dart';
@@ -54,6 +55,7 @@ import 'package:forja/shared/player/live/pt_player_screen.dart';
 import 'package:forja/shared/player/sources/resolve/resolve_panel_host.dart';
 import 'package:forja/shared/player/sources/kit/kit_sources_panel.dart';
 import 'package:forja/shell/core/forja_shell_layout.dart';
+import 'package:forja/shell/core/forja_shell_profile.dart';
 import 'package:forja/shell/core/forja_shell_scope.dart';
 import 'package:forja/shell/feedback/forja_toast.dart';
 import 'package:forja/shell/tv/tv_focus_graph.dart';
@@ -79,6 +81,7 @@ import 'package:forja_foundation/tokens/forja_details_tokens.dart';
 import 'package:forja_foundation/tokens/forja_motion_theme.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
+import 'package:forja_foundation/tokens/mobile_chrome_tokens.dart';
 import 'package:forja_foundation/widgets/catalog/because_section.dart';
 import 'package:forja_foundation/widgets/catalog/category_circle_meta.dart';
 import 'package:forja_foundation/widgets/catalog/shell_mood_circle.dart';
@@ -770,7 +773,8 @@ class PackPaintTree extends StatelessWidget {
     final chromeDown = _chromeFocusDown(scope, merged);
     return Consumer(
       builder: (context, ref, _) {
-        final status = _topBarFeedStatus(ref);
+        final phone = _phoneProfile(context);
+        final status = _topBarFeedStatus(ref, inlineBar: phone);
         final paintedActions = status.actions(actions);
         return TopBodyBlock.fromProps(
           merged,
@@ -788,6 +792,7 @@ class PackPaintTree extends StatelessWidget {
             onDownEdge: chromeDown,
           ),
           center: status.center,
+          centerBelow: phone,
           wrapBody: _portalsWrapBody(context, actions: actions),
           onDownEdge: chromeDown,
           wrapChrome: _chromeTvWrap(context, actions: paintedActions),
@@ -1612,6 +1617,12 @@ class PackPaintTree extends StatelessWidget {
           title: title.isEmpty ? 'Title' : title,
           backdropUrl: backdrop.isNotEmpty ? backdrop : poster,
           posterUrl: poster.isEmpty ? null : poster,
+          // Pack-declared touch-portrait art + crop focus (paint props only).
+          portraitImageUrl: () {
+            final v = (props['portraitImageUrl'] ?? '').toString().trim();
+            return v.isEmpty ? null : v;
+          }(),
+          portraitImageAlignment: _heroFocalAlignment(props),
           logoUrl:
               (props['logoUrl'] ??
                       props['logo'] ??
@@ -1705,11 +1716,19 @@ class PackPaintTree extends StatelessWidget {
       if (e is! Map) continue;
       final id = (e['id'] ?? '').toString().trim();
       if (id.isEmpty) continue;
+      final profilesRaw = e['profiles'];
       out.add(
         _HeroActionSpec(
           id: id,
           label: e['label']?.toString(),
           icon: e['icon']?.toString(),
+          profiles: profilesRaw is List
+              ? {
+                  for (final p in profilesRaw)
+                    if (p.toString().trim().isNotEmpty)
+                      p.toString().trim().toLowerCase(),
+                }
+              : null,
           // Details defaults glass; packs may set primary/streaming explicitly.
           tone: _heroPillTone(
             e['tone'],
@@ -1757,6 +1776,16 @@ class PackPaintTree extends StatelessWidget {
     if (raw is int) return raw;
     if (raw is num) return raw.round();
     return int.tryParse((raw ?? '').toString()) ?? fallback;
+  }
+
+  /// Pack `focalX` / `focalY` (0 = left/top … 1 = right/bottom) → crop
+  /// alignment for touch-portrait heroes. Null when the pack sent neither.
+  static Alignment? _heroFocalAlignment(Map<String, dynamic> props) {
+    final x = PackPaintArtifact.packDouble(props['focalX']);
+    final y = PackPaintArtifact.packDouble(props['focalY']);
+    if (x == null && y == null) return null;
+    double axis(double? v) => ((v ?? 0.5).clamp(0.0, 1.0)) * 2 - 1;
+    return Alignment(axis(x), axis(y));
   }
 
   Widget _mountList(BuildContext context, Map<String, dynamic> spec) {
@@ -2934,14 +2963,20 @@ class PackPaintTree extends StatelessWidget {
     if (layoutItemsFromSpec(spec).isEmpty) return const SizedBox.shrink();
     final chrome = PackChromeScope.maybeOf(context);
     final countsListenable = chrome?.searchHitCounts;
+    // Phone: natural-width scrolling strip — no truncated tab labels.
+    final scrollable = _phoneProfile(context);
     if (countsListenable == null) {
-      return CatalogTabs(spec: spec);
+      return CatalogTabs(spec: spec, scrollable: scrollable);
     }
     return ValueListenableBuilder<Map<String, int>>(
       valueListenable: countsListenable,
       builder: (context, counts, _) {
         final q = (chrome?.eventQuery ?? '').trim();
-        return CatalogTabs(spec: spec, counts: q.isEmpty ? null : counts);
+        return CatalogTabs(
+          spec: spec,
+          counts: q.isEmpty ? null : counts,
+          scrollable: scrollable,
+        );
       },
     );
   }
@@ -3191,7 +3226,8 @@ class PackPaintTree extends StatelessWidget {
     final chromeDown = _chromeFocusDown(scope, spec);
     return Consumer(
       builder: (context, ref, _) {
-        final status = _topBarFeedStatus(ref);
+        final phone = _phoneProfile(context);
+        final status = _topBarFeedStatus(ref, inlineBar: phone);
         final paintedActions = status.actions(actions);
         return CatalogTopChrome(
           actions: paintedActions,
@@ -3204,6 +3240,7 @@ class PackPaintTree extends StatelessWidget {
           selections: selections,
           selectionLabels: _topBarSelectionLabels(selections, actions),
           center: status.center,
+          centerBelow: phone,
           height: height,
           gap: gap,
           padding: padding,
@@ -3224,7 +3261,12 @@ class PackPaintTree extends StatelessWidget {
   }
 
   /// Live schedule scrape chip for the top-bar center (issue 278).
-  _TopBarFeedStatus _topBarFeedStatus(WidgetRef ref) {
+  /// Phone shell: scrape progress paints as a thin bar under the strip so it
+  /// never covers top-bar actions. TV / desktop keep the centered pill.
+  static bool _phoneProfile(BuildContext context) =>
+      ShellScope.maybeOf(context)?.profile == ShellProfile.mobile;
+
+  _TopBarFeedStatus _topBarFeedStatus(WidgetRef ref, {bool inlineBar = false}) {
     final tab = (tabId ?? '').trim();
     if (tab.isEmpty || KitTopBarHostHooks.readFeedBusy == null) {
       return const _TopBarFeedStatus();
@@ -3232,11 +3274,12 @@ class PackPaintTree extends StatelessWidget {
     final feedBusy = KitTopBarHostHooks.readFeedBusy!(ref, tabId: tab);
     if (!feedBusy.busy) return const _TopBarFeedStatus();
     final raw = (feedBusy.label ?? '').trim();
+    final label = raw.isEmpty ? 'Loading…' : raw;
     return _TopBarFeedStatus(
       busy: true,
-      center: _KitTopBarCatalogProgressChip(
-        label: raw.isEmpty ? 'Loading…' : raw,
-      ),
+      center: inlineBar
+          ? _KitTopBarCatalogProgressBar(label: label)
+          : _KitTopBarCatalogProgressChip(label: label),
     );
   }
 
@@ -3317,6 +3360,52 @@ class _TopBarFeedStatus {
     final verb = (action['action'] ?? '').toString().trim().toLowerCase();
     final id = (action['id'] ?? '').toString().trim().toLowerCase();
     return verb == 'refresh' || id == 'refresh';
+  }
+}
+
+/// Phone scrape progress under the top-bar strip: thin indeterminate bar
+/// with the status label at its end. Never overlaps actions.
+class _KitTopBarCatalogProgressBar extends StatelessWidget {
+  const _KitTopBarCatalogProgressBar({required this.label});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return ExcludeFocus(
+      child: Row(
+        children: [
+          Expanded(
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(
+                MobileChromeTokens.topBarProgressBarHeight,
+              ),
+              child: LinearProgressIndicator(
+                minHeight: MobileChromeTokens.topBarProgressBarHeight,
+                color: ForjaShellColors.sectionAccent,
+                backgroundColor: ForjaShellColors.borderSubtle,
+              ),
+            ),
+          ),
+          const SizedBox(width: MobileChromeTokens.topBarProgressLabelGap),
+          ConstrainedBox(
+            constraints: const BoxConstraints(
+              maxWidth: MobileChromeTokens.topBarProgressLabelMaxWidth,
+            ),
+            child: Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: ForjaShellColors.textSecondary,
+                fontSize: MobileChromeTokens.topBarProgressFontSize,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 
@@ -3516,7 +3605,12 @@ class _HubTvCinematicHero extends StatefulWidget {
 
 class _HubTvCinematicHeroState extends State<_HubTvCinematicHero> {
   final FocusNode _playFocus = FocusNode(debugLabel: 'hub-hero-details');
+  final FocusNode _playActionFocus = FocusNode(debugLabel: 'hub-hero-play');
   final FocusNode _followFocus = FocusNode(debugLabel: 'hub-hero-follow');
+
+  /// First painted CTA (pack order). D-pad lands here from the gallery and
+  /// from the nav; falls back to View details before the row first builds.
+  FocusNode? _leadActionFocus;
   final FocusNode _galleryFocus = FocusNode(debugLabel: 'hub-hero-gallery');
   final GlobalKey<CinematicHeroState> _heroKey =
       GlobalKey<CinematicHeroState>();
@@ -3529,6 +3623,27 @@ class _HubTvCinematicHeroState extends State<_HubTvCinematicHero> {
   /// gallery). Off → the carousel holds so slides do not rotate while the
   /// user browses rows below.
   bool _focusWithin = false;
+
+  /// Touch: measured height of the page's vertical scroll viewport (body
+  /// above the bottom bar). Caps the hero so its actions stay on screen.
+  double? _viewportExtent;
+
+  void _probeViewportExtent() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      final pos = Scrollable.maybeOf(context, axis: Axis.vertical)?.position;
+      if (pos == null || !pos.hasViewportDimension) return;
+      final v = pos.viewportDimension;
+      final prev = _viewportExtent;
+      if (prev != null && (prev - v).abs() < 0.5) return;
+      setState(() => _viewportExtent = v);
+    });
+  }
+
+  /// First frame before the probe lands: screen minus the bottom bar.
+  double _touchMaxHeroHeight(BuildContext context) =>
+      _viewportExtent ??
+      MediaQuery.sizeOf(context).height - ShellTokens.bottomNavHeight;
 
   @override
   void initState() {
@@ -3561,6 +3676,7 @@ class _HubTvCinematicHeroState extends State<_HubTvCinematicHero> {
     // disposed FocusNodes; heroReveal stays PackLayoutPainter's scroll.
     _galleryFocus.removeListener(_onGalleryFocusChanged);
     _playFocus.dispose();
+    _playActionFocus.dispose();
     _followFocus.dispose();
     _galleryFocus.dispose();
     super.dispose();
@@ -3572,7 +3688,10 @@ class _HubTvCinematicHeroState extends State<_HubTvCinematicHero> {
     // defaultFocus only — pack page `focus.enter/restore` owns nav land.
     // Do not bind heroReveal here: PackLayoutPainter registers a ScrollController
     // reveal that survives hero remounts (rail reload during nav enter).
-    TvHeroActions.bind(tab, defaultFocus: () => mounted ? _playFocus : null);
+    TvHeroActions.bind(
+      tab,
+      defaultFocus: () => mounted ? (_leadActionFocus ?? _playFocus) : null,
+    );
   }
 
   void _focusGallery() {
@@ -3580,14 +3699,11 @@ class _HubTvCinematicHeroState extends State<_HubTvCinematicHero> {
     _galleryFocus.requestFocus();
   }
 
-  void _focusPlay() {
-    if (!_playFocus.canRequestFocus) return;
-    _playFocus.requestFocus();
-  }
+  void _focusPlay() => _focusNode(_leadActionFocus ?? _playFocus);
 
-  void _focusFollow() {
-    if (!_followFocus.canRequestFocus) return;
-    _followFocus.requestFocus();
+  void _focusNode(FocusNode node) {
+    if (!node.canRequestFocus) return;
+    node.requestFocus();
   }
 
   void _focusTopBar() {
@@ -3646,6 +3762,9 @@ class _HubTvCinematicHeroState extends State<_HubTvCinematicHero> {
     // Remote-only shells pause the carousel while focus is outside the hero.
     // Desktop keeps mouse behaviour (CTA hover / focus holds only).
     final pauseWhenUnfocused = policy.leanbackOnly;
+    final touch = metrics.usesMobileDensity;
+    if (touch) _probeViewportExtent();
+    final profile = ShellScope.profileOf(context);
 
     final hero = CinematicHero(
       key: _heroKey,
@@ -3692,6 +3811,8 @@ class _HubTvCinematicHeroState extends State<_HubTvCinematicHero> {
         overviewFontSize: pack.overviewFontSize,
         overviewLineHeight: pack.overviewLineHeight,
         upcomingNoticeReserve: pack.upcomingNoticeReserve,
+        mobile: touch,
+        maxImageHeight: touch ? _touchMaxHeroHeight(context) : null,
       ),
       onHeight: tab.isEmpty
           ? null
@@ -3717,21 +3838,79 @@ class _HubTvCinematicHeroState extends State<_HubTvCinematicHero> {
           ShellTvFocusCoordinator.focusActiveNavTab();
         }
 
+        // Painted CTAs in pack order. Each gets a stable focus node so the
+        // D-pad walks the row whatever order or subset the pack declares.
+        final visible = <String>[
+          for (final action in widget.actionSpecs)
+            if (action.showsOn(profile))
+              if (action.id == 'play' &&
+                      meta != null &&
+                      KitCardQuickActions.isPlayable(meta) ||
+                  action.id == 'details' && details != null ||
+                  action.id == 'follow' && follow != null)
+                action.id,
+        ];
+        FocusNode nodeFor(String id) => switch (id) {
+          'play' => _playActionFocus,
+          'follow' => _followFocus,
+          _ => _playFocus,
+        };
+        _leadActionFocus = visible.isEmpty ? null : nodeFor(visible.first);
+        // Pack RTL mirrors the row. Leave the hero only toward the navbar
+        // (app writing direction).
+        VoidCallback? edge(int i, {required bool left}) {
+          if (!tv) return null;
+          final towardStart = left != packRtl;
+          final n = towardStart ? i - 1 : i + 1;
+          if (n >= 0 && n < visible.length) {
+            final node = nodeFor(visible[n]);
+            return () => _focusNode(node);
+          }
+          return left != navOnRight ? focusNav : null;
+        }
+
         for (final action in widget.actionSpecs) {
           final id = action.id;
-          Widget? child;
-          if (id == 'details') {
-            if (details == null) continue;
-            final useAuto =
-                tv &&
-                policy.heroPlayAutoFocus &&
-                !autofocusUsed &&
-                !_ctaAutofocusConsumed;
-            if (useAuto) {
-              autofocusUsed = true;
-              _ctaAutofocusConsumed = true;
-            }
-            final hasFollow = follow != null;
+          final i = visible.indexOf(id);
+          if (i < 0 || !action.showsOn(profile)) continue;
+          // Lead play / details takes the one-shot TV autofocus.
+          final useAuto =
+              i == 0 &&
+              id != 'follow' &&
+              tv &&
+              policy.heroPlayAutoFocus &&
+              !autofocusUsed &&
+              !_ctaAutofocusConsumed;
+          if (useAuto) {
+            autofocusUsed = true;
+            _ctaAutofocusConsumed = true;
+          }
+          Widget child;
+          if (id == 'play') {
+            child = HeroPillPlayButton(
+              label: action.label ?? KitCardQuickActions.playLabel,
+              icon: action.icon == null
+                  ? Icons.play_arrow_rounded
+                  : PackPaintTree._heroActionIcon(action.icon),
+              tone: action.tone,
+              alwaysShowLabel: true,
+              onTap: () => openMetaItem(
+                ctx,
+                pluginId: widget.pluginId,
+                item: meta!,
+                autoPlay: true,
+              ),
+              autoFocus: useAuto,
+              focusNode: tv ? _playActionFocus : null,
+              tvTabId: tab.isEmpty ? null : tab,
+              tvRowId: kHubHeroDetailsFocusId,
+              tvItemIndex: i,
+              onUpEdge: tv ? _focusGallery : null,
+              onDownEdge: tv ? widget.focusDown : null,
+              onLeftEdge: edge(i, left: true),
+              onRightEdge: edge(i, left: false),
+            );
+          } else if (id == 'details') {
             child = HeroPillPlayButton(
               label: action.label ?? 'View details',
               icon: PackPaintTree._heroActionIcon(action.icon),
@@ -3743,51 +3922,26 @@ class _HubTvCinematicHeroState extends State<_HubTvCinematicHero> {
               focusNode: tv ? _playFocus : null,
               tvTabId: tab.isEmpty ? null : tab,
               tvRowId: kHubHeroDetailsFocusId,
-              tvItemIndex: 0,
+              tvItemIndex: i,
               // Explicit edges — ForjaInteractive geometric ↓ otherwise lands on
               // hub-hero-gallery (full-bleed overlay) after denser TV posters.
               onUpEdge: tv ? _focusGallery : null,
               onDownEdge: tv ? widget.focusDown : null,
-              // Pack RTL mirrors the row: follow sits on the end side.
-              // Leave the hero only toward the navbar (app writing direction).
-              onLeftEdge: !tv
-                  ? null
-                  : packRtl && hasFollow
-                  ? _focusFollow
-                  : !navOnRight && (!packRtl || !hasFollow)
-                  ? focusNav
-                  : null,
-              onRightEdge: !tv
-                  ? null
-                  : !packRtl && hasFollow
-                  ? _focusFollow
-                  : navOnRight && (packRtl || !hasFollow)
-                  ? focusNav
-                  : null,
+              onLeftEdge: edge(i, left: true),
+              onRightEdge: edge(i, left: false),
             );
-          } else if (id == 'follow') {
-            if (follow == null) continue;
+          } else {
             child = KitListStatusHero(
-              target: follow,
+              target: follow!,
               tvTabId: tab.isEmpty ? null : tab,
-              tvItemIndexStart: 1,
+              tvItemIndexStart: i,
               focusNode: tv ? _followFocus : null,
               onUpEdge: tv ? _focusGallery : null,
               onDownEdge: tv ? widget.focusDown : null,
-              onLeftEdge: !tv
-                  ? null
-                  : packRtl
-                  ? (navOnRight ? null : focusNav)
-                  : _focusPlay,
-              onRightEdge: !tv
-                  ? null
-                  : packRtl
-                  ? _focusPlay
-                  : (navOnRight ? focusNav : null),
+              onLeftEdge: edge(i, left: true),
+              onRightEdge: edge(i, left: false),
               enabled: true,
             );
-          } else {
-            continue;
           }
           if (children.isNotEmpty) {
             children.add(
@@ -3849,12 +4003,19 @@ class _HeroActionSpec {
     this.label,
     this.icon,
     this.tone = HeroPillPlayTone.primary,
+    this.profiles,
   });
 
   final String id;
   final String? label;
   final String? icon;
   final HeroPillPlayTone tone;
+
+  /// Pack `profiles` (`mobile` / `desktop` / `tv`). Null → every profile.
+  final Set<String>? profiles;
+
+  bool showsOn(ShellProfile profile) =>
+      profiles == null || profiles!.contains(profile.name);
 }
 
 /// Resolves kit.list `openSetting` (e.g. matchOpen) then mounts the list body.
@@ -4286,7 +4447,7 @@ class _BecauseMountState extends State<_BecauseMount> {
           widget.spec['cardHeight'] ?? node['cardHeight'],
         );
         final cardH =
-            PackPaintArtifact.packLength(
+            PackPaintArtifact.packPosterLength(
               ctx,
               widget.spec['cardHeight'] ?? node['cardHeight'],
             ) ??

@@ -63,17 +63,82 @@ class AppUpdaterManifest {
     return 'default';
   }
 
-  /// Showcase keys matching web / R2 upload (`windows` · `macos` · `linux` · `android_tv`).
+  /// Android TV build manifest key.
+  static const String androidTvKey = 'android_tv';
+
+  /// Android phone / tablet build manifest key.
+  static const String androidMobileKey = 'android_mobile';
+
+  /// Showcase keys matching web / R2 upload
+  /// (`windows` · `macos` · `linux` · `android_tv` · `android_mobile`).
+  ///
+  /// First entry is the target; later entries are tried only when the manifest
+  /// has no installer for the earlier key.
+  ///
+  /// Android: the mobile build always takes `android_mobile`. The TV build
+  /// takes `android_tv` unless the device is a touch device with no native TV
+  /// mode ([androidTouchscreen] and not [androidTvHardware]) — a phone or
+  /// tablet. That build moves to `android_mobile` (the migration hop) and keeps
+  /// `android_tv` as fallback until a mobile build is published. TV boxes that
+  /// lack leanback have no touchscreen, so they stay on `android_tv`.
+  static List<String> platformKeys({
+    required bool isWindows,
+    required bool isMacOS,
+    required bool isLinux,
+    required bool isAndroid,
+    bool androidMobileBuild = false,
+    bool androidTvHardware = true,
+    bool androidTouchscreen = false,
+  }) {
+    if (isWindows) return const ['windows'];
+    if (isMacOS) return const ['macos'];
+    if (isLinux) return const ['linux'];
+    if (isAndroid) {
+      if (androidMobileBuild) return const [androidMobileKey];
+      if (androidTvHardware || !androidTouchscreen) {
+        return const [androidTvKey];
+      }
+      return const [androidMobileKey, androidTvKey];
+    }
+    return const [];
+  }
+
+  /// Primary key from [platformKeys], or null off supported platforms.
   static String? platformKey({
     required bool isWindows,
     required bool isMacOS,
     required bool isLinux,
     required bool isAndroid,
+    bool androidMobileBuild = false,
+    bool androidTvHardware = true,
+    bool androidTouchscreen = false,
   }) {
-    if (isWindows) return 'windows';
-    if (isMacOS) return 'macos';
-    if (isLinux) return 'linux';
-    if (isAndroid) return 'android_tv';
+    final keys = platformKeys(
+      isWindows: isWindows,
+      isMacOS: isMacOS,
+      isLinux: isLinux,
+      isAndroid: isAndroid,
+      androidMobileBuild: androidMobileBuild,
+      androidTvHardware: androidTvHardware,
+      androidTouchscreen: androidTouchscreen,
+    );
+    return keys.isEmpty ? null : keys.first;
+  }
+
+  /// [resolveForArch] across [platformKeys] in order; first hit wins.
+  static ArchUpdateTarget? resolveForArchKeys({
+    required Map<String, dynamic> manifest,
+    required List<String> platformKeys,
+    required String arch,
+  }) {
+    for (final key in platformKeys) {
+      final target = resolveForArch(
+        manifest: manifest,
+        platformKey: key,
+        arch: arch,
+      );
+      if (target != null) return target;
+    }
     return null;
   }
 

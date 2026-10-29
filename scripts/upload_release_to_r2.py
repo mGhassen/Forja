@@ -51,6 +51,15 @@ Manifest shape (latest/manifest.json):
           "armeabi-v7a": { "version": "1.3.110", "filename": "…-armeabi-v7a.apk", "published_at": "…" }
         },
         "downloader_codes": { "arm64": "482913", "armeabi-v7a": "482914" }
+      },
+      "android_mobile": {
+        "version": "1.3.120",
+        "published_at": "…",
+        "assets": ["…-android-mobile-arm64.apk", "…-android-mobile-armeabi-v7a.apk"],
+        "arches": {
+          "arm64": { "version": "1.3.120", "filename": "…-android-mobile-arm64.apk", "published_at": "…" },
+          "armeabi-v7a": { "version": "1.3.120", "filename": "…-android-mobile-armeabi-v7a.apk", "published_at": "…" }
+        }
       }
     }
   }
@@ -280,6 +289,13 @@ def detect_platform(name: str) -> str | None:
         or lower.endswith(".rpm")
     ):
         return "linux"
+    # Phone / tablet flavor — check before the generic `.apk` → android_tv rule.
+    if (
+        "android-mobile" in lower
+        or "android_mobile" in lower
+        or "androidmobile" in lower
+    ):
+        return "android_mobile"
     if (
         "android-tv" in lower
         or "android_tv" in lower
@@ -1300,7 +1316,10 @@ def main() -> None:
         published_at=published_at,
     )
     if not incoming_platforms:
-        die("No assets mapped to a known platform (windows/macos/linux/android_tv).")
+        die(
+            "No assets mapped to a known platform "
+            "(windows/macos/linux/android_tv/android_mobile)."
+        )
 
     # AFTVnews Downloader codes → platforms.android_tv.downloader_codes (website).
     # Headless/CI: set FORJA_DOWNLOADER_CODES before upload. Interactive release_local

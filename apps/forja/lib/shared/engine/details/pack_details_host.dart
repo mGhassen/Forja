@@ -15,6 +15,7 @@ import 'package:forja/shared/playback/open/engine_auto_play.dart';
 import 'package:forja_foundation/utils/cover_urls.dart';
 import 'package:forja/shared/engine/runtime/meta/plugin_actions.dart';
 import 'package:forja_foundation/widgets/feedback/error_retry_panel.dart';
+import 'package:forja/shell/core/forja_shell_profile.dart';
 import 'package:forja/shell/core/forja_shell_scope.dart';
 import 'package:forja_foundation/tokens/forja_details_tokens.dart';
 import 'package:forja/shared/player/sources/resolve/stream_play_hooks.dart';
@@ -133,6 +134,9 @@ class _PackDetailsHostState extends ConsumerState<PackDetailsHost> {
   final ScrollController _scrollController = ScrollController();
   final FocusNode _heroPlayFocus = FocusNode(debugLabel: 'hub-details-play');
   final FocusNode _backFocus = FocusNode(debugLabel: 'hub-details-back');
+
+  /// Phone top bar measures the hero (it grows with its content).
+  final GlobalKey _heroKey = GlobalKey(debugLabel: 'hub-details-hero');
 
   MetaItem? _detail;
   List<KitDetailRailSection> _packRails = const [];
@@ -1269,7 +1273,15 @@ class _PackDetailsHostState extends ConsumerState<PackDetailsHost> {
                   ? null
                   : ShellErrorRetryPanel(message: _error!, onRetry: _load),
               body: (_loading || _error != null) ? null : _buildScrollLayout(),
-              overlay: MediaDetailsBackButton(focusNode: _backFocus),
+              overlay: ShellScope.profileOf(context) == ShellProfile.mobile
+                  ? MediaDetailsMobileTopBar(
+                      scrollController: _scrollController,
+                      heroKey: _heroKey,
+                      title: (_loading || _error != null) ? '' : _show.name,
+                      backgroundColor: AppTheme.bgDark,
+                      focusNode: _backFocus,
+                    )
+                  : MediaDetailsBackButton(focusNode: _backFocus),
             );
           },
         ),
@@ -1308,6 +1320,8 @@ class _PackDetailsHostState extends ConsumerState<PackDetailsHost> {
         : (backdrop.isNotEmpty ? [backdrop] : const <String>[]);
     final policy = ShellScope.inputPolicyOf(context);
     final tvFocus = policy.useFocusableMoodChips;
+    // Phone: flow hero, stacked labeled actions, vertical episode list.
+    final mobile = ShellScope.profileOf(context) == ShellProfile.mobile;
     final playbackFlags = KitPanelSourceFlagsHooks.watch?.call(ref);
     final isIptv = hubMetaIsIptv(_show);
     final showCatalogSources =
@@ -1437,6 +1451,7 @@ class _PackDetailsHostState extends ConsumerState<PackDetailsHost> {
         tvFocusUp: heroFocusUp,
         episodeView: _episodeView,
         onEpisodeViewChanged: _setEpisodeView,
+        listLayout: mobile,
       );
       episodePicker = tvFocus
           ? ShellPaintTvTabScope(tabId: MediaDetailsTv.tabId, child: picker)
@@ -1458,6 +1473,82 @@ class _PackDetailsHostState extends ConsumerState<PackDetailsHost> {
     final heroDurMs = canResume
         ? (progress?['durationMs'] as num?)?.toInt()
         : null;
+    final playEnabled = _isMovie || videos.isNotEmpty || show.open != null;
+
+    // Phone: full-width Play, then every secondary action with its label.
+    // Same callbacks as the TV / desktop row; My List stays the pack bind.
+    Widget? mobileActions;
+    if (mobile) {
+      final episodeTag = 'S${_selectedSeason}E$_selectedEpisode';
+      final mobilePlayLabel = _isMovie || videos.isEmpty
+          ? playLabel
+          : (canResume ? 'Resume $episodeTag' : 'Play $episodeTag');
+      mobileActions = HeroPillLabelScope(
+        child: DetailsStackedActions(
+          primary: blockPlay
+              ? Align(
+                  alignment: AlignmentDirectional.centerStart,
+                  child: KitDetailsUpcomingNotice(
+                    releaseDateLabel: noticeLabel,
+                  ),
+                )
+              : KitDetailsPlayRow(
+                  label: mobilePlayLabel,
+                  enabled: playEnabled,
+                  onPlay: _playSelected,
+                  expand: true,
+                ),
+          secondary: [
+            if (!blockPlay && showCatalogSources && playEnabled)
+              HeroPillPlayButton(
+                label: _offlineLibrary ? 'Files' : 'Sources',
+                icon: _offlineLibrary
+                    ? Icons.folder_open_rounded
+                    : Icons.link_rounded,
+                tone: HeroPillPlayTone.secondary,
+                onTap: _openCatalogSources,
+              ),
+            if (hasClearableProgress)
+              HeroPillIconGroup(
+                slots: [
+                  HeroPillIconSlot(
+                    icon: Icons.delete_outline_rounded,
+                    label: 'Clear',
+                    tooltip: 'Clear progress & stream cache',
+                    onTap: () => unawaited(_clearProgress()),
+                  ),
+                ],
+              ),
+            if (hasTrailers)
+              HeroPillPlayButton(
+                label: 'Trailer',
+                icon: Icons.smart_display_outlined,
+                tone: HeroPillPlayTone.secondary,
+                onTap: _openBestTrailer,
+              ),
+            if (listTarget != null)
+              KitListStatusHero(
+                key: ValueKey(listTarget.uniqueId),
+                target: listTarget,
+              ),
+            if (showPlayFilters)
+              for (final f in playFilters)
+                KitGroupedPlayFilter(
+                  spec: f,
+                  selected: _playFilterValue(f),
+                  onSelected: (value) =>
+                      setState(() => _playFilterSelections[f.field] = value),
+                ),
+            if (showLangFilter)
+              KitMultiselectPlayFilter(
+                options: _streamLanguageOptions,
+                selected: _streamLanguageKeys,
+                onChanged: (next) => unawaited(_setStreamLanguages(next)),
+              ),
+          ],
+        ),
+      );
+    }
 
     // Series: Characters ↑ → episodes (scroll top). Film: Characters ↑ → Play.
     final firstMetaFocusUp = !tvFocus
@@ -1593,6 +1684,7 @@ class _PackDetailsHostState extends ConsumerState<PackDetailsHost> {
       topSpacing: 0,
       backgroundColor: AppTheme.bgDark,
       hero: DetailsHero(
+        key: _heroKey,
         backdropUrl: backdrop,
         backdropUrls: backdropUrls,
         title: show.name,
@@ -1632,108 +1724,114 @@ class _PackDetailsHostState extends ConsumerState<PackDetailsHost> {
         factsValueMaxLines: policy.useFocusableMoodChips ? 2 : 1,
         // FittedBox scaleDown + overlay menus → full-size ghost SUB/DUB pill.
         // Keep intrinsic size on leanback only (desktop hybrid still scales).
-        scaleActionRow: !policy.leanbackOnly,
-        actionRow: DetailsHeroTvActionScope(
-          tabId: MediaDetailsTv.tabId,
-          itemCount: heroActionCount,
-          onFocusUp: heroPopUp,
-          child: Row(
-            children: [
-              if (blockPlay)
-                KitDetailsUpcomingNotice(releaseDateLabel: noticeLabel)
-              else
-                KitDetailsPlayRow(
-                  label: playLabel,
-                  enabled: _isMovie || videos.isNotEmpty || show.open != null,
-                  onPlay: _playSelected,
-                  onOpenSources:
-                      showCatalogSources &&
-                          (_isMovie || videos.isNotEmpty || show.open != null)
-                      ? _openCatalogSources
-                      : null,
-                  secondaryIcon: _offlineLibrary
-                      ? Icons.folder_open_rounded
-                      : Icons.link_rounded,
-                  focusNode: policy.heroPlayAutoFocus ? _heroPlayFocus : null,
-                  onUpEdge: heroPopUp,
-                  tvTabId: tvFocus ? MediaDetailsTv.tabId : null,
-                  tvItemIndex: playIndex,
-                  tvSourcesItemIndex: sourcesIndex,
-                ),
-              if (hasClearableProgress) ...[
-                const SizedBox(width: 10),
-                HeroPillIconGroup(
-                  tvTabId: tvFocus ? MediaDetailsTv.tabId : null,
-                  tvRowId: tvFocus ? MediaDetailsTv.heroRowId : null,
-                  tvItemIndexStart: clearIndex!,
-                  onUpEdge: heroPopUp,
-                  slots: [
-                    HeroPillIconSlot(
-                      icon: Icons.delete_outline_rounded,
-                      label: 'Clear',
-                      tooltip: 'Clear progress & stream cache',
-                      onTap: () => unawaited(_clearProgress()),
+        // Phone actions wrap at full width instead of scaling down.
+        scaleActionRow: !policy.leanbackOnly && !mobile,
+        wideLayout: mobile ? false : null,
+        flowLayout: mobile,
+        actionRow:
+            mobileActions ??
+            DetailsHeroTvActionScope(
+              tabId: MediaDetailsTv.tabId,
+              itemCount: heroActionCount,
+              onFocusUp: heroPopUp,
+              child: Row(
+                children: [
+                  if (blockPlay)
+                    KitDetailsUpcomingNotice(releaseDateLabel: noticeLabel)
+                  else
+                    KitDetailsPlayRow(
+                      label: playLabel,
+                      enabled: playEnabled,
+                      onPlay: _playSelected,
+                      onOpenSources: showCatalogSources && playEnabled
+                          ? _openCatalogSources
+                          : null,
+                      secondaryIcon: _offlineLibrary
+                          ? Icons.folder_open_rounded
+                          : Icons.link_rounded,
+                      focusNode: policy.heroPlayAutoFocus
+                          ? _heroPlayFocus
+                          : null,
+                      onUpEdge: heroPopUp,
+                      tvTabId: tvFocus ? MediaDetailsTv.tabId : null,
+                      tvItemIndex: playIndex,
+                      tvSourcesItemIndex: sourcesIndex,
+                    ),
+                  if (hasClearableProgress) ...[
+                    const SizedBox(width: 10),
+                    HeroPillIconGroup(
+                      tvTabId: tvFocus ? MediaDetailsTv.tabId : null,
+                      tvRowId: tvFocus ? MediaDetailsTv.heroRowId : null,
+                      tvItemIndexStart: clearIndex!,
+                      onUpEdge: heroPopUp,
+                      slots: [
+                        HeroPillIconSlot(
+                          icon: Icons.delete_outline_rounded,
+                          label: 'Clear',
+                          tooltip: 'Clear progress & stream cache',
+                          onTap: () => unawaited(_clearProgress()),
+                        ),
+                      ],
                     ),
                   ],
-                ),
-              ],
-              if (hasTrailers) ...[
-                const SizedBox(width: 10),
-                HeroPillPlayButton(
-                  label: 'Trailer',
-                  icon: Icons.smart_display_outlined,
-                  tone: HeroPillPlayTone.secondary,
-                  onTap: _openBestTrailer,
-                  onUpEdge: heroPopUp,
-                  tvTabId: tvFocus ? MediaDetailsTv.tabId : null,
-                  tvRowId: tvFocus ? MediaDetailsTv.heroRowId : null,
-                  tvItemIndex: trailerIndex,
-                ),
-              ],
-              if (listTarget != null) ...[
-                const SizedBox(width: 10),
-                KitListStatusHero(
-                  key: ValueKey(listTarget.uniqueId),
-                  target: listTarget,
-                  tvTabId: tvFocus ? MediaDetailsTv.tabId : null,
-                  tvItemIndexStart: listIndex!,
-                  onUpEdge: heroPopUp,
-                ),
-              ],
-              if (showPlayFilters) ...[
-                const SizedBox(width: 10),
-                for (var i = 0; i < playFilters.length; i++) ...[
-                  if (i > 0) const SizedBox(width: 10),
-                  KitGroupedPlayFilter(
-                    spec: playFilters[i],
-                    selected: _playFilterValue(playFilters[i]),
-                    onSelected: (value) => setState(
-                      () => _playFilterSelections[playFilters[i].field] = value,
+                  if (hasTrailers) ...[
+                    const SizedBox(width: 10),
+                    HeroPillPlayButton(
+                      label: 'Trailer',
+                      icon: Icons.smart_display_outlined,
+                      tone: HeroPillPlayTone.secondary,
+                      onTap: _openBestTrailer,
+                      onUpEdge: heroPopUp,
+                      tvTabId: tvFocus ? MediaDetailsTv.tabId : null,
+                      tvRowId: tvFocus ? MediaDetailsTv.heroRowId : null,
+                      tvItemIndex: trailerIndex,
                     ),
-                    tvTabId: tvFocus ? MediaDetailsTv.tabId : null,
-                    tvItemIndexStart:
-                        playFilterIndex! +
-                        playFilters
-                            .take(i)
-                            .fold<int>(0, (n, f) => n + f.options.length),
-                    onUpEdge: heroPopUp,
-                  ),
+                  ],
+                  if (listTarget != null) ...[
+                    const SizedBox(width: 10),
+                    KitListStatusHero(
+                      key: ValueKey(listTarget.uniqueId),
+                      target: listTarget,
+                      tvTabId: tvFocus ? MediaDetailsTv.tabId : null,
+                      tvItemIndexStart: listIndex!,
+                      onUpEdge: heroPopUp,
+                    ),
+                  ],
+                  if (showPlayFilters) ...[
+                    const SizedBox(width: 10),
+                    for (var i = 0; i < playFilters.length; i++) ...[
+                      if (i > 0) const SizedBox(width: 10),
+                      KitGroupedPlayFilter(
+                        spec: playFilters[i],
+                        selected: _playFilterValue(playFilters[i]),
+                        onSelected: (value) => setState(
+                          () => _playFilterSelections[playFilters[i].field] =
+                              value,
+                        ),
+                        tvTabId: tvFocus ? MediaDetailsTv.tabId : null,
+                        tvItemIndexStart:
+                            playFilterIndex! +
+                            playFilters
+                                .take(i)
+                                .fold<int>(0, (n, f) => n + f.options.length),
+                        onUpEdge: heroPopUp,
+                      ),
+                    ],
+                  ],
+                  if (showLangFilter) ...[
+                    const SizedBox(width: 10),
+                    KitMultiselectPlayFilter(
+                      options: _streamLanguageOptions,
+                      selected: _streamLanguageKeys,
+                      onChanged: (next) => unawaited(_setStreamLanguages(next)),
+                      tvTabId: tvFocus ? MediaDetailsTv.tabId : null,
+                      tvItemIndexStart: langFilterIndex,
+                      onUpEdge: heroPopUp,
+                    ),
+                  ],
                 ],
-              ],
-              if (showLangFilter) ...[
-                const SizedBox(width: 10),
-                KitMultiselectPlayFilter(
-                  options: _streamLanguageOptions,
-                  selected: _streamLanguageKeys,
-                  onChanged: (next) => unawaited(_setStreamLanguages(next)),
-                  tvTabId: tvFocus ? MediaDetailsTv.tabId : null,
-                  tvItemIndexStart: langFilterIndex,
-                  onUpEdge: heroPopUp,
-                ),
-              ],
-            ],
-          ),
-        ),
+              ),
+            ),
       ),
       sections: sections,
     );

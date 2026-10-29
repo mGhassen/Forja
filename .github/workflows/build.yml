@@ -228,8 +228,10 @@ jobs:
           flutter_channel: ${{ env.FLUTTER_CHANNEL }}
       - run: flutter pub get
       - run: |
-          ../../scripts/ci_with_heartbeat.sh "android release" \
+          for flavor in tv mobile; do
+          ../../scripts/ci_with_heartbeat.sh "android $flavor release" \
             flutter build apk --release --split-per-abi \
+            --flavor "$flavor" \
             --target-platform android-arm,android-arm64 \
             --dart-define=SUPABASE_URL="$SUPABASE_URL" \
             --dart-define=SUPABASE_PUBLISHABLE_KEY="$SUPABASE_PUBLISHABLE_KEY" \
@@ -240,6 +242,7 @@ jobs:
             --dart-define=POSTHOG_HOST="$POSTHOG_HOST" \
             --dart-define=SIMKL_CLIENT_ID="$SIMKL_CLIENT_ID" \
             --dart-define=TMDB_API_KEY="$TMDB_API_KEY"
+          done
       - uses: actions/upload-artifact@v4
         with:
           name: Forja-Android

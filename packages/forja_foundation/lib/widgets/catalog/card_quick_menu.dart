@@ -290,3 +290,86 @@ class _CardQuickMenuRowState extends State<CardQuickMenuRow> {
     );
   }
 }
+
+/// Touch long-press quick actions — sheet body (props + callbacks only).
+///
+/// The host shows it inside its bottom sheet and decides what each action
+/// does; rows are full-width 52 dp touch targets.
+class CardQuickActionSheet extends StatelessWidget {
+  const CardQuickActionSheet({super.key, required this.actions, this.title});
+
+  final List<CardQuickMenuAction> actions;
+
+  /// Card name above the actions (omitted when blank).
+  final String? title;
+
+  @override
+  Widget build(BuildContext context) {
+    final heading = (title ?? '').trim();
+    return Padding(
+      padding: const EdgeInsets.only(bottom: CardQuickMenuTokens.sheetPadB),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          if (heading.isNotEmpty)
+            Padding(
+              padding: const EdgeInsets.only(
+                left: CardQuickMenuTokens.sheetPadH,
+                right: CardQuickMenuTokens.sheetPadH,
+                bottom: CardQuickMenuTokens.sheetTitlePadB,
+              ),
+              child: Text(
+                heading,
+                maxLines: CardQuickMenuTokens.titleMaxLines,
+                overflow: TextOverflow.ellipsis,
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: CardQuickMenuTokens.sheetTitleFontSize,
+                  fontWeight: FontWeight.w600,
+                  color: ForjaShellColors.textSecondary,
+                ),
+              ),
+            ),
+          for (final action in actions)
+            Material(
+              color: Colors.transparent,
+              child: InkWell(
+                key: ValueKey('card-quick-sheet-${action.id}'),
+                onTap: action.onTap,
+                child: SizedBox(
+                  height: CardQuickMenuTokens.sheetRowHeight,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: CardQuickMenuTokens.sheetPadH,
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          action.icon,
+                          size: CardQuickMenuTokens.sheetIconSize,
+                          color: ForjaShellColors.textPrimary,
+                        ),
+                        const SizedBox(width: CardQuickMenuTokens.sheetGap),
+                        Expanded(
+                          child: Text(
+                            action.label,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: CardQuickMenuTokens.sheetLabelFontSize,
+                              fontWeight: FontWeight.w600,
+                              color: ForjaShellColors.textPrimary,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}

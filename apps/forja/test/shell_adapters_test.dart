@@ -51,6 +51,42 @@ void main() {
     expect(find.byType(ShellNavRail), findsNothing);
   });
 
+  testWidgets('mobile profile keeps bottom nav on a landscape phone',
+      (tester) async {
+    const phoneLandscape = Size(915, 412);
+    await tester.binding.setSurfaceSize(phoneLandscape);
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    await tester.pumpWidget(
+      _wrapShellHost(
+        profile: ShellProfile.mobile,
+        size: phoneLandscape,
+        child: _host(),
+      ),
+    );
+
+    expect(find.byType(ShellBottomNav), findsOneWidget);
+    expect(find.byType(ShellNavRail), findsNothing);
+  });
+
+  testWidgets('mobile profile uses nav rail on a landscape tablet',
+      (tester) async {
+    const tabletLandscape = Size(1280, 800);
+    await tester.binding.setSurfaceSize(tabletLandscape);
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    await tester.pumpWidget(
+      _wrapShellHost(
+        profile: ShellProfile.mobile,
+        size: tabletLandscape,
+        child: _host(),
+      ),
+    );
+
+    expect(find.byType(ShellNavRail), findsOneWidget);
+    expect(find.byType(ShellBottomNav), findsNothing);
+  });
+
   testWidgets('ShellHost uses nav rail for desktop profile', (tester) async {
     await tester.pumpWidget(
       _wrapShellHost(

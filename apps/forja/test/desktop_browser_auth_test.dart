@@ -290,4 +290,54 @@ void main() {
     expect(applied, isTrue);
     expect(result.isSuccess, isTrue);
   });
+
+  test('signIn keeps listening after onTokens failure for retry', () async {
+    var attempts = 0;
+    final future = DesktopBrowserAuth.signIn(
+      timeout: const Duration(seconds: 8),
+      onTokens: (access, refresh) async {
+        attempts++;
+        if (attempts == 1) {
+          throw StateError('transient apply failure');
+        }
+      },
+      launchBrowser: (loginUrl) async {
+        final callback = Uri.parse(
+          loginUrl.queryParameters['desktop_callback']!,
+        );
+        final state = loginUrl.queryParameters['desktop_state']!;
+        final handoff = callback.replace(
+          queryParameters: {
+            'access_token': 'access-token',
+            'refresh_token': 'refresh-token',
+            'state': state,
+          },
+        );
+        final client = HttpClient();
+        try {
+          final first = await client.getUrl(handoff);
+          first.headers.set(HttpHeaders.acceptHeader, 'application/json');
+          final firstResponse = await first.close();
+          final firstBody = await firstResponse.transform(utf8.decoder).join();
+          expect(firstResponse.statusCode, HttpStatus.ok);
+          expect(firstBody, contains('"ok":false'));
+
+          final second = await client.getUrl(handoff);
+          second.headers.set(HttpHeaders.acceptHeader, 'application/json');
+          final secondResponse = await second.close();
+          final secondBody = await secondResponse
+              .transform(utf8.decoder)
+              .join();
+          expect(secondResponse.statusCode, HttpStatus.ok);
+          expect(secondBody, contains('"ok":true'));
+        } finally {
+          client.close(force: true);
+        }
+      },
+    );
+
+    final result = await future;
+    expect(attempts, 2);
+    expect(result.isSuccess, isTrue);
+  });
 }

@@ -257,6 +257,7 @@ class _KindDropdownSegmentState extends State<_KindDropdownSegment> {
       scaleOnHover: paint.scaleOnHover,
       focusStyled: paint.focusStyled,
       usesTvDensity: paint.usesTvDensity,
+      usesMobileDensity: paint.usesMobileDensity,
       focusableTapBuilder: paint.focusableTapBuilder,
       wrapTvRow: paint.wrapTvRow,
       wrapTvGrid: paint.wrapTvGrid,

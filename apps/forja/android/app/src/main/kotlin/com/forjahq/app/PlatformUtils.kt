@@ -12,6 +12,10 @@ object PlatformUtils {
         return context.packageManager.hasSystemFeature(PackageManager.FEATURE_LEANBACK)
     }
 
+    /** Phones and tablets declare a touchscreen; TV boxes and sticks do not. */
+    fun hasTouchscreen(context: Context): Boolean =
+        context.packageManager.hasSystemFeature(PackageManager.FEATURE_TOUCHSCREEN)
+
     /**
      * Leanback / phone emulators (goldfish / ranchu). SurfaceView + MediaCodec
      * often fails setOutputSurface (BAD_INDEX) → audio-only black frame, and the

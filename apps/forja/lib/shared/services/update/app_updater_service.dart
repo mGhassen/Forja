@@ -3,6 +3,8 @@ import 'dart:ffi';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
+import 'package:forja/shared/platform/android_form_factor.dart';
+import 'package:forja/shared/platform/platform_info.dart';
 import 'package:forja/shared/services/update/app_updater_manifest.dart';
 import 'package:forja/shared/services/update/app_updater_release_notes.dart';
 import 'package:forja/shared/services/update/release_storage_urls.dart';
@@ -94,20 +96,24 @@ class AppUpdaterService {
       return UpdateCheckResult.failed('Update manifest was invalid.');
     }
 
-    final key = AppUpdaterManifest.platformKey(
+    final keys = AppUpdaterManifest.platformKeys(
       isWindows: Platform.isWindows,
       isMacOS: Platform.isMacOS,
       isLinux: Platform.isLinux,
       isAndroid: Platform.isAndroid,
+      androidMobileBuild:
+          PlatformInfo.androidFormFactor == AndroidFormFactor.mobile,
+      androidTvHardware: PlatformInfo.nativeAndroidTv,
+      androidTouchscreen: PlatformInfo.nativeTouchscreen,
     );
-    if (key == null) {
+    if (keys.isEmpty) {
       return UpdateCheckResult.upToDate();
     }
 
     final arch = _hostArchKey();
-    final target = AppUpdaterManifest.resolveForArch(
+    final target = AppUpdaterManifest.resolveForArchKeys(
       manifest: decoded,
-      platformKey: key,
+      platformKeys: keys,
       arch: arch,
     );
     if (target == null) {

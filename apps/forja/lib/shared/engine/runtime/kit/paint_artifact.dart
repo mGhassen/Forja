@@ -267,7 +267,7 @@ abstract final class PackPaintArtifact {
         final aspect = aspectRaw == 'landscape'
             ? PosterAspect.landscape
             : PosterAspect.portrait;
-        final width = packLength(context, props['width']);
+        final width = packPosterLength(context, props['width']);
         final motion = ForjaMotionTheme.presetFromName(
           props['motion']?.toString(),
         );
@@ -314,7 +314,7 @@ abstract final class PackPaintArtifact {
           longPressDuration: CardQuickMenuTokens.holdDelay,
           aspect: aspect,
           width: width,
-          height: packLength(context, props['height']),
+          height: packPosterLength(context, props['height']),
           borderRadius: packLength(
             context,
             props['borderRadius'] ?? props['radius'],
@@ -449,6 +449,25 @@ abstract final class PackPaintArtifact {
       tv: ShellPaintScope.usesTvDensityOf(context),
     );
   }
+
+  /// Pack poster-card length (desktop px, e.g. `width` / `itemHeight`).
+  ///
+  /// TV: same as [packLength]. Touch: scaled by the touch / desktop poster
+  /// width ratio so pack-sized cards follow phone density like default
+  /// cards do (tablets keep ratio 1).
+  static double? packPosterLength(BuildContext context, Object? raw) {
+    final v = packDouble(raw);
+    if (v == null) return null;
+    if (ShellPaintScope.usesMobileDensityOf(context)) {
+      return v * mobilePosterScale(context);
+    }
+    return packLength(context, raw);
+  }
+
+  /// Touch poster width over the desktop baseline packs author against.
+  static double mobilePosterScale(BuildContext context) =>
+      ShellTokens.posterCardWidthMobileFor(MediaQuery.sizeOf(context)) /
+      ShellTokens.posterCardWidthDesktop;
 
   static bool? packBool(Object? raw) {
     if (raw == null) return null;
@@ -821,7 +840,7 @@ class _PackPosterRailState extends State<_PackPosterRail> {
       node['itemHeight'] ?? node['height'],
     );
     final cardH =
-        PackPaintArtifact.packLength(
+        PackPaintArtifact.packPosterLength(
           context,
           node['itemHeight'] ?? node['height'],
         ) ??

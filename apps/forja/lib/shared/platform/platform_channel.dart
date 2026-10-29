@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
+import 'package:forja/shared/platform/android_form_factor.dart';
 import 'package:forja/shared/platform/platform_info.dart';
 import 'package:rust/rust.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
@@ -12,7 +13,8 @@ import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 abstract final class PlatformChannel {
   static const MethodChannel _channel = MethodChannel('forja/platform');
 
-  /// Debug / CI: `flutter run --dart-define=FORJA_ANDROID_TV=true` on Android.
+  /// Debug / CI: `flutter run --flavor tv --dart-define=FORJA_ANDROID_TV=true`
+  /// on Android. The mobile flavor never uses the TV profile.
   static const bool forceAndroidTv = bool.fromEnvironment(
     'FORJA_ANDROID_TV',
     defaultValue: false,
@@ -31,34 +33,79 @@ abstract final class PlatformChannel {
       return PlatformProfile.desktop;
     }
     if (Platform.isAndroid) {
-      if (forceAndroidTv) return PlatformProfile.androidTv;
-      try {
-        final isTv = await _channel.invokeMethod<bool>('isAndroidTv');
-        if (isTv == true) return PlatformProfile.androidTv;
-      } catch (e) {
-        debugPrint('[PlatformChannel] isAndroidTv failed: $e');
-      }
-      // Keep playback caps aligned with [ShellTokens.isAndroidTvDevice] when the
-      // leanback channel fails but the panel still looks like a TV (1080p+).
-      if (_physicalAndroidTvPanel()) return PlatformProfile.androidTv;
-      return PlatformProfile.phone;
+      await _readAndroidBuildFacts();
+      return androidProfileFor(
+        formFactor: PlatformInfo.androidFormFactor,
+        forceTv: forceAndroidTv,
+        nativeTv: PlatformInfo.nativeAndroidTv,
+        physicalTvPanel: _physicalAndroidTvPanel(),
+      );
     }
     return PlatformProfile.phone;
+  }
+
+  /// Android profile from build flavor + device facts.
+  ///
+  /// Mobile flavor is always [PlatformProfile.phone] (tablets included). TV
+  /// flavor keeps native leanback detection plus the panel-size fallback.
+  @visibleForTesting
+  static PlatformProfile androidProfileFor({
+    required AndroidFormFactor formFactor,
+    required bool forceTv,
+    required bool nativeTv,
+    required bool physicalTvPanel,
+  }) {
+    if (formFactor == AndroidFormFactor.mobile) return PlatformProfile.phone;
+    if (forceTv || nativeTv) return PlatformProfile.androidTv;
+    // Keep playback caps aligned with [ShellTokens.isAndroidTvDevice] when the
+    // leanback channel fails but the panel still looks like a TV (720p+ 16:9).
+    if (physicalTvPanel) return PlatformProfile.androidTv;
+    return PlatformProfile.phone;
+  }
+
+  static Future<void>? _androidFacts;
+
+  /// Build flavor + native TV answer. Both are fixed for the process.
+  static Future<void> _readAndroidBuildFacts() =>
+      _androidFacts ??= _queryAndroidBuildFacts();
+
+  static Future<void> _queryAndroidBuildFacts() async {
+    String? rawFormFactor;
+    try {
+      rawFormFactor = await _channel.invokeMethod<String>('formFactor');
+    } catch (e) {
+      debugPrint('[PlatformChannel] formFactor failed: $e');
+    }
+    // `--flavor` also sets FLUTTER_APP_FLAVOR at compile time.
+    PlatformInfo.androidFormFactor = AndroidFormFactor.parse(
+      rawFormFactor ?? appFlavor,
+    );
+    try {
+      PlatformInfo.nativeAndroidTv =
+          await _channel.invokeMethod<bool>('isAndroidTv') == true;
+    } catch (e) {
+      debugPrint('[PlatformChannel] isAndroidTv failed: $e');
+    }
+    try {
+      PlatformInfo.nativeTouchscreen =
+          await _channel.invokeMethod<bool>('hasTouchscreen') == true;
+    } catch (e) {
+      debugPrint('[PlatformChannel] hasTouchscreen failed: $e');
+    }
   }
 
   /// Same heuristic as [ShellTokens.isAndroidTvDevice] physical fallback.
   static bool _physicalAndroidTvPanel() {
     final views = SchedulerBinding.instance.platformDispatcher.views;
     if (views.isEmpty) return false;
-    final physical = views.first.physicalSize;
-    if (physical.width <= physical.height) return false;
-    if (physical.width / physical.height < 1.7) return false;
-    return physical.shortestSide >= 720 && physical.longestSide >= 1280;
+    return ShellTokens.looksLikeAndroidTvPanel(views.first.physicalSize);
   }
 
   static Future<void> initialize() async {
     final profile = await detectProfile();
     SettingsService.configurePlatformProfile(profile);
+    ShellTokens.androidMobileFormFactor = Platform.isAndroid &&
+        PlatformInfo.androidFormFactor == AndroidFormFactor.mobile;
     ShellTokens.nativeAndroidTvDetected = profile == PlatformProfile.androidTv;
     PlatformInfo.isAndroidEmulator = await _detectAndroidEmulator();
     // Platform defaults seed after Engine.init() - see bootstrapForja.

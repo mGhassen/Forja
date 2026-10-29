@@ -1,11 +1,11 @@
 import 'package:flutter/foundation.dart';
+import 'package:forja/shared/engine/models/models.dart';
+import 'package:forja/shared/engine/packs/registry/plugin_registry.dart';
 import 'package:forja/shared/engine/runtime/vm/runtime.dart';
 import 'package:forja/shared/engine/runtime/vm/service.dart';
 import 'package:rust/rust.dart';
 
-/// Sync [TorrentSearchCatalog] from installed `kind: torrent` plugins.
-Future<void> syncTorrentSearchCatalog() async {
-  final packs = await EngineService.instance.listPacks();
+void _applyTorrentSearchCatalogFromPacks(List<EnginePack> packs) {
   final metas = <TorrentSearchProviderMeta>[];
   for (final pack in packs) {
     if (!pack.enabled) continue;
@@ -28,6 +28,21 @@ Future<void> syncTorrentSearchCatalog() async {
   } else {
     TorrentSearchCatalog.clear();
   }
+}
+
+/// Sync [TorrentSearchCatalog] from [PluginRegistry.peekPacks] when warm.
+/// Returns false when pack mem is cold (caller should await [syncTorrentSearchCatalog]).
+bool syncTorrentSearchCatalogFromPeek() {
+  final packs = PluginRegistry.instance.peekPacks();
+  if (packs == null) return false;
+  _applyTorrentSearchCatalogFromPacks(packs);
+  return true;
+}
+
+/// Sync [TorrentSearchCatalog] from installed `kind: torrent` plugins.
+Future<void> syncTorrentSearchCatalog() async {
+  final packs = await EngineService.instance.listPacks();
+  _applyTorrentSearchCatalogFromPacks(packs);
 }
 
 /// Enabled torrent indexer ids — pack on and per-plugin toggle in Sources → Forja.

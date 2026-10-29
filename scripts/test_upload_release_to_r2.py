@@ -31,6 +31,83 @@ class DetectPlatformTest(unittest.TestCase):
         self.assertEqual(
             detect_platform("Forja-1.2.1-android-tv-arm64.apk"), "android_tv"
         )
+        self.assertEqual(
+            detect_platform("Forja-1.5.0-android-mobile-arm64.apk"),
+            "android_mobile",
+        )
+        self.assertEqual(
+            detect_platform("Forja-1.5.0-android-mobile-armeabi-v7a.apk"),
+            "android_mobile",
+        )
+
+    def test_unlabeled_apk_stays_android_tv(self) -> None:
+        self.assertEqual(detect_platform("Forja-1.2.1-arm64.apk"), "android_tv")
+
+
+class AndroidMobileManifestTest(unittest.TestCase):
+    def test_both_flavors_publish_side_by_side(self) -> None:
+        platforms = platforms_from_filenames(
+            [
+                "Forja-1.5.0-android-tv-arm64.apk",
+                "Forja-1.5.0-android-tv-armeabi-v7a.apk",
+                "Forja-1.5.0-android-mobile-arm64.apk",
+                "Forja-1.5.0-android-mobile-armeabi-v7a.apk",
+            ],
+            version="1.5.0",
+            published_at="2026-10-28T00:00:00Z",
+        )
+        self.assertEqual(set(platforms), {"android_tv", "android_mobile"})
+        mobile = platforms["android_mobile"]
+        self.assertEqual(
+            mobile["arches"]["arm64"]["filename"],
+            "Forja-1.5.0-android-mobile-arm64.apk",
+        )
+        self.assertEqual(
+            mobile["arches"]["armeabi-v7a"]["filename"],
+            "Forja-1.5.0-android-mobile-armeabi-v7a.apk",
+        )
+        self.assertNotIn("downloader_codes", mobile)
+
+    def test_tv_only_publish_keeps_android_mobile(self) -> None:
+        existing = {
+            "platforms": {
+                "android_mobile": {
+                    "version": "1.5.0",
+                    "published_at": "2026-10-28T00:00:00Z",
+                    "assets": ["Forja-1.5.0-android-mobile-arm64.apk"],
+                },
+            },
+        }
+        incoming = platforms_from_filenames(
+            ["Forja-1.5.1-android-tv-arm64.apk"],
+            version="1.5.1",
+            published_at="2026-10-29T00:00:00Z",
+        )
+        merged = merge_platform_manifest(
+            existing, incoming, published_at="2026-10-29T00:00:00Z"
+        )
+        self.assertEqual(
+            merged["platforms"]["android_mobile"]["arches"]["arm64"]["filename"],
+            "Forja-1.5.0-android-mobile-arm64.apk",
+        )
+        self.assertEqual(
+            merged["platforms"]["android_tv"]["arches"]["arm64"]["filename"],
+            "Forja-1.5.1-android-tv-arm64.apk",
+        )
+
+    def test_mobile_publish_does_not_prune_tv_latest(self) -> None:
+        stale = stale_latest_keys(
+            all_keys=[
+                "latest/Forja-1.5.0-android-tv-arm64.apk",
+                "latest/Forja-1.5.0-android-mobile-arm64.apk",
+            ],
+            merged_assets=[
+                "Forja-1.5.0-android-tv-arm64.apk",
+                "Forja-1.5.1-android-mobile-arm64.apk",
+            ],
+            replaced_platforms={"android_mobile"},
+        )
+        self.assertEqual(stale, ["latest/Forja-1.5.0-android-mobile-arm64.apk"])
 
 
 class DetectArchTest(unittest.TestCase):

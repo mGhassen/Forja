@@ -27,6 +27,7 @@ class TopBodyBlock extends StatelessWidget {
     this.actionSelectionLabels = const {},
     this.actionSlots = const {},
     this.center,
+    this.centerBelow = false,
     this.kindItems = const [],
     this.selectedKindId,
     this.items = const [],
@@ -53,6 +54,7 @@ class TopBodyBlock extends StatelessWidget {
     Map<String, String> actionSelectionLabels = const {},
     Map<String, Widget> actionSlots = const {},
     Widget? center,
+    bool centerBelow = false,
     List<Map<String, dynamic>>? actions,
     void Function(String actionId, String value)? onActionSelect,
     ValueChanged<String>? onKindSelect,
@@ -67,6 +69,7 @@ class TopBodyBlock extends StatelessWidget {
       actionSelectionLabels: actionSelectionLabels,
       actionSlots: actionSlots,
       center: center,
+      centerBelow: centerBelow,
       kindItems: propsIdLabelList(props, 'kindItems'),
       selectedKindId: propsString(props, 'selectedKindId') ??
           propsString(props, 'defaultKindId'),
@@ -94,6 +97,9 @@ class TopBodyBlock extends StatelessWidget {
 
   /// Optional center overlay (live schedule scrape progress).
   final Widget? center;
+
+  /// Paint [center] below the action strip (phone) — see [TopBarActions].
+  final bool centerBelow;
   final List<({String id, String label})> kindItems;
   final String? selectedKindId;
   final List<Map<String, dynamic>> items;
@@ -128,6 +134,7 @@ class TopBodyBlock extends StatelessWidget {
       selectionLabels: actionSelectionLabels,
       actionSlots: actionSlots,
       center: center,
+      centerBelow: centerBelow,
       onSelect: onActionSelect,
       title: title,
       onDownEdge: onDownEdge,

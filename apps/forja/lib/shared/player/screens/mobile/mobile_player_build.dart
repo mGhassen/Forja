@@ -91,7 +91,10 @@ mixin _MobilePlayerBuild on ConsumerState<MobilePlayerScreen> {
                 builder: (context, constraints) {
                   return GestureDetector(
                     behavior: HitTestBehavior.translucent,
-                    onTap: _s._toggleControls,
+                    onTapUp: (d) => _s._handleTap(
+                      d,
+                      d.localPosition.dx > constraints.maxWidth / 2,
+                    ),
                     onDoubleTapDown: (d) {
                       _s._handleDoubleTap(
                         d,
@@ -110,44 +113,6 @@ mixin _MobilePlayerBuild on ConsumerState<MobilePlayerScreen> {
                   );
                 },
               ),
-
-              // ── 3. Double-tap ripple ──────────────────────────────────────
-              if (_s._showRipple)
-                Positioned(
-                  left: _s._isForward ? null : _s._ripplePosition.dx - 50,
-                  right: _s._isForward
-                      ? (MediaQuery.of(context).size.width -
-                                _s._ripplePosition.dx) -
-                            50
-                      : null,
-                  top: _s._ripplePosition.dy - 50,
-                  child: IgnorePointer(
-                    child: FadeTransition(
-                      opacity: _s._rippleOpacity,
-                      child: ScaleTransition(
-                        scale: _s._rippleScale,
-                        child: Container(
-                          width: 100,
-                          height: 100,
-                          decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.18),
-                            shape: BoxShape.circle,
-                          ),
-                          child: Center(
-                            child: Text(
-                              _s._isForward ? '+10s' : '-10s',
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 13,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
 
               // ── 4. Controls overlay ───────────────────────────────────────
               // Hidden entirely while Android system PiP is active so the
@@ -170,6 +135,17 @@ mixin _MobilePlayerBuild on ConsumerState<MobilePlayerScreen> {
               ),
               if (_s._escapeExitArmed) const PlayerEscapeExitHint(),
 
+              // ── 4b. Double-tap seek feedback (above chrome, no hits) ───────
+              if (_s._showTapSeek)
+                Positioned.fill(
+                  child: PlayerDoubleTapSeekFeedback(
+                    forward: _s._tapSeek.forward,
+                    seconds: _s._tapSeek.totalSeconds,
+                    tapPosition: _s._tapSeekPosition,
+                    pulse: _s._tapSeekPulse,
+                  ),
+                ),
+
               // ── 5. Lock button (always visible when locked + controls shown)
               if (_s._isLocked)
                 Positioned(
@@ -183,6 +159,9 @@ mixin _MobilePlayerBuild on ConsumerState<MobilePlayerScreen> {
                       onPressed: _s._toggleLock,
                       active: true,
                       tooltip: 'Unlock',
+                      size: _s._phoneChrome
+                          ? PlayerPhoneTokens.touchTarget
+                          : 40,
                     ),
                   ),
                 ),
@@ -674,6 +653,15 @@ mixin _MobilePlayerBuild on ConsumerState<MobilePlayerScreen> {
                     streamPickerLines: streamPickerLines,
                     playingOffline: playingOffline,
                   )
+                else if (_s._phoneChrome)
+                  _buildPhoneTransportRow(
+                    hasTorrentSources: hasTorrentSources,
+                    hasStreamPicker: hasStreamPicker,
+                    hasEpisodePicker: hasEpisodePicker,
+                    catalogSourceLines: catalogSourceLines,
+                    streamPickerLines: streamPickerLines,
+                    playingOffline: playingOffline,
+                  )
                 else
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -824,6 +812,179 @@ mixin _MobilePlayerBuild on ConsumerState<MobilePlayerScreen> {
           child: overlay,
         ),
       ),
+    );
+  }
+
+  /// Phone: center cluster owns ±10 / play; this row keeps time, next
+  /// episode, source, Episodes, Audio & subtitles, and More (quality,
+  /// settings, volume, previous episode, lock).
+  Widget _buildPhoneTransportRow({
+    required bool hasTorrentSources,
+    required bool hasStreamPicker,
+    required bool hasEpisodePicker,
+    required ({String label, String? server})? catalogSourceLines,
+    required ({String label, String? server})? streamPickerLines,
+    required bool playingOffline,
+  }) {
+    const size = PlayerPhoneTokens.touchTarget;
+    const iconSz = PlayerPhoneTokens.actionIconSize;
+    final sources = <Widget>[
+      if (hasTorrentSources)
+        PlayerSourcesPanelButton(
+          size: size,
+          iconSize: iconSz,
+          maxWidth: PlayerPhoneTokens.sourceButtonMaxWidth,
+          labelMaxWidth: PlayerPhoneTokens.sourceLabelMaxWidth,
+          padH: PlayerPhoneTokens.sourcePadH,
+          iconGap: PlayerPhoneTokens.sourceIconGap,
+          labeledMinWidth: PlayerPhoneTokens.sourceLabeledMinWidth,
+          label: catalogSourceLines!.label,
+          server: catalogSourceLines.server,
+          offline: playingOffline,
+          onPressed: _s._showTorrentSourcesPanel,
+        ),
+      if (hasStreamPicker)
+        PlayerStreamPickerButton(
+          size: size,
+          iconSize: iconSz - 2,
+          maxWidth: PlayerPhoneTokens.sourceButtonMaxWidth,
+          labelMaxWidth: PlayerPhoneTokens.sourcePickerLabelMaxWidth,
+          padH: PlayerPhoneTokens.sourcePadH,
+          iconGap: PlayerPhoneTokens.sourceIconGap,
+          labeledMinWidth: PlayerPhoneTokens.sourceLabeledMinWidth,
+          label: streamPickerLines!.label,
+          server: streamPickerLines.server,
+          offline: playingOffline,
+          onPressedWithContext: (ctx) => _s._showStreamMenu(ctx),
+        ),
+    ];
+    return ListenableBuilder(
+      listenable: Listenable.merge([
+        playerStatusOverlayListenable(
+          _s._statusController,
+          _s._isBufferingNotifier,
+        ),
+        _s._isPlayingNotifier,
+      ]),
+      builder: (context, _) {
+        // Center play/pause is hidden under the status overlay — keep it in
+        // reach here while that lasts.
+        final centerHidden = playerStatusOverlayVisible(
+          _s._statusController,
+          _s._isBufferingNotifier.value,
+        );
+        return PlayerPhoneTransportRow(
+          playing: centerHidden ? _s._isPlayingNotifier.value : null,
+          onPlayPause: () {
+            unawaited(_s._togglePlayPause());
+            _s._startHideTimer();
+          },
+          time: ValueListenableBuilder<Duration>(
+            valueListenable: _s._positionNotifier,
+            builder: (context, pos, _) => ValueListenableBuilder<Duration>(
+              valueListenable: _s._durationNotifier,
+              builder: (context, dur, _) => PlayerTimeRange(
+                position: pos,
+                duration: dur,
+                fontSize: ShellTokens.playerChromeMetaFontSize,
+              ),
+            ),
+          ),
+          onNextEpisode: _s._hasNextEpisodeAdjacent
+              ? () {
+                  if (_s._isLoadingNextEp) return;
+                  unawaited(_s._nextEpisode());
+                }
+              : null,
+          source: sources.isEmpty
+              ? null
+              : sources.length == 1
+              ? sources.single
+              : Row(mainAxisSize: MainAxisSize.min, children: sources),
+          onEpisodes: hasEpisodePicker ? _s._showEpisodesMenu : null,
+          onAudioSubtitles: _showPhoneTracksMenu,
+          onMore: _showPhoneMoreMenu,
+        );
+      },
+    );
+  }
+
+  void _showPhoneTracksMenu(BuildContext anchor) {
+    showPlayerPhoneActionMenu(
+      context: context,
+      anchorContext: anchor,
+      title: 'Audio & subtitles',
+      icon: Icons.subtitles_outlined,
+      entries: [
+        PlayerPhoneMenuEntry(
+          icon: Icons.subtitles_outlined,
+          title: 'Subtitles',
+          subtitle: 'Language, file, style',
+          onSelected: _s._showSubtitlesMenu,
+        ),
+        PlayerPhoneMenuEntry(
+          icon: Icons.audiotrack_rounded,
+          title: 'Audio',
+          subtitle: 'Audio track',
+          onSelected: _s._showAudioMenu,
+        ),
+      ],
+    );
+  }
+
+  void _showPhoneMoreMenu(BuildContext anchor) {
+    showPlayerPhoneActionMenu(
+      context: context,
+      anchorContext: anchor,
+      title: 'More',
+      icon: Icons.more_horiz_rounded,
+      entries: [
+        PlayerPhoneMenuEntry(
+          icon: Icons.hd_outlined,
+          title: 'Quality',
+          subtitle: 'Stream resolution',
+          onSelected: _s._showQualityMenu,
+        ),
+        PlayerPhoneMenuEntry(
+          icon: Icons.tune_rounded,
+          title: 'Settings',
+          subtitle: 'Speed, aspect ratio, decode, auto selection',
+          onSelected: _s._showSettingsMenu,
+        ),
+        PlayerPhoneMenuEntry(
+          icon: _s._volume == 0
+              ? Icons.volume_off_rounded
+              : Icons.volume_up_rounded,
+          title: 'Volume',
+          value: '${_s._volume.round()}%',
+          onSelected: (a) => showPlayerPhoneVolumePanel(
+            context: context,
+            anchorContext: a,
+            volume: () => _s._volume,
+            maxVolume: 150,
+            onChanged: (v) {
+              setState(() => _s._volume = v);
+              _s._player.setVolume(_s._mpvVolume);
+            },
+            onBack: () => _showPhoneMoreMenu(a),
+          ),
+        ),
+        if (_s._hasPrevEpisodeAdjacent)
+          PlayerPhoneMenuEntry(
+            icon: Icons.skip_previous_rounded,
+            title: 'Previous episode',
+            onSelected: (_) {
+              if (_s._isLoadingNextEp) return;
+              unawaited(_s._previousEpisode());
+            },
+          ),
+        PlayerPhoneMenuEntry(
+          icon: Icons.lock_outline_rounded,
+          title: 'Lock controls',
+          subtitle: 'Blocks touches until you tap the lock',
+          onSelected: (_) => _s._toggleLock(),
+        ),
+      ],
     );
   }
 

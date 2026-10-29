@@ -1,7 +1,12 @@
 /** CPU arch used to pick split installers (macOS arm64 vs Intel, etc.). */
 export type ClientCpuArch = 'arm64' | 'x86_64'
 
-export type ClientOsPlatform = 'windows' | 'macos' | 'linux' | 'android_tv'
+export type ClientOsPlatform =
+  | 'windows'
+  | 'macos'
+  | 'linux'
+  | 'android_mobile'
+  | 'android_tv'
 type NavigatorUaData = {
   getHighEntropyValues: (
     hints: string[],
@@ -52,6 +57,14 @@ export function guessOsPlatform(): ClientOsPlatform {
   if (typeof navigator === 'undefined') return 'windows'
   const ua = navigator.userAgent.toLowerCase()
   const plat = navigator.platform?.toLowerCase() ?? ''
+  // Android UAs also say "Linux" — check them first.
+  if (ua.includes('android')) {
+    return /\b(tv|aft\w*|bravia|googletv|smart-?tv|chromecast|mibox\w*|mitv\w*|shield)\b/.test(
+      ua,
+    )
+      ? 'android_tv'
+      : 'android_mobile'
+  }
   if (plat.includes('mac') || ua.includes('mac')) return 'macos'
   if (plat.includes('linux') || ua.includes('linux')) return 'linux'
   return 'windows'

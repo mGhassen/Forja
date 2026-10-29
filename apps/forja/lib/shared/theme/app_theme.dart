@@ -739,12 +739,15 @@ class _FocusableControlState extends State<FocusableControl>
     // Horizontal bleed is for leanback TV so focus scale stays in layout.
     // Desktop hover must not inset idle cards — scale overlaps neighbors instead.
     // 0 = caller already reserved scale room (e.g. a grid cell).
+    // Touch never focus-scales, so it reserves no bleed (rail gap stays the
+    // token gap instead of gap + 2 × bleed).
     final bleed =
         widget.showFocusBorder &&
             !flatMenuFocus &&
             !railFocus &&
             widget.focusBleedWidth != 0 &&
-            !policy.scaleOnHover
+            !policy.scaleOnHover &&
+            policy.scaleOnFocus
         ? shellCardFocusBleed(
             context,
             scaleOnFocus: widget.scaleOnFocus,

@@ -22,6 +22,7 @@ import 'package:forja/shell/core/forja_shell_scope.dart';
 import 'package:forja/shell/core/forja_shell_input_policy.dart';
 import 'package:forja/shell/focus/shell_focusable_tap.dart';
 import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
+import 'package:forja_foundation/widgets/feedback/bottom_sheet_panel.dart';
 import 'package:forja_foundation/widgets/feedback/frosted_panel.dart';
 import 'package:forja/shell/tv/tv_browse_text_field.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
@@ -1363,6 +1364,28 @@ class _TorrentSourceSearchToolbarState
     if (restoreFiltersButton) _restoreFiltersButtonFocus();
   }
 
+  Widget _filtersFrame({
+    required bool inSheet,
+    required bool tv,
+    required VoidCallback onClose,
+    required Widget child,
+  }) {
+    if (inSheet) {
+      return ForjaBottomSheetPanel(
+        showClose: false,
+        enableBlur: widget.enableBlur,
+        onClose: onClose,
+        child: child,
+      );
+    }
+    return _TorrentFiltersSidePanel(
+      enableBlur: widget.enableBlur,
+      onClose: onClose,
+      claimTvFocus: tv,
+      child: child,
+    );
+  }
+
   void _openFiltersSidePanel() {
     if (_filtersEntry != null) return;
     // Same Overlay as Sources — rootOverlay can sit above a nested navigator
@@ -1381,11 +1404,14 @@ class _TorrentSourceSearchToolbarState
       if (restoreFiltersButton) _restoreFiltersButtonFocus();
     }
 
+    // Phone Sources bottom sheet → Filters opens as a sheet too (there is no
+    // page strip beside Sources to dock a side panel into).
+    final inSheet = ForjaBottomSheetScope.isInside(context);
     entry = OverlayEntry(
-      builder: (ctx) => _TorrentFiltersSidePanel(
-        enableBlur: widget.enableBlur,
+      builder: (ctx) => _filtersFrame(
+        inSheet: inSheet,
+        tv: tv,
         onClose: () => close(),
-        claimTvFocus: tv,
         child: _TorrentSourceFilterSheet(
           availableQualities: widget.availableQualities,
           availableLanguages: widget.availableLanguages,

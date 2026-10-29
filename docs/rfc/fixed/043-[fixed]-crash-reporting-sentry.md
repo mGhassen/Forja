@@ -79,6 +79,7 @@
 | 3 | R43-A20 | Sign-out or analytics off → PostHog `reset`; unsigned still may set anonymous person props only | ✅ |
 | 4 | R43-A21 | ~~Signed-in person prop `email`~~ → replaced by `member_number` (R43-A22) | ✅ |
 | 5 | R43-A22 | `accounts.member_number` (opaque bigint, unique) + PostHog person prop; no email in PostHog | ✅ |
+| 6 | R43-A26 | Opt-out → `analytics_opt_out` + person `analytics_enabled=false` before SDK stop; on again → `analytics_enabled=true` | ✅ |
 | 6 | R43-A23 | Admin Accounts page loads PostHog person runtime (app/platform/arch/last_seen) via server API | ✅ |
 
 ---
@@ -98,7 +99,8 @@
 | Allowlisted event names (`app_start`, `play_started`, …) | Auth tokens, cookies, Authorization headers |
 | Anonymous distinct id (SDK default) when signed out | Email / display name as distinct id **or** person prop |
 | Signed-in distinct id = `accounts.id` (UUID) | Form passwords / IPTV credentials on web |
-| Person props: `member_number`, `app_version`, `platform`, `os_version`, `arch`, `last_seen_at` | |
+| Person props: `member_number`, `analytics_enabled`, `app_version`, `platform`, `os_version`, `arch`, `last_seen_at` | |
+| `analytics_opt_out` before SDK teardown when user disables in Settings | |
 | Web portal page paths (scrubbed URL props) | |
 
 ### Related

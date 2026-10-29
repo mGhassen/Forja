@@ -46,6 +46,8 @@ class DetailsHero extends StatelessWidget {
     this.plainTitle = false,
     this.selectableTitle = false,
     this.factsValueMaxLines = 1,
+    this.wideLayout,
+    this.flowLayout = false,
   });
 
   final String backdropUrl;
@@ -109,6 +111,17 @@ class DetailsHero extends StatelessWidget {
   final bool selectableTitle;
   final int factsValueMaxLines;
 
+  /// Host layout choice. True → description column + facts card at the right;
+  /// false → compact single column. Null → from viewport width
+  /// ([DetailsTokens.heroWideMinWidth]).
+  final bool? wideLayout;
+
+  /// Host maps the phone profile. The hero grows to fit its content (min
+  /// [height]) so title, genres, meta, overview and actions never drop out
+  /// on short screens. Facts sit beside the column on wide phones
+  /// ([DetailsTokens.heroFlowFactsMinWidth]). [belowActionRow] is not painted.
+  final bool flowLayout;
+
   @override
   Widget build(BuildContext context) {
     final h = height ?? DetailsTokens.heroHeight(context);
@@ -133,6 +146,90 @@ class DetailsHero extends StatelessWidget {
     final contentBottom = overlapsFirstRow
         ? rawOverlap + bottomInset
         : bottomInset;
+    final wide =
+        wideLayout ?? viewportWidth >= DetailsTokens.heroWideMinWidth;
+
+    _DetailsHeroLayout layoutFor({
+      required double availableWidth,
+      double? maxHeight,
+    }) {
+      return _DetailsHeroLayout(
+        title: title,
+        subtitle: subtitle,
+        genres: genres,
+        metaParts: metaParts,
+        rating: rating,
+        overview: overview,
+        facts: facts,
+        logoUrl: logoUrl,
+        actionRow: actionRow,
+        belowActionRow: flowLayout ? null : belowActionRow,
+        belowActionRowFullWidth: belowActionRowFullWidth,
+        belowActionRowGap: belowActionRowGap,
+        scaleActionRow: scaleActionRow,
+        progressBar: progressBar,
+        seriesProgress: seriesProgress,
+        tvDensity: tvDensity,
+        plainTitle: plainTitle,
+        selectableTitle: selectableTitle,
+        factsValueMaxLines: factsValueMaxLines,
+        descriptionWidthFraction: descriptionWidthFraction,
+        compact: !wide,
+        flow: flowLayout,
+        availableWidth: availableWidth,
+        maxHeight: maxHeight,
+      );
+    }
+
+    if (flowLayout) {
+      return ConstrainedBox(
+        constraints: BoxConstraints(minHeight: h),
+        child: ClipRect(
+          child: Stack(
+            children: [
+              if (!chromeOnly)
+                Positioned.fill(
+                  child: IgnorePointer(
+                    child: LayoutBuilder(
+                      builder: (context, constraints) => DetailsHeroSurface(
+                        backdropUrl: backdropUrl,
+                        backdropUrls: backdropUrls,
+                        height: constraints.maxHeight,
+                        bodyOverlap: resolvedOverlap,
+                        softFade: overlapsFirstRow,
+                        enableKenBurns: enableKenBurns,
+                        wideLayout: wide,
+                        phoneTint: flowLayout,
+                      ),
+                    ),
+                  ),
+                ),
+              Padding(
+                padding: EdgeInsets.only(
+                  top: heroContentTop,
+                  bottom: contentBottom,
+                ),
+                child: Align(
+                  alignment: Alignment.topCenter,
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(
+                      maxWidth: ShellTokens.bodyMaxWidthDesktop,
+                    ),
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(horizontal: contentInset),
+                      child: LayoutBuilder(
+                        builder: (context, constraints) =>
+                            layoutFor(availableWidth: constraints.maxWidth),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
 
     return SizedBox(
       height: h,
@@ -152,6 +249,8 @@ class DetailsHero extends StatelessWidget {
                   bodyOverlap: resolvedOverlap,
                   softFade: overlapsFirstRow,
                   enableKenBurns: enableKenBurns,
+                  wideLayout: wide,
+                  phoneTint: flowLayout,
                 ),
               ),
             Positioned(
@@ -171,27 +270,7 @@ class DetailsHero extends StatelessWidget {
                     ),
                     child: Padding(
                       padding: EdgeInsets.symmetric(horizontal: contentInset),
-                      child: _DetailsHeroLayout(
-                        title: title,
-                        subtitle: subtitle,
-                        genres: genres,
-                        metaParts: metaParts,
-                        rating: rating,
-                        overview: overview,
-                        facts: facts,
-                        logoUrl: logoUrl,
-                        actionRow: actionRow,
-                        belowActionRow: belowActionRow,
-                        belowActionRowFullWidth: belowActionRowFullWidth,
-                        belowActionRowGap: belowActionRowGap,
-                        scaleActionRow: scaleActionRow,
-                        progressBar: progressBar,
-                        seriesProgress: seriesProgress,
-                        tvDensity: tvDensity,
-                        plainTitle: plainTitle,
-                        selectableTitle: selectableTitle,
-                        factsValueMaxLines: factsValueMaxLines,
-                        descriptionWidthFraction: descriptionWidthFraction,
+                      child: layoutFor(
                         // Inside horizontal padding — do not re-count inset.
                         availableWidth:
                             (constraints.maxWidth - 2 * contentInset).clamp(
@@ -255,6 +334,8 @@ class DetailsHeroSurface extends StatelessWidget {
     this.bodyOverlap,
     this.softFade = false,
     this.enableKenBurns = true,
+    this.wideLayout,
+    this.phoneTint = false,
   });
 
   final String backdropUrl;
@@ -266,12 +347,21 @@ class DetailsHeroSurface extends StatelessWidget {
   final bool softFade;
   final bool enableKenBurns;
 
+  /// Wide hero gradients (side + bottom) vs compact full tint. Null → from
+  /// viewport width ([DetailsTokens.heroWideMinWidth]).
+  final bool? wideLayout;
+
+  /// Phone details: the text column covers the whole backdrop, so a
+  /// full-height tint keeps it readable on bright art. Off elsewhere.
+  final bool phoneTint;
+
   @override
   Widget build(BuildContext context) {
     final h = height ?? DetailsTokens.heroHeight(context);
     final shellBg = ForjaThemeExtension.of(context).bgDark;
     final viewportWidth = MediaQuery.sizeOf(context).width;
-    final cinematicDesktop = viewportWidth >= 900;
+    final cinematicDesktop =
+        wideLayout ?? viewportWidth >= DetailsTokens.heroWideMinWidth;
     final resolvedOverlap = bodyOverlap ?? DetailsTokens.heroBodyOverlap;
 
     return SizedBox(
@@ -306,6 +396,27 @@ class DetailsHeroSurface extends StatelessWidget {
             Positioned.fill(
               child: IgnorePointer(
                 child: _CinematicHeroSideGradient(shellBg: shellBg),
+              ),
+            ),
+          if (!cinematicDesktop && phoneTint)
+            Positioned.fill(
+              child: IgnorePointer(
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                      colors: [
+                        shellBg.withValues(
+                          alpha: DetailsTokens.heroCompactTintTopAlpha,
+                        ),
+                        shellBg.withValues(
+                          alpha: DetailsTokens.heroCompactTintBottomAlpha,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
               ),
             ),
           if (!cinematicDesktop)
@@ -348,6 +459,8 @@ class _DetailsHeroLayout extends StatelessWidget {
     this.selectableTitle = false,
     this.factsValueMaxLines = 1,
     this.descriptionWidthFraction,
+    required this.compact,
+    this.flow = false,
   });
 
   final String title;
@@ -373,6 +486,12 @@ class _DetailsHeroLayout extends StatelessWidget {
   final int factsValueMaxLines;
   final double? descriptionWidthFraction;
 
+  /// Single column (no facts card in the bounded hero).
+  final bool compact;
+
+  /// Unbounded hero height ([DetailsHero.flowLayout]).
+  final bool flow;
+
   Widget? _factsChild() {
     final panel = FactsPanel(
       rows: [for (final e in facts) (label: e.key, value: e.value)],
@@ -384,7 +503,6 @@ class _DetailsHeroLayout extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final width = MediaQuery.sizeOf(context).width;
-    final compact = width < 900;
     final leftColumnWidth =
         width *
         (descriptionWidthFraction ??
@@ -474,6 +592,42 @@ class _DetailsHeroLayout extends StatelessWidget {
               ),
           ],
         ),
+      );
+    }
+
+    if (flow) {
+      final contentWidth = availableWidth ?? width;
+      final factsChild = _factsChild();
+      final factsBeside =
+          factsChild != null &&
+          contentWidth >= DetailsTokens.heroFlowFactsMinWidth;
+      if (!factsBeside) {
+        return buildMainColumn(contentWidth: contentWidth);
+      }
+      final factsWidth = tvDensity
+          ? DetailsTokens.factsMaxWidthTv
+          : DetailsTokens.factsMaxWidth;
+      final factsRadius = tvDensity
+          ? DetailsTokens.factsRadiusTv
+          : DetailsTokens.factsRadius;
+      final mainWidth =
+          (contentWidth - factsWidth - DetailsTokens.heroFlowFactsGap).clamp(
+            0.0,
+            contentWidth,
+          );
+      return Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          buildMainColumn(contentWidth: mainWidth),
+          const SizedBox(width: DetailsTokens.heroFlowFactsGap),
+          SizedBox(
+            width: factsWidth,
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(factsRadius),
+              child: factsChild,
+            ),
+          ),
+        ],
       );
     }
 

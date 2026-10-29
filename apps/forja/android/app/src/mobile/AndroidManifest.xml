@@ -1,0 +1,15 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+    <!-- Mobile flavor overlay (phones + tablets): merged onto
+         src/main/AndroidManifest.xml. No leanback launcher, no TV banner. -->
+    <uses-feature android:name="android.hardware.touchscreen" android:required="true" />
+
+    <application>
+        <!-- Main manifest keeps resizeableActivity="false" for TV; phones and
+             tablets get split-screen / freeform windows. -->
+        <activity
+            android:name=".MainActivity"
+            android:resizeableActivity="true"
+            tools:replace="android:resizeableActivity" />
+    </application>
+</manifest>

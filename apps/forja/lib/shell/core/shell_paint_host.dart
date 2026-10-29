@@ -40,6 +40,7 @@ Widget shellPaintHostScope({
     useTvFocus: inputPolicy.useFocusableMoodChips,
     scaleOnHover: inputPolicy.scaleOnHover,
     usesTvDensity: metrics.usesTvDensity,
+    usesMobileDensity: metrics.usesMobileDensity,
     focusStyled: (context, {required focused}) =>
         inputPolicy.focusStyled(context, focused: focused),
     isActivateKey: _registeredIsActivateKey,

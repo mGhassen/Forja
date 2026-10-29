@@ -1,8 +1,12 @@
-import 'dart:io' show Platform;
+import 'dart:convert';
+import 'dart:io' show Directory, File, Platform;
 
+import 'package:crypto/crypto.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:path/path.dart' as p;
+import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// macOS Keychain vs local-file choice (persisted).
@@ -27,15 +31,18 @@ enum ForjaKeychainConsent {
 /// - **Non-sandboxed** (ad-hoc Release) + accepted: prefs vault for writes;
 ///   one-shot login-Keychain migrate may show a system Allow dialog.
 ///
-/// **Android / Android TV:** always dual-write EncryptedSharedPreferences + a
-/// SharedPreferences vault. Encrypted prefs have been empty after TV emulator
-/// restarts; the vault keeps Supabase sessions across cold starts.
+/// **Android / Android TV:** triple-write SharedPreferences vault + on-disk
+/// file vault (`Application Support/forja_secure_vault_v1/`) +
+/// EncryptedSharedPreferences. Encrypted prefs and SharedPreferences have both
+/// come back empty after emulator / cold starts; the file vault is the durable
+/// SoT for Supabase sessions (issue 519).
 ///
 /// Never writes the legacy login Keychain (`useDataProtectionKeyChain: false`).
 /// Reads may one-shot migrate leftovers out of that store after opt-in.
 abstract final class ForjaPlatformSecureStore {
   static const _prefsPrefix = 'forja_secure_';
   static const _consentPrefsKey = 'forja_keychain_consent_v1';
+  static const _fileVaultSubdir = 'forja_secure_vault_v1';
 
   static const FlutterSecureStorage _dp = FlutterSecureStorage(
     aOptions: AndroidOptions(encryptedSharedPreferences: true),
@@ -49,6 +56,10 @@ abstract final class ForjaPlatformSecureStore {
   );
 
   static ForjaKeychainConsent? _cachedConsent;
+
+  /// Test override for the Android file vault directory.
+  @visibleForTesting
+  static Directory? debugFileVaultRoot;
 
   static bool get _isMacOS => !kIsWeb && Platform.isMacOS;
 
@@ -130,6 +141,13 @@ abstract final class ForjaPlatformSecureStore {
   static Future<String?> read(String key) async {
     await ensureConsentLoaded();
 
+    // Test override — prefs then file, no Keychain / encrypted.
+    if (debugFileVaultRoot != null) {
+      final vault = await _readPrefsVault(key);
+      if (vault != null && vault.isNotEmpty) return vault;
+      return _readFileVault(key);
+    }
+
     if (_isMacOS && !_mayTouchKeychain) {
       return _readPrefsVault(key);
     }
@@ -143,14 +161,19 @@ abstract final class ForjaPlatformSecureStore {
     if (_isAndroid) {
       final vault = await _readPrefsVault(key);
       if (vault != null && vault.isNotEmpty) return vault;
+      final file = await _readFileVault(key);
+      if (file != null && file.isNotEmpty) {
+        await _writePrefsVault(key, file);
+        return file;
+      }
     }
 
     try {
       final v = await _dp.read(key: key);
       if (v != null && v.isNotEmpty) {
         if (_isAndroid) {
-          // Backfill vault if EncryptedSharedPreferences still has the value.
           await _writePrefsVault(key, v);
+          await _writeFileVault(key, v);
         }
         return v;
       }
@@ -163,11 +186,22 @@ abstract final class ForjaPlatformSecureStore {
     final migrated = await _migrateFromLegacyLogin(key);
     if (migrated != null) return migrated;
 
+    if (_isAndroid) {
+      final file = await _readFileVault(key);
+      if (file != null && file.isNotEmpty) return file;
+    }
+
     return _readPrefsVault(key);
   }
 
   static Future<void> write(String key, String value) async {
     await ensureConsentLoaded();
+
+    if (debugFileVaultRoot != null) {
+      await _writePrefsVault(key, value);
+      await _writeFileVault(key, value);
+      return;
+    }
 
     // macOS without Keychain opt-in, or ad-hoc non-sandbox: vault only.
     if (_isMacOS && (!usesKeychain || !usesDataProtectionKeychain)) {
@@ -177,7 +211,10 @@ abstract final class ForjaPlatformSecureStore {
 
     if (_usePrefsVaultPrimary) {
       await _writePrefsVault(key, value);
-      // Android dual-writes EncryptedSharedPreferences below.
+      if (_isAndroid) {
+        await _writeFileVault(key, value);
+      }
+      // Android also dual-writes EncryptedSharedPreferences below.
       if (!_isAndroid) return;
     }
 
@@ -207,6 +244,16 @@ abstract final class ForjaPlatformSecureStore {
 
   static Future<void> delete(String key) async {
     await ensureConsentLoaded();
+
+    if (debugFileVaultRoot != null) {
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.remove(prefsKey(key));
+        await prefs.remove(key);
+      } catch (_) {}
+      await _deleteFileVault(key);
+      return;
+    }
 
     if (_isMacOS && !_mayTouchKeychain) {
       try {
@@ -239,6 +286,10 @@ abstract final class ForjaPlatformSecureStore {
       await prefs.remove(prefsKey(key));
       await prefs.remove(key);
     } catch (_) {}
+
+    if (_isAndroid) {
+      await _deleteFileVault(key);
+    }
   }
 
   static Future<void> _writePrefsVault(String key, String value) async {
@@ -258,6 +309,65 @@ abstract final class ForjaPlatformSecureStore {
     return null;
   }
 
+  static Future<Directory> _fileVaultDir() async {
+    final override = debugFileVaultRoot;
+    if (override != null) {
+      if (!await override.exists()) {
+        await override.create(recursive: true);
+      }
+      return override;
+    }
+    final support = await getApplicationSupportDirectory();
+    final dir = Directory(p.join(support.path, _fileVaultSubdir));
+    if (!await dir.exists()) {
+      await dir.create(recursive: true);
+    }
+    return dir;
+  }
+
+  static String _fileVaultFileName(String key) {
+    final digest = sha256.convert(utf8.encode(key)).toString();
+    return '$digest.secret';
+  }
+
+  static Future<File> _fileVaultFile(String key) async {
+    final dir = await _fileVaultDir();
+    return File(p.join(dir.path, _fileVaultFileName(key)));
+  }
+
+  static Future<void> _writeFileVault(String key, String value) async {
+    try {
+      final file = await _fileVaultFile(key);
+      await file.writeAsString(value, flush: true);
+    } catch (e) {
+      debugPrint(
+        '[ForjaPlatformSecureStore] file vault write failed ($key): $e',
+      );
+    }
+  }
+
+  static Future<String?> _readFileVault(String key) async {
+    try {
+      final file = await _fileVaultFile(key);
+      if (!await file.exists()) return null;
+      final raw = await file.readAsString();
+      if (raw.isEmpty) return null;
+      return raw;
+    } catch (e) {
+      debugPrint(
+        '[ForjaPlatformSecureStore] file vault read failed ($key): $e',
+      );
+      return null;
+    }
+  }
+
+  static Future<void> _deleteFileVault(String key) async {
+    try {
+      final file = await _fileVaultFile(key);
+      if (await file.exists()) await file.delete();
+    } catch (_) {}
+  }
+
   /// Pull a value out of the login Keychain into the current primary store.
   /// May show one Keychain Allow dialog; only after in-app consent.
   static Future<String?> _migrateFromLegacyLogin(String key) async {
@@ -273,5 +383,12 @@ abstract final class ForjaPlatformSecureStore {
       );
       return null;
     }
+  }
+
+  /// Test tear-down — clears consent cache and file-vault override.
+  @visibleForTesting
+  static void resetForTest() {
+    _cachedConsent = null;
+    debugFileVaultRoot = null;
   }
 }

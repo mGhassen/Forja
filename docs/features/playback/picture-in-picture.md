@@ -13,6 +13,7 @@ Forja supports picture-in-picture in the **movie player**, the **IPTV player**, 
 
 - Use the **PiP** button in the player top-right (movie player or IPTV), next to **Player**. Availability is platform-gated (Android phone/tablet, Windows, macOS). **Android TV** does not show Cast or PiP — only **Player**.
 - **Desktop auto PiP** (opt-in) — enable **Settings → Playback → Auto picture-in-picture**. While video is playing, switching Mission Control Space (macOS) or a Windows virtual desktop enters the float automatically. Off by default. Exit with **Expand** (restore) or **Close** on hover.
+- **Phone auto PiP** (Android phone app) — on by default. Leave Forja (Home or the app switcher) while a movie, episode, IPTV channel, or live match plays and it keeps playing in the system PiP window. With the optional ExoPlayer engine, leaving the app pauses instead. Turn it off in **Settings → Addons → Playback → Auto picture-in-picture**. Each phone keeps its own choice.
 
 ## What you can do
 

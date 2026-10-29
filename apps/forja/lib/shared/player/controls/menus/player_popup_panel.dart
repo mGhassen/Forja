@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
@@ -14,6 +15,7 @@ import 'package:forja/shell/core/forja_shell_platform.dart';
 import 'package:forja_foundation/widgets/feedback/frosted_panel.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
+import 'package:forja_foundation/tokens/player_phone_tokens.dart';
 import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 enum PlayerSourceStatus { unchecked, ready, active, failed, checking }
 
@@ -187,6 +189,11 @@ class PlayerPopupPanel {
             margin == const EdgeInsets.only(left: 16, bottom: 88)
         ? _tvFallbackMargin
         : margin;
+    // Phone landscape: the player top bar (back, title, cast, PiP) stays
+    // visible while a panel is open — keep the panel below it, and let it
+    // cover the seek bar instead (the barrier blocks the bar anyway).
+    final phone = capturedProfile == ShellProfile.mobile && !leanback;
+    final baseScreenPadding = screenPadding;
 
     final overlay = Overlay.of(context);
     dismiss();
@@ -218,6 +225,15 @@ class PlayerPopupPanel {
               }
 
               final overlaySize = MediaQuery.sizeOf(scopedContext);
+              final screenPadding = phone
+                  ? baseScreenPadding.copyWith(
+                      top: math.max(
+                        baseScreenPadding.top,
+                        MediaQuery.paddingOf(scopedContext).top +
+                            PlayerPhoneTokens.panelTopClearance,
+                      ),
+                    )
+                  : baseScreenPadding;
               final rawAnchorRect = anchorContext != null
                   ? _anchorRectInOverlay(anchorContext, overlayContext)
                   : null;
@@ -235,6 +251,8 @@ class PlayerPopupPanel {
                       screenPadding: screenPadding,
                       clearance: leanback
                           ? _tvProgressBarClearance
+                          : phone
+                          ? 0
                           : _progressBarClearance,
                     );
 
@@ -244,7 +262,17 @@ class PlayerPopupPanel {
                   constraints: BoxConstraints(
                     maxWidth: effectiveWidth,
                     maxHeight: anchorRect == null
-                        ? effectiveMaxHeight
+                        ? (phone
+                              ? math.min(
+                                  effectiveMaxHeight,
+                                  math.max(
+                                    0.0,
+                                    overlaySize.height -
+                                        screenPadding.top -
+                                        effectiveMargin.bottom,
+                                  ),
+                                )
+                              : effectiveMaxHeight)
                         : _anchoredMaxHeight(
                             overlaySize: overlaySize,
                             anchorRect: anchorRect,

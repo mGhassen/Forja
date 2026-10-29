@@ -41,6 +41,18 @@ echo "==> Building mobile Rust FFI (android + ios when on macOS)"
 
 echo "==> Running mobile_magnet_e2e_test.dart on $DEVICE"
 flutter pub get
-flutter test test/mobile_magnet_e2e_test.dart -d "$DEVICE"
+# Android builds need a product flavor; iOS has none.
+FLAVOR_ARGS=()
+if flutter devices --machine 2>/dev/null | python3 -c "
+import json, sys
+dev = sys.argv[1]
+for d in json.load(sys.stdin):
+    if d.get('id') == dev and str(d.get('targetPlatform', '')).startswith('android'):
+        sys.exit(0)
+sys.exit(1)
+" "$DEVICE"; then
+  FLAVOR_ARGS=(--flavor mobile)
+fi
+flutter test test/mobile_magnet_e2e_test.dart -d "$DEVICE" ${FLAVOR_ARGS[@]+"${FLAVOR_ARGS[@]}"}
 
 echo "mobile_magnet_e2e: OK"

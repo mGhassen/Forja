@@ -16,9 +16,24 @@ if (buildRust) {
         workingDir = repoRoot
         commandLine("bash", "scripts/build_rust_mobile.sh", "android")
     }
-    tasks.matching { it.name == "preReleaseBuild" || it.name == "preDebugBuild" }.configureEach {
+    // pre<Flavor>ReleaseBuild / pre<Flavor>DebugBuild (formFactor flavors).
+    tasks.matching {
+        it.name.startsWith("pre") &&
+            (it.name.endsWith("ReleaseBuild") || it.name.endsWith("DebugBuild"))
+    }.configureEach {
         dependsOn("buildRustAndroid")
     }
+}
+
+// formFactor flavors: an unflavored assemble/bundle builds both and leaves
+// Flutter to pick app-<mode>.apk / .aab, a stale file from before the split.
+// Fail fast instead.
+val unflavoredAssemble = Regex("^(:app:)?(assemble|bundle)(Debug|Profile|Release)$")
+if (gradle.startParameter.taskNames.any { unflavoredAssemble.matches(it) }) {
+    throw GradleException(
+        "Forja Android has two flavors. Pass --flavor tv (Android TV) or " +
+            "--flavor mobile (phones and tablets) to flutter run / flutter build apk|appbundle."
+    )
 }
 
 android {
@@ -33,8 +48,10 @@ android {
     }
 
     // AGP 9: resValue() in buildTypes requires this (default false).
+    // buildConfig: FORM_FACTOR per flavor (read over the forja/platform channel).
     buildFeatures {
         resValues = true
+        buildConfig = true
     }
 
     defaultConfig {
@@ -49,6 +66,22 @@ android {
     packaging {
         jniLibs {
             useLegacyPackaging = true
+        }
+    }
+
+    // One APK per form factor. Both keep applicationId com.forjahq.app (debug
+    // .dev suffix from buildTypes) and the same signing config, so a phone on
+    // the TV APK upgrades in place to the mobile APK and keeps its data.
+    // flutter run / build must pass --flavor tv or --flavor mobile.
+    flavorDimensions += "formFactor"
+    productFlavors {
+        create("tv") {
+            dimension = "formFactor"
+            buildConfigField("String", "FORM_FACTOR", "\"tv\"")
+        }
+        create("mobile") {
+            dimension = "formFactor"
+            buildConfigField("String", "FORM_FACTOR", "\"mobile\"")
         }
     }
 

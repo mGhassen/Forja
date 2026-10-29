@@ -23,6 +23,26 @@ double kitTopBarHideProgress({
   return ((scrollOffset - hideStart) / slideDistance).clamp(0.0, 1.0);
 }
 
+/// Touch profile: opacity of the solid theme background behind the hub menu.
+///
+/// The bar never slides away on touch. It turns solid over [fadeDistance] of
+/// scroll, reaching 1 when the hero text column bottom ([heroHeight]) meets
+/// the bar bottom, so hero title and summary pass under a solid bar instead
+/// of under bare labels. A hub without a hero (0) fades in from the first
+/// pixel of scroll.
+double kitTopBarSolidOpacity({
+  required double scrollOffset,
+  required double heroHeight,
+  required double barHeight,
+  double fadeDistance = ShellTokens.kitTopBarSolidFadeDistanceMobile,
+}) {
+  if (fadeDistance <= 0) return scrollOffset > 0 ? 1 : 0;
+  final start = heroHeight <= 0
+      ? 0.0
+      : math.max(0.0, heroHeight - barHeight - fadeDistance);
+  return ((scrollOffset - start) / fadeDistance).clamp(0.0, 1.0);
+}
+
 /// Opacity of the gradient scrim behind the menu: none at rest (hero text
 /// already clears the bar), fades in over [fadeInDistance] of scroll, and
 /// fades out with the bar as [hideProgress] → 1.

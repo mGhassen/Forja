@@ -161,6 +161,7 @@ class CatalogTopChrome extends StatefulWidget {
     this.title,
     this.actionSlots = const {},
     this.center,
+    this.centerBelow = false,
     this.height,
     this.padding,
     this.gap,
@@ -181,6 +182,9 @@ class CatalogTopChrome extends StatefulWidget {
 
   /// Optional center overlay (feed scrape progress / updated label).
   final Widget? center;
+
+  /// Paint [center] below the action strip (phone) — see [TopBarActions].
+  final bool centerBelow;
 
   /// Pack `height` / `pad` — omit → [TopBarActions] ShellTokens defaults.
   final double? height;
@@ -578,6 +582,7 @@ class _CatalogTopChromeState extends State<CatalogTopChrome> {
       leading: hideSiblings ? [shelfOnly] : leading,
       trailing: hideSiblings ? const [] : trailing,
       center: hideSiblings ? null : widget.center,
+      centerBelow: widget.centerBelow,
       height: widget.height,
       gap: widget.gap ?? ShellTokens.topBarActionsGap,
       wrapRow: widget.wrapRow,

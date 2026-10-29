@@ -257,19 +257,42 @@ class _DetailsHeroTitle extends StatefulWidget {
 }
 
 class _DetailsHeroTitleState extends State<_DetailsHeroTitle> {
+  /// Logo frame decoded — the text title starts fading out.
   bool _logoReady = false;
+
+  /// Text title fully faded out — the logo fades in. Text and logo never
+  /// paint at the same time.
+  bool _textGone = false;
 
   @override
   void didUpdateWidget(covariant _DetailsHeroTitle oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.logoUrl != widget.logoUrl) {
       _logoReady = false;
+      _textGone = false;
     }
   }
 
   void _revealLogo() {
     if (!mounted || _logoReady) return;
     setState(() => _logoReady = true);
+  }
+
+  void _onTextFadeEnd() {
+    if (!_logoReady || _textGone) return;
+    // onEnd may fire inside a build (zero-duration motion) — defer setState.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !_logoReady || _textGone) return;
+      setState(() => _textGone = true);
+    });
+  }
+
+  /// Logo already decoded in the image cache: paint it straight away, no text.
+  static bool _logoCached(String url) {
+    final status = PaintingBinding.instance.imageCache.statusForKey(
+      NetworkImage(url),
+    );
+    return status.keepAlive;
   }
 
   @override
@@ -288,15 +311,22 @@ class _DetailsHeroTitleState extends State<_DetailsHeroTitle> {
     final fallback = _fallbackTitle(widget.title, logoHeight);
     if (logoUrl.isEmpty) return fallback;
 
+    if (!_logoReady && _logoCached(logoUrl)) {
+      _logoReady = true;
+      _textGone = true;
+    }
+
     return Stack(
       alignment: AlignmentDirectional.centerStart,
       children: [
+        // Stays mounted (opacity 0) so the title slot keeps its size.
         IgnorePointer(
           ignoring: _logoReady,
           child: AnimatedOpacity(
             opacity: _logoReady ? 0 : 1,
             duration: ForjaMotionTheme.of(context).pageFade.duration,
             curve: Curves.easeOutCubic,
+            onEnd: _onTextFadeEnd,
             child: fallback,
           ),
         ),
@@ -313,7 +343,7 @@ class _DetailsHeroTitleState extends State<_DetailsHeroTitle> {
               WidgetsBinding.instance.addPostFrameCallback((_) => _revealLogo());
             }
             return AnimatedOpacity(
-              opacity: _logoReady ? 1 : 0,
+              opacity: _textGone ? 1 : 0,
               duration: const Duration(milliseconds: 700),
               curve: Curves.easeOutCubic,
               child: child,

@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:forja/features/settings/shell/split_layout.dart';
 import 'package:forja/features/settings/shell/router.dart';
 import 'package:forja/features/settings/shell/scaffold.dart';
 import 'package:forja/shell/routing/app_router.dart';
@@ -11,7 +12,6 @@ import 'package:forja/shared/telemetry/product_analytics.dart';
 import 'package:forja/shell/tv/shell_tv_coordinator.dart';
 import 'package:forja/shell/tv/tv_focus_graph.dart';
 import 'package:forja/shell/core/forja_shell_scope.dart';
-import 'package:forja_foundation/tokens/forja_settings_tokens.dart';
 
 /// Settings tab - RFC-033 category hub; RFC-024 R24-A13: local prefs only.
 ///
@@ -84,7 +84,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     if (ShellBus.settingsHubCategoryId.value != id) {
       ShellBus.settingsHubCategoryId.value = id;
     }
-    if (SettingsTokens.useSplitLayout(context)) return;
+    if (settingsUseSplitLayout(context)) return;
     pushShellRoute(
       context,
       AppRouter.slideShellRoute(

@@ -24,9 +24,8 @@ abstract final class ProductAnalytics {
   static const String _hostDefine = String.fromEnvironment('POSTHOG_HOST');
 
   /// US cloud by default; set `POSTHOG_HOST=https://eu.i.posthog.com` for EU.
-  static String get host => _hostDefine.isEmpty
-      ? 'https://us.i.posthog.com'
-      : _hostDefine;
+  static String get host =>
+      _hostDefine.isEmpty ? 'https://us.i.posthog.com' : _hostDefine;
 
   static bool _active = false;
   static StreamSubscription<AuthState>? _authSub;
@@ -51,10 +50,33 @@ abstract final class ProductAnalytics {
       if (enabled) {
         await _start();
       } else {
+        // Emit while SDK still active — cold start with pref already off
+        // goes through [_stop] only and must not fake an opt-out.
+        await _captureOptOutIfActive();
         await _stop();
       }
     } catch (e, st) {
       debugPrint('[ProductAnalytics] SDK toggle failed: $e\n$st');
+    }
+  }
+
+  /// Last event before teardown so PostHog can count opt-outs.
+  static Future<void> _captureOptOutIfActive() async {
+    if (!_active) return;
+    try {
+      final memberNumber = AccountFeatures.instance.memberNumber;
+      await Posthog().setPersonProperties(
+        userPropertiesToSet: {
+          'analytics_enabled': false,
+          if (memberNumber != null) 'member_number': memberNumber,
+        },
+      );
+      await track(
+        'analytics_opt_out',
+        properties: {if (memberNumber != null) 'member_number': memberNumber},
+      );
+    } catch (e) {
+      debugPrint('[ProductAnalytics] opt-out capture failed: $e');
     }
   }
 
@@ -123,9 +145,7 @@ abstract final class ProductAnalytics {
       return;
     }
     if (!isConfigured) {
-      debugPrint(
-        '[ProductAnalytics] On but POSTHOG_API_KEY empty - no-op',
-      );
+      debugPrint('[ProductAnalytics] On but POSTHOG_API_KEY empty - no-op');
       _active = false;
       return;
     }
@@ -144,6 +164,12 @@ abstract final class ProductAnalytics {
     await Posthog().setup(config);
     _active = true;
     _ensureAuthListener();
+    // Clear prior opt-out flag if they turn analytics back on.
+    unawaited(
+      Posthog().setPersonProperties(
+        userPropertiesToSet: {'analytics_enabled': true},
+      ),
+    );
     unawaited(track('app_start'));
     unawaited(_syncIdentity());
   }
@@ -179,10 +205,7 @@ abstract final class ProductAnalytics {
         if (memberNumber != null) {
           props['member_number'] = memberNumber;
         }
-        await Posthog().identify(
-          userId: userId,
-          userProperties: props,
-        );
+        await Posthog().identify(userId: userId, userProperties: props);
         _identifiedUserId = userId;
         return;
       }
@@ -257,6 +280,7 @@ abstract final class ProductAnalytics {
   static const Set<String> _allowedEvents = {
     'app_start',
     'analytics_verify',
+    'analytics_opt_out',
     'resolve_failed',
     'player_open_failed',
     'provider_timeout',

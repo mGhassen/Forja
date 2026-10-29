@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
+import 'package:forja_foundation/tokens/mobile_chrome_tokens.dart';
 
 /// Shared status strip for bookmark / list hubs (Plan / Watching / …).
 class ForjaStatusTabs extends StatelessWidget {
@@ -19,6 +20,7 @@ class ForjaStatusTabs extends StatelessWidget {
     this.onLeft,
     this.onRight,
     this.inShellTopBar = false,
+    this.scrollable = false,
   });
 
   final String tabId;
@@ -35,6 +37,10 @@ class ForjaStatusTabs extends StatelessWidget {
   final VoidCallback? onLeft;
   final VoidCallback? onRight;
   final bool inShellTopBar;
+
+  /// Phone: tabs keep their natural width and the strip scrolls sideways,
+  /// so long labels ("Plan to Watch") never truncate. Default: equal widths.
+  final bool scrollable;
 
   static const defaultTabs = [
     (id: 'plantowatch', title: 'Plan to Watch'),
@@ -77,11 +83,11 @@ class ForjaStatusTabs extends StatelessWidget {
               : ShellTokens.kitTopBarStatusRowHeight,
           child: FocusTraversalGroup(
             policy: ReadingOrderTraversalPolicy(),
-            child: Row(
+            child: _strip(
               children: [
                 for (var i = 0; i < statusTabs.length; i++)
-                  Expanded(
-                    child: _StatusTab(
+                  _cell(
+                    _StatusTab(
                       label: _statusTabLabel(
                         statusTabs[i].title,
                         counts?[statusTabs[i].id],
@@ -103,6 +109,29 @@ class ForjaStatusTabs extends StatelessWidget {
             ),
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _cell(Widget tab) {
+    if (!scrollable) return Expanded(child: tab);
+    // IntrinsicWidth bounds the tab to its label so the stretched underline
+    // matches the label instead of an infinite scroll-row width.
+    return Padding(
+      padding: const EdgeInsets.symmetric(
+        horizontal: MobileChromeTokens.statusTabScrollPadH,
+      ),
+      child: IntrinsicWidth(child: tab),
+    );
+  }
+
+  Widget _strip({required List<Widget> children}) {
+    if (!scrollable) return Row(children: children);
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: children,
       ),
     );
   }
@@ -194,6 +223,7 @@ class _StatusTabState extends State<_StatusTab> {
   Widget _column(bool hovered) {
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Expanded(child: Center(child: _label(hovered))),
         Container(

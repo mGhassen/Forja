@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:forja/shared/engine/packs/registry/plugin_registry.dart';
@@ -559,6 +560,7 @@ class SyncService {
     );
     if (response.session != null) {
       await persistActiveSessionToVault();
+      await _logSessionDurability('password');
     }
     _notifyIdentityChanged();
     return response;
@@ -724,9 +726,50 @@ class SyncService {
       throw const AuthException('Web login did not return usable tokens.');
     }
 
-    AuthResponse response;
+    // Emulator / flaky DNS can fail getUser during setSession for several
+    // seconds after Chrome opens; retry with backoff before rejecting handoff.
+    const maxAttempts = 6;
+    Object? lastError;
+    for (var attempt = 1; attempt <= maxAttempts; attempt++) {
+      try {
+        final response = await _setBrowserSession(
+          client,
+          accessToken: accessToken,
+          refreshToken: refreshToken,
+        );
+        if (response.session == null) {
+          throw const AuthException(
+            'Web login did not return a usable session.',
+          );
+        }
+        await persistActiveSessionToVault();
+        await _logSessionDurability('browser');
+        _notifyIdentityChanged();
+        return response;
+      } catch (e) {
+        lastError = e;
+        if (!isRetryableAuthNetworkError(e) || attempt == maxAttempts) {
+          rethrow;
+        }
+        final delayMs = (400 * attempt * attempt).clamp(400, 4000);
+        debugPrint(
+          '[Sync] browser setSession attempt $attempt/$maxAttempts failed '
+          '($e); retrying in ${delayMs}ms',
+        );
+        await Future<void>.delayed(Duration(milliseconds: delayMs));
+      }
+    }
+    // Unreachable — loop always returns or rethrows.
+    throw lastError ?? const AuthException('Web login failed.');
+  }
+
+  Future<AuthResponse> _setBrowserSession(
+    SupabaseClient client, {
+    required String accessToken,
+    required String refreshToken,
+  }) async {
     try {
-      response = await client.auth.setSession(
+      return await client.auth.setSession(
         refreshToken,
         accessToken: accessToken,
       );
@@ -736,15 +779,12 @@ class SyncService {
         '[Sync] setSession(access) failed (${e.code ?? e.message}); '
         'falling back to refresh-only',
       );
-      response = await client.auth.setSession(refreshToken);
+      return client.auth.setSession(refreshToken);
     }
+  }
 
-    if (response.session == null) {
-      throw const AuthException('Web login did not return a usable session.');
-    }
-    await persistActiveSessionToVault();
-    // Android TV: EncryptedSharedPreferences alone can drop the session;
-    // ForjaPlatformSecureStore dual-writes a prefs vault. Verify after apply.
+  /// Confirm GoTrue LocalStorage can round-trip the session (Android file vault).
+  Future<void> _logSessionDurability(String source) async {
     try {
       final host = Uri.tryParse(ForjaSupabase.url)?.host ?? 'forja';
       final ls = ForjaSecureLocalStorage(
@@ -752,19 +792,17 @@ class SyncService {
       );
       final persisted = await ls.hasAccessToken();
       debugPrint(
-        '[Sync] browser tokens applied signedIn=true persisted=$persisted',
+        '[Sync] $source tokens applied signedIn=true persisted=$persisted',
       );
       if (!persisted) {
         debugPrint(
-          '[Sync] WARNING: session not durable after setSession - '
+          '[Sync] WARNING: session not durable after $source sign-in — '
           'cold start may return to sign-in',
         );
       }
     } catch (e) {
-      debugPrint('[Sync] persist check failed: $e');
+      debugPrint('[Sync] persist check failed ($source): $e');
     }
-    _notifyIdentityChanged();
-    return response;
   }
 
   static bool _canFallbackBrowserTokenRefresh(AuthException e) {
@@ -776,11 +814,31 @@ class SyncService {
         msg.contains('session is missing');
   }
 
+  /// Best-effort DNS warm for the Auth host before Chrome handoff.
+  ///
+  /// Emulators often fail the first `setSession`/`getUser` with
+  /// `Failed host lookup` right after the browser opens; a lookup here
+  /// primes the resolver so the callback apply succeeds on the first try.
+  Future<void> _warmAuthHostLookup() async {
+    final host = Uri.tryParse(ForjaSupabase.url)?.host;
+    if (host == null || host.isEmpty) return;
+    for (var i = 0; i < 3; i++) {
+      try {
+        await InternetAddress.lookup(host);
+        return;
+      } catch (e) {
+        debugPrint('[Sync] auth host lookup warm $i failed: $e');
+        await Future<void>.delayed(Duration(milliseconds: 300 * (i + 1)));
+      }
+    }
+  }
+
   /// Opens the web portal login in the system browser and waits for a session.
   ///
   /// Complete [cancel] to abort the wait (e.g. user tapped Cancel on the
   /// account entry screen).
   Future<AuthResponse> signInWithBrowser({Future<void>? cancel}) async {
+    await _warmAuthHostLookup();
     AuthResponse? applied;
     final result = await DesktopBrowserAuth.signIn(
       cancel: cancel,

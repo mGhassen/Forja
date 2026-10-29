@@ -47,6 +47,8 @@ import 'package:forja/shell/core/forja_shell_scope.dart';
 import 'package:forja/shell/focus/shell_focusable_tap.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
+import 'package:forja_foundation/tokens/mobile_chrome_tokens.dart';
+import 'package:forja_foundation/widgets/feedback/bottom_sheet_panel.dart';
 import 'package:forja_foundation/widgets/chrome/catalog_dense_list.dart';
 import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 
@@ -273,6 +275,50 @@ class _PlayerSourcesOverlayState extends State<_PlayerSourcesOverlay> {
   @override
   Widget build(BuildContext context) {
     final detailsHost = widget.detailsHost;
+    final body = SourcesPanelTv.wrapBody(
+      context: context,
+      onClose: widget.onClose,
+      includeOverlayScope: detailsHost,
+      child: _PlayerSourcesBody(
+        movie: widget.movie,
+        season: widget.season,
+        episode: widget.episode,
+        seasonLabel: widget.seasonLabel,
+        currentMagnet: widget.currentMagnet,
+        currentStreamUrl: widget.currentStreamUrl,
+        currentPlayingCatalogUrl: widget.currentPlayingCatalogUrl,
+        currentPlayingRowKey: widget.currentPlayingRowKey,
+        playbackConfirmed: widget.playbackConfirmed,
+        preferredKind: widget.preferredKind,
+        currentAddonBaseUrl: widget.currentAddonBaseUrl,
+        open: widget.open,
+        meta: widget.meta,
+        malId: widget.malId,
+        episodeVideoId: widget.episodeVideoId,
+        pluginId: widget.pluginId,
+        engineCategory: widget.engineCategory,
+        preferredEnginePluginId: widget.preferredEnginePluginId,
+        animeAudioCategory: widget.animeAudioCategory,
+        detailsHost: detailsHost,
+        filesOnly: widget.filesOnly,
+        onTorrentSelected: widget.onTorrentSelected,
+        onStremioSelected: widget.onStremioSelected,
+        onClose: widget.onClose,
+      ),
+    );
+    // Phone details: draggable bottom sheet (handle + close) instead of the
+    // right side panel. TV / desktop / in-player keep the side panel.
+    if (detailsHost &&
+        ShellScope.maybeOf(context)?.profile == ShellProfile.mobile) {
+      return ForjaBottomSheetPanel(
+        title: 'Sources',
+        onClose: widget.onClose,
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: MobileChromeTokens.sourcesSheetContentPadH,
+        ),
+        child: body,
+      );
+    }
     return playerOverlayShell(
       context: context,
       isOpen: _open,
@@ -282,37 +328,7 @@ class _PlayerSourcesOverlayState extends State<_PlayerSourcesOverlay> {
       contentPadding: detailsHost
           ? null
           : TorrentSourcesPanel.contentPaddingOf(context, playerOverlay: true),
-      child: SourcesPanelTv.wrapBody(
-        context: context,
-        onClose: widget.onClose,
-        includeOverlayScope: detailsHost,
-        child: _PlayerSourcesBody(
-          movie: widget.movie,
-          season: widget.season,
-          episode: widget.episode,
-          seasonLabel: widget.seasonLabel,
-          currentMagnet: widget.currentMagnet,
-          currentStreamUrl: widget.currentStreamUrl,
-          currentPlayingCatalogUrl: widget.currentPlayingCatalogUrl,
-          currentPlayingRowKey: widget.currentPlayingRowKey,
-          playbackConfirmed: widget.playbackConfirmed,
-          preferredKind: widget.preferredKind,
-          currentAddonBaseUrl: widget.currentAddonBaseUrl,
-          open: widget.open,
-          meta: widget.meta,
-          malId: widget.malId,
-          episodeVideoId: widget.episodeVideoId,
-          pluginId: widget.pluginId,
-          engineCategory: widget.engineCategory,
-          preferredEnginePluginId: widget.preferredEnginePluginId,
-          animeAudioCategory: widget.animeAudioCategory,
-          detailsHost: detailsHost,
-          filesOnly: widget.filesOnly,
-          onTorrentSelected: widget.onTorrentSelected,
-          onStremioSelected: widget.onStremioSelected,
-          onClose: widget.onClose,
-        ),
-      ),
+      child: body,
     );
   }
 }
@@ -427,6 +443,10 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
 
   /// Official pack install still running — Forja tab only; other kinds stay live.
   bool _enginePacksLoading = false;
+
+  /// True only when the visible kind still has no chip inventory after sync
+  /// seed (cold pack/addon mem). Warm installs paint chips on frame 0.
+  bool _chromeHydrating = false;
   int _engineFetchGen = 0;
   final Set<String> _engineInFlightPluginIds = {};
   final Set<Future<void>> _enginePoolTasks = {};
@@ -627,6 +647,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
       _showStremio = false;
       _showNuvio = false;
       _showEngine = false;
+      _chromeHydrating = false;
       if (PlatformInfo.offlineDownloadsEnabled) {
         DownloadService.instance.tasksNotifier.addListener(_onDownloadsChanged);
         unawaited(DownloadService.instance.initialize());
@@ -773,7 +794,10 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
       _kindFilter = 'downloaded';
     }
 
-    // Paint cached rows immediately (chips still wait on pack/addon lists).
+    // Paint chip inventories from warm mem / catalog — no prefs awaits.
+    final chipsSeeded = _seedChipListsFromMemory();
+
+    // Paint cached rows immediately.
     switch (_kindFilter) {
       case 'engine':
         final cached = CatalogSourcesSessionCache.readEngine(_catalogCacheKey);
@@ -818,6 +842,41 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
           }
         }
     }
+
+    _armInitialFetchFlagsForVisibleKind();
+    // Spinner only when this kind’s inventory is still cold — not when installed
+    // packs are already in mem (user-visible chips must paint on frame 0).
+    _chromeHydrating = !chipsSeeded;
+  }
+
+  /// Sync: Forja / Torrents / Nuvio / Stremio chip lists from process mem.
+  /// Returns whether the **visible** kind’s inventory was warm.
+  bool _seedChipListsFromMemory() {
+    final packs = EngineService.instance.peekSourcesPanelPacks();
+    if (packs != null) {
+      _enginePacks = packs;
+    }
+    final torrentPeeked = syncTorrentSearchCatalogFromPeek();
+    final torrentIds = enabledTorrentSearchPluginIds();
+    if (torrentIds.isNotEmpty || torrentPeeked) {
+      _enabledTorrentProviders = torrentIds;
+    }
+    final nuvio = NuvioService.instance.peekSourcesPanelAddons();
+    if (nuvio != null) {
+      _nuvioAddons = nuvio;
+    }
+    final stremio = StremioService.peekStreamAddons();
+    if (stremio != null) {
+      _streamAddons = stremio;
+    }
+    return switch (_kindFilter) {
+      'downloaded' => true,
+      'engine' => packs != null,
+      'torrents' => torrentPeeked || torrentIds.isNotEmpty,
+      'nuvio' => nuvio != null,
+      'stremio' => stremio != null,
+      _ => true,
+    };
   }
 
   @override
@@ -1268,218 +1327,240 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
   }
 
   Future<void> _bootstrap() async {
-    // Prefetch packs while prefs/LAN resolve — chips land with the second paint.
-    final packsFut = EngineService.instance.listSourcesPanelPacks().then(
-      (p) => p,
-      onError: (_) => <EnginePack>[],
-    );
+    var stremioOn = false;
+    try {
+      // Prefetch packs while prefs/LAN resolve — chips land with the second paint.
+      final packsFut = EngineService.instance.listSourcesPanelPacks().then(
+        (p) => p,
+        onError: (_) => <EnginePack>[],
+      );
 
-    final sort = await _settings.getSortPreference();
-    final jackett = await _settings.isJackettConfigured();
-    final prowlarr = await _settings.isProwlarrConfigured();
-    await syncTorrentSearchCatalog();
-    final enabledProviders = enabledTorrentSearchPluginIds();
-    final lanReady = await PlaySourceEffective.lanDesktopReady();
-    final torrentOn = await PlaySourceEffective.torrent(_settings, lanReady);
-    final stremioOn = await PlaySourceEffective.stremio(_settings, lanReady);
-    final nuvioOn = await PlaySourceEffective.nuvio(_settings, lanReady);
-    final engineOn = await PlaySourceEffective.engine(_settings, lanReady);
-    final local = _profile.localTorrentEngine;
-    if (!mounted) return;
+      final sort = await _settings.getSortPreference();
+      final jackett = await _settings.isJackettConfigured();
+      final prowlarr = await _settings.isProwlarrConfigured();
+      await syncTorrentSearchCatalog();
+      final enabledProviders = enabledTorrentSearchPluginIds();
+      final lanReady = await PlaySourceEffective.lanDesktopReady();
+      final torrentOn = await PlaySourceEffective.torrent(_settings, lanReady);
+      stremioOn = await PlaySourceEffective.stremio(_settings, lanReady);
+      final nuvioOn = await PlaySourceEffective.nuvio(_settings, lanReady);
+      final engineOn = await PlaySourceEffective.engine(_settings, lanReady);
+      final local = _profile.localTorrentEngine;
+      if (!mounted) return;
 
-    // Paint kind tabs as soon as effective flags are known — before addon/pack
-    // lists. Caps already seeded first frame; this corrects prefs/LAN.
-    setState(() {
-      _sortPreference = sort;
-      _jackettConfigured = jackett;
-      _prowlarrConfigured = prowlarr;
-      _enabledTorrentProviders = enabledProviders;
-      _localTorrentEngine = local;
-      _showTorrents = torrentOn;
-      _showStremio = stremioOn;
-      _showNuvio = nuvioOn;
-      _showEngine = engineOn;
+      // Paint kind tabs as soon as effective flags are known — before addon/pack
+      // lists. Caps already seeded first frame; this corrects prefs/LAN.
+      setState(() {
+        _sortPreference = sort;
+        _jackettConfigured = jackett;
+        _prowlarrConfigured = prowlarr;
+        _enabledTorrentProviders = enabledProviders;
+        _localTorrentEngine = local;
+        _showTorrents = torrentOn;
+        _showStremio = stremioOn;
+        _showNuvio = nuvioOn;
+        _showEngine = engineOn;
+        bool kindAllowed(String k) => switch (k) {
+          'downloaded' => _titleHasCompletedDownloads,
+          'torrents' => torrentOn,
+          'stremio' => stremioOn,
+          'nuvio' => nuvioOn,
+          'engine' => engineOn,
+          _ => false,
+        };
+        if (!kindAllowed(_kindFilter)) {
+          _kindFilter = _resolveInitialKind(
+            hasTorrent: torrentOn,
+            hasStremio: stremioOn,
+            hasNuvio: nuvioOn,
+            hasEngine: engineOn,
+          );
+        }
+      });
+
+      List<NuvioAddon> nuvioAddons = const [];
+      if (nuvioOn) {
+        try {
+          nuvioAddons = await NuvioService.instance.listSourcesPanelAddons();
+        } catch (_) {}
+      }
+      if (!mounted) return;
+
+      // Kind tabs follow play-source toggles (same as Forja), not whether
+      // addons/scrapers are installed yet — empty kinds show an install hint.
+      final hasNuvio = nuvioOn;
+      final hasStremio = stremioOn;
+      final hasEngine = engineOn;
+
+      List<EnginePack> enginePacks = const [];
+      if (engineOn) {
+        enginePacks = await packsFut;
+      }
+      if (!mounted) return;
+
+      final cachedUi = CatalogSourcesSessionCache.readUi(_catalogCacheKey);
       bool kindAllowed(String k) => switch (k) {
         'downloaded' => _titleHasCompletedDownloads,
         'torrents' => torrentOn,
-        'stremio' => stremioOn,
-        'nuvio' => nuvioOn,
-        'engine' => engineOn,
+        'stremio' => hasStremio,
+        'nuvio' => hasNuvio,
+        'engine' => hasEngine,
         _ => false,
       };
-      if (!kindAllowed(_kindFilter)) {
-        _kindFilter = _resolveInitialKind(
-          hasTorrent: torrentOn,
-          hasStremio: stremioOn,
-          hasNuvio: nuvioOn,
-          hasEngine: engineOn,
-        );
+      // Prefer already-seeded kind when still allowed; else cache / default.
+      final kind = kindAllowed(_kindFilter)
+          ? _kindFilter
+          : (cachedUi != null && kindAllowed(cachedUi.kindFilter)
+                ? cachedUi.kindFilter
+                : _resolveInitialKind(
+                    hasTorrent: torrentOn,
+                    hasStremio: hasStremio,
+                    hasNuvio: hasNuvio,
+                    hasEngine: hasEngine,
+                  ));
+
+      List<Map<String, dynamic>> addons = const [];
+      if (stremioOn && kind == 'stremio') {
+        try {
+          addons = await _stremio.getAddonsForResource('stream');
+        } catch (_) {}
       }
-    });
+      if (!mounted) return;
 
-    List<NuvioAddon> nuvioAddons = const [];
-    if (nuvioOn) {
-      try {
-        nuvioAddons = await NuvioService.instance.listSourcesPanelAddons();
-      } catch (_) {}
-    }
-    if (!mounted) return;
-
-    // Kind tabs follow play-source toggles (same as Forja), not whether
-    // addons/scrapers are installed yet — empty kinds show an install hint.
-    final hasNuvio = nuvioOn;
-    final hasStremio = stremioOn;
-    final hasEngine = engineOn;
-
-    List<EnginePack> enginePacks = const [];
-    if (engineOn) {
-      enginePacks = await packsFut;
-    }
-    if (!mounted) return;
-
-    final cachedUi = CatalogSourcesSessionCache.readUi(_catalogCacheKey);
-    bool kindAllowed(String k) => switch (k) {
-      'downloaded' => _titleHasCompletedDownloads,
-      'torrents' => torrentOn,
-      'stremio' => hasStremio,
-      'nuvio' => hasNuvio,
-      'engine' => hasEngine,
-      _ => false,
-    };
-    // Prefer already-seeded kind when still allowed; else cache / default.
-    final kind = kindAllowed(_kindFilter)
-        ? _kindFilter
-        : (cachedUi != null && kindAllowed(cachedUi.kindFilter)
-              ? cachedUi.kindFilter
-              : _resolveInitialKind(
-                  hasTorrent: torrentOn,
-                  hasStremio: hasStremio,
-                  hasNuvio: hasNuvio,
-                  hasEngine: hasEngine,
-                ));
-
-    List<Map<String, dynamic>> addons = const [];
-    if (stremioOn && kind == 'stremio') {
-      try {
-        addons = await _stremio.getAddonsForResource('stream');
-      } catch (_) {}
-    }
-    if (!mounted) return;
-
-    Set<String> nuvioSelected;
-    Set<String> engineSelected;
-    Map<String, String> sourceIdByKind;
-    if (cachedUi != null) {
-      nuvioSelected = filterNuvioSelectedScraperIds(
-        savedIds: cachedUi.nuvioSelectedScraperIds,
-        enabledIds: enabledNuvioScraperIds(nuvioAddons),
-      );
-      engineSelected = filterEngineSelectedPluginIds(
-        savedIds: cachedUi.engineSelectedPluginIds,
-        enabledIds: enabledEnginePluginIds(enginePacks),
-      );
-      final cacheScope = EngineCategories.matchingPluginIds(
-        packs: enginePacks,
-        categories: EngineCategories.defaultsForPanelCategory(
-          _enginePanelCategory,
-        ),
-      );
-      engineSelected = EngineCategories.scopeSelectionIfFullAll(
-        selected: engineSelected,
-        enabledIds: enabledEnginePluginIds(enginePacks),
-        scope: cacheScope,
-      );
-      sourceIdByKind = Map<String, String>.from(cachedUi.panelSourceIdByKind);
-    } else {
-      nuvioSelected = hasNuvio
-          ? await _loadDefaultNuvioChipSelection(nuvioAddons)
-          : {};
-      engineSelected = hasEngine
-          ? await _loadDefaultEngineChipSelection(enginePacks)
-          : {};
-      sourceIdByKind = {};
-    }
-    // Seeded selection can be empty while packs were still loading — fall back
-    // only when there is no session snapshot (prefs default) or All mode.
-    if (hasEngine &&
-        engineSelected.isEmpty &&
-        enabledEnginePluginIds(enginePacks).isNotEmpty &&
-        cachedUi?.engineAllMode == true) {
-      engineSelected = await _loadDefaultEngineChipSelection(enginePacks);
-    }
-    // Hub episode ids are provider-scoped (larozaa:/brstej:/…) — don't race
-    // every arabic chip with a foreign videoId.
-    if (hasEngine) {
-      final preferred = widget.preferredEnginePluginId?.trim() ?? '';
-      final enabled = enabledEnginePluginIds(enginePacks);
-      if (preferred.isNotEmpty && enabled.contains(preferred)) {
-        engineSelected = {preferred};
-      }
-    }
-    if (!mounted) return;
-    final langKeys = await PluginStreamLanguages.selectedKeys(widget.pluginId);
-    if (!mounted) return;
-
-    setState(() {
-      _showTorrents = torrentOn;
-      _showStremio = hasStremio;
-      _showNuvio = hasNuvio;
-      _showEngine = hasEngine;
-      _streamLanguageKeys = langKeys;
-      _nuvioAddons = nuvioAddons;
-      final nuvioEnabled = enabledNuvioScraperIds(nuvioAddons);
-      if (!_nuvioSelectionHydrated) {
-        _nuvioSelectedScraperIds = nuvioSelected;
-        _nuvioAllMode =
-            cachedUi?.nuvioAllMode ??
-            nuvioFullAllSelected(
-              enabledIds: nuvioEnabled,
-              selectedIds: nuvioSelected,
-            );
-        _nuvioViewFilterScraperIds = cachedUi != null
-            ? Set<String>.from(cachedUi.nuvioViewFilterScraperIds)
-            : _nuvioViewFilterScraperIds;
-      } else {
-        _nuvioSelectedScraperIds = filterNuvioSelectedScraperIds(
-          savedIds: _nuvioSelectedScraperIds,
-          enabledIds: nuvioEnabled,
+      Set<String> nuvioSelected;
+      Set<String> engineSelected;
+      Map<String, String> sourceIdByKind;
+      if (cachedUi != null) {
+        nuvioSelected = filterNuvioSelectedScraperIds(
+          savedIds: cachedUi.nuvioSelectedScraperIds,
+          enabledIds: enabledNuvioScraperIds(nuvioAddons),
         );
-        _nuvioViewFilterScraperIds = filterNuvioSelectedScraperIds(
-          savedIds: _nuvioViewFilterScraperIds,
-          enabledIds: nuvioEnabled,
+        engineSelected = filterEngineSelectedPluginIds(
+          savedIds: cachedUi.engineSelectedPluginIds,
+          enabledIds: enabledEnginePluginIds(enginePacks),
         );
-      }
-      _enginePacks = enginePacks;
-      final engineEnabled = enabledEnginePluginIds(enginePacks);
-      if (!_engineSelectionHydrated) {
-        _engineSelectedPluginIds = engineSelected;
-        final engineScope = EngineCategories.matchingPluginIds(
+        final cacheScope = EngineCategories.matchingPluginIds(
           packs: enginePacks,
           categories: EngineCategories.defaultsForPanelCategory(
             _enginePanelCategory,
           ),
         );
-        _engineAllMode =
-            cachedUi?.engineAllMode ??
-            engineFullAllSelected(
-              enabledIds: engineScope.isNotEmpty ? engineScope : engineEnabled,
-              selectedIds: engineSelected,
-            );
-        _engineViewFilterPluginIds = cachedUi != null
-            ? Set<String>.from(cachedUi.engineViewFilterPluginIds)
-            : _engineViewFilterPluginIds;
+        engineSelected = EngineCategories.scopeSelectionIfFullAll(
+          selected: engineSelected,
+          enabledIds: enabledEnginePluginIds(enginePacks),
+          scope: cacheScope,
+        );
+        sourceIdByKind = Map<String, String>.from(cachedUi.panelSourceIdByKind);
       } else {
-        _engineSelectedPluginIds = filterEngineSelectedPluginIds(
-          savedIds: _engineSelectedPluginIds,
-          enabledIds: engineEnabled,
-        );
-        _engineViewFilterPluginIds = filterEngineSelectedPluginIds(
-          savedIds: _engineViewFilterPluginIds,
-          enabledIds: engineEnabled,
-        );
+        nuvioSelected = hasNuvio
+            ? await _loadDefaultNuvioChipSelection(nuvioAddons)
+            : {};
+        engineSelected = hasEngine
+            ? await _loadDefaultEngineChipSelection(enginePacks)
+            : {};
+        sourceIdByKind = {};
       }
-      if (!_engineSelectionHydrated) {
-        if (_engineAllMode &&
+      // Seeded selection can be empty while packs were still loading — fall back
+      // only when there is no session snapshot (prefs default) or All mode.
+      if (hasEngine &&
+          engineSelected.isEmpty &&
+          enabledEnginePluginIds(enginePacks).isNotEmpty &&
+          cachedUi?.engineAllMode == true) {
+        engineSelected = await _loadDefaultEngineChipSelection(enginePacks);
+      }
+      // Hub episode ids are provider-scoped (larozaa:/brstej:/…) — don't race
+      // every arabic chip with a foreign videoId.
+      if (hasEngine) {
+        final preferred = widget.preferredEnginePluginId?.trim() ?? '';
+        final enabled = enabledEnginePluginIds(enginePacks);
+        if (preferred.isNotEmpty && enabled.contains(preferred)) {
+          engineSelected = {preferred};
+        }
+      }
+      if (!mounted) return;
+      final langKeys = await PluginStreamLanguages.selectedKeys(
+        widget.pluginId,
+      );
+      if (!mounted) return;
+
+      setState(() {
+        _showTorrents = torrentOn;
+        _showStremio = hasStremio;
+        _showNuvio = hasNuvio;
+        _showEngine = hasEngine;
+        _streamLanguageKeys = langKeys;
+        _nuvioAddons = nuvioAddons;
+        final nuvioEnabled = enabledNuvioScraperIds(nuvioAddons);
+        if (!_nuvioSelectionHydrated) {
+          _nuvioSelectedScraperIds = nuvioSelected;
+          _nuvioAllMode =
+              cachedUi?.nuvioAllMode ??
+              nuvioFullAllSelected(
+                enabledIds: nuvioEnabled,
+                selectedIds: nuvioSelected,
+              );
+          _nuvioViewFilterScraperIds = cachedUi != null
+              ? Set<String>.from(cachedUi.nuvioViewFilterScraperIds)
+              : _nuvioViewFilterScraperIds;
+        } else {
+          _nuvioSelectedScraperIds = filterNuvioSelectedScraperIds(
+            savedIds: _nuvioSelectedScraperIds,
+            enabledIds: nuvioEnabled,
+          );
+          _nuvioViewFilterScraperIds = filterNuvioSelectedScraperIds(
+            savedIds: _nuvioViewFilterScraperIds,
+            enabledIds: nuvioEnabled,
+          );
+        }
+        _enginePacks = enginePacks;
+        final engineEnabled = enabledEnginePluginIds(enginePacks);
+        if (!_engineSelectionHydrated) {
+          _engineSelectedPluginIds = engineSelected;
+          final engineScope = EngineCategories.matchingPluginIds(
+            packs: enginePacks,
+            categories: EngineCategories.defaultsForPanelCategory(
+              _enginePanelCategory,
+            ),
+          );
+          _engineAllMode =
+              cachedUi?.engineAllMode ??
+              engineFullAllSelected(
+                enabledIds: engineScope.isNotEmpty
+                    ? engineScope
+                    : engineEnabled,
+                selectedIds: engineSelected,
+              );
+          _engineViewFilterPluginIds = cachedUi != null
+              ? Set<String>.from(cachedUi.engineViewFilterPluginIds)
+              : _engineViewFilterPluginIds;
+        } else {
+          _engineSelectedPluginIds = filterEngineSelectedPluginIds(
+            savedIds: _engineSelectedPluginIds,
+            enabledIds: engineEnabled,
+          );
+          _engineViewFilterPluginIds = filterEngineSelectedPluginIds(
+            savedIds: _engineViewFilterPluginIds,
+            enabledIds: engineEnabled,
+          );
+        }
+        if (!_engineSelectionHydrated) {
+          if (_engineAllMode &&
+              _engineViewFilterPluginIds.isEmpty &&
+              engineEnabled.isNotEmpty) {
+            unawaited(
+              EngineService.instance
+                  .loadSourcesViewFilterPluginIds(
+                    enabledIds: engineEnabled,
+                    panelCategory: _enginePanelCategory,
+                  )
+                  .then((ids) {
+                    if (!mounted) return;
+                    if (ids.isEmpty) return;
+                    setState(() => _engineViewFilterPluginIds = ids);
+                  }),
+            );
+          }
+        } else if (_engineAllMode &&
             _engineViewFilterPluginIds.isEmpty &&
             engineEnabled.isNotEmpty) {
           unawaited(
@@ -1495,24 +1576,21 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
                 }),
           );
         }
-      } else if (_engineAllMode &&
-          _engineViewFilterPluginIds.isEmpty &&
-          engineEnabled.isNotEmpty) {
-        unawaited(
-          EngineService.instance
-              .loadSourcesViewFilterPluginIds(
-                enabledIds: engineEnabled,
-                panelCategory: _enginePanelCategory,
-              )
-              .then((ids) {
-                if (!mounted) return;
-                if (ids.isEmpty) return;
-                setState(() => _engineViewFilterPluginIds = ids);
-              }),
-        );
-      }
-      if (!_nuvioSelectionHydrated) {
-        if (_nuvioAllMode &&
+        if (!_nuvioSelectionHydrated) {
+          if (_nuvioAllMode &&
+              _nuvioViewFilterScraperIds.isEmpty &&
+              nuvioEnabled.isNotEmpty) {
+            unawaited(
+              NuvioService.instance
+                  .loadSourcesViewFilterScraperIds(enabledIds: nuvioEnabled)
+                  .then((ids) {
+                    if (!mounted) return;
+                    if (ids.isEmpty) return;
+                    setState(() => _nuvioViewFilterScraperIds = ids);
+                  }),
+            );
+          }
+        } else if (_nuvioAllMode &&
             _nuvioViewFilterScraperIds.isEmpty &&
             nuvioEnabled.isNotEmpty) {
           unawaited(
@@ -1525,56 +1603,78 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
                 }),
           );
         }
-      } else if (_nuvioAllMode &&
-          _nuvioViewFilterScraperIds.isEmpty &&
-          nuvioEnabled.isNotEmpty) {
-        unawaited(
-          NuvioService.instance
-              .loadSourcesViewFilterScraperIds(enabledIds: nuvioEnabled)
-              .then((ids) {
-                if (!mounted) return;
-                if (ids.isEmpty) return;
-                setState(() => _nuvioViewFilterScraperIds = ids);
-              }),
-        );
+        if (_engineSelectionHydrated) {
+          _torrentViewFilterProviderIds = {
+            for (final id in _torrentViewFilterProviderIds)
+              if (TorrentSearchProviders.isBuiltinSearchChip(id) &&
+                  _enabledTorrentProviders.contains(id))
+                id,
+          };
+        } else {
+          _torrentViewFilterProviderIds = cachedUi != null
+              ? Set<String>.from(cachedUi.torrentViewFilterProviderIds)
+              : _torrentViewFilterProviderIds;
+        }
+        _streamAddons = addons;
+        _panelSourceIdByKind
+          ..clear()
+          ..addAll(sourceIdByKind);
+        _kindFilter = kind;
+        if (cachedUi != null) {
+          _userPickedKind = cachedUi.userPickedKind;
+          _userPickedStremioProvider = cachedUi.userPickedStremioProvider;
+          _searchQuery = cachedUi.searchQuery;
+          _qualityFilters = Set<String>.from(cachedUi.qualityFilters);
+          _languageFilters = Set<String>.from(cachedUi.languageFilters);
+          _techFilters = Set<String>.from(cachedUi.techFilters);
+          _audioFilters = Set<String>.from(cachedUi.audioFilters);
+          _sizeFilters = Set<String>.from(cachedUi.sizeFilters);
+        }
+        _restorePanelSourceIdForKind(kind);
+        _engineSelectionHydrated = true;
+        _nuvioSelectionHydrated = true;
+      });
+    } finally {
+      if (mounted) {
+        // Arm kind fetch flags in the same frame we drop hydrate so empty copy
+        // cannot paint between chrome-ready and the first await of ensure*.
+        setState(() {
+          _armInitialFetchFlagsForVisibleKind();
+          _chromeHydrating = false;
+        });
+        _ensureVisibleKindsLoaded();
+        // Hydrate addons in the background when Torrents opened first so search
+        // is not blocked on sequential manifest fetches.
+        if (stremioOn) unawaited(_refreshStreamAddons());
       }
-      if (_engineSelectionHydrated) {
-        _torrentViewFilterProviderIds = {
-          for (final id in _torrentViewFilterProviderIds)
-            if (TorrentSearchProviders.isBuiltinSearchChip(id) &&
-                _enabledTorrentProviders.contains(id))
-              id,
-        };
-      } else {
-        _torrentViewFilterProviderIds = cachedUi != null
-            ? Set<String>.from(cachedUi.torrentViewFilterProviderIds)
-            : _torrentViewFilterProviderIds;
-      }
-      _streamAddons = addons;
-      _panelSourceIdByKind
-        ..clear()
-        ..addAll(sourceIdByKind);
-      _kindFilter = kind;
-      if (cachedUi != null) {
-        _userPickedKind = cachedUi.userPickedKind;
-        _userPickedStremioProvider = cachedUi.userPickedStremioProvider;
-        _searchQuery = cachedUi.searchQuery;
-        _qualityFilters = Set<String>.from(cachedUi.qualityFilters);
-        _languageFilters = Set<String>.from(cachedUi.languageFilters);
-        _techFilters = Set<String>.from(cachedUi.techFilters);
-        _audioFilters = Set<String>.from(cachedUi.audioFilters);
-        _sizeFilters = Set<String>.from(cachedUi.sizeFilters);
-      }
-      _restorePanelSourceIdForKind(kind);
-      _engineSelectionHydrated = true;
-      _nuvioSelectionHydrated = true;
-    });
+    }
+  }
 
-    // Load only the selected kind(s) - no prefetch of other categories.
-    _ensureVisibleKindsLoaded();
-    // Hydrate addons in the background when Torrents opened first so search
-    // is not blocked on sequential manifest fetches.
-    if (stremioOn) unawaited(_refreshStreamAddons());
+  /// Sync: mark the visible kind as fetching when a first load is about to run.
+  /// Call inside setState with [_chromeHydrating] clear / kind switch.
+  void _armInitialFetchFlagsForVisibleKind() {
+    if (_showsTorrents &&
+        !TorrentSearchProviders.isNoneChip(_selectedSourceId) &&
+        _results.isEmpty) {
+      _searching = true;
+    }
+    if (_showsStremio &&
+        _selectedSourceId.isNotEmpty &&
+        _stremioStreams.isEmpty) {
+      _stremioFetching = true;
+    }
+    if (_showsNuvio &&
+        _nuvioSelectedScraperIds.isNotEmpty &&
+        _nuvioStreams.isEmpty) {
+      _nuvioFetching = true;
+    }
+    if (_showsEngine && _engineStreams.isEmpty) {
+      if (enabledEnginePluginIds(_enginePacks).isEmpty) {
+        _enginePacksLoading = true;
+      } else if (_engineSelectedPluginIds.isNotEmpty) {
+        _engineFetching = true;
+      }
+    }
   }
 
   String get _catalogCacheKey => CatalogSourcesSessionCache.cacheKey(
@@ -1665,7 +1765,8 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
       unawaited(_runTorrentSearch(force: true));
       return;
     }
-    if (_searching) return;
+    // Armed-only (_searching, empty inFlight) must still start the search.
+    if (_searching && _torrentInFlightProviderIds.isNotEmpty) return;
     final cached = CatalogSourcesSessionCache.readTorrents(_catalogCacheKey);
     if (cached != null) {
       final needPaint = _results.isEmpty;
@@ -1736,7 +1837,8 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
           unawaited(_fetchStremioStreams(refresh: true));
           return;
         }
-        if (_stremioFetching) return;
+        // Armed-only flag must not skip the first stream fetch.
+        if (_stremioFetching && _loadedAddonBaseUrls.isNotEmpty) return;
         final cached = CatalogSourcesSessionCache.readStremio(_catalogCacheKey);
         if (cached != null && cached.isNotEmpty) {
           setState(() {
@@ -1765,6 +1867,9 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
         }
         if (_selectedSourceId.isNotEmpty) {
           unawaited(_fetchStremioStreams());
+        } else if (_stremioFetching && mounted) {
+          // Armed for a chip that cleared after addon hydrate — drop spinner.
+          setState(() => _stremioFetching = false);
         }
       }),
     );
@@ -1772,12 +1877,21 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
 
   Future<void> _ensureNuvioLoaded({bool force = false}) async {
     if (!_showsNuvio) return;
-    if (_nuvioSelectedScraperIds.isEmpty) return;
+    if (_nuvioSelectedScraperIds.isEmpty) {
+      if (_nuvioFetching && mounted) {
+        setState(() => _nuvioFetching = false);
+      }
+      return;
+    }
     if (force) {
       await _fetchNextNuvioScraper(refresh: true);
       return;
     }
-    if (_nuvioFetching) return;
+    // Armed-only fetching must still start the scraper walk.
+    if (_nuvioFetching &&
+        (_nuvioInFlightScraperIds.isNotEmpty || _nuvioPoolTasks.isNotEmpty)) {
+      return;
+    }
     if (_nuvioStreams.isEmpty) {
       final cached = CatalogSourcesSessionCache.readNuvio(_catalogCacheKey);
       if (cached != null) {
@@ -1800,12 +1914,21 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
     if (!_showsEngine) return;
     await _ensureEngineMetadata();
     if (!mounted || !_showsEngine) return;
-    if (_engineSelectedPluginIds.isEmpty) return;
+    if (_engineSelectedPluginIds.isEmpty) {
+      if (_engineFetching && mounted) {
+        setState(() => _engineFetching = false);
+      }
+      return;
+    }
     if (force) {
       await _fetchNextEnginePlugin(refresh: true);
       return;
     }
-    if (_engineFetching) return;
+    // Armed-only fetching must still start the plugin walk.
+    if (_engineFetching &&
+        (_engineInFlightPluginIds.isNotEmpty || _enginePoolTasks.isNotEmpty)) {
+      return;
+    }
     if (_engineStreams.isEmpty) {
       final cached = CatalogSourcesSessionCache.readEngine(_catalogCacheKey);
       if (cached != null) {
@@ -2465,11 +2588,10 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
     }
   }
 
-  bool get _isEngineListFetching =>
-      _engineFetching ||
-      (_enginePacksLoading && _engineSelectedPluginIds.isNotEmpty);
+  bool get _isEngineListFetching => _engineFetching || _enginePacksLoading;
 
   bool get _isFetching =>
+      _chromeHydrating ||
       (_showsTorrents && _searching) ||
       (_showsStremio && _stremioFetching) ||
       (_showsNuvio && _nuvioFetching) ||
@@ -3520,11 +3642,13 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
     _userPickedKind = true;
     final prev = _kindFilter;
     // Paint the new kind tab this frame — abort/fetch after so the chip feels
-    // instant (issue 352).
+    // instant (issue 352). Arm fetch flags so empty copy cannot flash for a
+    // frame before the post-frame ensure runs.
     setState(() {
       _stashPanelSourceIdForKind(prev);
       _kindFilter = kind;
       _restorePanelSourceIdForKind(kind);
+      _armInitialFetchFlagsForVisibleKind();
     });
     _resetListScroll(allowScrollToCurrent: true);
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -4267,6 +4391,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
             _engineFetchGen++;
             EngineService.instance.cancelPending();
             setState(() {
+              _chromeHydrating = false;
               _searching = false;
               _torrentInFlightProviderIds.clear();
               _stremioFetching = false;

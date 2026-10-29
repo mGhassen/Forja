@@ -26,6 +26,14 @@ class MainActivity : AudioServiceActivity() {
             window.statusBarColor = APP_BACKGROUND
             window.navigationBarColor = APP_BACKGROUND
             registerTvStandbyExit()
+        } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            // Touch devices: after hardware-keyboard input Android draws its
+            // default focus highlight around the whole FlutterView. Flutter
+            // paints its own focus; TV keeps the platform default.
+            findViewById<android.view.View>(
+                io.flutter.embedding.android.FlutterActivity.FLUTTER_VIEW_ID,
+            )
+                ?.defaultFocusHighlightEnabled = false
         }
     }
 
@@ -60,6 +68,9 @@ class MainActivity : AudioServiceActivity() {
         ).setMethodCallHandler { call, result ->
             when (call.method) {
                 "isAndroidTv" -> result.success(isAndroidTv())
+                // Build flavor (`tv` / `mobile`); Dart gates the TV profile on it.
+                "formFactor" -> result.success(BuildConfig.FORM_FACTOR)
+                "hasTouchscreen" -> result.success(PlatformUtils.hasTouchscreen(this))
                 "isAndroidEmulator" -> result.success(PlatformUtils.isLikelyEmulator())
                 "getPlaybackCapabilities" -> result.success(PlaybackCapabilities.probe())
                 "prepareWebViewForTv" -> {

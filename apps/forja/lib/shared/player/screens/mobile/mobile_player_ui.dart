@@ -157,32 +157,52 @@ mixin _MobilePlayerUi on ConsumerState<MobilePlayerScreen> {
   //  GESTURE HANDLERS
   // ─────────────────────────────────────────────────────────────────────────
 
+  /// Double tap left / right: seek ∓10 s. Repeated taps on the same side
+  /// extend the burst (see [PlayerTapSeekBurst]); feedback shows the total.
   void _handleDoubleTap(TapDownDetails details, bool isRight) {
     if (_s._isLocked) return;
-    setState(() {
-      _s._showRipple = true;
-      _s._isForward = isRight;
-      _s._ripplePosition = details.localPosition;
-    });
-    _s._rippleController.forward(from: 0.0);
+    final target = _s._tapSeek.doubleTap(
+      forward: isRight,
+      now: DateTime.now(),
+      position: _s._positionNotifier.value,
+      duration: _s._durationNotifier.value,
+    );
+    _applyTapSeek(target, details.localPosition);
+  }
 
-    // Calculate new position and clamp to valid range
-    final currentPos = _s._positionNotifier.value;
-    final duration = _s._durationNotifier.value;
-    final delta = isRight
-        ? const Duration(seconds: 10)
-        : const Duration(seconds: -10);
-    var newPos = currentPos + delta;
-
-    // Clamp to valid range [0, duration]
-    if (newPos < Duration.zero) {
-      newPos = Duration.zero;
-    } else if (newPos > duration) {
-      newPos = duration;
+  /// Single tap: extends a live seek burst on the same side, else toggles
+  /// the chrome.
+  void _handleTap(TapUpDetails details, bool isRight) {
+    if (!_s._isLocked) {
+      final target = _s._tapSeek.singleTap(
+        forward: isRight,
+        now: DateTime.now(),
+        duration: _s._durationNotifier.value,
+      );
+      if (target != null) {
+        _applyTapSeek(target, details.localPosition);
+        return;
+      }
     }
+    _toggleControls();
+  }
 
-    _s._seekTo(newPos);
-    _startHideTimer();
+  void _applyTapSeek(Duration target, Offset at) {
+    setState(() {
+      _s._showTapSeek = true;
+      _s._tapSeekPulse++;
+      _s._tapSeekPosition = at;
+    });
+    unawaited(_s._seekTo(target));
+    _s._tapSeekHideTimer?.cancel();
+    // Feedback stays while the burst can still be extended.
+    _s._tapSeekHideTimer = Timer(_s._tapSeek.window, () {
+      _s._tapSeek.reset();
+      if (mounted && !_s._disposed) {
+        setState(() => _s._showTapSeek = false);
+      }
+    });
+    if (_s._showControls) _startHideTimer();
   }
 
   void _onVerticalDragUpdate(DragUpdateDetails details, double width) {

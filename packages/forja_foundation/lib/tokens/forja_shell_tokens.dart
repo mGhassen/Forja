@@ -20,6 +20,14 @@ abstract final class ShellTokens {
   static const double bottomNavIconLabelGap = 4;
   static const double bottomNavFadeIconSize = 12;
 
+  /// Landscape phone bottom bar: icon and label side by side.
+  static const double bottomNavHeightCompact = 56;
+  static const double bottomNavItemWidthCompact = 128;
+  static const double bottomNavIconSizeCompact = 26;
+  static const double bottomNavIconPaddingHCompact = 10;
+  static const double bottomNavIconLabelGapCompact = 8;
+  static const double bottomNavLabelSizeCompact = 12;
+
   /// Fixed desktop nav rail width (no hover expand).
   static const double navRailWidth = 120;
 
@@ -56,6 +64,11 @@ abstract final class ShellTokens {
 
   /// Below this window width the nav rail collapses to a menu button + drawer.
   static const double shellNavCompactMaxWidth = 1000;
+
+  /// Touch shell: landscape uses the side rail only from this shortest side
+  /// (tablets). Shorter landscape screens (phones) keep the bottom bar, where
+  /// every tab fits with its label.
+  static const double mobileNavRailMinShortestSide = 600;
 
   /// Width reserved for the shell menu button when the rail is collapsed.
   static const double shellNavMenuButtonWidth = 56;
@@ -304,6 +317,11 @@ abstract final class ShellTokens {
   static const double kitTopBarStatusRowHeightTv =
       kitTopBarStatusRowHeight * tvChromeScale;
   static const double kitTopBarHideSlideDistance = 56;
+
+  /// Touch hub top bar: scroll distance over which the bar background turns
+  /// solid. About one phone hero text column (title → CTA row), so the column
+  /// passes under a solid bar.
+  static const double kitTopBarSolidFadeDistanceMobile = 240;
   static const double kitTopBarTabGapCompact = 20;
   static const double kitTopBarTabGapWide = 36;
   static const double kitTopBarTabGapTv = kitTopBarTabGapWide * tvChromeScale;
@@ -391,6 +409,9 @@ abstract final class ShellTokens {
   /// Home desktop/TV - page backdrop height (hero chrome + first row on image).
   static const double homeBackdropViewportFraction = 0.90;
 
+  /// Portrait screens: the hero leaves room for the first catalog row to peek.
+  static const double homeBackdropViewportFractionPortrait = 0.68;
+
   /// Extra inset reserved above the bleed rail for hero text.
   static const double homePageBottomSectionTopPadding = 8;
 
@@ -447,6 +468,14 @@ abstract final class ShellTokens {
 
   /// Pause glyph when View details / pin holds auto-advance.
   static const double heroStepIndicatorPauseSize = 14;
+
+  /// Touch: gap between the hero action row and the horizontal step dots.
+  static const double heroStepIndicatorRowGapMobile = 12;
+
+  /// Touch portrait: backdrop crop focus when the slide has no focal hint.
+  /// Landscape stills put the subject near the middle more often than at
+  /// the right edge (the wide-layout default leaves room for side text).
+  static const Alignment heroBackdropAlignmentPortrait = Alignment.center;
 
   /// ←/→ chevrons when the hero gallery (backdrop strip) holds focus.
   /// Inset from the hero's physical left/right edges.
@@ -555,6 +584,15 @@ abstract final class ShellTokens {
   static const double playerChromeTopBtnSize = 44;
   static const double playerChromeTopBtnSizeTv =
       playerChromeTopBtnSize * tvChromeScale;
+
+  /// Source / stream-picker chip (desktop; phone uses [PlayerPhoneTokens]).
+  static const double playerChromeSourceMaxWidth = 148;
+  static const double playerChromeSourceLabelMaxWidth = 100;
+  static const double playerChromeSourcePickerLabelMaxWidth = 88;
+  static const double playerChromeSourcePadH = 8;
+  static const double playerChromeSourcePickerPadH = 6;
+  static const double playerChromeSourceIconGap = 5;
+  static const double playerChromeSourceRadius = 8;
 
   /// IPTV / live transport round icons (non-play).
   static const double playerChromeRoundBtnSize = playerChromeTopBtnSize;
@@ -736,6 +774,41 @@ abstract final class ShellTokens {
   /// Catalog poster card widths by shell profile.
   static const double posterCardWidthMobile = 165;
   static const double posterCardWidthDesktop = 190;
+
+  /// Touch phone: poster cards visible across a rail in portrait (3 + peek).
+  static const double posterCardsAcrossMobilePortrait = 3.3;
+
+  /// Touch phone: poster cards visible across a rail in landscape.
+  static const double posterCardsAcrossMobileLandscape = 5.5;
+
+  /// Touch phone: smallest poster card width the across-count may produce.
+  static const double posterCardWidthMobileMin = 96;
+
+  /// Touch phone: gap between poster cards in hub rails.
+  static const double posterCardRowGapMobile = 14;
+
+  /// Touch (mobile profile) poster width for [viewport].
+  ///
+  /// Sized so [posterCardsAcrossMobilePortrait] / [posterCardsAcrossMobileLandscape]
+  /// cards fit after the rail leading pad, clamped to
+  /// [posterCardWidthMobileMin] and the pre-existing touch ceiling
+  /// ([posterCardWidthMobile] on phones, [posterCardWidthDesktop] past
+  /// [shellGridTabletMinWidth]) so tablets keep today's size.
+  static double posterCardWidthMobileFor(Size viewport) {
+    final landscape = viewport.width > viewport.height;
+    final across = landscape
+        ? posterCardsAcrossMobileLandscape
+        : posterCardsAcrossMobilePortrait;
+    final ceil = viewport.width <= shellGridTabletMinWidth
+        ? posterCardWidthMobile
+        : posterCardWidthDesktop;
+    final inner = viewport.width - homeSectionHorizontalPadding;
+    final w = (inner / across - posterCardRowGapMobile).floorToDouble();
+    return w.clamp(posterCardWidthMobileMin, ceil);
+  }
+
+  /// Touch: minimum hit target for small overlay controls (Material 48 dp).
+  static const double touchMinHitSize = 48;
 
   /// TV film posters — **film family** hand-tuned (denser than × [tvChromeScale]).
   static const double posterCardWidthTv = 100;
@@ -1206,6 +1279,25 @@ abstract final class ShellTokens {
   static const double moodCircleBottomPadTv = moodCircleLabelGapTv;
   static const double moodCircleIconSizeTv = 13;
   static const double moodCircleIconSizeActiveTv = 17;
+
+  /// Accent mood circles on touch phones: single-line labels, wider slot.
+  static const double moodCircleItemWidthMobile = 84;
+  static const double moodCircleGapMobile = 10;
+  static const double moodCircleLabelFontSizeMobile = 12;
+  static const int moodCircleLabelMaxLinesMobile = 1;
+
+  /// Selected mood circle outer ring (touch): gap + stroke outside the circle.
+  static const double moodCircleSelectedRingGap = 3;
+  static const double moodCircleSelectedRingWidth = 2;
+
+  /// circle + selected ring + gap + one label line + bottom pad.
+  static const double moodCircleRowHeightMobile =
+      moodCircleSize +
+      2 * (moodCircleSelectedRingGap + moodCircleSelectedRingWidth) +
+      moodCircleLabelGap +
+      moodCircleLabelFontSizeMobile * moodCircleLabelLineHeight +
+      moodCircleBottomPad;
+
   static const double moodCircleBorderWidth = 1.5;
   static const double moodCircleBorderWidthSelected = 2.5;
   static const double moodCircleBorderWidthTv = 1;
@@ -1902,28 +1994,67 @@ abstract final class ShellTokens {
   /// Set at boot by [PlatformChannel.initialize] when native leanback reports TV.
   static bool nativeAndroidTvDetected = false;
 
+  /// Set at boot by the host when the Android build is the mobile form factor.
+  ///
+  /// Mobile builds never use the TV profile: [isAndroidTvDevice] and
+  /// [isTvLayout] stay false whatever the panel size.
+  static bool androidMobileFormFactor = false;
+
+  /// Physical-panel TV fallback: minimum landscape aspect (16:9 panels only —
+  /// a 16:10 tablet at 1280×800 stays off this path).
+  static const double androidTvPanelMinAspect = 1.7;
+
+  /// Physical-panel TV fallback: shortest side in physical px (720p and up).
+  static const double androidTvPanelMinShortSidePx = 720;
+
+  /// Physical-panel TV fallback: longest side in physical px (720p and up).
+  static const double androidTvPanelMinLongSidePx = 1280;
+
+  /// Logical-size TV layout: 1080p at xhdpi is 960×540.
+  static const double androidTvLayoutMinWidth = 960;
+
+  /// Logical-size TV layout: minimum height paired with [androidTvLayoutMinWidth].
+  static const double androidTvLayoutMinHeight = 480;
+
+  /// Logical-size TV layout: shortest side under this is a phone, never TV.
+  static const double androidTvLayoutTabletShortSide = 600;
+
+  /// True when a physical panel looks like a landscape 16:9 TV at 720p or more.
+  static bool looksLikeAndroidTvPanel(Size physical) {
+    if (physical.width <= physical.height) return false;
+    if (physical.width / physical.height < androidTvPanelMinAspect) {
+      return false;
+    }
+    return physical.shortestSide >= androidTvPanelMinShortSidePx &&
+        physical.longestSide >= androidTvPanelMinLongSidePx;
+  }
+
+  /// True when an Android logical size gets the TV layout (TV-capable builds).
+  static bool isTvLayoutSize(Size size) {
+    if (size.width <= size.height) return false;
+    if (size.width >= androidTvLayoutMinWidth &&
+        size.height >= androidTvLayoutMinHeight) {
+      return true;
+    }
+    if (size.shortestSide < androidTvLayoutTabletShortSide) return false;
+    return size.longestSide >= androidTvLayoutMinWidth;
+  }
+
   /// Android TV / leanback: native leanback detection or a landscape TV panel.
   static bool get isAndroidTvDevice {
     if (!Platform.isAndroid) return false;
+    if (androidMobileFormFactor) return false;
     if (nativeAndroidTvDetected) return true;
     final physical = _androidTvPhysicalSize();
     if (physical == null) return false;
-    if (physical.width <= physical.height) return false;
-    // 16:9 TV panels only — a 16:10 tablet (1280×800) stays off this path.
-    if (physical.width / physical.height < 1.7) return false;
-    // 1080p, or 720p (1280×720) when the leanback channel did not answer.
-    return physical.shortestSide >= 720 && physical.longestSide >= 1280;
+    return looksLikeAndroidTvPanel(physical);
   }
 
   static bool isTvLayout(BuildContext context) {
     if (isAndroidTvDevice) return true;
     if (!Platform.isAndroid) return false;
-    final size = MediaQuery.sizeOf(context);
-    if (size.width <= size.height) return false;
-    // 1080p at xhdpi is 960×540 — shortest side is under the 600 tablet gate.
-    if (size.width >= 960 && size.height >= 480) return true;
-    if (size.shortestSide < 600) return false;
-    return size.longestSide >= 960;
+    if (androidMobileFormFactor) return false;
+    return isTvLayoutSize(MediaQuery.sizeOf(context));
   }
 
   static Size? _androidTvPhysicalSize() {

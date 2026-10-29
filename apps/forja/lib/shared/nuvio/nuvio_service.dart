@@ -126,10 +126,7 @@ const kNuvioScraperBatchTv = 5;
 const kNuvioScraperBatchTvPlayback = 2;
 const kNuvioScraperBatchSize = kNuvioScraperBatchDesktop;
 
-int nuvioSourcesBatchLimit({
-  required bool tv,
-  bool underPlayback = false,
-}) {
+int nuvioSourcesBatchLimit({required bool tv, bool underPlayback = false}) {
   if (!tv) return kNuvioScraperBatchDesktop;
   return underPlayback ? kNuvioScraperBatchTvPlayback : kNuvioScraperBatchTv;
 }
@@ -148,7 +145,10 @@ List<String> nextNuvioScraperBatch({
   return out;
 }
 
-bool nuvioStreamBelongsToScraper(Map<String, dynamic> stream, String scraperId) {
+bool nuvioStreamBelongsToScraper(
+  Map<String, dynamic> stream,
+  String scraperId,
+) {
   final id = stream['_nuvioScraperId'] as String?;
   if (id != null) return id == scraperId;
   final base = stream['_addonBaseUrl'] as String?;
@@ -307,7 +307,8 @@ class NuvioService {
   static const String _prefsKey = 'nuvio_addons_v1';
   static const String _scriptCachePrefix = 'nuvio_script_';
   static const String _kvMigratedKey = 'nuvio_addons_kv_v1';
-  static const String _scriptsDiskMigratedKey = 'nuvio_scripts_disk_v1_migrated';
+  static const String _scriptsDiskMigratedKey =
+      'nuvio_scripts_disk_v1_migrated';
 
   /// Sources → Nuvio chip selection (device KV, same store as addons).
   static const String _sourcesSelectedKey =
@@ -316,6 +317,9 @@ class NuvioService {
       'nuvio_sources_view_filter_scrapers_v1';
 
   static final ValueNotifier<int> changeNotifier = ValueNotifier<int>(0);
+
+  /// Last Sources-panel Nuvio list — sync peek for first-frame chips.
+  List<NuvioAddon>? _sourcesPanelAddonsMem;
 
   int _scraperGeneration = 0;
 
@@ -438,9 +442,7 @@ class NuvioService {
   Future<void> _hydrateLeanInstalledImpl() async {
     if (_leanHydrateSkipLogged) return;
     _leanHydrateSkipLogged = true;
-    debugPrint(
-      '[NuvioService] lean hydrate no-op — Settings install only',
-    );
+    debugPrint('[NuvioService] lean hydrate no-op — Settings install only');
   }
 
   /// Settings + Sources — same installed-addon store.
@@ -456,8 +458,15 @@ class NuvioService {
   /// Addons with at least one enabled scraper - for Sources panel chrome.
   Future<List<NuvioAddon>> listSourcesPanelAddons() async {
     final addons = await listScrapingAddons();
-    return addons.where((a) => a.scrapers.any((s) => s.enabled)).toList();
+    final panel = addons
+        .where((a) => a.scrapers.any((s) => s.enabled))
+        .toList();
+    _sourcesPanelAddonsMem = panel;
+    return panel;
   }
+
+  /// Sync peek of the last [listSourcesPanelAddons] — null when cold.
+  List<NuvioAddon>? peekSourcesPanelAddons() => _sourcesPanelAddonsMem;
 
   /// Persisted Sources → Nuvio scraper chip selection (device profile KV).
   Future<Set<String>> loadSourcesSelectedScraperIds({
@@ -520,6 +529,7 @@ class NuvioService {
       _prefsKey,
       jsonEncode(addons.map((e) => e.toJson()).toList()),
     );
+    _sourcesPanelAddonsMem = null;
     changeNotifier.value++;
   }
 
@@ -705,9 +715,7 @@ class NuvioService {
       manifestUrl: addon.manifestUrl,
       name: addon.name,
       version: addon.version,
-      scrapers: [
-        for (final s in addon.scrapers) s.copyWith(enabled: enabled),
-      ],
+      scrapers: [for (final s in addon.scrapers) s.copyWith(enabled: enabled)],
     );
     await _saveAddons(all);
   }

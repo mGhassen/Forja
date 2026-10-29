@@ -10,14 +10,14 @@ Forja is a cross-platform Flutter app with a Rust engine under the hood. The sam
 
 | Platform | Format |
 |----------|--------|
-| **Android** | APK |
+| **Android** (phones and tablets) | APK (arm64 + armeabi-v7a) |
 | **Android TV** | APK (arm64 + armeabi-v7a) |
 | **iOS** | App Store / sideload |
 | **Windows** | Installer |
 | **Linux** | AppImage |
 | **macOS** | DMG (Apple Silicon arm64 + Intel x86_64) |
 
-Download builds from the [web download page](https://forjahq.xyz/download). The site reads `latest/manifest.json` on the Cloudflare R2 CDN (per-platform and **per-arch** latest — a macOS-arm64-only release keeps Intel macOS / Windows / Linux / Android TV installers) and serves installer links under `cdn.forjahq.xyz/latest/…`. Each platform row shows that platform’s version and its release notes, with a platform icon. The page detects your OS **and** CPU architecture (Apple Silicon vs Intel on Mac, ARM vs x86 when the filename encodes it) and puts the matching installer first — the nav **Download** button uses that build. Download buttons still name the architecture when the installer filename includes one (e.g. macOS **Apple Silicon** / **Intel**, Android TV **ARM64** / **ARMv7**); when a platform ships more than one build, the detail panel shows a button per architecture (each with that arch’s own version when they diverge). On each platform detail pane, **Other versions** expands the last few installer builds still kept on the CDN (`v{version}/…`, typically the newest three release trees). On **Android TV**, when the release includes AFTVnews [Downloader](https://www.aftvnews.com/downloader/) short codes in the R2 manifest, the detail panel shows the numeric code next to each APK so you can enter it in Downloader on the TV instead of typing the URL. On Windows and macOS detail panes, a **Stuck opening Forja?** card links to that platform’s photo guide (SmartScreen or Gatekeeper). Published installers ship via **Release Forja** in Actions or `scripts/release_local.sh` (R2 upload for binaries + notes under `changelog/`; local Android TV publish prompts for Downloader codes).
+Download builds from the [web download page](https://forjahq.xyz/download). The site reads `latest/manifest.json` on the Cloudflare R2 CDN (per-platform and **per-arch** latest — a macOS-arm64-only release keeps Intel macOS / Windows / Linux / Android TV installers) and serves installer links under `cdn.forjahq.xyz/latest/…`. Each platform row shows that platform’s version and its release notes, with a platform icon. The page detects your OS **and** CPU architecture (Apple Silicon vs Intel on Mac, ARM vs x86 when the filename encodes it) and puts the matching installer first — the nav **Download** button uses that build. Download buttons still name the architecture when the installer filename includes one (e.g. macOS **Apple Silicon** / **Intel**, Android TV **ARM64** / **ARMv7**); when a platform ships more than one build, the detail panel shows a button per architecture (each with that arch’s own version when they diverge). Android has two entries: **Android** for phones and tablets, and **Android TV** for TVs and TV boxes. The **Android** entry appears when the release includes the phone app. An Android browser opens the phone or TV entry to match the device. On each platform detail pane, **Other versions** expands the last few installer builds still kept on the CDN (`v{version}/…`, typically the newest three release trees). On **Android TV**, when the release includes AFTVnews [Downloader](https://www.aftvnews.com/downloader/) short codes in the R2 manifest, the detail panel shows the numeric code next to each APK so you can enter it in Downloader on the TV instead of typing the URL. On Windows and macOS detail panes, a **Stuck opening Forja?** card links to that platform’s photo guide (SmartScreen or Gatekeeper). Published installers ship via **Release Forja** in Actions or `scripts/release_local.sh` (R2 upload for binaries + notes under `changelog/`; local Android TV publish prompts for Downloader codes).
 
 ## What you can do
 
@@ -27,7 +27,7 @@ Download builds from the [web download page](https://forjahq.xyz/download). The 
 
 ## Platform notes
 
-- **Android:** Picture-in-picture, background music playback, immersive navigation. **Android 7.0:** the app embeds Let's Encrypt (ISRG) root certificates so TMDB posters load on Home and Asian Drama (KissKH covers that use the TMDB media CDN) — older system trust stores no longer trust those hosts after the 2024 cross-sign expiry.
+- **Android:** Two apps. The **Android** app is for phones and tablets: touch layout in portrait, landscape, and split-screen, and it stays out of the TV launcher. The **Android TV** app is for TVs and TV boxes. A phone or tablet running the Android TV app moves to the Android app with an update and keeps its library and settings. Picture-in-picture, background music playback, immersive navigation. **Android 7.0:** the app embeds Let's Encrypt (ISRG) root certificates so TMDB posters load on Home and Asian Drama (KissKH covers that use the TMDB media CDN) — older system trust stores no longer trust those hosts after the 2024 cross-sign expiry.
 - **Android TV:** Leanback launcher entry (home-row banner and square Apps icon both use the green Forja wordmark — not the F monogram), nav-rail shell (`ShellHost` TV profile), D-pad focus on in-scope tabs, thin green scrollbars on catalog lists (categories, channels, schedules, Portals), built-in player remote keys (play/pause, OK-to-scrub progress, Back). The shell keeps fewer tabs mounted than desktop (max three) and, when any fullscreen player opens, unloads other shell tabs, clears poster/image memory, and pauses tickers on the screen under the player so live IPTV and movies get max decode resources (IPTV also drops the channel grid until you leave). Opening details, search overlays, and players is an **instant cut** (no slide) so weak Android 7 sets do not stutter while the new screen loads. Catalog cards and the nav rail **snap** focus chrome (no 200ms scale/color tweens) so D-pad browsing stays responsive. Hero backdrops stay **static** (no Ken Burns pan/zoom; still rotation hard-cuts) so full-bleed scale animation does not saccade on leanback SoCs. Left to the nav rail then right restores the last focused control on the page; Back pops overlays/routes, then focuses the nav — on the nav rail, Back twice (within ~2s) exits to the launcher and clears app memory for a cold next open. Remote **Exit** (not Back) also needs two presses to quit from anywhere. Remote **power** (TV standby) quits Forja so the next power-on is the launcher, not a still-running session. **Play sources** include **Webstreaming**, **Direct torrent**, **Stremio**, and **Nuvio** (same as phone). Direct HTTP Stremio/Nuvio play on the TV; magnets / torrents play via a paired desktop (**Settings → LAN**) — if you pick P2P while unpaired or the desktop is offline, a dialog explains that. Packs marked desktop or phone only (Downloads) stay installed but off on the TV — Settings → Forja Packs tags them **not on this device** and the rail does not show their tab, while the same profile keeps them on elsewhere. Settings still hides the **WebStreamr**, **Debrid**, **Lists**, and **Data & backup** categories; **Sources** shows when VOD play sources (or Live Sports Stremio) are on. **Stream play** uses Rust providers (WebStreamr, VSEmbed, 111477) — headless WebView sniffers, including VidSrc, are disabled on TV. **MediaKit** movie/series playback disables Flutter Impeller on TV (Skia) so video is not black-with-audio — do not force Impeller on in the AndroidManifest. YouTube trailers (hero + fullscreen player) keep WebView hardware acceleration so video is not a white surface. Embedded WebViews on **emulators** still need Chromium software GPU — use [`scripts/atv-run.sh`](../../scripts/atv-run.sh). **Account:** link with a code or QR via the portal `/connect` ([Link Android TV](../accounts/tv-connect.md)), or continue as guest.
 - **macOS:** Requires **macOS 11 Big Sur or newer** (Apple Silicon and Intel). Intel Macs keep Flutter on Skia and present full Metal frames so player subtitles, chrome, and catalog text do not tear. Hidden title bar with draggable window chrome; green-button / title-bar zoom fills the display work area (and stays there on macOS 27+); moving the window to another desktop keeps that size. The window remembers last size, place, and fill state across relaunches. In-app updates download the DMG and open it. The DMG (**Install Forja**) is a drag-to-Applications window with a light matrix-grid background and large icons — drag **Forja** onto **Applications**. Local `flutter run -d macos` (Debug/Profile) installs as **Forja Dev** (`com.forjahq.app.dev`) so it does not share login/session or Application Support with the shipped **Forja** app. Local Debug/Release codesigns embedded media_kit frameworks in the Xcode build so dyld can load them; packaged DMGs still use `scripts/codesign_macos_adhoc.sh` after `scripts/build_macos.sh`. Account secrets (login, Trakt, Simkl, debrid, IPTV passwords, …) use a **local app file by default** — no Keychain password prompt at launch. Optional: **Settings → About → Privacy → Store secrets in Keychain** (Forja explains first; macOS may then ask once and may mention `flutter_secure_storage_service`). Arrow keys drive the same D-pad focus graph as Android TV (desktop layout density; hero Ken Burns pan/zoom stays on); player Sources / Episodes stay right-side panels, not leanback centered dialogs.
 - **Windows / Linux:** Custom window caption (min / max / close) on the main shell and on pre-shell screens (sign-in, Who’s watching, update gate); in-app updates download the installer with progress. Same arrow-key D-pad focus as macOS / Android TV (player Sources / Episodes / Source are right-side panels on every profile). The window remembers your last size, place, and maximize state across sessions, and closing a player (movies, IPTV, Live Sports, trailers) no longer resets that layout.
@@ -39,12 +39,12 @@ Download builds from the [web download page](https://forjahq.xyz/download). The 
 
 1. Android Studio → **Device Manager** → **Create device** → **TV** category → e.g. **1080p Android TV (Google APIs)**.
 2. System image: API 34+ with **Google APIs** (not Google Play if unavailable for TV).
-3. Confirm `LEANBACK_LAUNCHER` in `apps/forja/android/app/src/main/AndroidManifest.xml`.
+3. Confirm `LEANBACK_LAUNCHER` in `apps/forja/android/app/src/tv/AndroidManifest.xml` (TV flavor only).
 4. Run on the TV AVD **without** dart-define:
 
 ```bash
 flutter emulators --launch <tv_avd_id>
-flutter run -d <tv_avd_id>
+flutter run -d <tv_avd_id> --flavor tv
 ```
 
 Leanback launcher + full D-pad matrix: [issue 025](../../issues/025-[open]-android-tv-leanback-smoke-unverified.md) (`I25-M01`–`M08`). WebView GLES workaround: [issue 031](../../issues/031-[workaround]-android-tv-webview-gles-crash.md). Glyph/text corruption on Skia: [issue 215](../../issues/215-[open]-android-tv-skia-glyph-atlas-glitch.md). Prefer **`scripts/atv-run.sh`** on emulator (sets `--disable-gpu` for embedded WebViews):
@@ -55,12 +55,20 @@ Leanback launcher + full D-pad matrix: [issue 025](../../issues/025-[open]-andro
 
 Stream play on TV uses VSEmbed and engine HTTP providers — configure at least one in Settings → Stream providers.
 
+### Phone app
+
+Run the phone and tablet build on a phone or phone emulator:
+
+```bash
+flutter run -d <android-device> --flavor mobile
+```
+
 ### Phone / generic emulator (layout only)
 
 Test TV layout on a phone or emulator (not leanback proof):
 
 ```bash
-flutter run -d <android-device> --dart-define=FORJA_ANDROID_TV=true
+flutter run -d <android-device> --flavor tv --dart-define=FORJA_ANDROID_TV=true
 ```
 
 Forces TV profile and TV first-run nav defaults via `PlatformChannel` + `PlatformInfo`. Does **not** replace leanback launcher smoke.

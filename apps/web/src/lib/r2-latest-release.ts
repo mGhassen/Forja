@@ -11,6 +11,10 @@ import {
   releaseCdnLatestUrl,
   releaseCdnPublicUrl,
 } from '@/lib/release-storage'
+import { detectPlatformFromFilename } from '@/lib/release-platform'
+
+export { detectPlatformFromFilename }
+export type { ReleasePlatformKey } from '@/lib/release-platform'
 
 export type R2ArchEntry = {
   version: string
@@ -80,38 +84,6 @@ function cdnBase(): string | null {
 export function versionFromFilename(name: string): string | null {
   const match = name.match(/(?:^|[^0-9])(\d+\.\d+\.\d+)(?:[^0-9]|$)/)
   return match?.[1] ?? null
-}
-
-export function detectPlatformFromFilename(name: string): string {
-  const lower = name.toLowerCase()
-  if (lower.includes('windows') || lower.endsWith('.exe') || lower.endsWith('.msi')) {
-    return 'windows'
-  }
-  if (lower.includes('macos') || lower.includes('darwin') || lower.endsWith('.dmg')) {
-    return 'macos'
-  }
-  if (
-    lower.includes('linux') ||
-    lower.endsWith('.appimage') ||
-    lower.endsWith('.deb') ||
-    lower.endsWith('.rpm')
-  ) {
-    return 'linux'
-  }
-  if (
-    lower.includes('android-tv') ||
-    lower.includes('android_tv') ||
-    lower.includes('androidtv')
-  ) {
-    return 'android_tv'
-  }
-  if (lower.endsWith('.apk') || lower.includes('android')) {
-    return 'android_tv'
-  }
-  if (lower.includes('ios') || lower.endsWith('.ipa')) {
-    return 'ios'
-  }
-  return 'other'
 }
 
 /** Architecture slot matching R2 upload / Downloader codes (arm64, …). */

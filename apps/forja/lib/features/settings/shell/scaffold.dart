@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:forja/features/settings/shell/split_layout.dart';
 import 'package:forja/features/settings/addons/addons_host.dart';
 import 'package:forja/features/settings/shell/router.dart';
 import 'package:forja/features/settings/shell/catalog.dart';
@@ -85,15 +86,20 @@ class _SettingsHubScaffoldState extends ConsumerState<SettingsHubScaffold> {
     if (oldWidget.selectedId != widget.selectedId) {
       _detailReturnFocus = null;
       _detailReturnCategoryId = null;
+      // Defer notifier writes — didUpdateWidget runs mid-build.
       if (widget.selectedId != SettingsCategoryId.sources) {
         SettingsAddonDrill.clearReturnFocus();
-        SettingsAddonDrill.close();
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          SettingsAddonDrill.close();
+        });
       }
       if (widget.selectedId != SettingsCategoryId.forjaPacks &&
           SettingsPackPromptDrill.isOpen &&
           !SettingsPackPromptDrill.isApplying) {
         SettingsPackPromptDrill.clearReturnFocus();
-        unawaited(SettingsPackPromptDrill.dismissWithoutApply());
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          unawaited(SettingsPackPromptDrill.dismissWithoutApply());
+        });
       }
     }
   }
@@ -227,7 +233,7 @@ class _SettingsHubScaffoldState extends ConsumerState<SettingsHubScaffold> {
 
   bool _handlePageBack() {
     if (!mounted) return false;
-    if (!SettingsTokens.useSplitLayout(context)) return false;
+    if (!settingsUseSplitLayout(context)) return false;
     if (!ShellScope.inputPolicyOf(context).useFocusableMoodChips) return false;
 
     // Ladder: detail drill → settings page → settings menu → shell nav.
@@ -317,7 +323,7 @@ class _SettingsHubScaffoldState extends ConsumerState<SettingsHubScaffold> {
     }
 
     final categories = settingsCategories(visibility);
-    final split = SettingsTokens.useSplitLayout(context);
+    final split = settingsUseSplitLayout(context);
     final selectedMeta = settingsCategoryById(widget.selectedId, visibility);
     if (!visibility.showDownloadsCategory &&
         widget.selectedId == SettingsCategoryId.downloads &&
@@ -462,6 +468,9 @@ class _SettingsHubScaffoldState extends ConsumerState<SettingsHubScaffold> {
                   valueListenable:
                       PluginInstallCoordinator.instance.pendingUpdateCount,
                   builder: (context, _, child) {
+                    // Phone: credits + version close the list (the split
+                    // sidebar pins the same footer).
+                    final showFooter = settingsCompactListShowsFooter(context);
                     return ListView.builder(
                       padding: EdgeInsets.fromLTRB(
                         SettingsTokens.pagePaddingOf(context),
@@ -469,8 +478,11 @@ class _SettingsHubScaffoldState extends ConsumerState<SettingsHubScaffold> {
                         SettingsTokens.pagePaddingOf(context),
                         48,
                       ),
-                      itemCount: categories.length,
+                      itemCount: categories.length + (showFooter ? 1 : 0),
                       itemBuilder: (context, index) {
+                        if (index >= categories.length) {
+                          return const SettingsSidebarFooter();
+                        }
                         final c = categories[index];
                         final packUpdates =
                             c.id == SettingsCategoryId.forjaPacks

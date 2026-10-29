@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart' hide Switch;
 import 'package:flutter/services.dart';
 
+import 'package:forja/features/settings/shell/split_layout.dart';
 import 'package:forja/shared/services/update/app_version.dart';
 import 'package:forja/shell/tv/shell_tv_coordinator.dart';
 import 'package:forja/shell/tv/shell_tv_focus.dart';
@@ -235,7 +236,7 @@ class _SettingsCategoryTileState extends State<SettingsCategoryTile> {
                 ],
               ),
             ),
-            if (!SettingsTokens.useSplitLayout(context))
+            if (!settingsUseSplitLayout(context))
               Icon(
                 Directionality.of(context) == TextDirection.rtl
                     ? Icons.chevron_left_rounded

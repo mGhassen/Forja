@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:forja_foundation/components/button_group.dart';
+import 'package:forja_foundation/tokens/forja_details_tokens.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 
@@ -22,6 +23,39 @@ class PlayRow extends StatelessWidget {
       orientation: orientation,
       spacing: spacing,
       children: children,
+    );
+  }
+}
+
+/// Phone hero actions: full-width [primary] (Play / Resume), then labeled
+/// [secondary] actions wrapping underneath.
+class DetailsStackedActions extends StatelessWidget {
+  const DetailsStackedActions({
+    super.key,
+    required this.primary,
+    this.secondary = const [],
+  });
+
+  final Widget primary;
+  final List<Widget> secondary;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        primary,
+        if (secondary.isNotEmpty) ...[
+          const SizedBox(height: DetailsTokens.heroStackedActionGap),
+          Wrap(
+            spacing: DetailsTokens.heroStackedActionGap,
+            runSpacing: DetailsTokens.heroStackedActionGap,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: secondary,
+          ),
+        ],
+      ],
     );
   }
 }

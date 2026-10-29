@@ -172,6 +172,7 @@ class HeroPillPlaySurface extends StatefulWidget {
     required this.expanded,
     required this.label,
     required this.leading,
+    this.fill = false,
   });
 
   final HeroPillStyle style;
@@ -180,6 +181,9 @@ class HeroPillPlaySurface extends StatefulWidget {
   final bool expanded;
   final String label;
   final Widget? leading;
+
+  /// Fill the parent width with icon + label centered (phone primary CTA).
+  final bool fill;
 
   @override
   State<HeroPillPlaySurface> createState() => _HeroPillPlaySurfaceState();
@@ -325,13 +329,15 @@ class _HeroPillPlaySurfaceState extends State<HeroPillPlaySurface>
     return AnimatedBuilder(
       animation: _controller,
       builder: (context, _) {
-        return _buildShell(
+        final content = _buildPillContent(
           context,
-          child: _buildPillContent(
-            context,
-            morph: _expand.value,
-            labelOpacity: _labelOpacity.value,
-          ),
+          morph: _expand.value,
+          labelOpacity: _labelOpacity.value,
+        );
+        if (!widget.fill) return _buildShell(context, child: content);
+        return SizedBox(
+          width: double.infinity,
+          child: _buildShell(context, child: Center(child: content)),
         );
       },
     );

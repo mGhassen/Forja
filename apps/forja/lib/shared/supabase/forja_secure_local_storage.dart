@@ -1,12 +1,12 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 import 'package:rust/rust.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 /// Persists the Supabase session via [ForjaPlatformSecureStore].
 ///
-/// macOS: asks once (Keychain vs local file). Keychain uses Data Protection
-/// when sandboxed; local file / declined / ad-hoc Release use the prefs vault
-/// (avoids login-Keychain password dialogs without consent).
+/// macOS: Keychain opt-in or prefs vault. Android: prefs + on-disk file vault
+/// + EncryptedSharedPreferences (file vault is cold-start SoT — issue 519).
 class ForjaSecureLocalStorage extends LocalStorage {
   ForjaSecureLocalStorage({required this.persistSessionKey});
 
@@ -50,6 +50,18 @@ class ForjaSecureLocalStorage extends LocalStorage {
         persistSessionKey,
         persistSessionString,
       );
+      // Android: prefs/encrypted can look written then vanish on cold start.
+      // File vault is the durable SoT — verify we can read back (issue 519).
+      final roundTrip = await ForjaPlatformSecureStore.read(persistSessionKey);
+      if (roundTrip == null || roundTrip.isEmpty) {
+        debugPrint(
+          '[Supabase] session persist round-trip empty — retrying write',
+        );
+        await ForjaPlatformSecureStore.write(
+          persistSessionKey,
+          persistSessionString,
+        );
+      }
     } catch (e) {
       debugPrint('[Supabase] session persist failed: $e');
       rethrow;

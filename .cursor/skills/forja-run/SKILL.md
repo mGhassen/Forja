@@ -38,8 +38,8 @@ Gotchas learned on this machine: `scripts/build_rust_mobile.sh` breaks on macOS 
 | Target | Needs | Commands |
 |--------|-------|----------|
 | **macos** (desktop, primary dev target) | full Xcode.app (not just CLT), CocoaPods | `./scripts/build_rust.sh` once (also after `.env` changes), then `cd apps/forja && flutter pub get && flutter run -d macos --dart-define-from-file=../../.env` |
-| **phone** (Android emulator `forja_phone`) | Android SDK + NDK, emulator running | `emulator -avd forja_phone -netdelay none -netspeed full &` · wait for `adb wait-for-device` · `cd apps/forja && BUILD_RUST_ANDROID=1 flutter run -d emulator-5554 --dart-define-from-file=../../.env` |
-| **tv** (Android TV emulator `forja_tv`) | same | `emulator -avd forja_tv &` · `cd apps/forja && BUILD_RUST_ANDROID=1 flutter run -d <id from flutter devices> --dart-define-from-file=../../.env` · D-pad = keyboard arrows + Enter, Back = Esc |
+| **phone** (Android emulator `forja_phone`) | Android SDK + NDK, emulator running | `emulator -avd forja_phone -netdelay none -netspeed full &` · wait for `adb wait-for-device` · `cd apps/forja && BUILD_RUST_ANDROID=1 flutter run -d emulator-5554 --flavor mobile --dart-define-from-file=../../.env` |
+| **tv** (Android TV emulator `forja_tv`) | same | `emulator -avd forja_tv &` · `cd apps/forja && BUILD_RUST_ANDROID=1 flutter run -d <id from flutter devices> --flavor tv --dart-define-from-file=../../.env` · D-pad = keyboard arrows + Enter, Back = Esc |
 | **web** (account portal, not the player) | pnpm | `cd apps/web && pnpm install && pnpm dev` → http://127.0.0.1:3000 |
 
 Emulator performance and input (fixed in `~/.android/avd/*/config.ini` on 2026-10-20): `hw.keyboard=yes` so the Mac keyboard reaches the guest (arrows = D-pad, Enter = OK, Esc = Back on `forja_tv`), `hw.dPad=yes`, `hw.gpu.enabled=yes` + `hw.gpu.mode=host` (software GPU is unusably slow), `hw.ramSize=3072`. Launch with `-gpu host`. Run one emulator at a time on a 32 GB Mac, kill Gradle daemons between builds (`pkill -f GradleDaemon`), and test UI speed with `flutter run --profile`: a debug build is JIT and several times slower than what users get.

@@ -9,7 +9,7 @@ import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 import 'package:forja_foundation/widgets/details/trailers_section.dart';
 import 'package:rust/rust.dart';
 
-/// Host wire — prefetch + trailer player open around foundation trailers paint.
+/// Host wire — TMDB trailer keys/thumbs + open player on tap (resolve on open).
 class MediaDetailsTrailersSection extends StatefulWidget {
   const MediaDetailsTrailersSection({
     super.key,
@@ -43,15 +43,6 @@ class _MediaDetailsTrailersSectionState
   void initState() {
     super.initState();
     YoutubeStreamService.geoblockEpoch.addListener(_onGeoblockEpoch);
-    _prefetch();
-  }
-
-  @override
-  void didUpdateWidget(covariant MediaDetailsTrailersSection oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (!_sameKeys(oldWidget.trailers, widget.trailers)) {
-      _prefetch();
-    }
   }
 
   @override
@@ -62,22 +53,6 @@ class _MediaDetailsTrailersSectionState
 
   void _onGeoblockEpoch() {
     if (mounted) setState(() {});
-  }
-
-  void _prefetch() {
-    YoutubeStreamService.prefetch(
-      widget.trailers.map((t) => t.key),
-      limit: widget.trailers.length,
-    );
-  }
-
-  bool _sameKeys(List<MediaTrailer> a, List<MediaTrailer> b) {
-    if (identical(a, b)) return true;
-    if (a.length != b.length) return false;
-    for (var i = 0; i < a.length; i++) {
-      if (a[i].key != b[i].key) return false;
-    }
-    return true;
   }
 
   @override

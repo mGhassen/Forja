@@ -1,0 +1,21 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- TV flavor overlay: merged onto src/main/AndroidManifest.xml.
+
+         leanback stays required="false": Forja ships by sideload / Downloader
+         and in-app OTA, not Play. required="true" buys no Play filtering here,
+         while third-party stores (Amazon Appstore for Fire TV, Aptoide) filter
+         on it, and some Android boxes do not declare FEATURE_LEANBACK. -->
+    <uses-feature android:name="android.software.leanback" android:required="false" />
+    <uses-feature android:name="android.hardware.touchscreen" android:required="false" />
+
+    <application android:banner="@drawable/ic_banner">
+        <activity
+            android:name=".MainActivity"
+            android:banner="@drawable/ic_banner">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LEANBACK_LAUNCHER" />
+            </intent-filter>
+        </activity>
+    </application>
+</manifest>

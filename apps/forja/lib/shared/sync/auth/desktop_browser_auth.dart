@@ -113,7 +113,7 @@ class DesktopBrowserAuth {
         if (applyingTokens) return;
         finish(
           const DesktopBrowserAuthResult.failure(
-            'Web login timed out. Try again, or sign in with email here.',
+            'Web login timed out. Open Web login again from Forja.',
           ),
         );
       });
@@ -207,6 +207,19 @@ class DesktopBrowserAuth {
               return;
             }
 
+            // Overlapping Return-to-Forja while setSession is in flight.
+            if (applyingTokens) {
+              await _writeCallbackResponse(
+                request,
+                title: 'Sign-in in progress',
+                body:
+                    'Forja is still applying the session. Keep this tab open '
+                    'and tap Return to Forja again in a moment.',
+                ok: false,
+              );
+              return;
+            }
+
             applyingTokens = true;
             try {
               if (onTokens != null) {
@@ -226,19 +239,25 @@ class DesktopBrowserAuth {
                 ),
               );
             } catch (e, st) {
+              // Keep the loopback up so the portal can retry Return to Forja.
+              // Finishing here used to close the server → "Could not reach".
               debugPrint('[DesktopBrowserAuth] apply tokens failed: $e\n$st');
+              final detail = e.toString().toLowerCase();
+              final network =
+                  detail.contains('failed host lookup') ||
+                  detail.contains('socketexception') ||
+                  detail.contains('authretryablefetchexception') ||
+                  detail.contains('network is unreachable') ||
+                  detail.contains('timed out');
               await _writeCallbackResponse(
                 request,
                 title: 'Sign-in failed',
-                body:
-                    'Forja could not apply the session. Keep this tab open and '
-                    'tap Return to Forja, or try Web login again from the app.',
+                body: network
+                    ? 'Forja could not reach the account service yet. Keep '
+                          'this tab open — Return to Forja will retry.'
+                    : 'Forja could not apply the session. Keep this tab open '
+                          'and tap Return to Forja again.',
                 ok: false,
-              );
-              finish(
-                DesktopBrowserAuthResult.failure(
-                  'Web login failed to apply the session. Try again.',
-                ),
               );
             } finally {
               applyingTokens = false;

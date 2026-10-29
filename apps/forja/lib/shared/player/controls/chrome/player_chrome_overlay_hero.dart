@@ -97,7 +97,8 @@ class PlayerPausedHero extends StatelessWidget {
     // Hub callers sometimes pass "Episode N" as overview — same string as
     // [_episodeLine] — which stacked two identical lines under the title.
     final episode = _episodeLine;
-    final overview = (episode != null &&
+    final overview =
+        (episode != null &&
             rawOverview.trim().toLowerCase() == episode.trim().toLowerCase())
         ? ''
         : rawOverview;
@@ -126,8 +127,9 @@ class PlayerPausedHero extends StatelessWidget {
               style: HeroTitleStyle.details,
               logoMaxHeight: logoMaxHeight,
               tvDensity: tv,
-              plainTitle:
-                  ShellScope.inputPolicyOf(context).useFocusableMoodChips,
+              plainTitle: ShellScope.inputPolicyOf(
+                context,
+              ).useFocusableMoodChips,
               selectable: shellDesktopTextSelect(context),
             ),
             const SizedBox(height: 10),
@@ -152,16 +154,20 @@ class PlayerPausedHero extends StatelessWidget {
             ],
             if (overview.isNotEmpty) ...[
               const SizedBox(height: 10),
-              HeroOverviewText(
-                overview: overview,
-                style: TextStyle(
-                  color: Colors.white70,
-                  fontSize: tv
-                      ? ShellTokens.playerChromeMetaFontSizeTv
-                      : ShellTokens.playerChromeStatusFontSize,
-                  height: 1.45,
+              // Short landscape phones: the hero box is height-bounded, so the
+              // overview yields lines instead of overflowing the column.
+              Flexible(
+                child: HeroOverviewText(
+                  overview: overview,
+                  style: TextStyle(
+                    color: Colors.white70,
+                    fontSize: tv
+                        ? ShellTokens.playerChromeMetaFontSizeTv
+                        : ShellTokens.playerChromeStatusFontSize,
+                    height: 1.45,
+                  ),
+                  maxLines: 3,
                 ),
-                maxLines: 3,
               ),
             ],
           ],
@@ -285,11 +291,7 @@ class _PlayerCenterActionButtonState extends State<PlayerCenterActionButton> {
                     ),
                   ),
                 )
-              : Icon(
-                  widget.icon,
-                  color: iconColor,
-                  size: iconSize,
-                ),
+              : Icon(widget.icon, color: iconColor, size: iconSize),
         ),
       ),
     );
@@ -329,13 +331,15 @@ class _PlayerCenterActionButtonState extends State<PlayerCenterActionButton> {
         // stays magnetized to the cursor over these controls.
         playerChromeCancelSeekScrubs();
         final policy =
-            ShellScope.maybeOf(context)?.inputPolicy ?? ShellInputPolicy.desktop;
+            ShellScope.maybeOf(context)?.inputPolicy ??
+            ShellInputPolicy.desktop;
         if (!policy.scaleOnHover) return;
         _setHovered(true);
       },
       onExit: (_) {
         final policy =
-            ShellScope.maybeOf(context)?.inputPolicy ?? ShellInputPolicy.desktop;
+            ShellScope.maybeOf(context)?.inputPolicy ??
+            ShellInputPolicy.desktop;
         if (!policy.scaleOnHover) return;
         _setHovered(false);
         setState(() => _pressed = false);
@@ -576,4 +580,3 @@ class PlayerOverlayGradient extends StatelessWidget {
     );
   }
 }
-
