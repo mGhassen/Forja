@@ -1,22 +1,15 @@
 package com.forjahq.app
 
-import android.content.BroadcastReceiver
-import android.content.Context
-import android.content.Intent
-import android.content.IntentFilter
 import android.graphics.Color
 import android.media.AudioManager
 import android.net.wifi.WifiManager
-import android.os.Build
 import android.os.Bundle
-import android.view.KeyEvent
 import com.ryanheise.audioservice.AudioServiceActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
 
 class MainActivity : AudioServiceActivity() {
     private val exoPlugin = ForjaExoPlayerPlugin()
-    private var screenOffReceiver: BroadcastReceiver? = null
     private var exiting = false
     private var wifiMulticastLock: WifiManager.MulticastLock? = null
 
@@ -25,25 +18,7 @@ class MainActivity : AudioServiceActivity() {
         if (isAndroidTv()) {
             window.statusBarColor = APP_BACKGROUND
             window.navigationBarColor = APP_BACKGROUND
-            registerTvStandbyExit()
         }
-    }
-
-    override fun onDestroy() {
-        unregisterTvStandbyExit()
-        super.onDestroy()
-    }
-
-    // Power is often eaten before Flutter; catch it here if the box delivers it.
-    override fun dispatchKeyEvent(event: KeyEvent): Boolean {
-        if (isAndroidTv() &&
-            event.action == KeyEvent.ACTION_DOWN &&
-            isPowerKey(event.keyCode)
-        ) {
-            exitCompletely()
-            return true
-        }
-        return super.dispatchKeyEvent(event)
     }
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
@@ -71,8 +46,9 @@ class MainActivity : AudioServiceActivity() {
                     result.success(null)
                 }
                 "exitAppCompletely" -> {
-                    // Double Back on nav / remote Exit / TV power — leave
-                    // leanback and free process memory so the next open is cold.
+                    // Double Back on nav / remote Exit — leave leanback and
+                    // free process memory so the next open is cold.
+                    // Do not call this on power / SCREEN_OFF (Xiaomi bounce).
                     exitCompletely()
                     result.success(null)
                 }
@@ -146,46 +122,6 @@ class MainActivity : AudioServiceActivity() {
         }
         am.playSoundEffect(effect)
     }
-
-    private fun registerTvStandbyExit() {
-        if (screenOffReceiver != null) return
-        val receiver = object : BroadcastReceiver() {
-            override fun onReceive(context: Context?, intent: Intent?) {
-                val action = intent?.action ?: return
-                if (action == Intent.ACTION_SCREEN_OFF ||
-                    action == Intent.ACTION_SHUTDOWN
-                ) {
-                    exitCompletely()
-                }
-            }
-        }
-        screenOffReceiver = receiver
-        val filter = IntentFilter().apply {
-            addAction(Intent.ACTION_SCREEN_OFF)
-            addAction(Intent.ACTION_SHUTDOWN)
-        }
-        if (Build.VERSION.SDK_INT >= 33) {
-            registerReceiver(receiver, filter, Context.RECEIVER_NOT_EXPORTED)
-        } else {
-            @Suppress("DEPRECATION")
-            registerReceiver(receiver, filter)
-        }
-    }
-
-    private fun unregisterTvStandbyExit() {
-        val receiver = screenOffReceiver ?: return
-        screenOffReceiver = null
-        try {
-            unregisterReceiver(receiver)
-        } catch (_: IllegalArgumentException) {
-        }
-    }
-
-    private fun isPowerKey(keyCode: Int): Boolean =
-        keyCode == KeyEvent.KEYCODE_POWER ||
-            keyCode == KeyEvent.KEYCODE_SLEEP ||
-            keyCode == KeyEvent.KEYCODE_STB_POWER ||
-            keyCode == KeyEvent.KEYCODE_TV_POWER
 
     private fun exitCompletely() {
         if (exiting) return

@@ -100,6 +100,7 @@
 |--:|----|-------------|--------|
 | 29 | R28-A29 | TV: Back on nav rail double-confirms quit; remote Exit (Escape) double-confirms quit from anywhere; Back elsewhere stays in-app ([issue 119](../issues/119-[open]-android-tv-double-back-exit.md)) | ✅ |
 | 31 | R28-A31 | TV: remote power / screen-off / shutdown quits Forja (same kill as double Back); Home does not ([issue 119](../issues/119-[open]-android-tv-double-back-exit.md) `I119-T05`) | ✅ |
+| 32 | R28-A32 | TV: remote power / screen-off / shutdown must **not** quit Forja (supersedes A31 — Xiaomi standby bounce); quit stays double-Back / Exit only ([issue 518](../issues/fixed/518-[fixed]-android-tv-power-kills-xiaomi-bounce.md)) | ✅ |
 
 ---
 

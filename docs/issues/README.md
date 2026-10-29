@@ -140,7 +140,7 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [116-[open]-…](116-[open]-android-tv-live-matches-embed-cors-native-handoff.md) | Android TV Live Matches embed CORS → native handoff | P1 | High | open | 2/2 · A 0/2 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [117-[open]-…](117-[open]-android-live-embedindia-handoff-stuck.md) | Android Live embedindia / Streamed Exo handoff black | P1 | High | open | 21/21 · A 0/3 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [118-[open]-…](118-[open]-iptv-thin-local-cache-shrinks-cloud.md) | Thin local IPTV cache shrinks cloud portals | P0 | Critical | open | 8/8 · A 0/2 | [1.0.1](../backlog/1.0.1-[open].md) |
-| [119-[open]-…](119-[open]-android-tv-double-back-exit.md) | Android TV double Back / Exit to quit | P1 | Medium | open | 5/5 · A 0/3 | [1.0.1](../backlog/1.0.1-[open].md) |
+| [119-[open]-…](119-[open]-android-tv-double-back-exit.md) | Android TV double Back / Exit to quit | P1 | Medium | open | 6/6 · A 0/4 | [518](fixed/518-[fixed]-android-tv-power-kills-xiaomi-bounce.md) |
 | [120-[open]-…](120-[open]-android-tv-player-memory-purge.md) | Player open: purge sibling tabs + image RAM | P1 | High | open | 11/11 · A 0/5 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [121-[open]-…](121-[open]-android-tv-skip-shell-slide.md) | Android TV skip shell slide transitions | P1 | Medium | open | 4/4 · A 0/2 | [1.0.1](../backlog/1.0.1-[open].md) |
 | [122-[open]-…](122-[open]-android-tv-iptv-player-lost-dpad.md) | Android TV IPTV player lost D-pad | P1 | High | open | 3/3 · A 0/2 | [1.0.1](../backlog/1.0.1-[open].md) |
@@ -554,6 +554,7 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [515-[fixed]-…](fixed/515-[fixed]-anime-torrent-query-bloated-title.md) | Anime torrent search bloated cour title → 0 Nyaa rows | P1 | High | fixed | Complete · 4/4 · A 0/2 | [216](fixed/216-[fixed]-anime-hub-torrent-search-empty.md) · [RFC-054](../rfc/054-[partial]-torrent-search-providers.md) |
 | [516-[fixed]-…](fixed/516-[fixed]-atv-lan-presence-poll-ui-freeze.md) | ATV LAN presence poll freezes UI while paired | P0 | High | fixed | Complete · 3/3 · A 0/2 | [481](fixed/481-[fixed]-android-tv-lan-discover-mdns.md) · [RFC-022](../rfc/022-[open]-lan-server-client.md) |
 | [517-[fixed]-…](fixed/517-[fixed]-exo-introdb-seekbar-zones.md) | Exo seek bar missing IntroDB colored zones | P2 | Medium | fixed | Complete · 2/2 · A 0/1 | [032](032-[draft]-exoplayer-parity-gaps.md) |
+| [518-[fixed]-…](fixed/518-[fixed]-android-tv-power-kills-xiaomi-bounce.md) | ATV power kills process → Xiaomi standby bounce | P0 | High | fixed | Complete · 1/1 · A 0/1 | [119](119-[open]-android-tv-double-back-exit.md) · [RFC-028](../rfc/028-[draft]-adaptive-shell-profiles.md) |
 
 **Migration parity (draft):** [018](018-[draft]-migration-playback-parity-unverified.md) → [019](019-[draft]-webstreamr-enginejobs-e2e-test-gap.md)–[022](022-[draft]-playback-widget-integration-tests.md).
 

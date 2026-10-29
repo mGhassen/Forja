@@ -7,6 +7,7 @@ import 'package:forja_foundation/widgets/catalog/continue_watching_card.dart';
 import 'package:forja_foundation/widgets/catalog/poster_rail.dart';
 import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 import 'package:forja_foundation/widgets/chrome/shell_section_title.dart';
+import 'package:forja_foundation/widgets/chrome/tv_ok_hold.dart';
 import 'package:forja_foundation/widgets/feedback/card_play_overlay.dart';
 
 /// Continue-watching row — props only (RFC-106 Zone A).
@@ -37,12 +38,15 @@ class ContinueSection extends StatelessWidget {
     this.onRemove,
     this.onInfo,
     this.resumingMetaId,
-  }) : assert(items != null || children != null || entries != null || rail != null);
+  }) : assert(
+         items != null || children != null || entries != null || rail != null,
+       );
 
   final String title;
   final List<PosterItem>? items;
   final List<Widget>? children;
   final List<ContinueEntry>? entries;
+
   /// Full rail (host cards with focus). Wins over [items]/[children]/[entries].
   final Widget? rail;
   final VoidCallback? onSeeAll;
@@ -98,7 +102,8 @@ class ContinueSection extends StatelessWidget {
               scrollDirection: Axis.horizontal,
               physics: const BouncingScrollPhysics(),
               clipBehavior: Clip.none,
-              padding: listPadding ??
+              padding:
+                  listPadding ??
                   EdgeInsets.symmetric(
                     horizontal: ShellPaintScope.usesTvDensityOf(context)
                         ? ShellTokens.tvHomeSectionHorizontalPadding
@@ -112,8 +117,8 @@ class ContinueSection extends StatelessWidget {
                   entry: entry,
                   width: cardWidth,
                   height: cardHeight,
-                  isLoading: resumingMetaId != null &&
-                      entry.metaId == resumingMetaId,
+                  isLoading:
+                      resumingMetaId != null && entry.metaId == resumingMetaId,
                   listIndex: i,
                   titleFontSize: cardTitleFontSize,
                   subtitleFontSize: cardSubtitleFontSize,
@@ -221,8 +226,18 @@ class _ContinueHoverCard extends StatefulWidget {
 class _ContinueHoverCardState extends State<_ContinueHoverCard> {
   final ValueNotifier<bool> _activeN = ValueNotifier(false);
 
+  /// Android TV: short OK resumes; hold ~1s (or MENU) opens details.
+  late final TvOkHold _okHold = TvOkHold(
+    duration: const Duration(seconds: 1),
+    onHold: () {
+      if (!mounted) return;
+      widget.onInfo?.call(widget.entry);
+    },
+  );
+
   @override
   void dispose() {
+    _okHold.dispose();
     _activeN.dispose();
     super.dispose();
   }
@@ -232,13 +247,23 @@ class _ContinueHoverCardState extends State<_ContinueHoverCard> {
     _activeN.value = active;
   }
 
-  Widget _buildCard(bool active) {
+  VoidCallback? _resumeTap({required bool wrapHold}) {
+    final resume = widget.onResume;
+    if (resume == null) return null;
+    final entry = widget.entry;
+    void short() => resume(entry);
+    if (!wrapHold || widget.onInfo == null) return short;
+    return _okHold.wrapTap(short);
+  }
+
+  Widget _buildCard(bool active, {required bool wrapHold}) {
     final entry = widget.entry;
     // Desktop: neutral play until the control itself is hovered (1.3.114).
     // TV: card focus is the only pointer — green + heartbeat with the card.
     final tvFocus = ShellPaintScope.useTvFocusOf(context);
     final playDia = EventCardTokens.playOverlaySizeOf(context);
     final playIcon = EventCardTokens.playIconSizeOf(context);
+    final resumeTap = _resumeTap(wrapHold: wrapHold);
     return ContinueWatchingCard(
       title: entry.title,
       coverUrl: entry.coverUrl,
@@ -252,40 +277,57 @@ class _ContinueHoverCardState extends State<_ContinueHoverCard> {
       titleFontSize: widget.titleFontSize,
       subtitleFontSize: widget.subtitleFontSize,
       remainingFontSize: widget.remainingFontSize,
-      onTap: widget.onResume == null ? null : () => widget.onResume!(entry),
-      onRemove:
-          widget.onRemove == null ? null : () => widget.onRemove!(entry),
+      onTap: resumeTap,
+      onRemove: widget.onRemove == null ? null : () => widget.onRemove!(entry),
       onInfo: widget.onInfo == null ? null : () => widget.onInfo!(entry),
       playOverlay: ShellCardPlayOverlay(
         active: tvFocus && active,
         visible: active && !widget.isLoading,
         diameter: playDia,
         iconSize: playIcon,
-        onTap:
-            widget.onResume == null ? null : () => widget.onResume!(entry),
+        onTap: resumeTap,
       ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
+    final tvRow =
+        widget.listIndex != null &&
+        ShellPaintScope.useTvFocusOf(context) &&
+        ShellPaintTvRowScope.maybeOf(context) != null;
+    final holdDetails = tvRow && widget.onInfo != null;
     final painted = ListenableBuilder(
       listenable: _activeN,
-      builder: (context, _) => _buildCard(_activeN.value),
+      builder: (context, _) =>
+          _buildCard(_activeN.value, wrapHold: holdDetails),
     );
-    if (widget.listIndex != null &&
-        ShellPaintScope.useTvFocusOf(context) &&
-        ShellPaintTvRowScope.maybeOf(context) != null) {
+    if (tvRow) {
+      final resume = widget.onResume;
+      Widget child = painted;
+      if (holdDetails) {
+        child = GestureDetector(
+          onLongPress: _okHold.fireFromPointer,
+          child: painted,
+        );
+      }
       return ShellPaintScope.focusableTap(
         context: context,
-        // Card and buttons handle their own taps — keep focusableTap for
-        // focus/hover paint and TV key activation only.
+        // Card / overlay own pointer taps; focusableTap owns TV keys + paint.
         onTap: null,
-        onKeyEvent: widget.onResume == null
+        mouseDownActivates: !holdDetails,
+        onKeyEvent: holdDetails
+            ? (_, event) => _okHold.onKeyEvent(
+                event,
+                onShort: () {
+                  if (resume != null) resume(widget.entry);
+                },
+              )
+            : resume == null
             ? null
             : (_, event) {
                 if (ShellPaintScope.isActivateKeyOf(context, event)) {
-                  widget.onResume!(widget.entry);
+                  resume(widget.entry);
                   return KeyEventResult.handled;
                 }
                 return KeyEventResult.ignored;
@@ -297,16 +339,13 @@ class _ContinueHoverCardState extends State<_ContinueHoverCard> {
         tvZone: ShellPaintTvZone.row,
         onFocusChange: _setActive,
         onHoverChange: _setActive,
-        child: painted,
+        child: child,
       );
     }
     return MouseRegion(
       onEnter: (_) => _setActive(true),
       onExit: (_) => _setActive(false),
-      child: Focus(
-        onFocusChange: (f) => _setActive(f),
-        child: painted,
-      ),
+      child: Focus(onFocusChange: (f) => _setActive(f), child: painted),
     );
   }
 }
@@ -380,8 +419,10 @@ class _Arrow extends StatelessWidget {
       onTap: () {
         if (!controller.hasClients) return;
         controller.animateTo(
-          (controller.offset + delta)
-              .clamp(0.0, controller.position.maxScrollExtent),
+          (controller.offset + delta).clamp(
+            0.0,
+            controller.position.maxScrollExtent,
+          ),
           duration: const Duration(milliseconds: 500),
           curve: Curves.easeInOut,
         );
