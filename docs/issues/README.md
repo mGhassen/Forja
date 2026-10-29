@@ -557,6 +557,10 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [518-[open]-…](518-[open]-phone-landscape-detected-as-tv.md) | Phone in landscape detected as Android TV | P1 | High | open | 0/4 (4 🔄) · A 0/4 | [RFC-123](../rfc/123-[open]-android-mobile-flavor.md) |
 | [519-[fixed]-…](fixed/519-[fixed]-android-session-not-durable-cold-start.md) | Android session lost on cold start | P0 | High | fixed | Complete · 3/3 · A 0/2 | [109](109-[open]-android-tv-boot-jwt-expired-discard-race.md) |
 | [520-[fixed]-…](fixed/520-[fixed]-web-login-handoff-unreachable-after-apply-fail.md) | Web login handoff unreachable after apply fail | P1 | High | fixed | Complete · 2/2 · A 1/2 | — |
+| [521-[fixed]-…](fixed/521-[fixed]-mobile-bottom-nav-chrome-diverged-from-rail.md) | Mobile bottom nav chrome diverged from rail | P2 | Medium | fixed | Complete · 2/2 · A 1/2 | [RFC-025](../rfc/fixed/025-[fixed]-flat-cinematic-shell.md) |
+| [522-[fixed]-…](fixed/522-[fixed]-sources-panel-empty-flash-before-chips.md) | Sources empty flash before provider chips | P1 | Medium | fixed | Complete · 4/4 · A 0/2 | [177](177-[open]-sources-selected-provider-lazy-fetch.md) |
+| [523-[fixed]-…](fixed/523-[fixed]-hub-reopen-keeps-mid-scroll.md) | Hub reopen lands mid-page (kept scroll) | P2 | Medium | fixed | Complete · 1/1 · A 1/1 | [375](fixed/375-[fixed]-hub-keep-alive-keeps-fetching-off-tab.md) |
+| [524-[fixed]-…](fixed/524-[fixed]-phone-mediakit-open-process-death.md) | Phone MediaKit open kills process | P1 | High | fixed | Complete · 2/2 · A 0/2 | [163](163-[open]-android-tv-iptv-vod-live-profile.md) |
 
 **Migration parity (draft):** [018](018-[draft]-migration-playback-parity-unverified.md) → [019](019-[draft]-webstreamr-enginejobs-e2e-test-gap.md)–[022](022-[draft]-playback-widget-integration-tests.md).
 

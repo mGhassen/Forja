@@ -19,9 +19,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 /// Last [refresh] is cached so boot does not flash an empty rail.
 /// No hardcoded pack plugin ids — seed is empty until cache or packs load.
 abstract final class PluginNavRegistry {
-  static const coreShellNavIds = {
-    'settings',
-  };
+  static const coreShellNavIds = {'settings'};
 
   static Widget _builderForHubTab({
     required String tabId,
@@ -50,16 +48,20 @@ abstract final class PluginNavRegistry {
   static Map<String, Color> _accents = {};
   static Map<String, TabBuilder> _builders = {};
   static Map<String, String> _tabPluginIds = {};
+
   /// Host Features/rail id → pack install URL (RFC-094).
   static Map<String, String> _tabPackUrls = {};
+
   /// Opaque pack page action per tab (`nav.page.action`).
   static Map<String, String> _tabPageActions = {};
   static Map<String, Map<String, dynamic>> _tabPageParams = {};
+
   /// Installed hub tabs gated off by manifest `platforms` on this device.
   /// Features KV may still list them (cross-device sync); rail paint skips them.
   static Set<String> _platformGatedTabIds = {};
   static bool _seeded = false;
   static bool _testNavLocked = false;
+
   /// Set when [refresh] skips an empty-hub prefs wipe because packs are still
   /// hydrating — next successful hub scan restores platform-default visibility.
   static bool _deferredEmptyHubNavSync = false;
@@ -97,10 +99,7 @@ abstract final class PluginNavRegistry {
     required String sourceUrl,
     required String authorTabId,
   }) =>
-      PluginRegistry.hostNavId(
-        sourceUrl: sourceUrl,
-        authorTabId: authorTabId,
-      );
+      PluginRegistry.hostNavId(sourceUrl: sourceUrl, authorTabId: authorTabId);
 
   /// Drop pack hub tab ids that are not in the installed pack index.
   ///
@@ -128,18 +127,13 @@ abstract final class PluginNavRegistry {
     // slot. Once a pack contributes `nav`, only [hostNavId] (author tabId or
     // slot when omitted) counts — never also keep the bare folder slot, or
     // Stale folder-slot ids next to author tabIds paint Material apps.
-    final packsWithNav = {
-      for (final h in hubs) h.$1.sourceUrl,
-    };
+    final packsWithNav = {for (final h in hubs) h.$1.sourceUrl};
     final packs = await PluginRegistry.instance.listPacksRaw();
     for (final pack in packs) {
       if (EnginePack.forjaHqSlot(pack.sourceUrl) == null) continue;
       if (packsWithNav.contains(pack.sourceUrl)) continue;
       installedHubIds.add(
-        PluginRegistry.hostNavId(
-          sourceUrl: pack.sourceUrl,
-          authorTabId: '',
-        ),
+        PluginRegistry.hostNavId(sourceUrl: pack.sourceUrl, authorTabId: ''),
       );
     }
     // Soft-pull may still carry folder slots while destinations
@@ -198,10 +192,12 @@ abstract final class PluginNavRegistry {
     Map<String, NavDestination>? destinations,
     Map<String, String>? tabPluginIds,
     Map<String, String>? tabPackUrls,
+    Map<String, Color>? accents,
   }) {
     _testNavLocked = true;
     _deferredEmptyHubNavSync = false;
-    _destinations = destinations ??
+    _destinations =
+        destinations ??
         {
           'test_hub_a': const NavDestination(
             id: 'test_hub_a',
@@ -222,11 +218,13 @@ abstract final class PluginNavRegistry {
             label: 'Hub C',
           ),
         };
-    _accents = {
-      'test_hub_a': const Color(0xFFE50914),
-      'test_hub_b': const Color(0xFF8B5CF6),
-      'test_hub_c': const Color(0xFFEC4899),
-    };
+    _accents =
+        accents ??
+        {
+          'test_hub_a': const Color(0xFFE50914),
+          'test_hub_b': const Color(0xFF8B5CF6),
+          'test_hub_c': const Color(0xFFEC4899),
+        };
     _tabPluginIds = Map<String, String>.from(
       tabPluginIds ??
           const {
@@ -337,8 +335,7 @@ abstract final class PluginNavRegistry {
         final tabId = rawTabId;
         if (dests.containsKey(tabId)) continue;
         final iconAsset = m['iconAsset']?.toString();
-        final material =
-            ForjaHostAssets.defaultNavIcon;
+        final material = ForjaHostAssets.defaultNavIcon;
         dests[tabId] = NavDestination(
           id: tabId,
           icon: material,
@@ -360,10 +357,7 @@ abstract final class PluginNavRegistry {
         if (h.length == 6) {
           final v = int.tryParse(h, radix: 16);
           if (v != null) {
-            accents.putIfAbsent(
-              e.key.toString(),
-              () => Color(0xFF000000 | v),
-            );
+            accents.putIfAbsent(e.key.toString(), () => Color(0xFF000000 | v));
           }
         }
       }
@@ -391,10 +385,10 @@ abstract final class PluginNavRegistry {
     _builders = {
       for (final tabId in _destinations.keys)
         tabId: () => _builderForHubTab(
-              tabId: tabId,
-              pluginId: _tabPluginIds[tabId],
-              packSourceUrl: _tabPackUrls[tabId],
-            ),
+          tabId: tabId,
+          pluginId: _tabPluginIds[tabId],
+          packSourceUrl: _tabPackUrls[tabId],
+        ),
     };
     _seeded = true;
   }
@@ -660,10 +654,10 @@ abstract final class PluginNavRegistry {
         iconAsset: iconAsset,
       );
       builders[railId] = () => _builderForHubTab(
-            tabId: railId,
-            pluginId: pl.id,
-            packSourceUrl: pack.sourceUrl,
-          );
+        tabId: railId,
+        pluginId: pl.id,
+        packSourceUrl: pack.sourceUrl,
+      );
       tabPluginIds[railId] = pl.id;
       tabPackUrls[railId] = pack.sourceUrl;
       final pageAction = nav.pageAction?.trim() ?? '';

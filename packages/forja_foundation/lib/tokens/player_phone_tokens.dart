@@ -18,6 +18,22 @@ abstract final class PlayerPhoneTokens {
   /// Label budget per labeled action ("Audio & subtitles" fits untruncated).
   static const double actionLabelMaxWidth = 140;
 
+  /// Soft cap for the source chip in the phone transport [Flexible] slot.
+  static const double sourceButtonMaxWidth = 120;
+
+  /// Provider / catalog label inside the source chip when there is room.
+  static const double sourceLabelMaxWidth = 72;
+
+  /// Stream-picker label (shares the chip with a chevron).
+  static const double sourcePickerLabelMaxWidth = 56;
+
+  /// Horizontal pad / icon–label gap inside the phone source chip.
+  static const double sourcePadH = 6;
+  static const double sourceIconGap = 4;
+
+  /// Below this allocated width the source chip is icon-only (tooltip).
+  static const double sourceLabeledMinWidth = 88;
+
   /// Gap between bottom-bar action groups.
   static const double actionGap = 4;
 

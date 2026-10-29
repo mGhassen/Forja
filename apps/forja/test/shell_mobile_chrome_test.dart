@@ -1,3 +1,4 @@
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -13,11 +14,19 @@ import 'package:forja/shell/frame/shell_status_bar_scrim.dart';
 import 'package:forja/shell/nav/nav_config.dart';
 import 'package:forja/shell/nav/shell_bottom_nav.dart';
 import 'package:forja/shell/platform/shell_system_ui.dart';
+import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 import 'package:rust/src/settings_service.dart';
 
 // Synthetic hub ids — never shipped pack ids.
-const _hubs = ['t_hub_1', 't_hub_2', 't_hub_3', 't_hub_4', 't_hub_5', 't_hub_6'];
+const _hubs = [
+  't_hub_1',
+  't_hub_2',
+  't_hub_3',
+  't_hub_4',
+  't_hub_5',
+  't_hub_6',
+];
 const _icons = [
   Icons.home,
   Icons.star,
@@ -26,6 +35,14 @@ const _icons = [
   Icons.list,
   Icons.bookmark,
 ];
+const _accents = {
+  't_hub_1': Color(0xFFE50914),
+  't_hub_2': Color(0xFF8B5CF6),
+  't_hub_3': Color(0xFFEC4899),
+  't_hub_4': Color(0xFF22C55E),
+  't_hub_5': Color(0xFFF59E0B),
+  't_hub_6': Color(0xFF06B6D4),
+};
 
 const _phonePortrait = Size(411, 914);
 const _phoneLandscape = Size(914, 411);
@@ -90,6 +107,7 @@ void main() {
             label: 'Hub ${i + 1}',
           ),
       },
+      accents: _accents,
     );
     SettingsService.shellWritingDirection.value =
         SettingsService.shellWritingLtr;
@@ -174,9 +192,55 @@ void main() {
     await _pump(tester, _scaffold(ids, selectedIndex: 5));
 
     final more = tester.widget<Text>(find.text('More'));
-    expect(more.style?.fontWeight, FontWeight.bold);
+    expect(more.style?.color, ForjaShellColors.brandGreen);
     final first = tester.widget<Text>(find.text('Hub 1'));
-    expect(first.style?.fontWeight, FontWeight.normal);
+    expect(first.style?.color, ForjaShellColors.iconMuted);
+  });
+
+  testWidgets('selected tab uses destination accent + underline', (
+    tester,
+  ) async {
+    await _pump(tester, _scaffold([_hubs[0], _hubs[1], 'settings']));
+
+    final selectedIcon = tester.widget<NavDestinationIcon>(
+      find.byWidgetPredicate(
+        (w) => w is NavDestinationIcon && w.destination.id == _hubs[0],
+      ),
+    );
+    expect(selectedIcon.color, _accents[_hubs[0]]);
+
+    final underline = find.byKey(ValueKey('nav-${_hubs[0]}-underline'));
+    expect(underline, findsOneWidget);
+    final deco =
+        tester.widget<AnimatedContainer>(underline).decoration as BoxDecoration;
+    expect(deco.color, _accents[_hubs[0]]);
+    expect(tester.getSize(underline).width, greaterThan(0));
+
+    final idleUnderline = find.byKey(ValueKey('nav-${_hubs[1]}-underline'));
+    expect(tester.getSize(idleUnderline).width, 0);
+  });
+
+  testWidgets('hover paints destination accent like the rail', (tester) async {
+    await _pump(tester, _scaffold([_hubs[0], _hubs[1], 'settings']));
+
+    Finder idleIcon() => find.byWidgetPredicate(
+      (w) => w is NavDestinationIcon && w.destination.id == _hubs[1],
+    );
+    expect(
+      tester.widget<NavDestinationIcon>(idleIcon()).color,
+      ForjaShellColors.iconMuted,
+    );
+
+    final gesture = await tester.createGesture(kind: PointerDeviceKind.mouse);
+    await gesture.addPointer(location: Offset.zero);
+    addTearDown(gesture.removePointer);
+    await gesture.moveTo(tester.getCenter(find.byIcon(Icons.star)));
+    await tester.pumpAndSettle();
+
+    expect(
+      tester.widget<NavDestinationIcon>(idleIcon()).color,
+      _accents[_hubs[1]],
+    );
   });
 
   testWidgets('portrait bar keeps its height and clears the gesture inset', (
@@ -192,7 +256,10 @@ void main() {
     final bar = tester.getSize(find.byType(ShellBottomNav));
     expect(bar.height, ShellTokens.bottomNavHeight + bottomInset);
     final label = tester.getRect(find.text('Hub 1'));
-    expect(label.bottom, lessThanOrEqualTo(_phonePortrait.height - bottomInset));
+    expect(
+      label.bottom,
+      lessThanOrEqualTo(_phonePortrait.height - bottomInset),
+    );
   });
 
   testWidgets('landscape phone gets the compact bar, icon beside label', (
@@ -227,10 +294,13 @@ void main() {
         padding: const EdgeInsets.only(top: top),
       );
       expect(find.byType(ShellStatusBarScrim), findsOneWidget);
-      expect(find.byType(ColoredBox).evaluate().where((e) {
-        final box = e.renderObject as RenderBox?;
-        return box != null && box.size.height == top;
-      }), isEmpty);
+      expect(
+        find.byType(ColoredBox).evaluate().where((e) {
+          final box = e.renderObject as RenderBox?;
+          return box != null && box.size.height == top;
+        }),
+        isEmpty,
+      );
 
       ShellBus.hubScrollOffsetFor(_hubs[0]).value = 200;
       await tester.pump();
@@ -416,9 +486,7 @@ void main() {
       expect(
         rect.bottom,
         lessThanOrEqualTo(
-          _phonePortrait.height -
-              padding.bottom -
-              ShellTokens.bottomNavHeight,
+          _phonePortrait.height - padding.bottom - ShellTokens.bottomNavHeight,
         ),
       );
       expect(rect.right, lessThanOrEqualTo(_phonePortrait.width));

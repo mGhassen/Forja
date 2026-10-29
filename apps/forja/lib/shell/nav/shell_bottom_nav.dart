@@ -7,6 +7,7 @@ import 'package:forja/shared/engine/runtime/nav/vertical_filters.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 /// Touch shell bottom bar.
 ///
@@ -15,6 +16,9 @@ import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 /// as [visibleIds] (Settings → Features). Landscape phones get a compact bar
 /// with icon and label side by side. The bar pads itself for the bottom and
 /// side system insets (gesture pill, 3-button nav, cutouts).
+///
+/// Item chrome matches [ShellNavRail]: destination accent + underline on
+/// select, hover/focus color + icon scale — no Material pill / ink wash.
 class ShellBottomNav extends StatefulWidget {
   const ShellBottomNav({
     super.key,
@@ -129,7 +133,9 @@ class _ShellBottomNavState extends State<ShellBottomNav> {
                     showPackUpdateBadge: widget.visibleIds[idx] == 'settings',
                     onTap: () => widget.onItemTapped(idx),
                     onLongPress:
-                        VerticalFiltersRegistry.hasFilters(widget.visibleIds[idx])
+                        VerticalFiltersRegistry.hasFilters(
+                          widget.visibleIds[idx],
+                        )
                         ? () => VerticalFiltersRegistry.showMenu(
                             widget.visibleIds[idx],
                           )
@@ -199,8 +205,12 @@ class _BottomNavItem extends StatefulWidget {
 class _BottomNavItemState extends State<_BottomNavItem> {
   bool _hover = false;
   bool _focused = false;
+  bool _pressed = false;
   late final NavCompleteReloadHold _reloadHold;
 
+  /// Same accent / hover language as the rail — mobile policy turns
+  /// [ShellInputPolicy.scaleOnHover] off globally, so the bar tracks
+  /// pointer itself.
   bool get _active => _hover || _focused;
 
   @override
@@ -219,23 +229,70 @@ class _BottomNavItemState extends State<_BottomNavItem> {
     super.dispose();
   }
 
+  void _setPressed(bool pressed) {
+    if (_pressed == pressed) return;
+    setState(() => _pressed = pressed);
+  }
+
+  double _iconScale() {
+    final big = ShellTokens.navRailIconHoverScale;
+    final small = ShellTokens.navRailIconIdleScale;
+    if (_active) {
+      return _pressed ? ShellTokens.navRailIconPressScale : 1;
+    }
+    return small / big;
+  }
+
   @override
   Widget build(BuildContext context) {
     final isSelected = widget.selected;
     final compact = widget.compact;
+    final active = _active;
     final iconSize = compact
         ? ShellTokens.bottomNavIconSizeCompact
         : ShellTokens.navRailIconSize;
-    final color = isSelected ? Colors.white : Colors.white54;
-    Widget icon = NavDestinationIcon(
-      destination: widget.destination,
-      selected: isSelected,
-      color: color,
-      size: iconSize,
+    final iconBox = iconSize * ShellTokens.navRailIconHoverScale;
+    final destinationAccent =
+        navDestinationAccentColors[widget.destination.id] ??
+        ForjaShellColors.brandGreen;
+    // Synthetic "More" has no pack accent — mute idle, brand green when lit.
+    final useDestinationAccent =
+        widget.destination.id != ShellBottomNav.moreSlotId;
+    final chromeAnim = ShellTokens.navSelectionAnimation;
+    final iconColor = useDestinationAccent
+        ? (isSelected || active
+              ? destinationAccent
+              : ForjaShellColors.iconMuted)
+        : isSelected || active
+        ? ForjaShellColors.brandGreen
+        : ForjaShellColors.iconMuted;
+    final underlineColor = useDestinationAccent
+        ? destinationAccent
+        : ForjaShellColors.navUnderline;
+    final labelSize = compact
+        ? ShellTokens.bottomNavLabelSizeCompact
+        : ShellTokens.bottomNavLabelSize;
+    final labelStyle = GoogleFonts.plusJakartaSans(
+      color: iconColor,
+      fontSize: labelSize,
+      fontWeight: FontWeight.w500,
+      height: ShellTokens.navRailLabelLineHeight,
+    );
+
+    Widget icon = TweenAnimationBuilder<Color?>(
+      tween: ColorTween(end: iconColor),
+      duration: chromeAnim,
+      curve: Curves.easeOutCubic,
+      builder: (context, color, _) => NavDestinationIcon(
+        destination: widget.destination,
+        selected: isSelected,
+        color: color ?? iconColor,
+        size: iconBox,
+      ),
     );
     if (widget.showPackUpdateBadge) {
       icon = PackUpdateNavChrome(
-        expanded: _active,
+        expanded: active,
         flyoutAbove: true,
         badgeSize: ShellTokens.packUpdateBadgeSizeBottomNav,
         child: icon,
@@ -245,44 +302,63 @@ class _BottomNavItemState extends State<_BottomNavItem> {
       icon = NavReloadHoldIcon(
         icon: icon,
         loading: _reloadHold.loading,
-        size: iconSize,
+        size: iconBox,
       );
     }
 
-    final pill = AnimatedContainer(
-      duration: ShellTokens.navSelectionAnimation,
-      padding: EdgeInsets.symmetric(
-        horizontal: compact
-            ? ShellTokens.bottomNavIconPaddingHCompact
-            : ShellTokens.bottomNavIconPaddingH,
-        vertical: ShellTokens.bottomNavIconPaddingV,
-      ),
-      decoration: BoxDecoration(
-        color: isSelected ? ForjaShellColors.chipSelectedBg : Colors.transparent,
-        borderRadius: BorderRadius.circular(
-          ShellTokens.navSelectionBorderRadius,
-        ),
-      ),
-      child: icon,
+    final underlineWidth = ShellTokens.shellNavUnderlineWidth.clamp(
+      ShellTokens.shellNavUnderlineWidthMin,
+      ShellTokens.shellNavUnderlineWidth,
     );
+    final iconStack = Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        SizedBox(
+          width: iconBox,
+          height: iconBox,
+          child: Align(
+            alignment: Alignment.bottomCenter,
+            child: AnimatedScale(
+              alignment: Alignment.bottomCenter,
+              scale: _iconScale(),
+              duration: chromeAnim,
+              curve: Curves.easeOutCubic,
+              child: SizedBox(
+                width: iconBox,
+                height: iconBox,
+                child: Center(child: icon),
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: ShellTokens.navRailIconUnderlineGap),
+        AnimatedContainer(
+          key: ValueKey('nav-${widget.destination.id}-underline'),
+          duration: chromeAnim,
+          curve: Curves.easeOutCubic,
+          height: ShellTokens.shellNavUnderlineHeight,
+          width: isSelected ? underlineWidth : 0,
+          decoration: BoxDecoration(
+            color: isSelected ? underlineColor : Colors.transparent,
+            borderRadius: BorderRadius.circular(
+              ShellTokens.shellNavUnderlineRadius,
+            ),
+          ),
+        ),
+      ],
+    );
+
     final label = Text(
       widget.destination.label,
       maxLines: 1,
       overflow: TextOverflow.ellipsis,
-      style: TextStyle(
-        color: color,
-        fontSize: compact
-            ? ShellTokens.bottomNavLabelSizeCompact
-            : ShellTokens.bottomNavLabelSize,
-        height: 1,
-        fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-      ),
+      style: labelStyle,
     );
     final content = compact
         ? Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              pill,
+              iconStack,
               const SizedBox(width: ShellTokens.bottomNavIconLabelGapCompact),
               Flexible(child: label),
             ],
@@ -290,8 +366,8 @@ class _BottomNavItemState extends State<_BottomNavItem> {
         : Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              pill,
-              const SizedBox(height: ShellTokens.bottomNavIconLabelGap),
+              iconStack,
+              const SizedBox(height: ShellTokens.navRailIconLabelGap),
               label,
             ],
           );
@@ -301,6 +377,7 @@ class _BottomNavItemState extends State<_BottomNavItem> {
       child: MouseRegion(
         onEnter: (_) => setState(() => _hover = true),
         onExit: (_) => setState(() => _hover = false),
+        cursor: SystemMouseCursors.click,
         child: Listener(
           behavior: HitTestBehavior.opaque,
           onPointerDown: widget.reloadHold
@@ -311,9 +388,11 @@ class _BottomNavItemState extends State<_BottomNavItem> {
               : null,
           onPointerUp: widget.reloadHold ? _reloadHold.pointerUp : null,
           onPointerCancel: widget.reloadHold ? _reloadHold.pointerCancel : null,
-          child: InkWell(
-            hoverColor: ForjaShellColors.inkHover,
-            splashColor: ForjaShellColors.inkSplash,
+          child: GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTapDown: (_) => _setPressed(true),
+            onTapUp: (_) => _setPressed(false),
+            onTapCancel: () => _setPressed(false),
             onTap: () {
               if (_reloadHold.consumeCompleted()) return;
               widget.onTap();
@@ -354,8 +433,6 @@ class _BottomNavMoreSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Side insets (landscape cutout) pad each row's content, not the row,
-    // so the selected highlight still spans the sheet.
     return SafeArea(
       top: false,
       left: false,
@@ -387,7 +464,7 @@ class _BottomNavMoreSheet extends StatelessWidget {
   }
 }
 
-class _BottomNavMoreRow extends StatelessWidget {
+class _BottomNavMoreRow extends StatefulWidget {
   const _BottomNavMoreRow({
     super.key,
     required this.destination,
@@ -404,55 +481,92 @@ class _BottomNavMoreRow extends StatelessWidget {
   final VoidCallback? onLongPress;
 
   @override
+  State<_BottomNavMoreRow> createState() => _BottomNavMoreRowState();
+}
+
+class _BottomNavMoreRowState extends State<_BottomNavMoreRow> {
+  bool _hover = false;
+
+  @override
   Widget build(BuildContext context) {
-    final color = selected ? Colors.white : Colors.white54;
+    final active = _hover;
+    final accent =
+        navDestinationAccentColors[widget.destination.id] ??
+        ForjaShellColors.brandGreen;
+    final color = widget.selected || active
+        ? accent
+        : ForjaShellColors.iconMuted;
     Widget icon = NavDestinationIcon(
-      destination: destination,
-      selected: selected,
+      destination: widget.destination,
+      selected: widget.selected,
       color: color,
       size: ShellTokens.bottomNavMoreIconSize,
     );
-    if (showPackUpdateBadge) {
+    if (widget.showPackUpdateBadge) {
       icon = PackUpdateNavChrome(
-        expanded: false,
+        expanded: active,
         badgeSize: ShellTokens.packUpdateBadgeSizeBottomNav,
         child: icon,
       );
     }
-    return InkWell(
-      hoverColor: ForjaShellColors.inkHover,
-      splashColor: ForjaShellColors.inkSplash,
-      onTap: onTap,
-      onLongPress: onLongPress,
-      child: Container(
-        height: ShellTokens.bottomNavMoreRowHeight,
-        color: selected ? ForjaShellColors.chipSelectedBg : null,
-        padding: EdgeInsetsDirectional.only(
-          start: ShellTokens.bodyHorizontalPadding,
-          end: ShellTokens.bodyHorizontalPadding,
-        ).add(
-          EdgeInsets.only(
-            left: MediaQuery.paddingOf(context).left,
-            right: MediaQuery.paddingOf(context).right,
-          ),
-        ),
-        child: Row(
-          children: [
-            icon,
-            const SizedBox(width: ShellTokens.bottomNavMoreRowGap),
-            Expanded(
-              child: Text(
-                destination.label,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  color: color,
-                  fontSize: ShellTokens.bottomNavMoreLabelSize,
-                  fontWeight: selected ? FontWeight.bold : FontWeight.normal,
+    return MouseRegion(
+      onEnter: (_) => setState(() => _hover = true),
+      onExit: (_) => setState(() => _hover = false),
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: widget.onTap,
+        onLongPress: widget.onLongPress,
+        child: Container(
+          height: ShellTokens.bottomNavMoreRowHeight,
+          padding:
+              EdgeInsetsDirectional.only(
+                start: ShellTokens.bodyHorizontalPadding,
+                end: ShellTokens.bodyHorizontalPadding,
+              ).add(
+                EdgeInsets.only(
+                  left: MediaQuery.paddingOf(context).left,
+                  right: MediaQuery.paddingOf(context).right,
                 ),
               ),
-            ),
-          ],
+          child: Row(
+            children: [
+              Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  icon,
+                  const SizedBox(height: ShellTokens.navRailIconUnderlineGap),
+                  AnimatedContainer(
+                    duration: ShellTokens.navSelectionAnimation,
+                    curve: Curves.easeOutCubic,
+                    height: ShellTokens.shellNavUnderlineHeight,
+                    width: widget.selected
+                        ? ShellTokens.shellNavUnderlineWidth
+                        : 0,
+                    decoration: BoxDecoration(
+                      color: widget.selected ? accent : Colors.transparent,
+                      borderRadius: BorderRadius.circular(
+                        ShellTokens.shellNavUnderlineRadius,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(width: ShellTokens.bottomNavMoreRowGap),
+              Expanded(
+                child: Text(
+                  widget.destination.label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.plusJakartaSans(
+                    color: color,
+                    fontSize: ShellTokens.bottomNavMoreLabelSize,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

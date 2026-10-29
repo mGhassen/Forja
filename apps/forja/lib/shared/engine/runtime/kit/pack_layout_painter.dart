@@ -510,9 +510,22 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
     if (mounted) setState(() {});
   }
 
+  /// Keep-alive preserves [_scroll] across tab switches; reopen must land at
+  /// the top. Same-tab shown (overlay dismiss / re-tap) keeps the offset.
+  void _resetHubScrollToTop() {
+    if (_scroll.hasClients && _scroll.offset != 0) {
+      _scroll.jumpTo(0);
+    }
+    if (_pageKey.isEmpty) return;
+    final offset = ShellBus.hubScrollOffsetFor(_pageKey);
+    if (offset.value != 0) offset.value = 0;
+  }
+
   @override
   void onShellTabShown() {
+    final returning = !shellTabVisible;
     super.onShellTabShown();
+    if (returning) _resetHubScrollToTop();
     if (mounted) setState(() {});
     unawaited(_reloadFlaggedHubOnOpen());
     // My List (status-tab hubs) — do not wait for a cache-miss feed extract;

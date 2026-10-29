@@ -191,13 +191,16 @@ mixin _MobilePlayerLifecycle
     // Track like IPTV/desktop so engine hot-swap can await MediaKit teardown
     // before Exo mounts (issue 129 zoomed crop after MediaKit → Exo).
     unawaited(MpvExclusiveSession.instance.prepareForVideoPlayer());
+    // Phone SW-decode safe-mode: keep the Player RAM window lean (32 MiB).
+    // Matching ATV's 128 MiB VOD cushion here OOMs / kills the process on
+    // open (issue 524) — same class as ATV VOD fat-cache death (issue 163).
+    // ATV MediaKit keeps 128 MiB for HLS prefetch (issue 187).
+    final phoneSafe = _s._androidMediaKitSafeMode;
     _s._player = MpvExclusiveSession.instance.trackPlayer(
       Player(
-        configuration: const PlayerConfiguration(
+        configuration: PlayerConfiguration(
           logLevel: MPVLogLevel.warn,
-          // Match VOD `demuxer-max-bytes=128MiB`. media_kit default is 32MB
-          // and `cache-on-disk=yes` — both starve ATV HLS prefetch (issue 187).
-          bufferSize: 128 * 1024 * 1024,
+          bufferSize: (phoneSafe ? 32 : 128) * 1024 * 1024,
           // libass enabled so ASS/SSA subtitles render natively on the video.
           // For SRT/VTT we dynamically set sub-visibility=no so our custom
           // Flutter overlay still handles those.

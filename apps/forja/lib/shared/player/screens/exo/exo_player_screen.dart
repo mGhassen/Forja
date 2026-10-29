@@ -2992,6 +2992,11 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
         PlayerSourcesPanelButton(
           size: size,
           iconSize: iconSz,
+          maxWidth: PlayerPhoneTokens.sourceButtonMaxWidth,
+          labelMaxWidth: PlayerPhoneTokens.sourceLabelMaxWidth,
+          padH: PlayerPhoneTokens.sourcePadH,
+          iconGap: PlayerPhoneTokens.sourceIconGap,
+          labeledMinWidth: PlayerPhoneTokens.sourceLabeledMinWidth,
           label: catalogSourceLines!.label,
           server: catalogSourceLines.server,
           offline: playingOffline,
@@ -3001,6 +3006,11 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
         PlayerStreamPickerButton(
           size: size,
           iconSize: iconSz - 2,
+          maxWidth: PlayerPhoneTokens.sourceButtonMaxWidth,
+          labelMaxWidth: PlayerPhoneTokens.sourcePickerLabelMaxWidth,
+          padH: PlayerPhoneTokens.sourcePadH,
+          iconGap: PlayerPhoneTokens.sourceIconGap,
+          labeledMinWidth: PlayerPhoneTokens.sourceLabeledMinWidth,
           label: streamPickerLines!.label,
           server: streamPickerLines.server,
           offline: playingOffline,

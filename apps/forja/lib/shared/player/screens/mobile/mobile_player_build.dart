@@ -833,6 +833,11 @@ mixin _MobilePlayerBuild on ConsumerState<MobilePlayerScreen> {
         PlayerSourcesPanelButton(
           size: size,
           iconSize: iconSz,
+          maxWidth: PlayerPhoneTokens.sourceButtonMaxWidth,
+          labelMaxWidth: PlayerPhoneTokens.sourceLabelMaxWidth,
+          padH: PlayerPhoneTokens.sourcePadH,
+          iconGap: PlayerPhoneTokens.sourceIconGap,
+          labeledMinWidth: PlayerPhoneTokens.sourceLabeledMinWidth,
           label: catalogSourceLines!.label,
           server: catalogSourceLines.server,
           offline: playingOffline,
@@ -842,6 +847,11 @@ mixin _MobilePlayerBuild on ConsumerState<MobilePlayerScreen> {
         PlayerStreamPickerButton(
           size: size,
           iconSize: iconSz - 2,
+          maxWidth: PlayerPhoneTokens.sourceButtonMaxWidth,
+          labelMaxWidth: PlayerPhoneTokens.sourcePickerLabelMaxWidth,
+          padH: PlayerPhoneTokens.sourcePadH,
+          iconGap: PlayerPhoneTokens.sourceIconGap,
+          labeledMinWidth: PlayerPhoneTokens.sourceLabeledMinWidth,
           label: streamPickerLines!.label,
           server: streamPickerLines.server,
           offline: playingOffline,

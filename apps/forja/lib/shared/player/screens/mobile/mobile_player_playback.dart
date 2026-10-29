@@ -1941,17 +1941,22 @@ mixin _MobilePlayerPlayback
     } else {
       // Sliding RAM window + pause-to-refill. wait=3 resumed after a tiny
       // cushion and re-underran every ~10s HLS segment (MegaPlay ATV).
-      // 60s / 128MiB / 40s readahead ≈ Exo VOD min cushion + IPTV VOD bytes.
+      // ATV: 60s / 128MiB / 40s ≈ Exo VOD min cushion + IPTV VOD bytes.
+      // Phone SW safe-mode: lean 32MiB (issue 524) — fat window + lavc SW
+      // decode killed the process on open (same class as issue 163).
       await safeSet('cache-pause', 'yes');
-      await safeSet('cache-pause-wait', '20');
+      await safeSet('cache-pause-wait', phoneSafeMode ? '10' : '20');
       await safeSet('cache-pause-initial', 'yes');
       await safeSet('cache', 'yes');
-      await safeSet('cache-secs', '60');
-      await safeSet('demuxer-max-bytes', '128MiB');
-      await safeSet('demuxer-readahead-secs', '40');
+      await safeSet('cache-secs', phoneSafeMode ? '20' : '60');
+      await safeSet('demuxer-max-bytes', phoneSafeMode ? '32MiB' : '128MiB');
+      await safeSet('demuxer-readahead-secs', phoneSafeMode ? '15' : '40');
 
       // Back-buffer so backward seeks don't require a full rebuffer.
-      await safeSet('demuxer-max-back-bytes', '40MiB');
+      await safeSet(
+        'demuxer-max-back-bytes',
+        phoneSafeMode ? '16MiB' : '40MiB',
+      );
 
       // Cap from Settings → Max stream quality (Auto = soft ~5 Mbps).
       final maxH = await SettingsService().getMaxPlaybackHeight();

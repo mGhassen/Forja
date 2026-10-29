@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:forja/shared/player/controls/chrome/player_chrome_overlay.dart';
 import 'package:forja/shared/player/controls/chrome/player_phone_controls.dart';
 import 'package:forja/shared/player/controls/menus/player_popup_panel.dart';
 import 'package:forja/shared/player/platform/phone_player_system_ui.dart';
@@ -12,10 +13,7 @@ import 'package:forja_foundation/tokens/player_phone_tokens.dart';
 /// Landscape phone player surface (dp).
 const _phone = Size(914, 411);
 
-Widget _host(
-  Widget child, {
-  ShellProfile profile = ShellProfile.mobile,
-}) {
+Widget _host(Widget child, {ShellProfile profile = ShellProfile.mobile}) {
   return MaterialApp(
     home: ShellScope(
       profile: profile,
@@ -68,8 +66,12 @@ void main() {
       );
       expect(b.totalSeconds, 10);
       expect(
-        PlayerTapSeekBurst()
-            .doubleTap(forward: false, now: t0, position: pos, duration: dur),
+        PlayerTapSeekBurst().doubleTap(
+          forward: false,
+          now: t0,
+          position: pos,
+          duration: dur,
+        ),
         pos - const Duration(seconds: 10),
       );
     });
@@ -196,6 +198,41 @@ void main() {
       expect(size.width, greaterThanOrEqualTo(PlayerPhoneTokens.touchTarget));
     });
 
+    testWidgets(
+      'tight Flexible slot: stream picker collapses to icon, no overflow',
+      (tester) async {
+        await _setSurface(tester, _phone);
+        await tester.pumpWidget(
+          _host(
+            Align(
+              alignment: Alignment.centerRight,
+              child: SizedBox(
+                // Matches the log that overflowed at ~64 dp before collapse.
+                width: 64,
+                child: PlayerStreamPickerButton(
+                  label: 'Anizone',
+                  server: 'mirror-1',
+                  size: PlayerPhoneTokens.touchTarget,
+                  iconSize: PlayerPhoneTokens.actionIconSize,
+                  maxWidth: PlayerPhoneTokens.sourceButtonMaxWidth,
+                  labelMaxWidth: PlayerPhoneTokens.sourcePickerLabelMaxWidth,
+                  padH: PlayerPhoneTokens.sourcePadH,
+                  iconGap: PlayerPhoneTokens.sourceIconGap,
+                  labeledMinWidth: PlayerPhoneTokens.sourceLabeledMinWidth,
+                  onPressedWithContext: (_) {},
+                ),
+              ),
+            ),
+          ),
+        );
+        await tester.pump();
+
+        expect(tester.takeException(), isNull);
+        expect(find.text('Anizone'), findsNothing);
+        expect(find.byIcon(Icons.layers_outlined), findsOneWidget);
+      },
+    );
+
     testWidgets('play/pause appears when the center cluster is covered', (
       tester,
     ) async {
@@ -315,9 +352,7 @@ void main() {
     });
   });
 
-  testWidgets('double-tap feedback shows the accumulated seek', (
-    tester,
-  ) async {
+  testWidgets('double-tap feedback shows the accumulated seek', (tester) async {
     await _setSurface(tester, _phone);
     await tester.pumpWidget(
       _host(

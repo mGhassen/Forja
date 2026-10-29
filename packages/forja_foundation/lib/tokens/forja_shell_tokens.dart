@@ -596,6 +596,15 @@ abstract final class ShellTokens {
   static const double playerChromeTopBtnSizeTv =
       playerChromeTopBtnSize * tvChromeScale;
 
+  /// Source / stream-picker chip (desktop; phone uses [PlayerPhoneTokens]).
+  static const double playerChromeSourceMaxWidth = 148;
+  static const double playerChromeSourceLabelMaxWidth = 100;
+  static const double playerChromeSourcePickerLabelMaxWidth = 88;
+  static const double playerChromeSourcePadH = 8;
+  static const double playerChromeSourcePickerPadH = 6;
+  static const double playerChromeSourceIconGap = 5;
+  static const double playerChromeSourceRadius = 8;
+
   /// IPTV / live transport round icons (non-play).
   static const double playerChromeRoundBtnSize = playerChromeTopBtnSize;
   static const double playerChromeRoundBtnSizeTv = playerChromeTopBtnSizeTv;
