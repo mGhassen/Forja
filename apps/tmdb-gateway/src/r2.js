@@ -5,10 +5,12 @@
 import {
   S3Client,
   GetObjectCommand,
+  HeadObjectCommand,
   PutObjectCommand,
   DeleteObjectCommand,
   DeleteObjectsCommand,
 } from "@aws-sdk/client-s3";
+import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
 /** @type {S3Client | null} */
 let client = null;
@@ -52,6 +54,64 @@ function getClient() {
 /** @internal test helper */
 export function resetR2Client() {
   client = null;
+}
+
+/**
+ * Public CDN base for stable image URLs (no Vercel byte proxy).
+ * e.g. https://pub-….r2.dev or https://tmdb-img.forjahq.xyz
+ */
+export function r2PublicBase() {
+  return (process.env.R2_TMDB_PUBLIC_BASE || "").trim().replace(/\/$/, "");
+}
+
+/**
+ * Redirect URL for an object — public base if set, else presigned GET (private bucket).
+ * @param {string} key
+ * @param {number} [expiresInSeconds]
+ * @returns {Promise<string | null>}
+ */
+export async function r2RedirectUrl(key, expiresInSeconds = 7 * 24 * 60 * 60) {
+  const k = String(key || "").replace(/^\/+/, "");
+  if (!k) return null;
+  const pub = r2PublicBase();
+  if (pub) return `${pub}/${k}`;
+
+  const cfg = r2Config();
+  const s3 = getClient();
+  if (!cfg || !s3) return null;
+  const ttl = Math.max(60, Math.min(Math.floor(expiresInSeconds), 7 * 24 * 60 * 60));
+  try {
+    return await getSignedUrl(
+      s3,
+      new GetObjectCommand({ Bucket: cfg.bucket, Key: k }),
+      { expiresIn: ttl },
+    );
+  } catch (err) {
+    console.warn("[tmdb-r2] sign failed", err?.name || err);
+    return null;
+  }
+}
+
+/**
+ * @param {string} key
+ * @returns {Promise<boolean>}
+ */
+export async function r2HeadObject(key) {
+  const cfg = r2Config();
+  const s3 = getClient();
+  if (!cfg || !s3 || !key) return false;
+  try {
+    await s3.send(new HeadObjectCommand({ Bucket: cfg.bucket, Key: key }));
+    return true;
+  } catch (err) {
+    const status = err?.$metadata?.httpStatusCode;
+    const name = err?.name || "";
+    if (status === 404 || name === "NotFound" || name === "NoSuchKey") {
+      return false;
+    }
+    console.warn("[tmdb-r2] head failed", name || err);
+    return false;
+  }
 }
 
 /**

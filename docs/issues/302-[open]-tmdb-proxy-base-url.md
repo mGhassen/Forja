@@ -9,7 +9,7 @@
 
 | | |
 |--|--|
-| **Progress** | **12 / 13** fix · **2 / 5** acceptance |
+| **Progress** | **13 / 14** fix · **2 / 5** acceptance |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -36,6 +36,7 @@ Direct `api.themoviedb.org` is blocked or flaky in some regions. Home already ow
 | 11 | I302-T11 | Host `crates/tmdb` + Dart image bases + `host.tmdb` inject default to gateway (keyless) | ✅ |
 | 12 | I302-T12 | Image blobs on R2 `forja-tmdb` (Postgres `tmdb_image_cache` meta); cold cutover from Supabase Storage | ✅ |
 | 13 | I302-T13 | Daily `/internal/purge-expired` (04:00 UTC, Hobby cron) — expired JSON rows + image rows and R2 objects | ✅ |
+| 14 | I302-T14 | `/t/p/*` 302 → R2 (presigned or `R2_TMDB_PUBLIC_BASE`) — no image byte proxy on Vercel | ✅ |
 
 ---
 

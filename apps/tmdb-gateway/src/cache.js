@@ -7,6 +7,7 @@
 import {
   r2Configured,
   r2GetObject,
+  r2HeadObject,
   r2PutObject,
   r2DeleteObject,
   r2DeleteObjects,
@@ -139,11 +140,12 @@ export function imageStoragePath(rest) {
 }
 
 /**
+ * Meta-only lookup for redirect flow (no R2 byte download).
  * @param {string} cacheKey
- * @param {string} rest image path after /t/p/
- * @returns {Promise<{ body: Buffer, contentType: string } | null>}
+ * @param {string} rest
+ * @returns {Promise<{ storagePath: string, contentType: string, expiresAt: string } | null>}
  */
-export async function cacheGetImage(cacheKey, rest) {
+export async function cacheLookupImage(cacheKey, rest) {
   const cfg = supabaseConfig();
   if (!cfg || !r2Configured()) return null;
 
@@ -170,22 +172,42 @@ export async function cacheGetImage(cacheKey, rest) {
     }
 
     const path = String(row.storage_path || imageStoragePath(rest));
-    const obj = await r2GetObject(path);
-    if (!obj) {
+    const exists = await r2HeadObject(path);
+    if (!exists) {
       console.warn("[tmdb-cache] image object miss in R2", path);
       void deleteImageMeta(cacheKey);
       return null;
     }
     return {
-      body: obj.body,
-      contentType: String(
-        row.content_type || obj.contentType || "application/octet-stream",
-      ),
+      storagePath: path,
+      contentType: String(row.content_type || "image/jpeg"),
+      expiresAt: String(row.expires_at),
     };
   } catch (err) {
-    console.warn("[tmdb-cache] image get failed", err);
+    console.warn("[tmdb-cache] image lookup failed", err);
     return null;
   }
+}
+
+/**
+ * @param {string} cacheKey
+ * @param {string} rest image path after /t/p/
+ * @returns {Promise<{ body: Buffer, contentType: string } | null>}
+ */
+export async function cacheGetImage(cacheKey, rest) {
+  const hit = await cacheLookupImage(cacheKey, rest);
+  if (!hit) return null;
+  const obj = await r2GetObject(hit.storagePath);
+  if (!obj) {
+    void deleteImageMeta(cacheKey);
+    return null;
+  }
+  return {
+    body: obj.body,
+    contentType: String(
+      hit.contentType || obj.contentType || "application/octet-stream",
+    ),
+  };
 }
 
 /**
@@ -194,10 +216,11 @@ export async function cacheGetImage(cacheKey, rest) {
  * @param {Buffer|Uint8Array} body
  * @param {string} contentType
  * @param {number} ttlSeconds
+ * @returns {Promise<string | null>} storage path on success
  */
 export async function cachePutImage(cacheKey, rest, body, contentType, ttlSeconds) {
   const cfg = supabaseConfig();
-  if (!cfg || !r2Configured()) return;
+  if (!cfg || !r2Configured()) return null;
 
   const buf = toBuffer(body);
   const path = imageStoragePath(rest);
@@ -206,7 +229,7 @@ export async function cachePutImage(cacheKey, rest, body, contentType, ttlSecond
 
   try {
     const ok = await r2PutObject(path, buf, ct);
-    if (!ok) return;
+    if (!ok) return null;
 
     const payload = {
       cache_key: cacheKey,
@@ -231,8 +254,10 @@ export async function cachePutImage(cacheKey, rest, body, contentType, ttlSecond
         text.slice(0, 200),
       );
     }
+    return path;
   } catch (err) {
     console.warn("[tmdb-cache] image put failed", err);
+    return null;
   }
 }
 

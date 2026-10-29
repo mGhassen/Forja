@@ -77,6 +77,20 @@ test("imageStoragePath mirrors TMDB", async () => {
   assert.equal(imageStoragePath("w500/abc.jpg"), "t/p/w500/abc.jpg");
 });
 
+test("r2PublicBase builds redirect when set", async () => {
+  const { r2PublicBase, r2RedirectUrl, resetR2Client } = await import("./r2.js");
+  resetR2Client();
+  const prev = process.env.R2_TMDB_PUBLIC_BASE;
+  process.env.R2_TMDB_PUBLIC_BASE = "https://img.example.test/";
+  assert.equal(r2PublicBase(), "https://img.example.test");
+  assert.equal(
+    await r2RedirectUrl("t/p/w500/x.jpg", 60),
+    "https://img.example.test/t/p/w500/x.jpg",
+  );
+  if (prev === undefined) delete process.env.R2_TMDB_PUBLIC_BASE;
+  else process.env.R2_TMDB_PUBLIC_BASE = prev;
+});
+
 test("apiKeysFromEnv parses TMDB_API_KEYS round-robin pool", () => {
   const keys = apiKeysFromEnv({
     TMDB_API_KEYS: "aaa, bbb\nccc,aaa",

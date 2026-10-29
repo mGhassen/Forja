@@ -3,8 +3,8 @@
 Forja-owned TMDB **API + image** reverse proxy. Home pack points `config.base` / `imageBase` here. Credentials stay on the server.
 
 **Cache:**
-- `/3/*` JSON → Postgres `tmdb_response_cache`
-- `/t/p/*` images → Cloudflare R2 bucket `forja-tmdb` + Postgres `tmdb_image_cache` metadata
+- `/3/*` JSON → Postgres `tmdb_response_cache` (served by Vercel)
+- `/t/p/*` images → R2 `forja-tmdb` + Postgres `tmdb_image_cache` — gateway returns **302** to R2 (presigned, or public base if set) so image bytes skip Vercel Fast Origin Transfer
 - Daily purge (`/internal/purge-expired`, 04:00 UTC) deletes expired JSON rows and expired image rows **plus** matching R2 objects (Hobby cron limit)
 
 ## Routes
@@ -13,7 +13,7 @@ Forja-owned TMDB **API + image** reverse proxy. Home pack points `config.base` /
 |------|----------|
 | `GET /health` | Credential + cache status |
 | `GET /3/*` | `https://api.themoviedb.org/3/*` (keyless; server injects key) |
-| `GET /t/p/*` | `https://image.tmdb.org/t/p/*` |
+| `GET /t/p/*` | Cache miss: TMDB → R2, then **302** to R2; hit: **302** to R2 |
 | `GET /internal/purge-expired` | TTL purge (Bearer secret; Vercel Cron daily 04:00 UTC) |
 
 `/3/configuration*` rewrites `images.secure_base_url` / `base_url` to this gateway’s `/t/p/`.
@@ -60,6 +60,7 @@ Home local pack config:
 | `R2_ACCESS_KEY_ID` / `R2_SECRET_ACCESS_KEY` | for images | Must allow bucket `forja-tmdb` |
 | `R2_ENDPOINT` | for images | `https://{account}.r2.cloudflarestorage.com` |
 | `R2_TMDB_BUCKET` | for images | `forja-tmdb` (do not reuse `R2_BUCKET=forja-releases`) |
+| `R2_TMDB_PUBLIC_BASE` | optional | Public CDN origin for objects (e.g. `https://pub-….r2.dev` or custom domain). If unset, redirects use **presigned** URLs (bucket stays private). |
 | `TMDB_CACHE_PURGE_SECRET` | for purge | Bearer for `/internal/purge-expired` (or use `CRON_SECRET` on Vercel) |
 | `TMDB_GATEWAY_PUBLIC_URL` | for config rewrite | e.g. `https://tmdb.forjahq.xyz` |
 | `PORT` | no | Local listen (default `3000`) |
@@ -81,8 +82,12 @@ Apply migrations before relying on cache (ops approval):
 
 1. Deploy with R2 env set.
 2. `TRUNCATE public.tmdb_image_cache;` on hosted Supabase (old meta pointed at Storage).
-3. Smoke: `GET /t/p/...` twice → `X-TMDB-Cache: HIT`; object under `t/p/...` in R2 `forja-tmdb`.
+3. Smoke: `curl -sI https://tmdb.forjahq.xyz/t/p/w500/…` → `302`, `X-TMDB-Image-Mode: redirect`, `Location` on R2; object under `t/p/...` in `forja-tmdb`.
 4. Smoke purge: expired row → `GET /internal/purge-expired` with Bearer → row + R2 object gone.
+
+### Cutting Vercel image egress
+
+Redirects are on by default when R2 is configured (presigned). For stable URLs / better client cache: enable public read on `forja-tmdb` (or a custom domain) and set `R2_TMDB_PUBLIC_BASE`.
 
 ## Cache TTLs
 

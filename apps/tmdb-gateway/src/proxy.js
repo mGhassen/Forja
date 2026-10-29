@@ -2,13 +2,15 @@ import {
   cacheGetJson,
   cachePutJson,
   cacheGetImage,
+  cacheLookupImage,
   cachePutImage,
+  imageStoragePath,
   cacheConfigured,
   jsonCacheConfigured,
   imageCacheConfigured,
   purgeExpiredCaches,
 } from "./cache.js";
-import { r2Configured } from "./r2.js";
+import { r2Configured, r2PublicBase, r2RedirectUrl } from "./r2.js";
 
 
 const TMDB_API = "https://api.themoviedb.org";
@@ -193,6 +195,8 @@ export async function handleRequest(request) {
       jsonCache: jsonCacheConfigured(),
       imageCache: imageCacheConfigured(),
       r2: r2Configured(),
+      imageRedirect: imageCacheConfigured(),
+      r2PublicBase: Boolean(r2PublicBase()),
       publicOrigin: publicOrigin(),
     });
   }
@@ -343,16 +347,28 @@ async function proxyImage(rest, method) {
   const key = cacheKeyFor("image", rest, new URLSearchParams());
   const ttl = ttlSecondsFor("image", rest);
 
-  const cached = await cacheGetImage(key, rest);
-  if (cached) {
-    return new Response(method === "HEAD" ? null : cached.body, {
-      status: 200,
-      headers: {
-        "Content-Type": cached.contentType,
-        "Cache-Control": cacheControlFor(ttl),
-        "X-TMDB-Cache": "HIT",
-      },
-    });
+  // Prefer 302 → R2 so image bytes never burn Vercel Fast Origin Transfer.
+  const lookup = await cacheLookupImage(key, rest);
+  if (lookup) {
+    const remainingSec = Math.max(
+      60,
+      Math.floor((new Date(lookup.expiresAt).getTime() - Date.now()) / 1000),
+    );
+    const loc = await r2RedirectUrl(lookup.storagePath, remainingSec);
+    if (loc) return imageRedirect(loc, "HIT", ttl);
+    // Fallback: proxy bytes if signing/public URL unavailable.
+    const cached = await cacheGetImage(key, rest);
+    if (cached) {
+      return new Response(method === "HEAD" ? null : cached.body, {
+        status: 200,
+        headers: {
+          "Content-Type": cached.contentType,
+          "Cache-Control": cacheControlFor(ttl),
+          "X-TMDB-Cache": "HIT",
+          "X-TMDB-Image-Mode": "proxy",
+        },
+      });
+    }
   }
 
   const upstream = `${TMDB_IMG}/t/p/${rest}`;
@@ -368,7 +384,10 @@ async function proxyImage(rest, method) {
     upstreamRes.headers.get("content-type") || "application/octet-stream";
 
   if (upstreamRes.ok && upstreamRes.status === 200) {
-    void cachePutImage(key, rest, buf, contentType, ttl);
+    const storedPath = await cachePutImage(key, rest, buf, contentType, ttl);
+    const path = storedPath || imageStoragePath(rest);
+    const loc = await r2RedirectUrl(path, ttl);
+    if (loc) return imageRedirect(loc, "MISS", ttl);
   }
 
   return new Response(method === "HEAD" ? null : buf, {
@@ -377,6 +396,20 @@ async function proxyImage(rest, method) {
       "Content-Type": contentType,
       "Cache-Control": upstreamRes.ok ? cacheControlFor(ttl) : "no-store",
       "X-TMDB-Cache": "MISS",
+      "X-TMDB-Image-Mode": "proxy",
+    },
+  });
+}
+
+/** @param {string} location @param {'HIT'|'MISS'} cache @param {number} ttl */
+function imageRedirect(location, cache, ttl) {
+  return new Response(null, {
+    status: 302,
+    headers: {
+      Location: location,
+      "Cache-Control": cacheControlFor(Math.min(ttl, 3600)),
+      "X-TMDB-Cache": cache,
+      "X-TMDB-Image-Mode": "redirect",
     },
   });
 }
