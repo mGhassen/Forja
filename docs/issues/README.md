@@ -561,6 +561,7 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [522-[fixed]-…](fixed/522-[fixed]-sources-panel-empty-flash-before-chips.md) | Sources empty flash before provider chips | P1 | Medium | fixed | Complete · 4/4 · A 0/2 | [177](177-[open]-sources-selected-provider-lazy-fetch.md) |
 | [523-[fixed]-…](fixed/523-[fixed]-hub-reopen-keeps-mid-scroll.md) | Hub reopen lands mid-page (kept scroll) | P2 | Medium | fixed | Complete · 1/1 · A 1/1 | [375](fixed/375-[fixed]-hub-keep-alive-keeps-fetching-off-tab.md) |
 | [524-[fixed]-…](fixed/524-[fixed]-phone-mediakit-open-process-death.md) | Phone MediaKit open kills process | P1 | High | fixed | Complete · 2/2 · A 0/2 | [163](163-[open]-android-tv-iptv-vod-live-profile.md) |
+| [525-[fixed]-…](fixed/525-[fixed]-phone-web-login-apply-dns-flake.md) | Phone Web login apply DNS flake | P1 | High | fixed | Complete · 3/3 · A 0/2 | [520](fixed/520-[fixed]-web-login-handoff-unreachable-after-apply-fail.md) |
 
 **Migration parity (draft):** [018](018-[draft]-migration-playback-parity-unverified.md) → [019](019-[draft]-webstreamr-enginejobs-e2e-test-gap.md)–[022](022-[draft]-playback-widget-integration-tests.md).
 

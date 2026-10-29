@@ -275,6 +275,10 @@ export async function handoffSessionToDesktop(options: {
 
 /**
  * Mint session B, post it to the desktop loopback, keep portal session A.
+ *
+ * Retries on `rejected` (app got tokens but apply failed — often transient
+ * DNS on emulators / flaky mobile networks). Does not retry `unreachable`
+ * (app not listening) or mint failures.
  */
 export async function mintAndHandoffToDesktop(options: {
   callback: string
@@ -282,16 +286,27 @@ export async function mintAndHandoffToDesktop(options: {
 }): Promise<DesktopHandoffResult> {
   lockDesktopHandoff()
   try {
-    const minted = await mintDesktopSession()
-    if (!minted.ok) {
-      return { status: 'mint_failed', body: minted.error }
+    const maxAttempts = 3
+    let last: DesktopHandoffResult = { status: 'unreachable' }
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      const minted = await mintDesktopSession()
+      if (!minted.ok) {
+        return { status: 'mint_failed', body: minted.error }
+      }
+      last = await handoffSessionToDesktop({
+        callback: options.callback,
+        state: options.state,
+        accessToken: minted.accessToken,
+        refreshToken: minted.refreshToken,
+      })
+      if (last.status === 'ok' || last.status === 'unreachable') {
+        return last
+      }
+      if (attempt < maxAttempts) {
+        await new Promise((r) => setTimeout(r, 900 * attempt))
+      }
     }
-    return await handoffSessionToDesktop({
-      callback: options.callback,
-      state: options.state,
-      accessToken: minted.accessToken,
-      refreshToken: minted.refreshToken,
-    })
+    return last
   } finally {
     unlockDesktopHandoff()
   }

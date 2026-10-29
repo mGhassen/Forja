@@ -31,8 +31,6 @@ class SettingsForjaAccountPanel extends StatefulWidget {
 }
 
 class _SettingsForjaAccountPanelState extends State<SettingsForjaAccountPanel> {
-  final _emailCtrl = TextEditingController();
-  final _passwordCtrl = TextEditingController();
   bool _busy = false;
   bool _webBusy = false;
   String? _error;
@@ -61,8 +59,6 @@ class _SettingsForjaAccountPanelState extends State<SettingsForjaAccountPanel> {
     // Do not cancel web login on dispose - leaving Settings mid-handoff used
     // to abort after the browser already closed on ok:true.
     SyncService.instance.identityRevision.removeListener(_onIdentity);
-    _emailCtrl.dispose();
-    _passwordCtrl.dispose();
     super.dispose();
   }
 
@@ -153,30 +149,6 @@ class _SettingsForjaAccountPanelState extends State<SettingsForjaAccountPanel> {
       if (!mounted) return;
       ForjaToast.success('Account ready');
     }
-    await _refreshRemote();
-    setState(() {});
-  }
-
-  Future<void> _signIn() async {
-    setState(() {
-      _busy = true;
-      _error = null;
-    });
-    final ok = await SyncService.instance.signIn(
-      email: _emailCtrl.text.trim(),
-      password: _passwordCtrl.text,
-    );
-    if (!mounted) return;
-    setState(() => _busy = false);
-    if (!ok) {
-      setState(() {
-        _error = 'Sign-in failed. Check email/password or Supabase config.';
-      });
-      return;
-    }
-    _passwordCtrl.clear();
-    await presentProfileChooser(context, prepareCurrentOnSwitch: false);
-    if (!mounted) return;
     await _refreshRemote();
     setState(() {});
   }
@@ -283,8 +255,6 @@ class _SettingsForjaAccountPanelState extends State<SettingsForjaAccountPanel> {
   }
 
   bool get _formLocked => _busy || _webBusy;
-  bool get _passwordLocked => _busy;
-  bool get _canSubmitPassword => !_formLocked;
 
   @override
   Widget build(BuildContext context) {
@@ -406,18 +376,12 @@ class _SettingsForjaAccountPanelState extends State<SettingsForjaAccountPanel> {
     }
 
     return _SignedOutAccountBody(
-      emailCtrl: _emailCtrl,
-      passwordCtrl: _passwordCtrl,
       formLocked: _formLocked,
-      passwordLocked: _passwordLocked,
-      canSubmitPassword: _canSubmitPassword,
       androidTv: PlatformInfo.isAndroidTv,
       desktop: PlatformInfo.isDesktop,
       deviceLinkActive: _deviceLinkActive,
-      busy: _busy,
       webBusy: _webBusy,
       error: _error,
-      onSignIn: _signIn,
       onWebLogin: _webLogin,
       onCancelWebLogin: _cancelWebLogin,
       onTvDeviceLink: _tvDeviceLink,
@@ -776,18 +740,12 @@ class _ActiveProfileStage extends StatelessWidget {
 
 class _SignedOutAccountBody extends StatelessWidget {
   const _SignedOutAccountBody({
-    required this.emailCtrl,
-    required this.passwordCtrl,
     required this.formLocked,
-    required this.passwordLocked,
-    required this.canSubmitPassword,
     required this.androidTv,
     required this.desktop,
     required this.deviceLinkActive,
-    required this.busy,
     required this.webBusy,
     required this.error,
-    required this.onSignIn,
     required this.onWebLogin,
     required this.onCancelWebLogin,
     required this.onTvDeviceLink,
@@ -797,18 +755,12 @@ class _SignedOutAccountBody extends StatelessWidget {
     required this.onDeviceLinkAuthenticated,
   });
 
-  final TextEditingController emailCtrl;
-  final TextEditingController passwordCtrl;
   final bool formLocked;
-  final bool passwordLocked;
-  final bool canSubmitPassword;
   final bool androidTv;
   final bool desktop;
   final bool deviceLinkActive;
-  final bool busy;
   final bool webBusy;
   final String? error;
-  final VoidCallback onSignIn;
   final VoidCallback onWebLogin;
   final VoidCallback onCancelWebLogin;
   final VoidCallback onTvDeviceLink;
@@ -956,13 +908,14 @@ class _SignedOutAccountBody extends StatelessWidget {
       );
     }
 
+    // Phone / tablet: portal Web login only (captcha lives on the web).
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Padding(
           padding: EdgeInsets.fromLTRB(2, 4, 2, 4),
           child: Text(
-            'Sign in to sync profiles and settings across devices. '
+            'Sign in on the Forja website, then return here. '
             'You can keep using Forja without an account.',
             style: TextStyle(
               color: ForjaShellColors.textSecondary,
@@ -979,22 +932,7 @@ class _SignedOutAccountBody extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  SettingsTextField(
-                    controller: emailCtrl,
-                    label: 'Email',
-                    hint: 'you@example.com',
-                    enabled: !formLocked,
-                  ),
-                  const SizedBox(height: 4),
-                  SettingsTextField(
-                    controller: passwordCtrl,
-                    label: 'Password',
-                    obscureText: true,
-                    enabled: !formLocked,
-                    onSubmitted: canSubmitPassword ? (_) => onSignIn() : null,
-                  ),
                   if (error != null) ...[
-                    const SizedBox(height: 10),
                     Text(
                       error!,
                       style: TextStyle(
@@ -1003,29 +941,17 @@ class _SignedOutAccountBody extends StatelessWidget {
                         height: 1.35,
                       ),
                     ),
+                    const SizedBox(height: 12),
                   ],
-                  const SizedBox(height: 16),
-                  Wrap(
-                    spacing: 10,
-                    runSpacing: 10,
-                    children: [
-                      Button(
-                        variant: ButtonVariant.primary,
-                        label: busy ? 'Signing in…' : 'Sign in',
-                        icon: Icons.login_rounded,
-                        loading: busy,
-                        onPressed: canSubmitPassword ? onSignIn : null,
-                      ),
-                      Button(
-                        label: webBusy ? 'Cancel web login' : 'Web login',
-                        icon: webBusy
-                            ? Icons.close_rounded
-                            : Icons.language_rounded,
-                        onPressed: passwordLocked
-                            ? null
-                            : (webBusy ? onCancelWebLogin : onWebLogin),
-                      ),
-                    ],
+                  Button(
+                    variant: ButtonVariant.primary,
+                    label: webBusy ? 'Cancel web login' : 'Web login',
+                    icon: webBusy
+                        ? Icons.close_rounded
+                        : Icons.language_rounded,
+                    onPressed: formLocked && !webBusy
+                        ? null
+                        : (webBusy ? onCancelWebLogin : onWebLogin),
                   ),
                 ],
               ),

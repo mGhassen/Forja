@@ -113,7 +113,7 @@ class DesktopBrowserAuth {
         if (applyingTokens) return;
         finish(
           const DesktopBrowserAuthResult.failure(
-            'Web login timed out. Try again, or sign in with email here.',
+            'Web login timed out. Open Web login again from Forja.',
           ),
         );
       });
@@ -242,12 +242,21 @@ class DesktopBrowserAuth {
               // Keep the loopback up so the portal can retry Return to Forja.
               // Finishing here used to close the server → "Could not reach".
               debugPrint('[DesktopBrowserAuth] apply tokens failed: $e\n$st');
+              final detail = e.toString().toLowerCase();
+              final network =
+                  detail.contains('failed host lookup') ||
+                  detail.contains('socketexception') ||
+                  detail.contains('authretryablefetchexception') ||
+                  detail.contains('network is unreachable') ||
+                  detail.contains('timed out');
               await _writeCallbackResponse(
                 request,
                 title: 'Sign-in failed',
-                body:
-                    'Forja could not apply the session. Keep this tab open and '
-                    'tap Return to Forja again.',
+                body: network
+                    ? 'Forja could not reach the account service yet. Keep '
+                          'this tab open — Return to Forja will retry.'
+                    : 'Forja could not apply the session. Keep this tab open '
+                          'and tap Return to Forja again.',
                 ok: false,
               );
             } finally {

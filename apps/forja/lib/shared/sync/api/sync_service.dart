@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:flutter/foundation.dart';
 import 'package:forja/shared/engine/packs/registry/plugin_registry.dart';
@@ -725,9 +726,9 @@ class SyncService {
       throw const AuthException('Web login did not return usable tokens.');
     }
 
-    // Emulator / flaky DNS can fail the first getUser during setSession; retry
-    // before telling the portal the handoff failed.
-    const maxAttempts = 3;
+    // Emulator / flaky DNS can fail getUser during setSession for several
+    // seconds after Chrome opens; retry with backoff before rejecting handoff.
+    const maxAttempts = 6;
     Object? lastError;
     for (var attempt = 1; attempt <= maxAttempts; attempt++) {
       try {
@@ -750,11 +751,12 @@ class SyncService {
         if (!isRetryableAuthNetworkError(e) || attempt == maxAttempts) {
           rethrow;
         }
+        final delayMs = (400 * attempt * attempt).clamp(400, 4000);
         debugPrint(
           '[Sync] browser setSession attempt $attempt/$maxAttempts failed '
-          '($e); retrying',
+          '($e); retrying in ${delayMs}ms',
         );
-        await Future<void>.delayed(Duration(milliseconds: 250 * attempt));
+        await Future<void>.delayed(Duration(milliseconds: delayMs));
       }
     }
     // Unreachable — loop always returns or rethrows.
@@ -812,11 +814,31 @@ class SyncService {
         msg.contains('session is missing');
   }
 
+  /// Best-effort DNS warm for the Auth host before Chrome handoff.
+  ///
+  /// Emulators often fail the first `setSession`/`getUser` with
+  /// `Failed host lookup` right after the browser opens; a lookup here
+  /// primes the resolver so the callback apply succeeds on the first try.
+  Future<void> _warmAuthHostLookup() async {
+    final host = Uri.tryParse(ForjaSupabase.url)?.host;
+    if (host == null || host.isEmpty) return;
+    for (var i = 0; i < 3; i++) {
+      try {
+        await InternetAddress.lookup(host);
+        return;
+      } catch (e) {
+        debugPrint('[Sync] auth host lookup warm $i failed: $e');
+        await Future<void>.delayed(Duration(milliseconds: 300 * (i + 1)));
+      }
+    }
+  }
+
   /// Opens the web portal login in the system browser and waits for a session.
   ///
   /// Complete [cancel] to abort the wait (e.g. user tapped Cancel on the
   /// account entry screen).
   Future<AuthResponse> signInWithBrowser({Future<void>? cancel}) async {
+    await _warmAuthHostLookup();
     AuthResponse? applied;
     final result = await DesktopBrowserAuth.signIn(
       cancel: cancel,
