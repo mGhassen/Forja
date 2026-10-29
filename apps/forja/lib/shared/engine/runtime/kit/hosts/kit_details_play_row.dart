@@ -5,7 +5,11 @@ import 'package:forja/shell/tv/tv_focus_graph.dart';
 import 'package:forja_foundation/widgets/details/play_row.dart';
 
 export 'package:forja_foundation/widgets/details/play_row.dart'
-    show DetailsHeroActionRowFit, DetailsUpcomingNotice, PlayRow;
+    show
+        DetailsHeroActionRowFit,
+        DetailsStackedActions,
+        DetailsUpcomingNotice,
+        PlayRow;
 
 /// Soft upcoming chip — host alias for [DetailsUpcomingNotice].
 typedef KitDetailsUpcomingNotice = DetailsUpcomingNotice;
@@ -59,7 +63,11 @@ class KitDetailsPlayRow extends StatelessWidget {
     this.tvItemIndex,
     this.tvSourcesItemIndex,
     this.onUpEdge,
-  });
+    this.expand = false,
+  }) : assert(
+         !expand || onOpenSources == null,
+         'Expanded Play stands alone; mount Sources as a secondary action.',
+       );
 
   final String label;
   final VoidCallback? onPlay;
@@ -73,6 +81,9 @@ class KitDetailsPlayRow extends StatelessWidget {
   final int? tvSourcesItemIndex;
   final VoidCallback? onUpEdge;
 
+  /// Phone: Play fills the action column width, label always shown.
+  final bool expand;
+
   @override
   Widget build(BuildContext context) {
     final tv = enabled && tvTabId != null;
@@ -85,6 +96,7 @@ class KitDetailsPlayRow extends StatelessWidget {
       tvTabId: tv ? tvTabId : null,
       tvRowId: tv ? MediaDetailsTv.heroRowId : null,
       tvItemIndex: tv ? tvItemIndex : null,
+      expand: expand,
     );
     final children = <Widget>[play];
     if (onOpenSources != null) {

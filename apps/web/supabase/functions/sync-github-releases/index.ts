@@ -32,9 +32,13 @@ function detectPlatform(name: string): string {
   ) {
     return 'linux'
   }
+  if (lower.includes('android-mobile') || lower.includes('android_mobile')) {
+    return 'android_mobile'
+  }
   if (lower.includes('android-tv') || lower.includes('android_tv') || lower.includes('androidtv')) {
     return 'android_tv'
   }
+  // Unlabelled APKs predate the phone build and are all Android TV.
   if (lower.endsWith('.apk') || lower.includes('android')) {
     return 'android_tv'
   }

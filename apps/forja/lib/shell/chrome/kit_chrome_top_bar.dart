@@ -3,9 +3,12 @@ import 'package:flutter/services.dart';
 import 'package:forja/shared/engine/runtime/nav/chrome_menu_item.dart';
 import 'package:forja/shared/engine/runtime/nav/vertical_filters.dart';
 import 'package:forja/shared/services/tracker/simkl_service.dart';
+import 'package:forja/shell/chrome/kit_categories_mobile_sheet.dart';
 import 'package:forja/shell/chrome/kit_top_bar_fade.dart';
 import 'package:forja/shell/chrome/vertical_filters_rail.dart';
+import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shell/core/forja_shell_layout.dart';
+import 'package:forja/shell/core/forja_shell_profile.dart';
 import 'package:forja/shell/core/forja_shell_scope.dart';
 import 'package:forja/shell/focus/shell_focusable_tap.dart';
 import 'package:forja/shell/tv/shell_tv_coordinator.dart';
@@ -117,6 +120,24 @@ class _KitChromeTopBarState extends State<KitChromeTopBar> {
   }
 
   Future<void> _openCategoriesMenu() async {
+    // Phone: bottom sheet of chips instead of the dropdown glued to the edge.
+    if (ShellScope.maybeOf(context)?.profile == ShellProfile.mobile) {
+      setState(() => _categoriesOpen = true);
+      final picked = await showKitCategoriesMobileSheet(
+        context: context,
+        categories: widget.categories,
+        selectedId: widget.selectedCategoryId.value,
+        allValue: catalogAllCategoriesSentinel,
+      );
+      if (!mounted) return;
+      setState(() => _categoriesOpen = false);
+      if (picked == null) return;
+      final next = picked == catalogAllCategoriesSentinel ? null : picked;
+      if (next != widget.selectedCategoryId.value) {
+        widget.selectedCategoryId.value = next;
+      }
+      return;
+    }
     final box = _categoriesKey.currentContext?.findRenderObject() as RenderBox?;
     if (box == null) return;
 
@@ -298,6 +319,7 @@ class _KitChromeTopBarState extends State<KitChromeTopBar> {
     final compactNav =
         MediaQuery.sizeOf(context).width < ShellTokens.shellNavCompactMaxWidth;
     final tvFocus = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
+    final touchBar = ShellScope.profileOf(context) == ShellProfile.mobile;
 
     return ValueListenableBuilder<String?>(
       valueListenable: VerticalFiltersRegistry.selectedIdFor(widget.tabId),
@@ -322,16 +344,29 @@ class _KitChromeTopBarState extends State<KitChromeTopBar> {
               builder: (context, heroHeight, menu) {
                 final topInset = MediaQuery.paddingOf(context).top;
                 final barHeight = topInset + barContentHeight;
-                final hideProgress = kitTopBarHideProgress(
-                  scrollOffset: scrollOffset,
-                  heroHeight: heroHeight,
-                  barHeight: barHeight,
-                  slideDistance: KitChromeTopBar.hideSlideDistance,
-                );
-                final scrimOpacity = kitTopBarScrimOpacity(
-                  scrollOffset: scrollOffset,
-                  hideProgress: hideProgress,
-                );
+                // Touch: the bar stays put. Scrim from rest (bright hero art),
+                // solid theme background once the hero text reaches the bar.
+                final hideProgress = touchBar
+                    ? 0.0
+                    : kitTopBarHideProgress(
+                        scrollOffset: scrollOffset,
+                        heroHeight: heroHeight,
+                        barHeight: barHeight,
+                        slideDistance: KitChromeTopBar.hideSlideDistance,
+                      );
+                final scrimOpacity = touchBar
+                    ? 1.0
+                    : kitTopBarScrimOpacity(
+                        scrollOffset: scrollOffset,
+                        hideProgress: hideProgress,
+                      );
+                final solidOpacity = touchBar
+                    ? kitTopBarSolidOpacity(
+                        scrollOffset: scrollOffset,
+                        heroHeight: heroHeight,
+                        barHeight: barHeight,
+                      )
+                    : 0.0;
 
                 return Transform.translate(
                   offset: Offset(0, -barHeight * hideProgress),
@@ -347,10 +382,29 @@ class _KitChromeTopBarState extends State<KitChromeTopBar> {
                         left: 0,
                         right: 0,
                         child: TopBarScrim(
-                          height: barHeight * TopBarScrimTokens.heightFactor,
+                          height:
+                              barHeight *
+                              (touchBar
+                                  ? TopBarScrimTokens.mobileHeightFactor
+                                  : TopBarScrimTokens.heightFactor),
                           opacity: scrimOpacity,
                         ),
                       ),
+                      if (solidOpacity > 0)
+                        Positioned(
+                          key: const ValueKey('kit-top-bar-solid'),
+                          top: 0,
+                          left: 0,
+                          right: 0,
+                          height: barHeight,
+                          child: IgnorePointer(
+                            child: ColoredBox(
+                              color: AppTheme.bgDark.withValues(
+                                alpha: AppTheme.bgDark.a * solidOpacity,
+                              ),
+                            ),
+                          ),
+                        ),
                       child!,
                     ],
                   ),

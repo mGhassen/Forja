@@ -51,7 +51,12 @@ export type ReleaseWithAssets = Release & {
   platforms?: ShowcasePlatformId[]
 }
 
-export type ShowcasePlatformId = 'windows' | 'macos' | 'linux' | 'android_tv'
+export type ShowcasePlatformId =
+  | 'windows'
+  | 'macos'
+  | 'linux'
+  | 'android_mobile'
+  | 'android_tv'
 
 export type ShowcasePlatform = {
   id: ShowcasePlatformId
@@ -84,6 +89,13 @@ export const SHOWCASE_PLATFORMS: ShowcasePlatform[] = [
     tagline: 'Linux build with the same player.',
     format: 'For Linux',
     match: ['linux'],
+  },
+  {
+    id: 'android_mobile',
+    label: 'Android',
+    tagline: 'Android app for your phone.',
+    format: 'For your phone',
+    match: ['android_mobile'],
   },
   {
     id: 'android_tv',
@@ -298,7 +310,18 @@ export function assetsForPlatform(
   platform: ShowcasePlatform,
 ): ReleaseAsset[] {
   if (!assets?.length) return []
-  return assets.filter((a) => platform.match.includes(a.platform))
+  return assets.filter((a) => platform.match.includes(assetPlatform(a)))
+}
+
+/**
+ * Platform for one asset. APK filenames win over the manifest key so a phone
+ * APK never lands under Android TV (or the reverse).
+ */
+function assetPlatform(asset: ReleaseAsset): string {
+  if (asset.name.toLowerCase().endsWith('.apk')) {
+    return detectPlatformFromFilename(asset.name)
+  }
+  return asset.platform
 }
 
 /** Prefer the same installer the app updater would pick for that platform. */
@@ -351,6 +374,18 @@ export function primaryAssetForPlatform(
         list[0] ??
         null
       )
+    case 'android_mobile': {
+      // Default 64-bit ARM when arch unknown (Android browsers rarely say).
+      const arch = preferredArch === 'x86_64' ? null : (preferredArch ?? 'arm64')
+      return (
+        (arch
+          ? find((n) => filenameMatchesArch(n, arch) && n.endsWith('.apk'))
+          : undefined) ??
+        find((n) => n.includes('android-mobile') && n.endsWith('.apk')) ??
+        list[0] ??
+        null
+      )
+    }
     case 'android_tv':
       return (
         findArch('.apk') ??

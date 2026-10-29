@@ -210,11 +210,16 @@ class _SettingsPlaybackSectionState
                 },
               ),
             if (!kIsWeb &&
-                SettingsService.platformProfile == PlatformProfile.desktop)
+                (SettingsService.platformProfile == PlatformProfile.desktop ||
+                    (Platform.isAndroid &&
+                        SettingsService.platformProfile ==
+                            PlatformProfile.phone)))
               settingsFocusableToggle(
                 context,
                 'Auto picture-in-picture',
-                'Enter picture-in-picture when you switch Space (macOS) or virtual desktop (Windows) while playing. You can still use the player PiP button anytime.',
+                SettingsService.platformProfile == PlatformProfile.phone
+                    ? 'Keep the video playing in a small window when you leave the app while playing. You can still use the player PiP button anytime.'
+                    : 'Enter picture-in-picture when you switch Space (macOS) or virtual desktop (Windows) while playing. You can still use the player PiP button anytime.',
                 snap.autoPipOnDesktopSwitch,
                 (val) async {
                   await _settings.setAutoPipOnDesktopSwitch(val);

@@ -97,10 +97,10 @@ pick_platforms() {
   read -r -p "  Linux [Y/n]: " ans
   [[ "$ans" =~ ^[Nn] ]] && PLATFORM_LINUX=false
 
-  read -r -p "  Android TV arm64 [y/N]: " ans
+  read -r -p "  Android TV + mobile arm64 [y/N]: " ans
   [[ "$ans" =~ ^[Yy] ]] && PLATFORM_ANDROID_TV_ARM64=true
 
-  read -r -p "  Android TV armeabi-v7a [y/N]: " ans
+  read -r -p "  Android TV + mobile armeabi-v7a [y/N]: " ans
   [[ "$ans" =~ ^[Yy] ]] && PLATFORM_ANDROID_TV_V7A=true
 
   read -r -p "  Pre-release [y/N]: " ans

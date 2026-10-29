@@ -170,6 +170,7 @@ mixin _MobilePlayerLifecycle
 
     // ── System UI ────────────────────────────────────────────────────────
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+    if (_s._phoneChrome) PhonePlayerSystemUi.attach();
     // Orientation is set in addPostFrameCallback below - after the
     // first frame renders - to avoid fighting the portrait lock while
     // the widget tree is still building.
@@ -225,23 +226,6 @@ mixin _MobilePlayerLifecycle
         androidAttachSurfaceAfterVideoParameters: false,
       ),
     );
-
-    // ── Ripple animation ─────────────────────────────────────────────────
-    _s._rippleController = AnimationController(
-      vsync: _s,
-      duration: const Duration(milliseconds: 420),
-    );
-    _s._rippleScale = Tween<double>(begin: 0.4, end: 1.6).animate(
-      CurvedAnimation(parent: _s._rippleController, curve: Curves.easeOut),
-    );
-    _s._rippleOpacity = Tween<double>(begin: 0.55, end: 0.0).animate(
-      CurvedAnimation(parent: _s._rippleController, curve: Curves.easeOut),
-    );
-    _s._rippleController.addStatusListener((status) {
-      if (status == AnimationStatus.completed) {
-        if (mounted) setState(() => _s._showRipple = false);
-      }
-    });
 
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (!mounted) return;
@@ -628,7 +612,12 @@ mixin _MobilePlayerLifecycle
       setState(() => _s._showVideoSurface = false);
       await WidgetsBinding.instance.endOfFrame;
     }
-    if (!PlatformInfo.isAndroidTv) {
+    if (_s._phoneChrome) {
+      // Phone: portrait + edge-to-edge system bars (status bar back) before
+      // the pop, so the page underneath never lays out landscape-immersive.
+      // The portrait lock is released after the route is gone.
+      await PhonePlayerSystemUi.restoreForExit();
+    } else if (!PlatformInfo.isAndroidTv) {
       // Unlock orientation so the rest of the app follows system settings.
       await SystemChrome.setPreferredOrientations([]);
       // Let the rotation finish before popping - avoids BLASTBufferQueue
@@ -636,11 +625,8 @@ mixin _MobilePlayerLifecycle
       await Future.delayed(const Duration(milliseconds: 300));
       await SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
     }
-    if (!mounted) {
-      _popPlayerRoute(nav: nav, result: result);
-      return;
-    }
     _popPlayerRoute(nav: nav, result: result);
+    if (_s._phoneChrome) PhonePlayerSystemUi.scheduleOrientationRelease();
   }
 
   void _popPlayerRoute({NavigatorState? nav, Duration? result}) {

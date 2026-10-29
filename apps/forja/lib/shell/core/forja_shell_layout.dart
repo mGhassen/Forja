@@ -37,11 +37,9 @@ bool shellUsesWideLayout(BuildContext context) {
 }
 
 double shellPosterCardWidth(BuildContext context) {
-  if (ShellScope.profileOf(context) == ShellProfile.mobile) {
-    return MediaQuery.sizeOf(context).width >
-            ShellTokens.posterCardWideBreakpoint
-        ? ShellTokens.posterCardWidthDesktop
-        : ShellTokens.posterCardWidthMobile;
+  if (ShellScope.metricsOf(context).usesMobileDensity) {
+    // Same rule foundation [InteractivePosterCard] paints with.
+    return ShellTokens.posterCardWidthMobileFor(MediaQuery.sizeOf(context));
   }
   return ShellScope.metricsOf(context).posterCardWidth;
 }
@@ -67,10 +65,12 @@ double shellHeroHeightFraction(BuildContext context) =>
     ? ShellTokens.tvHeroHeightFraction
     : ShellTokens.heroHeightFractionDesktop;
 
-double shellPosterCardRowGap(BuildContext context) =>
-    ShellScope.metricsOf(context).usesTvDensity
-    ? ShellTokens.tvPosterCardRowGap
-    : ShellTokens.posterCardRowGap;
+double shellPosterCardRowGap(BuildContext context) {
+  final metrics = ShellScope.metricsOf(context);
+  if (metrics.usesTvDensity) return ShellTokens.tvPosterCardRowGap;
+  if (metrics.usesMobileDensity) return ShellTokens.posterCardRowGapMobile;
+  return ShellTokens.posterCardRowGap;
+}
 
 /// Horizontal inset so leanback TV focus scale + border stay inside layout bounds.
 ///

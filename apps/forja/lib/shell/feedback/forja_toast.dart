@@ -4,7 +4,11 @@ import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
+import 'package:forja/shell/adapters/mobile_shell.dart';
+import 'package:forja/shell/bus/shell_bus.dart';
+import 'package:forja/shell/core/forja_shell_profile.dart';
 import 'package:forja/shell/core/forja_shell_scope.dart';
+import 'package:forja/shell/nav/shell_bottom_nav.dart';
 import 'package:forja/shell/focus/shell_focusable_tap.dart';
 import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 
@@ -333,53 +337,120 @@ class _ForjaToastHostState extends State<ForjaToastHost> {
     final stackGap = ShellTokens.chromeScale(ShellTokens.toastStackGap, tv: tv);
     final width = ShellTokens.chromeScale(ShellTokens.toastWidth, tv: tv);
 
+    final touch = ShellScope.profileOf(context) == ShellProfile.mobile;
+
+    final stack = ListenableBuilder(
+      listenable: ForjaToast.controller,
+      builder: (context, _) {
+        final entries = ForjaToast.controller.entries;
+        if (entries.isEmpty && widget.stackAbove.isEmpty) {
+          return const SizedBox.shrink();
+        }
+
+        final cards = Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            ...widget.stackAbove,
+            for (final entry in entries)
+              Padding(
+                padding: EdgeInsets.only(bottom: stackGap),
+                child: _ForjaToastCard(
+                  key: ValueKey(entry.id),
+                  entry: entry,
+                  tvFocus: tvFocus,
+                  pointerHover: pointerHover,
+                ),
+              ),
+          ],
+        );
+        final traversal = tvFocus
+            ? FocusTraversalGroup(
+                policy: ReadingOrderTraversalPolicy(),
+                child: cards,
+              )
+            : cards;
+
+        // Touch: never wider than the screen gutter allows.
+        if (touch) {
+          return ConstrainedBox(
+            constraints: BoxConstraints(maxWidth: width),
+            child: traversal,
+          );
+        }
+        return SizedBox(width: width, child: traversal);
+      },
+    );
+
     return Stack(
       children: [
         widget.child,
-        Positioned(
-          top: inset,
-          right: inset,
-          child: SafeArea(
-            child: ListenableBuilder(
-              listenable: ForjaToast.controller,
-              builder: (context, _) {
-                final entries = ForjaToast.controller.entries;
-                if (entries.isEmpty && widget.stackAbove.isEmpty) {
-                  return const SizedBox.shrink();
-                }
-
-                final cards = Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    ...widget.stackAbove,
-                    for (final entry in entries)
-                      Padding(
-                        padding: EdgeInsets.only(bottom: stackGap),
-                        child: _ForjaToastCard(
-                          key: ValueKey(entry.id),
-                          entry: entry,
-                          tvFocus: tvFocus,
-                          pointerHover: pointerHover,
-                        ),
-                      ),
-                  ],
-                );
-
-                return SizedBox(
-                  width: width,
-                  child: tvFocus
-                      ? FocusTraversalGroup(
-                          policy: ReadingOrderTraversalPolicy(),
-                          child: cards,
-                        )
-                      : cards,
-                );
-              },
-            ),
+        if (touch)
+          // Touch: bottom stack above the tab bar, clear of page titles and
+          // the hub top bar.
+          Positioned(
+            left: inset,
+            right: inset,
+            bottom: 0,
+            child: _TouchToastDock(inset: inset, child: stack),
+          )
+        else
+          Positioned(
+            top: inset,
+            right: inset,
+            child: SafeArea(child: stack),
           ),
-        ),
       ],
+    );
+  }
+}
+
+/// Bottom dock for touch toasts: clears the bottom system inset and, when it
+/// is painted, the shell bottom bar.
+class _TouchToastDock extends StatelessWidget {
+  const _TouchToastDock({required this.inset, required this.child});
+
+  final double inset;
+  final Widget child;
+
+  /// Space under the toast stack.
+  static double bottomClearance({
+    required EdgeInsets padding,
+    required bool bottomNavPainted,
+    required double bottomNavHeight,
+    required double inset,
+  }) {
+    return inset + padding.bottom + (bottomNavPainted ? bottomNavHeight : 0);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return ListenableBuilder(
+      listenable: Listenable.merge([
+        ShellBus.hideGlobalNav,
+        ShellBus.playerSurfaceActive,
+      ]),
+      builder: (context, _) {
+        final size = MediaQuery.sizeOf(context);
+        final navPainted =
+            !ShellBus.hideGlobalNav.value &&
+            !ShellBus.playerSurfaceActive.value &&
+            !MobileShell.usesNavRail(size);
+        final bottom = bottomClearance(
+          padding: MediaQuery.paddingOf(context),
+          bottomNavPainted: navPainted,
+          bottomNavHeight: ShellBottomNav.barHeightOf(context),
+          inset: inset,
+        );
+        return Padding(
+          padding: EdgeInsets.only(bottom: bottom),
+          child: Align(
+            alignment: Alignment.bottomCenter,
+            heightFactor: 1,
+            child: child,
+          ),
+        );
+      },
     );
   }
 }

@@ -554,6 +554,7 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [515-[fixed]-…](fixed/515-[fixed]-anime-torrent-query-bloated-title.md) | Anime torrent search bloated cour title → 0 Nyaa rows | P1 | High | fixed | Complete · 4/4 · A 0/2 | [216](fixed/216-[fixed]-anime-hub-torrent-search-empty.md) · [RFC-054](../rfc/054-[partial]-torrent-search-providers.md) |
 | [516-[fixed]-…](fixed/516-[fixed]-atv-lan-presence-poll-ui-freeze.md) | ATV LAN presence poll freezes UI while paired | P0 | High | fixed | Complete · 3/3 · A 0/2 | [481](fixed/481-[fixed]-android-tv-lan-discover-mdns.md) · [RFC-022](../rfc/022-[open]-lan-server-client.md) |
 | [517-[fixed]-…](fixed/517-[fixed]-exo-introdb-seekbar-zones.md) | Exo seek bar missing IntroDB colored zones | P2 | Medium | fixed | Complete · 2/2 · A 0/1 | [032](032-[draft]-exoplayer-parity-gaps.md) |
+| [518-[open]-…](518-[open]-phone-landscape-detected-as-tv.md) | Phone in landscape detected as Android TV | P1 | High | open | 0/4 (4 🔄) · A 0/4 | [RFC-123](../rfc/123-[open]-android-mobile-flavor.md) |
 
 **Migration parity (draft):** [018](018-[draft]-migration-playback-parity-unverified.md) → [019](019-[draft]-webstreamr-enginejobs-e2e-test-gap.md)–[022](022-[draft]-playback-widget-integration-tests.md).
 

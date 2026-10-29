@@ -19,6 +19,9 @@ abstract final class ShellMoodCircleLayout {
     if (ShellPaintScope.usesTvDensityOf(context)) {
       return MoodCircleLayout.tvScrollable;
     }
+    if (ShellPaintScope.usesMobileDensityOf(context)) {
+      return MoodCircleLayout.mobile;
+    }
     return MoodCircleLayout.desktop;
   }
 }
@@ -84,6 +87,8 @@ class _ShellMoodCircleItemState extends State<ShellMoodCircleItem> {
     // Prefer live density over a desktop layout prop (kit mount / stale hosts).
     final layout = ShellPaintScope.usesTvDensityOf(context)
         ? MoodCircleLayout.tvScrollable
+        : ShellPaintScope.usesMobileDensityOf(context)
+        ? MoodCircleLayout.mobile
         : widget.layout;
 
     Widget paint(bool hovered) => MoodCircle(

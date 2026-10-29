@@ -464,9 +464,13 @@ class SettingsService {
     contentWarningsNotifier.value = v;
   }
 
-  /// When on (desktop), Space / virtual-desktop switch auto-enters PiP.
+  /// Desktop: Space / virtual-desktop switch auto-enters PiP (default off).
+  /// Phone: leaving the app while playing auto-enters PiP (default on).
   Future<bool> getAutoPipOnDesktopSwitch() async {
-    final v = await kvGetBool(_autoPipOnDesktopSwitchKey, fallback: false);
+    final v = await kvGetBool(
+      _autoPipOnDesktopSwitchKey,
+      fallback: _platformProfile == PlatformProfile.phone,
+    );
     if (autoPipOnDesktopSwitchNotifier.value != v) {
       autoPipOnDesktopSwitchNotifier.value = v;
     }

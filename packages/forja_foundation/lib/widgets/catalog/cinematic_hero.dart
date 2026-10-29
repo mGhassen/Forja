@@ -30,6 +30,8 @@ class CinematicHeroSlide {
     this.genres = const [],
     this.imageFit = BoxFit.cover,
     this.imageAlignment = Alignment.centerRight,
+    this.portraitImageUrl,
+    this.portraitImageAlignment,
     this.mediaType = '',
     this.onDetails,
   });
@@ -55,6 +57,15 @@ class CinematicHeroSlide {
   final List<String> genres;
   final BoxFit imageFit;
   final Alignment imageAlignment;
+
+  /// Absolute vertical art for touch portrait heroes (pack prop). Painted
+  /// instead of [backdropUrl] only when [CinematicHeroLayout.mobile] and the
+  /// screen is portrait.
+  final String? portraitImageUrl;
+
+  /// Crop focus for touch portrait heroes (pack focal hint). Null →
+  /// [ShellTokens.heroBackdropAlignmentPortrait].
+  final Alignment? portraitImageAlignment;
   final String mediaType;
   final VoidCallback? onDetails;
 
@@ -101,6 +112,8 @@ class CinematicHeroLayout {
     this.overviewFontSize,
     this.overviewLineHeight,
     this.upcomingNoticeReserve,
+    this.mobile = false,
+    this.maxImageHeight,
   });
 
   final bool compact;
@@ -138,6 +151,15 @@ class CinematicHeroLayout {
   final double? overviewFontSize;
   final double? overviewLineHeight;
   final double? upcomingNoticeReserve;
+
+  /// Touch profile (host maps `ShellMetrics.usesMobileDensity`): swipe
+  /// crossfades backdrops, step dots sit under the actions, portrait crops
+  /// toward the subject.
+  final bool mobile;
+
+  /// Host cap for the backdrop band (touch: visible body height) so the
+  /// title, meta, and actions never fall under the bottom bar.
+  final double? maxImageHeight;
 
   double scaled(double value) => value * scale;
 
@@ -284,6 +306,10 @@ class CinematicHero extends StatefulWidget {
 
 class CinematicHeroState extends State<CinematicHero>
     with SingleTickerProviderStateMixin {
+  /// Loop pages: start mid-range and recenter before either end. The
+  /// PageView itself is unbounded (null itemCount): a finite 10k-page extent
+  /// at a fractional dp width (411.43 on 2.625 dpr) misses the fixed-extent
+  /// precision check after rotation.
   static const int _heroLoopLength = 10000;
   static const int _heroLoopStart = 5000;
   static const double _heroGradientSolidEndFraction = 0.02;
@@ -450,6 +476,7 @@ class CinematicHeroState extends State<CinematicHero>
     for (var i = 0; i < a.length; i++) {
       if (a[i].id != b[i].id) return false;
       if (a[i].primaryImageUrl != b[i].primaryImageUrl) return false;
+      if (a[i].portraitImageUrl != b[i].portraitImageUrl) return false;
     }
     return true;
   }
@@ -458,7 +485,7 @@ class CinematicHeroState extends State<CinematicHero>
   /// paints — swipe-back must not reload from empty.
   void _warmSlideBackdropImages() {
     for (final slide in widget.slides) {
-      final raw = slide.primaryImageUrl;
+      final raw = _slideImageUrl(slide);
       if (raw.isEmpty) continue;
       final url = paintableNetworkImageUrl(raw);
       if (url.isEmpty) continue;
@@ -643,6 +670,13 @@ class CinematicHeroState extends State<CinematicHero>
   }
 
   double _backdropHeight(BuildContext context) {
+    final h = _uncappedBackdropHeight(context);
+    final cap = widget.layout.maxImageHeight;
+    if (cap == null || cap <= 0 || h <= cap) return h;
+    return _snapToDevicePixels(context, cap);
+  }
+
+  double _uncappedBackdropHeight(BuildContext context) {
     if (widget.height != null) return widget.height!;
     final layout = widget.layout;
     // Featured-row bleed owns height. Narrow windows still get the tall
@@ -652,7 +686,9 @@ class CinematicHeroState extends State<CinematicHero>
       return _snapToDevicePixels(
         context,
         MediaQuery.sizeOf(context).height *
-                ShellTokens.homeBackdropViewportFraction +
+                (_mobilePortrait
+                    ? ShellTokens.homeBackdropViewportFractionPortrait
+                    : ShellTokens.homeBackdropViewportFraction) +
             layout.topBarBleed +
             layout.resolvedBleedDownOffset,
       );
@@ -670,8 +706,29 @@ class CinematicHeroState extends State<CinematicHero>
     );
   }
 
+  /// Touch portrait: text sits under the image, so the crop follows the
+  /// slide's vertical art / focal hint instead of the wide-layout default.
+  bool get _mobilePortrait => widget.layout.mobile && _isPortrait(context);
+
+  /// Touch: swipes crossfade the backdrops (no hard seam between stills).
+  bool get _crossfadeSwipe => widget.layout.mobile;
+
+  String _slideImageUrl(CinematicHeroSlide slide) {
+    if (_mobilePortrait) {
+      final portrait = (slide.portraitImageUrl ?? '').trim();
+      if (portrait.isNotEmpty) return portrait;
+    }
+    return slide.primaryImageUrl;
+  }
+
+  Alignment _slideImageAlignment(CinematicHeroSlide slide) {
+    if (!_mobilePortrait) return slide.imageAlignment;
+    return slide.portraitImageAlignment ??
+        ShellTokens.heroBackdropAlignmentPortrait;
+  }
+
   List<String> _slideUrls(CinematicHeroSlide slide) {
-    final u = slide.primaryImageUrl;
+    final u = _slideImageUrl(slide);
     return u.isEmpty ? const [] : [u];
   }
 
@@ -716,7 +773,12 @@ class CinematicHeroState extends State<CinematicHero>
       layout.scaledChrome(layout.resolvedTextColumnWidth),
     );
     final shellBg = Theme.of(context).scaffoldBackgroundColor;
-    final imageStartFraction = layout.resolvedImageStartFraction;
+    // Portrait screens put the text under the image, not beside it: the
+    // backdrop runs edge to edge and only the bottom fade sits under the text.
+    final portrait = _mobilePortrait;
+    final imageStartFraction = portrait
+        ? 0.0
+        : layout.resolvedImageStartFraction;
     final solidLeftWidth =
         MediaQuery.sizeOf(context).width * imageStartFraction;
     final textColumnWidth = compact
@@ -766,12 +828,13 @@ class CinematicHeroState extends State<CinematicHero>
               desktopTextWidth: desktopTextWidth,
             ),
           ),
-          PositionedDirectional(
-            top: 0,
-            bottom: 0,
-            end: layout.scaledChrome(16, floor: 8.0, ceil: 20.0),
-            child: Center(child: _buildStepIndicators()),
-          ),
+          if (!_horizontalStepDots)
+            PositionedDirectional(
+              top: 0,
+              bottom: 0,
+              end: layout.scaledChrome(16, floor: 8.0, ceil: 20.0),
+              child: Center(child: _buildStepIndicators()),
+            ),
           if (widget.galleryOverlayBuilder != null)
             PositionedDirectional(
               start: solidLeftWidth,
@@ -856,12 +919,21 @@ class CinematicHeroState extends State<CinematicHero>
                   final page =
                       _safeHeroPage() ??
                       (_heroLoopStart + _heroIndex).toDouble();
+                  final order = List<int>.generate(items.length, (i) => i);
+                  if (_crossfadeSwipe) {
+                    // Nearest slide paints first at full opacity; the
+                    // incoming one fades in above it (no darkening dip).
+                    double dist(int i) =>
+                        _nearestSlideStep(i, page, items.length).dist;
+                    order.sort((a, b) => dist(a).compareTo(dist(b)));
+                  }
                   return Stack(
                     fit: StackFit.expand,
                     clipBehavior: Clip.hardEdge,
                     children: [
-                      for (var i = 0; i < items.length; i++)
+                      for (final i in order)
                         _persistentSlideBackdropLayer(
+                          key: ValueKey('hero-layer-$i'),
                           slide: items[i],
                           slideIndex: i,
                           page: page,
@@ -870,36 +942,41 @@ class CinematicHeroState extends State<CinematicHero>
                           solidLeftWidth: solidLeftWidth,
                           shellBg: shellBg,
                           packRtl: packRtl,
+                          base: _crossfadeSwipe && i == order.first,
                         ),
                     ],
                   );
                 },
               ),
+              // Crossfade keeps the stills in place, so the per-page scrims
+              // must not slide either — paint them once, static.
+              if (_crossfadeSwipe)
+                IgnorePointer(
+                  child: _buildPageScrims(
+                    shellBg: shellBg,
+                    solidLeftWidth: solidLeftWidth,
+                    imageStartFraction: imageStartFraction,
+                    pageBleed: pageBleed,
+                  ),
+                ),
               PageView.builder(
                 key: _heroPageViewKey,
                 clipBehavior: Clip.hardEdge,
                 controller: _heroController,
-                itemCount: _heroLoopLength,
                 onPageChanged: _onHeroPageChanged,
                 itemBuilder: (context, index) {
+                  // Touch: swipe target only — scrims are static above.
+                  if (_crossfadeSwipe) return const SizedBox.expand();
                   return Stack(
                     fit: StackFit.expand,
                     clipBehavior: Clip.hardEdge,
                     children: [
-                      PositionedDirectional(
-                        start: 0,
-                        top: 0,
-                        bottom: 0,
-                        width: solidLeftWidth,
-                        child: ColoredBox(color: shellBg),
-                      ),
                       Positioned.fill(
-                        child: IgnorePointer(
-                          child: _buildImageGradients(
-                            shellBg,
-                            imageStartFraction: imageStartFraction,
-                            softBottomFade: pageBleed,
-                          ),
+                        child: _buildPageScrims(
+                          shellBg: shellBg,
+                          solidLeftWidth: solidLeftWidth,
+                          imageStartFraction: imageStartFraction,
+                          pageBleed: pageBleed,
                         ),
                       ),
                       PositionedDirectional(
@@ -931,8 +1008,62 @@ class CinematicHeroState extends State<CinematicHero>
     );
   }
 
-  /// One backdrop [State] per slide id — translated with the page offset.
+  /// Solid text-side band + side/bottom scrims — identical on every page.
+  Widget _buildPageScrims({
+    required Color shellBg,
+    required double solidLeftWidth,
+    required double imageStartFraction,
+    required bool pageBleed,
+  }) {
+    return Stack(
+      fit: StackFit.expand,
+      clipBehavior: Clip.hardEdge,
+      children: [
+        PositionedDirectional(
+          start: 0,
+          top: 0,
+          bottom: 0,
+          width: solidLeftWidth,
+          child: ColoredBox(color: shellBg),
+        ),
+        Positioned.fill(
+          child: IgnorePointer(
+            child: _buildImageGradients(
+              shellBg,
+              imageStartFraction: imageStartFraction,
+              softBottomFade: pageBleed,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  /// Loop page `k` showing [slideIndex] nearest to [page], and its distance.
+  ({int? k, double dist}) _nearestSlideStep(
+    int slideIndex,
+    double page,
+    int count,
+  ) {
+    final base = page.floor();
+    int? bestK;
+    var bestDist = double.infinity;
+    for (var k = base - 2; k <= base + 2; k++) {
+      if (((k % count) + count) % count != slideIndex) continue;
+      final d = (k - page).abs();
+      if (d < bestDist) {
+        bestDist = d;
+        bestK = k;
+      }
+    }
+    return (k: bestK, dist: bestDist);
+  }
+
+  /// One backdrop [State] per slide id — translated with the page offset
+  /// (touch: crossfaded in place, see [_crossfadeSwipe]).
   Widget _persistentSlideBackdropLayer({
+    Key? key,
+    bool base = false,
     required CinematicHeroSlide slide,
     required int slideIndex,
     required double page,
@@ -950,47 +1081,57 @@ class CinematicHeroState extends State<CinematicHero>
             imageUrls: urls,
             showColorTint: false,
             fit: slide.imageFit,
-            imageAlignment: slide.imageAlignment,
+            imageAlignment: _slideImageAlignment(slide),
             enableMotion: widget.layout.kenBurns,
           );
 
-    final base = page.floor();
-    int? bestK;
-    var bestDist = double.infinity;
-    for (var k = base - 2; k <= base + 2; k++) {
-      if (((k % count) + count) % count != slideIndex) continue;
-      final d = (k - page).abs();
-      if (d < bestDist) {
-        bestDist = d;
-        bestK = k;
-      }
+    final nearest = _nearestSlideStep(slideIndex, page, count);
+    final bestK = nearest.k;
+    final bestDist = nearest.dist;
+
+    final double dx;
+    final double opacity;
+    final bool hide;
+    if (_crossfadeSwipe) {
+      // Stills stay put; the nearest is the opaque base, the neighbour
+      // fades in as the swipe approaches it.
+      dx = 0;
+      opacity = base ? 1.0 : (1.0 - bestDist).clamp(0.0, 1.0);
+      hide = bestK == null || (!base && opacity <= 0.001);
+    } else {
+      // RTL PageView advances toward the start edge. Keep the painted slide
+      // with that gesture; an LTR translate puts the join gradient on the
+      // wrong side.
+      final slideSign = packRtl ? -1.0 : 1.0;
+      dx = bestK == null ? 0.0 : (bestK - page) * pageWidth * slideSign;
+      opacity = 1.0;
+      hide = bestK == null || bestDist > 1.05;
     }
 
-    // Stable tree shape (always Transform → Offstage → page) so backdrop
-    // [State] is never disposed when a slide leaves the viewport.
-    final hide = bestK == null || bestDist > 1.05;
-    // RTL PageView advances toward the start edge. Keep the painted slide
-    // with that gesture; an LTR translate puts the join gradient on the wrong side.
-    final slideSign = packRtl ? -1.0 : 1.0;
-    final dx = bestK == null ? 0.0 : (bestK - page) * pageWidth * slideSign;
+    // Stable tree shape (always Transform → Opacity → Offstage → page) so
+    // backdrop [State] is never disposed when a slide leaves the viewport.
     return Transform.translate(
+      key: key,
       offset: Offset(dx, 0),
-      child: Offstage(
-        offstage: hide,
-        child: SizedBox(
-          width: pageWidth,
-          height: double.infinity,
-          child: Stack(
-            fit: StackFit.expand,
-            children: [
-              PositionedDirectional(
-                start: solidLeftWidth,
-                top: 0,
-                end: 0,
-                bottom: 0,
-                child: backdrop,
-              ),
-            ],
+      child: Opacity(
+        opacity: opacity,
+        child: Offstage(
+          offstage: hide,
+          child: SizedBox(
+            width: pageWidth,
+            height: double.infinity,
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                PositionedDirectional(
+                  start: solidLeftWidth,
+                  top: 0,
+                  end: 0,
+                  bottom: 0,
+                  child: backdrop,
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -1005,7 +1146,11 @@ class CinematicHeroState extends State<CinematicHero>
   }
 
   Widget _buildTrailingEdge({required double opacity}) {
-    if (opacity <= 0.001) return const SizedBox.shrink();
+    // Edge-to-edge portrait backdrop: a dark trailing edge reads as a cut.
+    // Touch crossfade has no moving join to mask.
+    if (opacity <= 0.001 || _mobilePortrait || _crossfadeSwipe) {
+      return const SizedBox.shrink();
+    }
     return LayoutBuilder(
       builder: (context, constraints) {
         final edgeWidth = constraints.maxWidth * _heroSlideEdgeGradientFraction;
@@ -1045,6 +1190,8 @@ class CinematicHeroState extends State<CinematicHero>
   }
 
   Widget _buildHeroSeamScrim() {
+    // Touch crossfade: no seam travels across the hero.
+    if (_crossfadeSwipe) return const SizedBox.shrink();
     final page = _safeHeroPage();
     if (page == null) return const SizedBox.shrink();
     final t = page - page.floor();
@@ -1093,42 +1240,47 @@ class CinematicHeroState extends State<CinematicHero>
     );
   }
 
+  static bool _isPortrait(BuildContext context) =>
+      MediaQuery.sizeOf(context).aspectRatio < 1;
+
   Widget _buildImageGradients(
     Color shellBg, {
     required double imageStartFraction,
     required bool softBottomFade,
   }) {
+    final sideScrim = !_mobilePortrait;
     return LayoutBuilder(
       builder: (context, constraints) {
         return Stack(
           fit: StackFit.expand,
           children: [
-            Positioned.fill(
-              child: IgnorePointer(
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: AlignmentDirectional.centerStart,
-                      end: AlignmentDirectional.centerEnd,
-                      colors: [
-                        shellBg,
-                        shellBg,
-                        shellBg.withValues(alpha: _heroGradientFadeMid1Alpha),
-                        shellBg.withValues(alpha: _heroGradientFadeMid2Alpha),
-                        shellBg.withValues(alpha: 0),
-                      ],
-                      stops: [
-                        0.0,
-                        imageStartFraction + _heroGradientSolidEndFraction,
-                        imageStartFraction + 0.18,
-                        imageStartFraction + 0.42,
-                        math.min(1.0, imageStartFraction + 0.72),
-                      ],
+            if (sideScrim)
+              Positioned.fill(
+                child: IgnorePointer(
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: AlignmentDirectional.centerStart,
+                        end: AlignmentDirectional.centerEnd,
+                        colors: [
+                          shellBg,
+                          shellBg,
+                          shellBg.withValues(alpha: _heroGradientFadeMid1Alpha),
+                          shellBg.withValues(alpha: _heroGradientFadeMid2Alpha),
+                          shellBg.withValues(alpha: 0),
+                        ],
+                        stops: [
+                          0.0,
+                          imageStartFraction + _heroGradientSolidEndFraction,
+                          imageStartFraction + 0.18,
+                          imageStartFraction + 0.42,
+                          math.min(1.0, imageStartFraction + 0.72),
+                        ],
+                      ),
                     ),
                   ),
                 ),
               ),
-            ),
             Positioned(
               left: 0,
               right: 0,
@@ -1374,6 +1526,10 @@ class CinematicHeroState extends State<CinematicHero>
     const overviewMaxLinesCap = 3;
     final metaReserve = tv ? layout.scaledChrome(24) : 24.0;
     final overviewLineHeight = overviewFontSize * overviewHeight;
+    final dotsReserve = _horizontalStepDots
+        ? ShellTokens.heroStepIndicatorRowGapMobile +
+              ShellTokens.heroStepIndicatorPauseSize
+        : 0.0;
     final ctaH = tv
         ? ShellTokens.controlHeightTv
         : ShellTokens.shellButtonHeight;
@@ -1385,7 +1541,8 @@ class CinematicHeroState extends State<CinematicHero>
         titleMetaGap +
         metaReserve +
         actionGap +
-        ctaH;
+        ctaH +
+        dotsReserve;
     var overviewLines = 0;
     if (overview.isNotEmpty) {
       final budget = maxHeight - fixedChrome - metaOverviewGap;
@@ -1444,10 +1601,25 @@ class CinematicHeroState extends State<CinematicHero>
             widget.actionRowBuilder?.call(context, slide, isActive: isActive) ??
                 const SizedBox.shrink(),
           ),
+          if (_horizontalStepDots) ...[
+            const SizedBox(height: ShellTokens.heroStepIndicatorRowGapMobile),
+            SizedBox(
+              width: maxWidth,
+              height: ShellTokens.heroStepIndicatorPauseSize,
+              child: Center(child: _buildStepIndicators(axis: Axis.horizontal)),
+            ),
+          ],
         ],
       ),
     );
   }
+
+  /// Touch stacked hero: step dots run horizontally under the actions
+  /// (the vertical right-edge column is the leanback / wide idiom).
+  bool get _horizontalStepDots =>
+      widget.layout.mobile &&
+      widget.layout.compact &&
+      widget.slides.length >= 2;
 
   Widget _buildTitle(
     CinematicHeroSlide slide, {
@@ -1706,10 +1878,15 @@ class CinematicHeroState extends State<CinematicHero>
         ),
       );
     });
+    final key = ValueKey('cinematic-hero-step-dots-${axis.name}');
     if (axis == Axis.vertical) {
-      return Column(mainAxisSize: MainAxisSize.min, children: dots);
+      return Column(key: key, mainAxisSize: MainAxisSize.min, children: dots);
     }
-    return Row(mainAxisAlignment: MainAxisAlignment.center, children: dots);
+    return Row(
+      key: key,
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: dots,
+    );
   }
 }
 

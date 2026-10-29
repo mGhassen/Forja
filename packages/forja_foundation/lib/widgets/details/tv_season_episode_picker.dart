@@ -62,6 +62,10 @@ class TvSeasonEpisodePicker extends StatefulWidget {
 
     /// Host persists to pack `episodeView` (same as Settings → Episode list).
     this.onEpisodeViewChanged,
+
+    /// Host maps the phone profile: the cards view paints a vertical episode
+    /// list and the season row gets the content gutters.
+    this.listLayout = false,
   });
 
   final int tmdbId;
@@ -93,6 +97,7 @@ class TvSeasonEpisodePicker extends StatefulWidget {
   final VoidCallback? tvFocusUp;
   final String episodeView;
   final ValueChanged<String>? onEpisodeViewChanged;
+  final bool listLayout;
 
   @override
   State<TvSeasonEpisodePicker> createState() => _TvSeasonEpisodePickerState();
@@ -334,11 +339,15 @@ class _TvSeasonEpisodePickerState extends State<TvSeasonEpisodePicker> {
     );
   }
 
+  double get _contentGutter =>
+      DetailsTokens.contentHorizontalPadding(MediaQuery.sizeOf(context).width);
+
   Widget _buildSeasonRow() {
     return HorizontalScroller(
       height: _SeasonCard.rowScrollerHeightOf(context),
-      padding: const EdgeInsets.symmetric(
+      padding: EdgeInsets.symmetric(
         vertical: _SeasonCard.rowVerticalPadding,
+        horizontal: widget.listLayout ? _contentGutter : 0,
       ),
       controller: _seasonScrollController,
       itemCount: widget.seasonCount,
@@ -488,6 +497,61 @@ class _TvSeasonEpisodePickerState extends State<TvSeasonEpisodePicker> {
           listIndex: i,
         );
       },
+    );
+  }
+
+  /// Phone: one row per episode — thumbnail, title, date / runtime, progress,
+  /// play. Row tap selects (hero Play follows); the thumbnail plays.
+  Widget _buildEpisodeList() {
+    final eps = _visibleEpisodes;
+    return Padding(
+      padding: EdgeInsets.symmetric(horizontal: _contentGutter),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          for (var i = 0; i < eps.length; i++) ...[
+            if (i > 0) const SizedBox(height: DetailsTokens.episodeListRowGap),
+            _buildEpisodeListTile(eps[i], i),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEpisodeListTile(dynamic ep, int index) {
+    final epNum = _episodeNumberAt(ep);
+    final map = ep is Map ? Map<String, dynamic>.from(ep) : <String, dynamic>{};
+    final title = (map['name'] ?? map['title'] ?? 'Episode $epNum').toString();
+    final runtime = map['runtime'] as int? ?? 0;
+    final prog = widget.episodeProgress['S${_keysSeason}_E$epNum'];
+    final airDate = episodeAirDateInfo(map);
+    final playable = !airDate.notShippedYet && widget.onEpisodePlay != null;
+    return _EpisodeListTile(
+      key: ValueKey('ep-list-${widget.selectedSeason}-$epNum'),
+      episodeNumber: epNum,
+      title: title,
+      overview: (map['overview'] ?? '').toString(),
+      runtime: runtime,
+      dateLabel: airDate.label,
+      dateNotShippedYet: airDate.notShippedYet,
+      thumbnail: _resolveThumbnail(
+        map['still_path'] ?? map['thumbnail'],
+        widget.fallbackPosterPath,
+      ),
+      selected: widget.selectedEpisode == epNum,
+      watched: _watchedKey(epNum),
+      positionMs: prog?['position'] as int? ?? 0,
+      durationMs:
+          prog?['duration'] as int? ?? (runtime > 0 ? runtime * 60000 : 0),
+      onTap: () {
+        widget.onEpisodeSelected(epNum);
+        setState(() => _tvArmedEpisode = epNum);
+      },
+      onPlay: playable ? () => widget.onEpisodePlay!(epNum) : null,
+      onToggleWatched: airDate.notShippedYet
+          ? null
+          : () => widget.onToggleWatched(_keysSeason, epNum),
+      listIndex: index,
     );
   }
 
@@ -710,6 +774,8 @@ class _TvSeasonEpisodePickerState extends State<TvSeasonEpisodePicker> {
           useTv: useTv,
           onFocusUp: null,
         );
+      } else if (widget.listLayout) {
+        episodeSection = _buildEpisodeList();
       } else {
         final episodeRow = _buildEpisodeRow();
         episodeSection = useTv
@@ -844,6 +910,26 @@ class _TvSeasonEpisodePickerState extends State<TvSeasonEpisodePicker> {
                 ),
               ),
             ),
+          ),
+        ),
+      );
+    }
+    if (widget.listLayout) {
+      return homeLoadingShimmer(
+        Padding(
+          padding: EdgeInsets.symmetric(horizontal: _contentGutter),
+          child: Column(
+            children: [
+              for (
+                var i = 0;
+                i < DetailsTokens.episodeListSkeletonRows;
+                i++
+              ) ...[
+                if (i > 0)
+                  const SizedBox(height: DetailsTokens.episodeListRowGap),
+                const _EpisodeListTileSkeleton(),
+              ],
+            ],
           ),
         ),
       );
@@ -1701,6 +1787,249 @@ class _EpisodeCardState extends State<_EpisodeCard> {
       child: ListenableBuilder(
         listenable: _hoveredN,
         builder: (context, _) => _buildCard(_hoveredN.value),
+      ),
+    );
+  }
+
+  Widget _thumbFallback() {
+    return Container(color: Colors.white.withValues(alpha: 0.06));
+  }
+}
+
+class _EpisodeListTileSkeleton extends StatelessWidget {
+  const _EpisodeListTileSkeleton();
+
+  @override
+  Widget build(BuildContext context) {
+    const thumbW = DetailsTokens.episodeListThumbWidth;
+    final bar = BoxDecoration(
+      color: ForjaShellColors.surfaceElevated,
+      borderRadius: BorderRadius.circular(
+        DetailsTokens.episodeListSkeletonBarRadius,
+      ),
+    );
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          width: thumbW,
+          height: DetailsTokens.episodeListThumbHeight,
+          decoration: BoxDecoration(
+            color: ForjaShellColors.surfaceElevated,
+            borderRadius: BorderRadius.circular(_EpisodeCard.thumbRadius),
+          ),
+        ),
+        const SizedBox(width: DetailsTokens.episodeListThumbGap),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              FractionallySizedBox(
+                widthFactor: DetailsTokens.episodeListSkeletonTitleFraction,
+                child: Container(
+                  height: DetailsTokens.episodeListSkeletonTitleHeight,
+                  decoration: bar,
+                ),
+              ),
+              const SizedBox(height: DetailsTokens.episodeListSkeletonBarGap),
+              FractionallySizedBox(
+                widthFactor: DetailsTokens.episodeListSkeletonMetaFraction,
+                child: Container(
+                  height: DetailsTokens.episodeListSkeletonMetaHeight,
+                  decoration: bar,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// Phone episode row ([TvSeasonEpisodePicker.listLayout]).
+class _EpisodeListTile extends StatelessWidget {
+  const _EpisodeListTile({
+    super.key,
+    required this.episodeNumber,
+    required this.title,
+    required this.overview,
+    required this.runtime,
+    this.dateLabel,
+    this.dateNotShippedYet = false,
+    required this.thumbnail,
+    required this.selected,
+    required this.watched,
+    required this.positionMs,
+    required this.durationMs,
+    required this.onTap,
+    this.onPlay,
+    this.onToggleWatched,
+    this.listIndex,
+  });
+
+  final int episodeNumber;
+  final String title;
+  final String overview;
+  final int runtime;
+  final String? dateLabel;
+  final bool dateNotShippedYet;
+  final String? thumbnail;
+  final bool selected;
+  final bool watched;
+  final int positionMs;
+  final int durationMs;
+  final VoidCallback onTap;
+  final VoidCallback? onPlay;
+  final VoidCallback? onToggleWatched;
+  final int? listIndex;
+
+  @override
+  Widget build(BuildContext context) {
+    const thumbW = DetailsTokens.episodeListThumbWidth;
+    final showProgress = WatchProgressBar.isResumable(positionMs, durationMs);
+    final meta = [?dateLabel, if (runtime > 0) '${runtime}m'].join(' · ');
+    final thumbUrl = thumbnail;
+
+    final thumb = Container(
+      width: thumbW,
+      height: DetailsTokens.episodeListThumbHeight,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(_EpisodeCard.thumbRadius),
+        border: selected
+            ? Border.all(
+                color: Colors.white,
+                width: DetailsTokens.episodeListSelectedBorderWidth,
+              )
+            : null,
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(_EpisodeCard.thumbRadius),
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            if (thumbUrl != null && thumbUrl.startsWith('http'))
+              SettledNetworkImage(
+                imageUrl: thumbUrl,
+                fit: BoxFit.cover,
+                errorWidget: _thumbFallback(),
+              )
+            else
+              _thumbFallback(),
+            Positioned(
+              top: DetailsTokens.episodeListBadgeInset,
+              left: DetailsTokens.episodeListBadgeInset,
+              child: _ThumbBadge(label: 'E$episodeNumber'),
+            ),
+            if (watched)
+              Positioned(
+                top: DetailsTokens.episodeListBadgeInset,
+                right: DetailsTokens.episodeListBadgeInset,
+                child: Icon(
+                  Icons.check_circle_rounded,
+                  size: ShellPaintScope.iconOf(
+                    context,
+                    DetailsTokens.episodeListWatchedIconSize,
+                  ),
+                  color: Colors.white.withValues(alpha: 0.9),
+                ),
+              ),
+            if (showProgress)
+              Positioned(
+                left: 0,
+                right: 0,
+                bottom: 0,
+                child: LinearProgressIndicator(
+                  value: (positionMs / durationMs).clamp(0.0, 1.0),
+                  minHeight: DetailsTokens.episodeListProgressHeight,
+                  backgroundColor: Colors.black54,
+                  valueColor: const AlwaysStoppedAnimation(
+                    ForjaShellColors.progressFill,
+                  ),
+                ),
+              ),
+            if (onPlay != null)
+              ShellCardPlayOverlay(
+                active: false,
+                onTap: onPlay,
+                diameter: DetailsTokens.episodeListPlaySize,
+                iconSize: DetailsTokens.heroPillIconSize,
+              ),
+          ],
+        ),
+      ),
+    );
+
+    final text = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          title,
+          maxLines: DetailsTokens.episodeListTitleMaxLines,
+          overflow: TextOverflow.ellipsis,
+          style: TextStyle(
+            color: selected ? ForjaShellColors.brandGreen : Colors.white,
+            fontSize: DetailsTokens.bodyFontSize,
+            fontWeight: FontWeight.w700,
+            height: DetailsTokens.episodeListTitleLineHeight,
+          ),
+        ),
+        if (meta.isNotEmpty) ...[
+          const SizedBox(height: _EpisodeCard._metaGap),
+          Text(
+            meta,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color: episodeDateColor(
+                notShippedYet: dateNotShippedYet,
+                normal: Colors.white.withValues(
+                  alpha: DetailsTokens.episodeListSecondaryAlpha,
+                ),
+              ),
+              fontSize: DetailsTokens.metaFontSize,
+              fontWeight: dateNotShippedYet ? FontWeight.w600 : FontWeight.w500,
+              height: DetailsTokens.episodeListMetaLineHeight,
+            ),
+          ),
+        ],
+        if (overview.trim().isNotEmpty) ...[
+          const SizedBox(height: _EpisodeCard._metaGap),
+          Text(
+            overview.trim(),
+            maxLines: DetailsTokens.episodeListOverviewMaxLines,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color: Colors.white.withValues(
+                alpha: DetailsTokens.episodeListSecondaryAlpha,
+              ),
+              fontSize: DetailsTokens.metaFontSize,
+              height: DetailsTokens.episodeListOverviewLineHeight,
+            ),
+          ),
+        ],
+      ],
+    );
+
+    return ShellPaintScope.focusableTap(
+      context: context,
+      onTap: onTap,
+      borderRadius: _EpisodeCard.thumbRadius,
+      motion: ForjaMotionPreset.fillOnly,
+      listIndex: listIndex,
+      child: GestureDetector(
+        onLongPress: onToggleWatched,
+        onSecondaryTap: onToggleWatched,
+        behavior: HitTestBehavior.opaque,
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            thumb,
+            const SizedBox(width: DetailsTokens.episodeListThumbGap),
+            Expanded(child: text),
+          ],
+        ),
       ),
     );
   }

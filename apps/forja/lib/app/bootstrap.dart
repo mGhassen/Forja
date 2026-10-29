@@ -237,7 +237,13 @@ Future<void> bootstrapForja({String title = 'Forja'}) async {
     // auto_orientation_v2 is gone, so this respects the user's
     // rotation-lock toggle in Android quick-settings.
     SystemChrome.setPreferredOrientations([]);
-    await SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+    // Phones run edge to edge with the status bar (shell owns the insets);
+    // Android TV stays immersive. [PlatformChannel.initialize] already ran.
+    await SystemChrome.setEnabledSystemUIMode(
+      PlatformInfo.isPhone
+          ? SystemUiMode.edgeToEdge
+          : SystemUiMode.immersiveSticky,
+    );
   }
 
   if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {

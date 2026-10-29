@@ -12,6 +12,7 @@ class CatalogTabs extends StatelessWidget {
     required this.spec,
     this.counts,
     this.inShellTopBar = false,
+    this.scrollable = false,
     this.tabsBuilder,
     this.wrapRow,
   });
@@ -21,6 +22,9 @@ class CatalogTabs extends StatelessWidget {
   /// Optional search hit counts keyed by tab id.
   final Map<String, int>? counts;
   final bool inShellTopBar;
+
+  /// Natural-width tabs in a sideways-scrolling strip (phone).
+  final bool scrollable;
 
   /// Host builds custom status chrome. Receives items + selection.
   final Widget Function({
@@ -78,6 +82,7 @@ class CatalogTabs extends StatelessWidget {
           last: true,
         ),
         inShellTopBar: inShellTopBar,
+        scrollable: scrollable,
       );
     }
 

@@ -80,6 +80,19 @@ function AndroidTvIcon({ className }: { className?: string }) {
   )
 }
 
+function AndroidPhoneIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      className={className}
+      aria-hidden
+      fill="currentColor"
+    >
+      <path d="M8.5 2h7A2.5 2.5 0 0 1 18 4.5v15a2.5 2.5 0 0 1-2.5 2.5h-7A2.5 2.5 0 0 1 6 19.5v-15A2.5 2.5 0 0 1 8.5 2Zm0 2a.5.5 0 0 0-.5.5v15c0 .28.22.5.5.5h7a.5.5 0 0 0 .5-.5v-15a.5.5 0 0 0-.5-.5h-7Zm2 13h3v1.5h-3V17Z" />
+    </svg>
+  )
+}
+
 function PlatformGlyph({
   id,
   className,
@@ -94,6 +107,8 @@ function PlatformGlyph({
       return <AppleIcon className={className} />
     case 'linux':
       return <LinuxIcon className={className} />
+    case 'android_mobile':
+      return <AndroidPhoneIcon className={className} />
     case 'android_tv':
       return <AndroidTvIcon className={className} />
   }
@@ -457,7 +472,14 @@ function PlatformPicker({
   archiveAssets: ReleaseAsset[]
   resolveNotes: (version: string | null) => string | null
 }) {
-  const selected = platforms.find((p) => p.id === selectedId) ?? platforms[0]
+  // Before a phone APK ships, phone visitors land on the Android TV entry,
+  // which is labelled TV and still runs on phones.
+  const selected =
+    platforms.find((p) => p.id === selectedId) ??
+    (selectedId === 'android_mobile'
+      ? platforms.find((p) => p.id === 'android_tv')
+      : undefined) ??
+    platforms[0]
   const assets = assetsById[selected.id] ?? []
   const primary = primaryById[selected.id] ?? assets[0] ?? null
   const orderedAssets = orderPlatformAssets(assets, primary)
@@ -713,7 +735,23 @@ export function DownloadPage() {
     return map
   }, [data, preferredArch])
 
-  const archiveAssets = releaseArchive?.assets ?? []
+  const archiveAssets = useMemo(
+    () => releaseArchive?.assets ?? [],
+    [releaseArchive?.assets],
+  )
+
+  // The phone entry appears once a phone APK is on the CDN; it never falls
+  // back to the TV APK.
+  const platforms = useMemo(
+    () =>
+      SHOWCASE_PLATFORMS.filter(
+        (p) =>
+          p.id !== 'android_mobile' ||
+          assetsById[p.id].length > 0 ||
+          assetsForPlatform(archiveAssets, p).length > 0,
+      ),
+    [assetsById, archiveAssets],
+  )
 
   const resolveNotes = useMemo(
     () => (version: string | null) =>
@@ -769,7 +807,7 @@ export function DownloadPage() {
         <Reveal delayMs={120}>
           <div id="platforms" className="mt-14 scroll-mt-28">
             <PlatformPicker
-              platforms={SHOWCASE_PLATFORMS}
+              platforms={platforms}
               selectedId={selectedId}
               onSelect={setSelectedId}
               assetsById={assetsById}

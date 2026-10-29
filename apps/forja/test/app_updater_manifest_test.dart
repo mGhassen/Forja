@@ -216,6 +216,118 @@ void main() {
     });
   });
 
+  group('AppUpdaterManifest.platformKeys', () {
+    List<String> android({
+      required bool mobileBuild,
+      required bool tvHardware,
+      bool touchscreen = true,
+    }) => AppUpdaterManifest.platformKeys(
+      isWindows: false,
+      isMacOS: false,
+      isLinux: false,
+      isAndroid: true,
+      androidMobileBuild: mobileBuild,
+      androidTvHardware: tvHardware,
+      androidTouchscreen: touchscreen,
+    );
+
+    test('mobile build → android_mobile only', () {
+      expect(android(mobileBuild: true, tvHardware: false), ['android_mobile']);
+      expect(android(mobileBuild: true, tvHardware: true), ['android_mobile']);
+    });
+
+    test('tv build on TV hardware → android_tv', () {
+      expect(android(mobileBuild: false, tvHardware: true), ['android_tv']);
+    });
+
+    test('tv build on a phone → android_mobile, then android_tv', () {
+      expect(
+        android(mobileBuild: false, tvHardware: false),
+        ['android_mobile', 'android_tv'],
+      );
+    });
+
+    test('tv build on a TV box without leanback or touch → android_tv', () {
+      expect(
+        android(mobileBuild: false, tvHardware: false, touchscreen: false),
+        ['android_tv'],
+      );
+    });
+
+    test('desktop keys unchanged', () {
+      expect(
+        AppUpdaterManifest.platformKey(
+          isWindows: false,
+          isMacOS: true,
+          isLinux: false,
+          isAndroid: false,
+        ),
+        'macos',
+      );
+      expect(
+        AppUpdaterManifest.platformKeys(
+          isWindows: false,
+          isMacOS: false,
+          isLinux: false,
+          isAndroid: false,
+        ),
+        isEmpty,
+      );
+    });
+  });
+
+  group('AppUpdaterManifest.resolveForArchKeys', () {
+    const mobileApk = 'Forja-1.5.2-android-mobile-arm64.apk';
+    const tvApk = 'Forja-1.5.2-android-tv-arm64.apk';
+
+    Map<String, dynamic> manifest({required bool withMobile}) => {
+      'platforms': {
+        'android_tv': {
+          'version': '1.5.2',
+          'assets': [tvApk],
+          'arches': {
+            'arm64': {'version': '1.5.2', 'filename': tvApk},
+          },
+        },
+        if (withMobile)
+          'android_mobile': {
+            'version': '1.5.2',
+            'assets': [mobileApk],
+            'arches': {
+              'arm64': {'version': '1.5.2', 'filename': mobileApk},
+            },
+          },
+      },
+    };
+
+    test('tv build on a phone migrates to the mobile installer', () {
+      final target = AppUpdaterManifest.resolveForArchKeys(
+        manifest: manifest(withMobile: true),
+        platformKeys: const ['android_mobile', 'android_tv'],
+        arch: 'arm64',
+      );
+      expect(target?.filename, mobileApk);
+    });
+
+    test('falls back to android_tv while no mobile build is published', () {
+      final target = AppUpdaterManifest.resolveForArchKeys(
+        manifest: manifest(withMobile: false),
+        platformKeys: const ['android_mobile', 'android_tv'],
+        arch: 'arm64',
+      );
+      expect(target?.filename, tvApk);
+    });
+
+    test('mobile build never falls back to the TV installer', () {
+      final target = AppUpdaterManifest.resolveForArchKeys(
+        manifest: manifest(withMobile: false),
+        platformKeys: const ['android_mobile'],
+        arch: 'arm64',
+      );
+      expect(target, isNull);
+    });
+  });
+
   group('AppUpdaterManifest.versionFromFilename', () {
     test('reads Forja-{semver}-… names', () {
       expect(

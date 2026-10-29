@@ -21,4 +21,4 @@ cd "$ROOT/apps/forja"
 # Impeller on (OpenGLES via ForjaApplication / MainActivity). Do not pass
 # --no-enable-impeller — Skia on leanback corrupts glyph/icon atlases (issue 215).
 # MediaKit uses vo=mediacodec_embed so video does not need Impeller EGL.
-exec flutter run -d "$DEVICE" --enable-impeller "$@"
+exec flutter run -d "$DEVICE" --flavor tv --enable-impeller "$@"

@@ -108,13 +108,21 @@ class PosterCard extends StatelessWidget {
                 top: inset,
                 left: inset,
                 right: inset,
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                // Stack, not Row: the touch pin's 48 dp hit box may overlap
+                // the rating corner on narrow phone cards instead of
+                // pushing it out of the card.
+                child: Stack(
                   children: [
-                    if (!compact && listPin != null) listPin!,
-                    const Spacer(),
+                    if (!compact && listPin != null)
+                      Align(
+                        alignment: AlignmentDirectional.topStart,
+                        child: listPin!,
+                      ),
                     if (rating != null && rating! > 0)
-                      RatingBadge(voteAverage: rating!),
+                      Align(
+                        alignment: AlignmentDirectional.topEnd,
+                        child: RatingBadge(voteAverage: rating!),
+                      ),
                   ],
                 ),
               ),

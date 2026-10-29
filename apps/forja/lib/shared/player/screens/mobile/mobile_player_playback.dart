@@ -1510,6 +1510,7 @@ mixin _MobilePlayerPlayback
       // AirPlay owns play/pause — local mpv is paused and must not overwrite.
       if (CastingService.instance.airPlayActive.value) return;
       _s._isPlayingNotifier.value = playing;
+      PipService.instance.syncAndroidAutoEnter(token: this, playing: playing);
       _s._postSeekStall?.onPlaying(playing);
       if (playing) {
         _s._clearDeadSurfaceCover();

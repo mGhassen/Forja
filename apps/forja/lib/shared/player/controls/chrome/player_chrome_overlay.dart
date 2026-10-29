@@ -144,12 +144,16 @@ class PlayerFlatIconButton extends StatefulWidget {
     this.onRightEdge,
     this.onUpEdge,
     this.onDownEdge,
+    this.maxLabelWidth,
   }) : assert(onPressed != null || onPressedWithContext != null);
 
   final IconData icon;
   final VoidCallback? onPressed;
   final ValueChanged<BuildContext>? onPressedWithContext;
   final String? label;
+
+  /// Label budget for labeled buttons (default: desktop 110, × density).
+  final double? maxLabelWidth;
   final String? tooltip;
   final bool active;
   final double size;
@@ -206,8 +210,15 @@ class _PlayerFlatIconButtonState extends State<PlayerFlatIconButton> {
     final iconSize = playerChromeScale(context, widget.iconSize);
     final labelFs = playerChromeTypeSize(context, 12);
     final padH = playerChromeScale(context, 8);
-    final maxW = playerChromeScale(context, 148);
-    final labelMaxW = playerChromeScale(context, 110);
+    final labelMaxW =
+        widget.maxLabelWidth ?? playerChromeScale(context, 110);
+    final maxW = widget.maxLabelWidth == null
+        ? playerChromeScale(context, 148)
+        : labelMaxW +
+              iconSize -
+              2 +
+              playerChromeScale(context, 5) +
+              padH * 2;
     final radius = widget.label == null ? size / 2 : playerChromeScale(context, 8);
     final shape = playerChromeButtonShape(
       isCircle: widget.label == null,
@@ -249,16 +260,20 @@ class _PlayerFlatIconButtonState extends State<PlayerFlatIconButton> {
                           size: iconSize - 2,
                         ),
                         SizedBox(width: playerChromeScale(context, 5)),
-                        ConstrainedBox(
-                          constraints: BoxConstraints(maxWidth: labelMaxW),
-                          child: Text(
-                            widget.label!,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              color: iconColor,
-                              fontSize: labelFs,
-                              fontWeight: FontWeight.w500,
+                        // Flexible: icon + gap + capped label can exceed
+                        // [maxW] — ellipsize instead of overflowing.
+                        Flexible(
+                          child: ConstrainedBox(
+                            constraints: BoxConstraints(maxWidth: labelMaxW),
+                            child: Text(
+                              widget.label!,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                color: iconColor,
+                                fontSize: labelFs,
+                                fontWeight: FontWeight.w500,
+                              ),
                             ),
                           ),
                         ),

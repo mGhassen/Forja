@@ -19,6 +19,7 @@ import 'package:forja/shared/player/controls/chrome/player_escape_exit_hint.dart
 import 'package:forja/shared/player/controls/chrome/player_next_episode_chip.dart';
 import 'package:forja/shared/player/controls/chrome/player_chrome_overlays.dart';
 import 'package:forja/shared/player/controls/chrome/player_vod_tv_transport.dart';
+import 'package:forja/shared/player/controls/chrome/player_phone_controls.dart';
 import 'package:forja/shared/player/controls/episodes/player_episode_menu.dart';
 import 'package:forja/shared/player/controls/episodes/player_episode_panel.dart';
 import 'package:forja/shared/player/controls/episodes/catalog_episode.dart';
@@ -66,6 +67,7 @@ import 'package:wakelock_plus/wakelock_plus.dart';
 import 'package:forja/shared/playback/loading_overlay.dart';
 import 'package:forja/shell/feedback/forja_toast.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
+import 'package:forja_foundation/tokens/player_phone_tokens.dart';
 part 'exo_player_sources.dart';
 part 'exo_player_tracks.dart';
 part 'exo_player_failover.dart';
@@ -201,6 +203,16 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
   /// Prefer boot-time [PlatformInfo] so TV key scope / ExcludeFocus work on the
   /// first frame; [_boot] still refreshes via the Exo bridge.
   bool _isTv = PlatformInfo.isAndroidTv;
+
+  /// Phone touch chrome (mobile profile, not leanback).
+  bool get _phoneChrome => !_isTv && PlatformInfo.isPhone;
+
+  // ── Double-tap seek (phone) ──────────────────────────────────────────────
+  final PlayerTapSeekBurst _tapSeek = PlayerTapSeekBurst();
+  bool _showTapSeek = false;
+  int _tapSeekPulse = 0;
+  Offset _tapSeekPosition = Offset.zero;
+  Timer? _tapSeekHideTimer;
   bool _exitInProgress = false;
   bool _showControls = true;
   bool _escapeExitArmed = false;
@@ -1191,6 +1203,48 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
       unawaited(ExoPlayerBridge.play(_viewId));
     }
     // Do not force chrome — Space / media keys pause with chrome hidden.
+    if (_showControls) _syncChromeHideTimer();
+  }
+
+  /// Double tap left / right: seek ∓10 s; repeated taps extend the burst.
+  void _handleDoubleTap(TapDownDetails details, bool isRight) {
+    final target = _tapSeek.doubleTap(
+      forward: isRight,
+      now: DateTime.now(),
+      position: _position,
+      duration: _duration,
+    );
+    _applyTapSeek(target, details.localPosition);
+  }
+
+  /// Single tap: extends a live seek burst on the same side, else toggles
+  /// the chrome.
+  void _handleTap(TapUpDetails details, bool isRight) {
+    final target = _tapSeek.singleTap(
+      forward: isRight,
+      now: DateTime.now(),
+      duration: _duration,
+    );
+    if (target == null) {
+      _toggleControls();
+      return;
+    }
+    _applyTapSeek(target, details.localPosition);
+  }
+
+  void _applyTapSeek(Duration target, Offset at) {
+    setState(() {
+      _showTapSeek = true;
+      _tapSeekPulse++;
+      _tapSeekPosition = at;
+    });
+    unawaited(_seekTo(target));
+    _tapSeekHideTimer?.cancel();
+    // Feedback stays while the burst can still be extended.
+    _tapSeekHideTimer = Timer(_tapSeek.window, () {
+      _tapSeek.reset();
+      if (mounted && !_disposed) setState(() => _showTapSeek = false);
+    });
     if (_showControls) _syncChromeHideTimer();
   }
 
@@ -2398,6 +2452,7 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
     _cueTexts.dispose();
     WidgetsBinding.instance.removeObserver(this);
     _hideTimer?.cancel();
+    _tapSeekHideTimer?.cancel();
     _progressSaveTimer?.cancel();
     _postSeekStall.dispose();
     _surfaceFallback.dispose();
@@ -2764,6 +2819,14 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
                       onOpenQuality: (ctx) => unawaited(_showQualityMenu(ctx)),
                       onOpenSettings: _showSettingsMenu,
                     )
+                  else if (_phoneChrome)
+                    _buildPhoneTransportRow(
+                      centerHidden: !showCenterActions,
+                      hasTorrentSources: hasTorrentSources,
+                      catalogSourceLines: catalogSourceLines,
+                      streamPickerLines: streamPickerLines,
+                      playingOffline: playingOffline,
+                    )
                   else
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -2912,6 +2975,132 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
     );
   }
 
+  /// Phone: center cluster owns ±10 / play; this row keeps next episode,
+  /// source, Episodes, Audio & subtitles, and More (quality, settings,
+  /// volume, previous episode). Time sits beside the seek bar.
+  Widget _buildPhoneTransportRow({
+    required bool centerHidden,
+    required bool hasTorrentSources,
+    required ({String label, String? server})? catalogSourceLines,
+    required ({String label, String? server})? streamPickerLines,
+    required bool playingOffline,
+  }) {
+    const size = PlayerPhoneTokens.touchTarget;
+    const iconSz = PlayerPhoneTokens.actionIconSize;
+    final sources = <Widget>[
+      if (hasTorrentSources)
+        PlayerSourcesPanelButton(
+          size: size,
+          iconSize: iconSz,
+          label: catalogSourceLines!.label,
+          server: catalogSourceLines.server,
+          offline: playingOffline,
+          onPressed: () => unawaited(_showTorrentSourcesPanel()),
+        ),
+      if (_hasStreamPicker)
+        PlayerStreamPickerButton(
+          size: size,
+          iconSize: iconSz - 2,
+          label: streamPickerLines!.label,
+          server: streamPickerLines.server,
+          offline: playingOffline,
+          onPressedWithContext: (ctx) => unawaited(_showSourcesDialog(ctx)),
+        ),
+    ];
+    return PlayerPhoneTransportRow(
+      // Center play/pause is hidden under the status overlay — keep it in
+      // reach here while that lasts.
+      playing: centerHidden ? _isPlaying : null,
+      onPlayPause: _togglePlayPause,
+      onNextEpisode: _hasNextEpisodeAdjacent
+          ? () {
+              if (_loadingNextEp) return;
+              unawaited(_nextEpisode());
+            }
+          : null,
+      source: sources.isEmpty
+          ? null
+          : sources.length == 1
+          ? sources.single
+          : Row(mainAxisSize: MainAxisSize.min, children: sources),
+      onEpisodes: _hasEpisodePicker
+          ? (ctx) => unawaited(_showEpisodesMenu(ctx))
+          : null,
+      onAudioSubtitles: _showPhoneTracksMenu,
+      onMore: _showPhoneMoreMenu,
+    );
+  }
+
+  void _showPhoneTracksMenu(BuildContext anchor) {
+    showPlayerPhoneActionMenu(
+      context: context,
+      anchorContext: anchor,
+      title: 'Audio & subtitles',
+      icon: Icons.subtitles_outlined,
+      entries: [
+        PlayerPhoneMenuEntry(
+          icon: Icons.subtitles_outlined,
+          title: 'Subtitles',
+          subtitle: 'Language, file, style',
+          onSelected: (a) => unawaited(_showSubtitlesMenu(a)),
+        ),
+        PlayerPhoneMenuEntry(
+          icon: Icons.audiotrack_rounded,
+          title: 'Audio',
+          subtitle: 'Audio track',
+          onSelected: (a) => unawaited(_showAudioMenu(a)),
+        ),
+      ],
+    );
+  }
+
+  void _showPhoneMoreMenu(BuildContext anchor) {
+    showPlayerPhoneActionMenu(
+      context: context,
+      anchorContext: anchor,
+      title: 'More',
+      icon: Icons.more_horiz_rounded,
+      entries: [
+        PlayerPhoneMenuEntry(
+          icon: Icons.hd_outlined,
+          title: 'Quality',
+          subtitle: 'Stream resolution',
+          onSelected: (a) => unawaited(_showQualityMenu(a)),
+        ),
+        PlayerPhoneMenuEntry(
+          icon: Icons.tune_rounded,
+          title: 'Settings',
+          subtitle: 'Speed, aspect ratio, auto selection',
+          onSelected: _showSettingsMenu,
+        ),
+        PlayerPhoneMenuEntry(
+          icon: _volume == 0
+              ? Icons.volume_off_rounded
+              : Icons.volume_up_rounded,
+          title: 'Volume',
+          value: '${_volume.round()}%',
+          onSelected: (a) => showPlayerPhoneVolumePanel(
+            context: context,
+            anchorContext: a,
+            volume: () => _volume,
+            maxVolume: 150,
+            onChanged: (v) => unawaited(_setVolume(v)),
+            onBack: () => _showPhoneMoreMenu(a),
+          ),
+        ),
+        if (_hasPrevEpisodeAdjacent)
+          PlayerPhoneMenuEntry(
+            icon: Icons.skip_previous_rounded,
+            title: 'Previous episode',
+            onSelected: (_) {
+              if (_loadingNextEp) return;
+              unawaited(_previousEpisode());
+            },
+          ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     ref.listen(playerResolveStatusProvider, (previous, next) {
@@ -2991,10 +3180,24 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
                 ),
               ),
               Positioned.fill(
-                child: GestureDetector(
-                  behavior: HitTestBehavior.translucent,
-                  onTap: _toggleControls,
-                ),
+                child: _phoneChrome
+                    ? LayoutBuilder(
+                        builder: (context, constraints) => GestureDetector(
+                          behavior: HitTestBehavior.translucent,
+                          onTapUp: (d) => _handleTap(
+                            d,
+                            d.localPosition.dx > constraints.maxWidth / 2,
+                          ),
+                          onDoubleTapDown: (d) => _handleDoubleTap(
+                            d,
+                            d.localPosition.dx > constraints.maxWidth / 2,
+                          ),
+                        ),
+                      )
+                    : GestureDetector(
+                        behavior: HitTestBehavior.translucent,
+                        onTap: _toggleControls,
+                      ),
               ),
               AnimatedOpacity(
                 opacity: _showControls ? 1.0 : 0.0,
@@ -3008,6 +3211,15 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
                 ),
               ),
               if (_escapeExitArmed) const PlayerEscapeExitHint(),
+              if (_showTapSeek)
+                Positioned.fill(
+                  child: PlayerDoubleTapSeekFeedback(
+                    forward: _tapSeek.forward,
+                    seconds: _tapSeek.totalSeconds,
+                    tapPosition: _tapSeekPosition,
+                    pulse: _tapSeekPulse,
+                  ),
+                ),
               // Outside the chrome: shows alone while chrome is hidden.
               if (_showNextEpChip)
                 Positioned(

@@ -17,4 +17,8 @@ abstract final class TopBarScrimTokens {
   /// Scroll distance (px) over which the scrim fades in from rest. An
   /// unscrolled hero already insets its text under the bar — no scrim at rest.
   static const double scrollFadeInDistance = 56;
+
+  /// Touch shell: scrim height factor. Painted from rest so the hub menu stays
+  /// legible on bright hero art; taller so labels sit in the dense band.
+  static const double mobileHeightFactor = 2.0;
 }

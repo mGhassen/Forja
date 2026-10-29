@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja/shared/engine/runtime/open/catalog_open.dart';
 import 'package:forja/shared/engine/runtime/open/meta_surface_open.dart';
@@ -6,6 +7,7 @@ import 'package:forja/shared/engine/store/list_follow.dart';
 import 'package:forja/shell/core/forja_shell_scope.dart';
 import 'package:forja/shell/feedback/forja_toast.dart';
 import 'package:forja/shell/tv/tv_card_quick_menu.dart';
+import 'package:forja_foundation/components/sheet.dart';
 import 'package:forja_foundation/protocol/protocol.dart';
 import 'package:forja_foundation/widgets/catalog/card_quick_menu.dart';
 import 'package:rust/rust.dart';
@@ -122,6 +124,9 @@ abstract final class KitCardQuickActions {
 
   /// Hold / MENU opener for a card, or null when the menu would be empty or
   /// this input profile has no hold gesture (desktop keeps pointer-down tap).
+  ///
+  /// Leanback: OK-hold / MENU flyout beside the card. Touch: long-press
+  /// bottom sheet with the same actions, after a haptic tick.
   static VoidCallback? openerFor(
     BuildContext context, {
     required String pluginId,
@@ -129,8 +134,23 @@ abstract final class KitCardQuickActions {
     String? knownStatus,
   }) {
     if (item == null || !canOpen(item)) return null;
-    final policy = ShellScope.maybeOf(context)?.inputPolicy;
-    if (policy == null || !policy.leanbackOnly) return null;
+    final scope = ShellScope.maybeOf(context);
+    final policy = scope?.inputPolicy;
+    if (policy == null) return null;
+    if (!policy.leanbackOnly) {
+      if (!ShellScope.metricsOf(context).usesMobileDensity) return null;
+      return () {
+        final actions = build(
+          context,
+          pluginId: pluginId,
+          item: item,
+          knownStatus: knownStatus,
+        );
+        if (actions.isEmpty) return;
+        HapticFeedback.mediumImpact();
+        showTouchSheet(context, actions: actions, title: item.name);
+      };
+    }
     return () {
       // Resolve at open time so list membership is current.
       final actions = build(
@@ -141,6 +161,32 @@ abstract final class KitCardQuickActions {
       );
       ShellTvCardQuickMenu.show(context, actions: actions, title: item.name);
     };
+  }
+
+  /// Touch sheet: a row closes the sheet, then runs its action.
+  static Future<void> showTouchSheet(
+    BuildContext context, {
+    required List<CardQuickMenuAction> actions,
+    String? title,
+  }) {
+    return showForjaSheet<void>(
+      context: context,
+      builder: (sheetContext) => CardQuickActionSheet(
+        title: title,
+        actions: [
+          for (final a in actions)
+            CardQuickMenuAction(
+              id: a.id,
+              label: a.label,
+              icon: a.icon,
+              onTap: () {
+                Navigator.of(sheetContext).pop();
+                a.onTap();
+              },
+            ),
+        ],
+      ),
+    );
   }
 
   static Future<void> _toggleList(

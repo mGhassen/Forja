@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:forja/shell/frame/shell_scaffold.dart';
+import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 
-/// Passthrough to bottom-nav shell; landscape uses nav rail (existing behavior).
+/// Touch shell: bottom bar on phones in both orientations; side rail on
+/// tablets in landscape.
 class MobileShell extends StatelessWidget {
   const MobileShell({
     super.key,
@@ -26,12 +28,17 @@ class MobileShell extends StatelessWidget {
   final bool hideGlobalNav;
   final bool maskUnderPlayer;
 
+  /// Landscape tablets get the side rail; phones (either orientation) and
+  /// portrait tablets keep the bottom bar.
+  static bool usesNavRail(Size size) =>
+      size.width > size.height &&
+      size.shortestSide >= ShellTokens.mobileNavRailMinShortestSide;
+
   @override
   Widget build(BuildContext context) {
     // Keep landscape rail mounted while Offstage (IPTV) — do not tie
     // useNavRail to hideGlobalNav or exit remounts the rail.
-    final useNavRail =
-        MediaQuery.orientationOf(context) == Orientation.landscape;
+    final useNavRail = usesNavRail(MediaQuery.sizeOf(context));
 
     return ShellScaffold(
       useNavRail: useNavRail,

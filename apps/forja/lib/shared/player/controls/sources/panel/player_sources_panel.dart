@@ -47,6 +47,8 @@ import 'package:forja/shell/core/forja_shell_scope.dart';
 import 'package:forja/shell/focus/shell_focusable_tap.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
+import 'package:forja_foundation/tokens/mobile_chrome_tokens.dart';
+import 'package:forja_foundation/widgets/feedback/bottom_sheet_panel.dart';
 import 'package:forja_foundation/widgets/chrome/catalog_dense_list.dart';
 import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 
@@ -273,6 +275,50 @@ class _PlayerSourcesOverlayState extends State<_PlayerSourcesOverlay> {
   @override
   Widget build(BuildContext context) {
     final detailsHost = widget.detailsHost;
+    final body = SourcesPanelTv.wrapBody(
+      context: context,
+      onClose: widget.onClose,
+      includeOverlayScope: detailsHost,
+      child: _PlayerSourcesBody(
+        movie: widget.movie,
+        season: widget.season,
+        episode: widget.episode,
+        seasonLabel: widget.seasonLabel,
+        currentMagnet: widget.currentMagnet,
+        currentStreamUrl: widget.currentStreamUrl,
+        currentPlayingCatalogUrl: widget.currentPlayingCatalogUrl,
+        currentPlayingRowKey: widget.currentPlayingRowKey,
+        playbackConfirmed: widget.playbackConfirmed,
+        preferredKind: widget.preferredKind,
+        currentAddonBaseUrl: widget.currentAddonBaseUrl,
+        open: widget.open,
+        meta: widget.meta,
+        malId: widget.malId,
+        episodeVideoId: widget.episodeVideoId,
+        pluginId: widget.pluginId,
+        engineCategory: widget.engineCategory,
+        preferredEnginePluginId: widget.preferredEnginePluginId,
+        animeAudioCategory: widget.animeAudioCategory,
+        detailsHost: detailsHost,
+        filesOnly: widget.filesOnly,
+        onTorrentSelected: widget.onTorrentSelected,
+        onStremioSelected: widget.onStremioSelected,
+        onClose: widget.onClose,
+      ),
+    );
+    // Phone details: draggable bottom sheet (handle + close) instead of the
+    // right side panel. TV / desktop / in-player keep the side panel.
+    if (detailsHost &&
+        ShellScope.maybeOf(context)?.profile == ShellProfile.mobile) {
+      return ForjaBottomSheetPanel(
+        title: 'Sources',
+        onClose: widget.onClose,
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: MobileChromeTokens.sourcesSheetContentPadH,
+        ),
+        child: body,
+      );
+    }
     return playerOverlayShell(
       context: context,
       isOpen: _open,
@@ -282,37 +328,7 @@ class _PlayerSourcesOverlayState extends State<_PlayerSourcesOverlay> {
       contentPadding: detailsHost
           ? null
           : TorrentSourcesPanel.contentPaddingOf(context, playerOverlay: true),
-      child: SourcesPanelTv.wrapBody(
-        context: context,
-        onClose: widget.onClose,
-        includeOverlayScope: detailsHost,
-        child: _PlayerSourcesBody(
-          movie: widget.movie,
-          season: widget.season,
-          episode: widget.episode,
-          seasonLabel: widget.seasonLabel,
-          currentMagnet: widget.currentMagnet,
-          currentStreamUrl: widget.currentStreamUrl,
-          currentPlayingCatalogUrl: widget.currentPlayingCatalogUrl,
-          currentPlayingRowKey: widget.currentPlayingRowKey,
-          playbackConfirmed: widget.playbackConfirmed,
-          preferredKind: widget.preferredKind,
-          currentAddonBaseUrl: widget.currentAddonBaseUrl,
-          open: widget.open,
-          meta: widget.meta,
-          malId: widget.malId,
-          episodeVideoId: widget.episodeVideoId,
-          pluginId: widget.pluginId,
-          engineCategory: widget.engineCategory,
-          preferredEnginePluginId: widget.preferredEnginePluginId,
-          animeAudioCategory: widget.animeAudioCategory,
-          detailsHost: detailsHost,
-          filesOnly: widget.filesOnly,
-          onTorrentSelected: widget.onTorrentSelected,
-          onStremioSelected: widget.onStremioSelected,
-          onClose: widget.onClose,
-        ),
-      ),
+      child: body,
     );
   }
 }

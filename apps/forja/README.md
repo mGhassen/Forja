@@ -22,7 +22,7 @@ Boot log should show `[Engine] Rust engine v1.2.67` (or current `[workspace.pack
 
 ```bash
 ./scripts/build_rust_mobile.sh all   # or android / ios
-cd apps/forja && flutter run
+cd apps/forja && flutter run          # iOS; Android needs --flavor (below)
 ```
 
 Mobile FFI ships full engine (parsers + librqbit torrent + proxy). Magnet playback uses Rust/librqbit via FFI.
@@ -33,9 +33,12 @@ Release APK bundles Rust automatically (`buildRust=true`). Debug needs a manual 
 
 ```bash
 ./scripts/build_rust_mobile.sh android          # optional pre-build
-BUILD_RUST_ANDROID=1 flutter run -d android
-flutter build apk                               # release - builds Rust via preReleaseBuild
+BUILD_RUST_ANDROID=1 flutter run -d android --flavor mobile   # phone / tablet
+BUILD_RUST_ANDROID=1 flutter run -d android --flavor tv       # Android TV
+flutter build apk --flavor mobile   # release - builds Rust via pre<Flavor>ReleaseBuild
 ```
+
+Android has two product flavors (`formFactor` dimension): `tv` and `mobile`. `--flavor` is required on every Android run/build. Both share `com.forjahq.app` and the signing key, so one replaces the other in place.
 
 See [crates/README.md](../../crates/README.md) for NDK discovery details.
 

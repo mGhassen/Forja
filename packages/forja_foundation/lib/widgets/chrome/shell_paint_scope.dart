@@ -142,6 +142,7 @@ class ShellPaintScope extends InheritedWidget {
     required this.scaleOnHover,
     required this.focusStyled,
     required this.usesTvDensity,
+    this.usesMobileDensity = false,
     this.focusableTapBuilder,
     this.wrapTvRow,
     this.wrapTvGrid,
@@ -156,6 +157,10 @@ class ShellPaintScope extends InheritedWidget {
   final bool Function(BuildContext context, {required bool focused})
   focusStyled;
   final bool usesTvDensity;
+
+  /// Touch phone / tablet profile (host `ShellMetrics.usesMobileDensity`).
+  /// Never true together with [usesTvDensity].
+  final bool usesMobileDensity;
   final ShellPaintFocusableTap? focusableTapBuilder;
   final ShellPaintTvRowWrap? wrapTvRow;
   final ShellPaintTvGridWrap? wrapTvGrid;
@@ -191,6 +196,10 @@ class ShellPaintScope extends InheritedWidget {
 
   static bool usesTvDensityOf(BuildContext context) =>
       maybeOf(context)?.usesTvDensity ?? false;
+
+  /// Touch (mobile profile) density. False with no host scope (gallery / tests).
+  static bool usesMobileDensityOf(BuildContext context) =>
+      maybeOf(context)?.usesMobileDensity ?? false;
 
   /// Desktop icon px → leanback via [ShellTokens.iconSizeFor].
   static double iconOf(
@@ -393,6 +402,7 @@ class ShellPaintScope extends InheritedWidget {
       useTvFocus != oldWidget.useTvFocus ||
       scaleOnHover != oldWidget.scaleOnHover ||
       usesTvDensity != oldWidget.usesTvDensity ||
+      usesMobileDensity != oldWidget.usesMobileDensity ||
       focusableTapBuilder != oldWidget.focusableTapBuilder ||
       wrapTvRow != oldWidget.wrapTvRow ||
       wrapTvGrid != oldWidget.wrapTvGrid;

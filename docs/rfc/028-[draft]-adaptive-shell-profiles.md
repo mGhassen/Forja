@@ -8,7 +8,7 @@
 
 | | |
 |--|--|
-| **Progress** | **6 / 6** components · **10 / 10** acceptance (slice 1) · **4 / 4** acceptance (slice 1b TV tabs) · **4 / 4** acceptance (slice 1c TV coordinator) · **3 / 4** acceptance (slice 1d TV desktop visual parity) · **1 / 1** acceptance (slice 1e card motion) · **1 / 1** acceptance (slice 1f nav defaults) · **2 / 2** acceptance (slice 1g TV app exit) · **1 / 1** acceptance (slice 1h Features D-pad) · **0 / 4** acceptance (slice 2 mobile) |
+| **Progress** | **6 / 6** components · **10 / 10** acceptance (slice 1) · **4 / 4** acceptance (slice 1b TV tabs) · **4 / 4** acceptance (slice 1c TV coordinator) · **3 / 4** acceptance (slice 1d TV desktop visual parity) · **1 / 1** acceptance (slice 1e card motion) · **1 / 1** acceptance (slice 1f nav defaults) · **2 / 2** acceptance (slice 1g TV app exit) · **1 / 1** acceptance (slice 1h Features D-pad) · **0 / 4** acceptance (slice 2 mobile) · **0 / 1** acceptance (slice 2 ownership → [RFC-123](123-[open]-android-mobile-flavor.md)) |
 | **Current slice** | Slice 1h Settings → Features star + ↑/↓ reorder on TV shipped; slice 1d leanback manual smoke still blocks `[fixed]` ([issue 025](../issues/025-[open]-android-tv-leanback-smoke-unverified.md) · [issue 119](../issues/119-[open]-android-tv-double-back-exit.md)) |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
@@ -122,6 +122,14 @@
 
 ---
 
+## Acceptance (slice 2 ownership — Android phone app)
+
+| # | ID | Description | Status |
+|--:|----|-------------|--------|
+| 32 | R28-A32 | Slice 2 mobile (`R28-C06`, `R28-A11`–`R28-A14`) is built under [RFC-123](123-[open]-android-mobile-flavor.md) slice 2 (`R123-C07`) in the `mobile` flavor; flip those rows here when it lands | ⬜ |
+
+---
+
 ## Architecture
 
 Three layers — feature code must not bypass them:
@@ -154,3 +162,5 @@ Recent Android TV work changed shared hero/nav layout globally, regressing macOS
 
 - [RFC-023](fixed/023-[fixed]-app-shell-redesign.md) — original shell extraction
 - [RFC-025](fixed/025-[fixed]-flat-cinematic-shell.md) — design tokens
+- [RFC-123](123-[open]-android-mobile-flavor.md) — Android phone app; owns slice 2 mobile
+- [Issue 518](../issues/518-[open]-phone-landscape-detected-as-tv.md) — phone landscape detected as TV

@@ -19,7 +19,9 @@ class ShellPlatformConfig {
       chromeKind == ShellChromeKind.navRail ||
       chromeKind == ShellChromeKind.navRailTv;
 
-  bool get showKitTopBar => useNavRail;
+  /// Pack hub top bar (search, hub menus). Every profile paints it so phones
+  /// reach the same hub actions as TV and desktop.
+  bool get showKitTopBar => true;
 }
 
 const shellPlatformConfigs = <ShellProfile, ShellPlatformConfig>{

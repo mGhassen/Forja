@@ -124,6 +124,8 @@ import 'package:forja_foundation/widgets/feedback/catalog_loading_ticker.dart';
     final tv = ShellPaintScope.usesTvDensityOf(context);
     final chipH = tv
         ? MoodCircleLayout.tvScrollable.rowHeight
+        : ShellPaintScope.usesMobileDensityOf(context)
+        ? MoodCircleLayout.mobile.rowHeight
         : MoodCircleLayout.desktop.rowHeight;
     return (
       placeholder: catalogMoodRowSkeleton(

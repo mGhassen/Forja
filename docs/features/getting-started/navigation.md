@@ -4,7 +4,7 @@
 
 ## What it is
 
-Forja uses a tab-based shell. **Fresh install:** Settings only — no Addons or feature tabs on. **IPTV** and **Live Sports** appear when you install their hub packs (Forja Packs / Official) — each pack’s `nav` contributes the tab and turns the rail on by default; **Features** hides or reorders after that. Other **catalog hubs** (Home, Anime, Asian Drama, My List, Arabic, Aflem, Shahid, كرتون, Kids, …) work the same way. On desktop and Android TV you get a fixed-width rail (logo + grey icons, Netflix-style underline on the active tab). It sits on the left. The pinned bottom item shows the active Forja profile avatar (or Guest) and opens Settings. On phone and tablet, a flat bottom navigation bar. You can hide, show, and reorder tabs in Settings.
+Forja uses a tab-based shell. **Fresh install:** Settings only — no Addons or feature tabs on. **IPTV** and **Live Sports** appear when you install their hub packs (Forja Packs / Official) — each pack’s `nav` contributes the tab and turns the rail on by default; **Features** hides or reorders after that. Other **catalog hubs** (Home, Anime, Asian Drama, My List, Arabic, Aflem, Shahid, كرتون, Kids, …) work the same way. On desktop and Android TV you get a fixed-width rail (logo + grey icons, Netflix-style underline on the active tab). It sits on the left. The pinned bottom item shows the active Forja profile avatar (or Guest) and opens Settings. On phones, a flat bottom tab bar with labels, in portrait and landscape. It shows up to five slots: the first four tabs plus **More**, which opens a sheet with the rest (Settings included). In landscape the bar is shorter, with each icon beside its label. Tablets use the bottom bar in portrait and the side rail in landscape. Phone hubs show the same top bar as desktop (**Search**, Films / Series menus, **Categories**); it stays readable over the hero and turns solid as you scroll. On phones, **Categories** and details **Sources** open as sheets from the bottom; long-press a poster for Play, Details, or My List. You can hide, show, and reorder tabs in Settings.
 
 ## How to open it
 
@@ -51,7 +51,7 @@ The tab bar is always visible after the app finishes loading. On first sign-in, 
 - Search uses the **two-column desktop layout** on TV (last searches then trending suggestions, focused-result detail pane, fluid results grid); D-pad lands on the **search field** first (browse until **OK** / **Enter** to type) — **Down** moves to suggestions
 - Phone layout is unchanged — leanback density / launcher still apply only on Android TV
 - **Desktop:** same D-pad / arrow-key focus graph as Android TV (focus rings, shelf ←/→, left-to-nav), plus normal mouse hover. Layout density and rail chrome stay desktop; hero Ken Burns pan/zoom stays on (static stills remain Android TV–only). Player **Sources** / **Episodes** / **Source** stay right-side panels like details on desktop and Android TV
-- **Dev:** `flutter run --dart-define=FORJA_ANDROID_TV=true` forces TV profile on any Android device (layout/defaults only — not leanback launcher proof). See [Platforms](platforms.md#android-tv-development).
+- **Dev:** `flutter run --flavor tv --dart-define=FORJA_ANDROID_TV=true` forces TV profile on any Android device (the `mobile` flavor ignores it) (layout/defaults only — not leanback launcher proof). See [Platforms](platforms.md#android-tv-development).
 
 ## Available tabs
 

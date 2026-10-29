@@ -101,6 +101,7 @@ export 'package:forja_foundation/widgets/focus/list_letter_jump_scope.dart';
 export 'package:forja_foundation/widgets/feedback/loading_dots.dart';
 export 'package:forja_foundation/widgets/feedback/catalog_loading_ticker.dart';
 export 'package:forja_foundation/widgets/feedback/frosted_panel.dart';
+export 'package:forja_foundation/widgets/feedback/bottom_sheet_panel.dart';
 export 'package:forja_foundation/widgets/feedback/fractal_glass_gradient.dart';
 export 'package:forja_foundation/widgets/feedback/card_play_overlay.dart';
 export 'package:forja_foundation/widgets/feedback/error_retry_panel.dart';

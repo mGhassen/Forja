@@ -117,6 +117,9 @@ class InteractivePosterCard extends StatefulWidget {
     if (ShellPaintScope.usesTvDensityOf(context)) {
       return ShellTokens.posterCardWidthTv;
     }
+    if (ShellPaintScope.usesMobileDensityOf(context)) {
+      return ShellTokens.posterCardWidthMobileFor(MediaQuery.sizeOf(context));
+    }
     final w = MediaQuery.sizeOf(context).width;
     if (w <= ShellTokens.shellGridTabletMinWidth) {
       return ShellTokens.posterCardWidthMobile;
@@ -154,6 +157,9 @@ class InteractivePosterCard extends StatefulWidget {
   static double defaultTitleFontSize(BuildContext context) {
     if (ShellPaintScope.usesTvDensityOf(context)) {
       return ShellTokens.posterTitleFontSizeTv;
+    }
+    if (ShellPaintScope.usesMobileDensityOf(context)) {
+      return ShellTokens.posterTitleFontSizeMobile;
     }
     return MediaQuery.sizeOf(context).width <=
             ShellTokens.shellGridTabletMinWidth
@@ -358,10 +364,9 @@ class _InteractivePosterCardState extends State<InteractivePosterCard> {
 
     if (widget.onLongPress != null) {
       card = GestureDetector(
-        onLongPress: () {
-          _longPressFired = true;
-          widget.onLongPress!();
-        },
+        // Pointer long-press wins the gesture arena, so no tap follows it.
+        // Arming [_longPressFired] here (key-path swallow) ate the next tap.
+        onLongPress: widget.onLongPress,
         onSecondaryTap: widget.onLongPress,
         child: card,
       );

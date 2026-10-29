@@ -20,6 +20,7 @@ import 'package:floating/floating.dart' as fp;
 import 'package:forja/shared/player/in_app_mini/in_app_mini_player_controller.dart';
 import 'package:forja/shared/player/platform/mpv_exclusive_session.dart';
 import 'package:forja/shared/player/platform/pip_handoff.dart';
+import 'package:forja/shared/platform/platform_info.dart';
 import 'package:forja/shell/bus/shell_bus.dart';
 import 'package:rust/rust.dart';
 
@@ -115,6 +116,53 @@ class PipService {
       return _enterDesktopFloat(width: width, height: height);
     }
     return enter(width: width, height: height);
+  }
+
+  bool _androidAutoEnterArmed = false;
+  Object? _androidAutoToken;
+  bool _androidAutoPlaying = false;
+  VoidCallback? _androidAutoSettingListener;
+
+  /// Android phone / tablet: let the OS shrink the player into PiP when the
+  /// user leaves the app (Home, recents) while video plays. [token] is the
+  /// player screen; the latest caller owns the arm. Follows the Auto
+  /// picture-in-picture setting, including changes made mid-playback.
+  /// Android TV never arms it.
+  void syncAndroidAutoEnter({required Object token, required bool playing}) {
+    if (kIsWeb || !Platform.isAndroid || PlatformInfo.isAndroidTv) return;
+    _androidAutoToken = token;
+    _androidAutoPlaying = playing;
+    if (_androidAutoSettingListener == null) {
+      void onChanged() => unawaited(_applyAndroidAutoEnter());
+      _androidAutoSettingListener = onChanged;
+      SettingsService.autoPipOnDesktopSwitchNotifier.addListener(onChanged);
+    }
+    unawaited(_applyAndroidAutoEnter());
+  }
+
+  /// Player screen [token] is closing — disarm unless another screen owns it.
+  void releaseAndroidAutoEnter(Object token) {
+    if (_androidAutoToken != token) return;
+    _androidAutoToken = null;
+    _androidAutoPlaying = false;
+    unawaited(_applyAndroidAutoEnter());
+  }
+
+  Future<void> _applyAndroidAutoEnter() async {
+    final want = _androidAutoToken != null &&
+        _androidAutoPlaying &&
+        SettingsService.autoPipOnDesktopSwitchNotifier.value;
+    if (want == _androidAutoEnterArmed) return;
+    _androidAutoEnterArmed = want;
+    try {
+      if (want) {
+        await _floating.enable(const fp.OnLeavePiP());
+      } else {
+        await _floating.cancelOnLeavePiP();
+      }
+    } catch (e) {
+      debugPrint('[PipService] auto-enter sync failed: $e');
+    }
   }
 
   Stream<bool> get androidPipChanges {

@@ -1543,7 +1543,10 @@ class SyncDomainBridge {
       'auto_next_episode': await _settings.getAutoNextEpisode(),
       'auto_skip_intro': await _settings.getAutoSkipIntro(),
       'content_warnings': await _settings.getContentWarnings(),
-      'auto_pip_on_desktop_switch': await _settings.getAutoPipOnDesktopSwitch(),
+      // Auto PiP syncs between desktops only; phones keep their own value.
+      if (SettingsService.platformProfile == PlatformProfile.desktop)
+        'auto_pip_on_desktop_switch': await _settings
+            .getAutoPipOnDesktopSwitch(),
       // play_in_background is device-local (desktop on / phone·TV off).
       // tv_nav_sound is Android TV-only / device-local.
       'iptv_epg_enabled': await _settings.isIptvEpgEnabled(),
@@ -1613,7 +1616,8 @@ class SyncDomainBridge {
     if (payload.containsKey('content_warnings')) {
       await _settings.setContentWarnings(payload['content_warnings'] as bool);
     }
-    if (payload.containsKey('auto_pip_on_desktop_switch')) {
+    if (payload.containsKey('auto_pip_on_desktop_switch') &&
+        SettingsService.platformProfile == PlatformProfile.desktop) {
       await _settings.setAutoPipOnDesktopSwitch(
         payload['auto_pip_on_desktop_switch'] as bool,
       );

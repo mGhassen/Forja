@@ -19,6 +19,7 @@ class MoodCircleLayout {
     required this.labelMaxLines,
     required this.labelGap,
     this.labelLineHeight = 1.15,
+    this.selectedRing = false,
   });
 
   final double circleSize;
@@ -31,6 +32,10 @@ class MoodCircleLayout {
   final int labelMaxLines;
   final double labelGap;
   final double labelLineHeight;
+
+  /// Touch: selected circle gets an outer accent ring and a bold primary
+  /// label (a dark accent label alone read as unselected grey).
+  final bool selectedRing;
 
   static const desktop = MoodCircleLayout(
     circleSize: ShellTokens.moodCircleSize,
@@ -57,6 +62,21 @@ class MoodCircleLayout {
     labelMaxLines: ShellTokens.moodCircleLabelMaxLinesTv,
     labelGap: ShellTokens.moodCircleLabelGapTv,
     labelLineHeight: ShellTokens.moodCircleLabelLineHeightTv,
+  );
+
+  /// Touch phones — single-line labels in a wider slot, outer selected ring.
+  static const mobile = MoodCircleLayout(
+    circleSize: ShellTokens.moodCircleSize,
+    itemWidth: ShellTokens.moodCircleItemWidthMobile,
+    horizontalGap: ShellTokens.moodCircleGapMobile,
+    rowHeight: ShellTokens.moodCircleRowHeightMobile,
+    labelFontSize: ShellTokens.moodCircleLabelFontSizeMobile,
+    iconSize: ShellTokens.moodCircleIconSize,
+    iconSizeActive: ShellTokens.moodCircleIconSizeActive,
+    labelMaxLines: ShellTokens.moodCircleLabelMaxLinesMobile,
+    labelGap: ShellTokens.moodCircleLabelGap,
+    labelLineHeight: ShellTokens.moodCircleLabelLineHeight,
+    selectedRing: true,
   );
 
   double contentWidth(int itemCount) {
@@ -240,7 +260,7 @@ class _AccentMoodCircle extends StatelessWidget {
     final iconWidget = Icon(icon, size: iconSize, color: Colors.white);
     final chip = ForjaMotionTheme.of(context).chipLift;
 
-    final circle = AnimatedContainer(
+    Widget circle = AnimatedContainer(
       duration: chip.duration,
       curve: chip.resolvedCurve,
       width: layout.circleSize,
@@ -270,6 +290,26 @@ class _AccentMoodCircle extends StatelessWidget {
             )
           : iconWidget,
     );
+    if (layout.selectedRing) {
+      // Ring sits outside the circle; reserve it idle too so selecting never
+      // shifts the label.
+      const ringGap = ShellTokens.moodCircleSelectedRingGap;
+      const ringW = ShellTokens.moodCircleSelectedRingWidth;
+      circle = AnimatedContainer(
+        duration: chip.duration,
+        curve: chip.resolvedCurve,
+        padding: const EdgeInsets.all(ringGap),
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          border: Border.all(
+            color: selected ? accent : Colors.transparent,
+            width: ringW,
+          ),
+        ),
+        child: circle,
+      );
+    }
+    final ringLabel = layout.selectedRing && selected;
 
     // Fixed height + top-aligned circle so 1/2/3-line labels don't shift
     // neighbors vertically in a Row (default CrossAxisAlignment.center).
@@ -291,13 +331,17 @@ class _AccentMoodCircle extends StatelessWidget {
               // category accent. Circle keeps selected accent via [selected].
               color: active
                   ? ForjaShellColors.brandGreen
-                  : selected
-                      ? accent
-                      : Colors.white.withValues(alpha: 0.72),
+                  : ringLabel
+                      ? ForjaShellColors.textPrimary
+                      : selected
+                          ? accent
+                          : Colors.white.withValues(alpha: 0.72),
               fontSize: layout.labelFontSize,
-              fontWeight: active || selected
-                  ? FontWeight.w700
-                  : FontWeight.w600,
+              fontWeight: ringLabel
+                  ? FontWeight.w800
+                  : active || selected
+                      ? FontWeight.w700
+                      : FontWeight.w600,
               height: layout.labelLineHeight,
             ),
           ),

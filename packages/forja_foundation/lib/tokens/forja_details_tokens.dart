@@ -19,6 +19,11 @@ abstract final class DetailsTokens {
 
   /// Extra pull-up for movie details body (cast/trailers) when the host opts in.
   static const double heroBodyOverlap = 120;
+
+  /// Narrow (phone) details hero: the text column sits over the whole
+  /// backdrop, so a full-height tint keeps it readable on bright art.
+  static const double heroCompactTintTopAlpha = 0.45;
+  static const double heroCompactTintBottomAlpha = 0.7;
   static const double heroBodyOverlapTv = heroBodyOverlap * _s;
 
   static const double heroContentTopInset = 88;
@@ -147,6 +152,93 @@ abstract final class DetailsTokens {
 
   static double backHitSizeOf(bool tv) =>
       backIconSizeOf(tv) + (tv ? backHitPadTv : backHitPad);
+
+  // ── Phone (mobile profile) details ─────────────────────────────────────
+
+  /// Width-driven hero: from this viewport width the hero uses the wide
+  /// layout (description column + facts card). Hosts may force either layout.
+  static const double heroWideMinWidth = 900;
+
+  /// Flow hero (phone): facts card sits beside the main column from this
+  /// width (landscape phones); narrower screens use one column.
+  static const double heroFlowFactsMinWidth = 720;
+
+  /// Gap between the main column and the facts card in the flow hero.
+  static const double heroFlowFactsGap = 24;
+
+  /// Stacked phone actions: gap between the full-width Play and the
+  /// secondary row, and between secondary pills.
+  static const double heroStackedActionGap = 12;
+
+  /// Phone back control: Material minimum touch target.
+  static const double backHitSizeMobile = 48;
+
+  /// Phone back control: icon inside [backHitSizeMobile].
+  static const double backIconSizeMobile = 26;
+
+  /// Phone back control: scrim behind the chevron over bright backdrops.
+  static const double backScrimAlpha = 0.45;
+
+  /// Phone details top bar height (below the status bar inset).
+  static const double topBarHeightMobile = 56;
+
+  /// Phone details top bar: scroll distance over which the bar turns solid.
+  static const double topBarFadeDistance = 96;
+
+  /// Phone details top bar: gap between the back control and the title.
+  static const double topBarTitleGap = 8;
+
+  /// Phone episode list: 16:9 thumbnail width on the leading edge.
+  static const double episodeListThumbWidth = 144;
+
+  /// Phone episode list: gap between thumbnail and text column.
+  static const double episodeListThumbGap = 12;
+
+  /// Phone episode list: vertical gap between rows.
+  static const double episodeListRowGap = 16;
+
+  /// Phone episode list: play affordance diameter on the thumbnail.
+  static const double episodeListPlaySize = 36;
+
+  /// Phone episode list: progress bar height under the thumbnail.
+  static const double episodeListProgressHeight = 3;
+
+  /// Phone episode list: thumbnail aspect (16:9).
+  static const double episodeListThumbAspect = 16 / 9;
+
+  /// Phone episode list: thumbnail height from [episodeListThumbWidth].
+  static const double episodeListThumbHeight =
+      episodeListThumbWidth / episodeListThumbAspect;
+
+  /// Phone episode list: inset of the episode badge and watched check.
+  static const double episodeListBadgeInset = 6;
+
+  /// Phone episode list: watched check icon size.
+  static const double episodeListWatchedIconSize = 16;
+
+  /// Phone episode list: selected thumbnail border width.
+  static const double episodeListSelectedBorderWidth = 2;
+
+  /// Phone episode list: title and overview line caps.
+  static const int episodeListTitleMaxLines = 2;
+  static const int episodeListOverviewMaxLines = 2;
+
+  /// Phone episode list: line heights (title, meta, overview).
+  static const double episodeListTitleLineHeight = 1.25;
+  static const double episodeListMetaLineHeight = 1.2;
+  static const double episodeListOverviewLineHeight = 1.4;
+
+  /// Phone episode list: secondary text alpha (meta, overview).
+  static const double episodeListSecondaryAlpha = 0.45;
+
+  /// Phone episode list skeleton: row count, bar heights, radii and widths.
+  static const int episodeListSkeletonRows = 4;
+  static const double episodeListSkeletonBarRadius = 4;
+  static const double episodeListSkeletonTitleHeight = 14;
+  static const double episodeListSkeletonMetaHeight = 12;
+  static const double episodeListSkeletonBarGap = 8;
+  static const double episodeListSkeletonTitleFraction = 0.8;
+  static const double episodeListSkeletonMetaFraction = 0.45;
 
   static const double watchProviderTileSize = 40;
   static const double watchProviderTileSizeTv = watchProviderTileSize * _s;

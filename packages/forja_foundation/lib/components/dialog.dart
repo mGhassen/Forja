@@ -37,6 +37,7 @@ Future<T?> showForjaDialog<T>({
           useTvFocus: hostPaint.useTvFocus,
           scaleOnHover: hostPaint.scaleOnHover,
           usesTvDensity: hostPaint.usesTvDensity,
+          usesMobileDensity: hostPaint.usesMobileDensity,
           focusStyled: hostPaint.focusStyled,
           focusableTapBuilder: hostPaint.focusableTapBuilder,
           wrapTvRow: hostPaint.wrapTvRow,

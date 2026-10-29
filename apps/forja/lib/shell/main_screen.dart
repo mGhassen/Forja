@@ -19,6 +19,7 @@ import 'package:forja/shell/frame/shell_empty_features_screen.dart';
 import 'package:forja/shell/routing/app_router.dart';
 import 'package:forja/shell/platform/shell_find_shortcut.dart';
 import 'package:forja/shell/platform/macos_shell_channel.dart';
+import 'package:forja/shell/platform/shell_system_ui.dart';
 import 'package:forja/shell/routing/shell_overlay_navigator.dart';
 import 'package:forja/shell/routing/shell_tab_refresh.dart';
 
@@ -97,6 +98,9 @@ class _MainScreenState extends ConsumerState<MainScreen>
   /// the user opens Settings from the rail or an empty-state CTA.
   bool _emptyFeaturesBodyDismissed = false;
   BuildContext? _shellScopedContext;
+
+  /// Shell profile whose system bars were last applied (Android).
+  ShellProfile? _systemUiProfile;
 
   bool get _hasFeatureTabs => _visibleIds.any((id) => id != 'settings');
 
@@ -344,6 +348,7 @@ class _MainScreenState extends ConsumerState<MainScreen>
     ShellBus.hideGlobalNav.addListener(_onShellChromeChanged);
     ShellBus.maskShellUnderPlayer.addListener(_onShellChromeChanged);
     ShellBus.playerResourcePurgeRevision.addListener(_onPlayerResourcePurge);
+    ShellBus.playerSurfaceActive.addListener(_onPlayerSurfaceChanged);
     MacOsShellChannel.listen(onFind: _onFindShortcut);
     EngineService.changeNotifier.addListener(_onEnginePackChanged);
     SettingsService.navbarChangeNotifier.addListener(_onNavbarConfigChanged);
@@ -697,9 +702,42 @@ class _MainScreenState extends ConsumerState<MainScreen>
       }
       _updateAutoCheck.onResumed();
       if (Platform.isAndroid) {
-        SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+        final profile = _shellProfileOrNull;
+        if (ShellBus.playerSurfaceActive.value || profile == null) {
+          SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+        } else {
+          unawaited(ShellSystemUi.applyForShell(profile));
+        }
       }
     }
+  }
+
+  ShellProfile? get _shellProfileOrNull {
+    final ctx = _shellScopedContext;
+    if (ctx == null || !ctx.mounted) return null;
+    return ShellScope.maybeOf(ctx)?.profile;
+  }
+
+  /// Players go sticky immersive; give the shell its own bars back when the
+  /// last player surface closes (touch: status bar + nav visible again).
+  void _onPlayerSurfaceChanged() {
+    if (!mounted || ShellBus.playerSurfaceActive.value) return;
+    if (_shellProfileOrNull == null) return;
+    ShellSystemUi.restoreAfterPlayer(
+      () => _shellProfileOrNull ?? ShellProfile.tv,
+      stillIdle: () => mounted && !ShellBus.playerSurfaceActive.value,
+    );
+  }
+
+  /// First shell frame, and whenever the profile changes (rotation on TV
+  /// builds): apply the profile's system bars unless a player owns them.
+  void _syncShellSystemUi(ShellProfile profile) {
+    if (_systemUiProfile == profile) return;
+    _systemUiProfile = profile;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || ShellBus.playerSurfaceActive.value) return;
+      unawaited(ShellSystemUi.applyForShell(profile));
+    });
   }
 
   void _onStremioSearch() {
@@ -847,6 +885,7 @@ class _MainScreenState extends ConsumerState<MainScreen>
     ShellBus.hideGlobalNav.removeListener(_onShellChromeChanged);
     ShellBus.maskShellUnderPlayer.removeListener(_onShellChromeChanged);
     ShellBus.playerResourcePurgeRevision.removeListener(_onPlayerResourcePurge);
+    ShellBus.playerSurfaceActive.removeListener(_onPlayerSurfaceChanged);
     EngineService.changeNotifier.removeListener(_onEnginePackChanged);
     SettingsService.navbarChangeNotifier.removeListener(_onNavbarConfigChanged);
     ShellBus.completeNavbarReloadRevision.removeListener(
@@ -867,6 +906,7 @@ class _MainScreenState extends ConsumerState<MainScreen>
     return ShellScopeBuilder(
       builder: (shellContext, profile) {
         _shellScopedContext = shellContext;
+        _syncShellSystemUi(profile);
         final config = shellPlatformConfigFor(profile);
         final showKitTopBar =
             config.showKitTopBar && !ShellBus.shellOverlayHasPage.value;

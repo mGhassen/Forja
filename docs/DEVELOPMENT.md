@@ -143,7 +143,7 @@ Release macOS:
 
 ```bash
 ./scripts/build_rust_mobile.sh all   # ios + android arm64
-cd apps/forja && flutter run
+cd apps/forja && flutter run          # iOS; Android needs --flavor (below)
 ```
 
 Mobile FFI ships the full engine (parsers + librqbit torrent + proxy).
@@ -152,13 +152,17 @@ Mobile FFI ships the full engine (parsers + librqbit torrent + proxy).
 
 ```bash
 ./scripts/build_rust_mobile.sh android
-BUILD_RUST_ANDROID=1 flutter run -d android
+BUILD_RUST_ANDROID=1 flutter run -d android --flavor mobile   # phone / tablet
+BUILD_RUST_ANDROID=1 flutter run -d android --flavor tv       # Android TV
 ```
+
+Android has two product flavors on the `formFactor` dimension: `tv` and `mobile`. Every `flutter run` / `flutter build apk` on Android must pass `--flavor`; without it Flutter stops and lists the flavors. Both flavors share the package id and signing key.
 
 **Android release** — Rust bundles automatically:
 
 ```bash
-flutter build apk
+flutter build apk --flavor mobile   # build/app/outputs/flutter-apk/app-mobile-release.apk
+flutter build apk --flavor tv       # build/app/outputs/flutter-apk/app-tv-release.apk
 ```
 
 **iOS** — Release/Profile builds compile Rust via Xcode phase. Debug: run `build_rust_mobile.sh ios` once first.

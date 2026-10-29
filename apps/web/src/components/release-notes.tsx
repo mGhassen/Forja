@@ -1,5 +1,6 @@
 import { cn } from '@/lib/utils'
 import { cleanReleaseBody } from '@/hooks/use-releases'
+import type { ChangelogPlatformId } from '@/lib/r2-changelog'
 
 type Block =
   | { type: 'h1'; text: string }
@@ -10,13 +11,11 @@ type Block =
 
 const PREFIX_RE = /^\*\*(Add|Change|Fix|Remove):\*\*\s*/i
 
-const PLATFORM_LABELS: Record<
-  'windows' | 'macos' | 'linux' | 'android_tv',
-  string
-> = {
+const PLATFORM_LABELS: Record<ChangelogPlatformId, string> = {
   windows: 'Windows',
   macos: 'macOS',
   linux: 'Linux',
+  android_mobile: 'Android',
   android_tv: 'Android TV',
 }
 
@@ -104,7 +103,7 @@ export function ReleaseNotes({
   className?: string
   emptyLabel?: string
   /** Platforms that shipped installers in this version (shown under the title). */
-  platforms?: Array<'windows' | 'macos' | 'linux' | 'android_tv'>
+  platforms?: ChangelogPlatformId[]
 }) {
   const blocks = parseBlocks(markdown)
 

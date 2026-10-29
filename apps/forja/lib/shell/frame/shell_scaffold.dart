@@ -10,6 +10,8 @@ import 'package:forja/shell/tv/shell_tv_coordinator.dart';
 import 'package:forja/shell/tv/shell_tv_focus.dart';
 import 'package:forja/shell/core/forja_shell_scope.dart';
 import 'package:forja/shell/core/forja_shell_layout.dart';
+import 'package:forja/shell/core/forja_shell_profile.dart';
+import 'package:forja/shell/frame/shell_status_bar_scrim.dart';
 import 'package:forja_foundation/blocks/shell/shell_nav_placement.dart';
 import 'package:rust/rust.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
@@ -172,6 +174,22 @@ class _ShellScaffoldState extends State<ShellScaffold> {
               ],
             ),
           ),
+        ),
+        // Touch profile: content scrolls under the status bar. Always mounted
+        // (keyed) so the Stack never reshuffles later children.
+        Positioned(
+          key: const ValueKey('shell-status-bar-scrim'),
+          top: 0,
+          left: 0,
+          right: 0,
+          child: ShellScope.profileOf(context) == ShellProfile.mobile &&
+                  !widget.hideGlobalNav &&
+                  !widget.maskUnderPlayer &&
+                  widget.selectedIndex < widget.visibleIds.length
+              ? ShellStatusBarScrim(
+                  tabId: widget.visibleIds[widget.selectedIndex],
+                )
+              : const SizedBox.shrink(),
         ),
         // Always reserve this slot so overlay open/close does not reshuffle
         // later Stack children (nav) onto the wrong Elements.

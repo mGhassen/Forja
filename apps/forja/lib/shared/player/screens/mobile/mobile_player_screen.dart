@@ -50,6 +50,8 @@ import 'package:forja/shared/player/controls/chrome/player_chrome_overlay.dart';
 import 'package:forja/shared/player/controls/chrome/player_next_episode_chip.dart';
 import 'package:forja/shared/player/controls/chrome/player_chrome_overlays.dart';
 import 'package:forja/shared/player/controls/chrome/player_vod_tv_transport.dart';
+import 'package:forja/shared/player/controls/chrome/player_phone_controls.dart';
+import 'package:forja/shared/player/platform/phone_player_system_ui.dart';
 import 'package:forja/shared/player/parental_guide/parental_guide_overlay.dart';
 import 'package:forja/shared/player/controls/tv/player_tv_key_scope.dart';
 import 'package:forja/shared/player/controls/menus/player_subtitle_settings_dialog.dart';
@@ -87,6 +89,7 @@ import 'package:forja/shared/playback/loading_overlay.dart';
 import 'package:forja/shell/feedback/forja_toast.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
+import 'package:forja_foundation/tokens/player_phone_tokens.dart';
 import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 
 part 'mobile_player_glass.dart';
@@ -360,13 +363,16 @@ class _MobilePlayerScreenState extends ConsumerState<MobilePlayerScreen>
   /// loudness (issue 152).
   double get _mpvVolume => mpvVolumeForUi(_volume, atvMediaKit: _tvMediaKit);
 
-  // ── Double-tap ripple ─────────────────────────────────────────────────────
-  late final AnimationController _rippleController;
-  late final Animation<double> _rippleScale;
-  late final Animation<double> _rippleOpacity;
-  bool _showRipple = false;
-  bool _isForward = true;
-  Offset _ripplePosition = Offset.zero;
+  // ── Double-tap seek ───────────────────────────────────────────────────────
+  final PlayerTapSeekBurst _tapSeek = PlayerTapSeekBurst();
+  bool _showTapSeek = false;
+  int _tapSeekPulse = 0;
+  Offset _tapSeekPosition = Offset.zero;
+  Timer? _tapSeekHideTimer;
+
+  /// Phone touch chrome (mobile profile, not the TV wrapper).
+  late final bool _phoneChrome =
+      !widget.tvRemoteEnabled && PlatformInfo.isPhone;
 
   // ── Subtitles ─────────────────────────────────────────────────────────────
   List<Map<String, dynamic>> _externalSubtitles = [];
@@ -801,7 +807,13 @@ class _MobilePlayerScreenState extends ConsumerState<MobilePlayerScreen>
     // BEFORE popping.  Changing orientation during dispose while
     // media_kit's surface is being torn down causes BLASTBufferQueue
     // errors and hundreds of dropped frames.
-    SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+    if (_phoneChrome) {
+      // Forced pops skip [_exitPlayer]: restore portrait + system bars after
+      // teardown unless another player took over (episode hand-off).
+      PhonePlayerSystemUi.detach(restore: !_exitInProgress);
+    } else {
+      SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+    }
 
     _playFocus.dispose();
     _rewindFocus.dispose();
@@ -838,7 +850,7 @@ class _MobilePlayerScreenState extends ConsumerState<MobilePlayerScreen>
     PlayerTorrentFilePanel.dismiss();
     PlayerSourcesPanel.dismiss();
     playerMenuClearReturnFocus();
-    _rippleController.dispose();
+    _tapSeekHideTimer?.cancel();
 
     _positionSub?.cancel();
     _durationSub?.cancel();
@@ -852,6 +864,7 @@ class _MobilePlayerScreenState extends ConsumerState<MobilePlayerScreen>
     _tracksSub?.cancel();
     _logSub?.cancel();
     _pipSub?.cancel();
+    PipService.instance.releaseAndroidAutoEnter(this);
     _torrentStatsSub?.cancel();
     _torrentSeekPrefetch.cancel();
 

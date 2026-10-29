@@ -13,6 +13,7 @@ import 'package:forja/shared/engine/runtime/open/meta_movie.dart';
 import 'package:forja/shared/engine/runtime/meta/plugin_actions.dart';
 import 'package:forja/shared/engine/runtime/search/search_recent_queries.dart';
 import 'package:forja/shell/core/forja_shell_layout.dart';
+import 'package:forja/shell/core/forja_shell_profile.dart';
 import 'package:forja/shell/core/forja_shell_scope.dart';
 import 'package:forja/shell/focus/shell_focusable_tap.dart';
 import 'package:forja/shell/tv/shell_tv_coordinator.dart';
@@ -27,6 +28,7 @@ import 'package:forja_foundation/protocol/filter.dart';
 import 'package:forja_foundation/protocol/protocol.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
+import 'package:forja_foundation/tokens/mobile_chrome_tokens.dart';
 import 'package:forja_foundation/widgets/catalog/catalog_search_filters.dart';
 import 'package:forja_foundation/blocks/search/catalog_search_page.dart';
 import 'package:forja_foundation/widgets/catalog/catalog_search_result_card.dart';
@@ -689,6 +691,9 @@ class _KitSearchPageState extends State<KitSearchPage> {
 
   bool _tvDensity(BuildContext context) =>
       ShellScope.metricsOf(context).usesTvDensity;
+
+  bool _phoneProfile(BuildContext context) =>
+      ShellScope.maybeOf(context)?.profile == ShellProfile.mobile;
 
   /// Results pane width beside the helpers column (wide layout flex 3:7).
   double _tvSearchResultsPaneWidth(BuildContext context) {
@@ -1442,11 +1447,18 @@ class _KitSearchPageState extends State<KitSearchPage> {
     final leanbackInput = _leanbackTextInput(context);
     final browseOnly = leanbackInput && !_searchFieldEditing;
     final tv = _tvDensity(context);
+    final phone = _phoneProfile(context);
+    // Phone landscape uses this wide layout too — keep the query compact so
+    // the field leaves room above the keyboard.
     final queryFont = tv
         ? ShellTokens.searchQueryFontSizeTv
+        : phone
+        ? MobileChromeTokens.searchQueryFontSize
         : ShellTokens.searchQueryFontSize;
     final cursorHeight = tv
         ? ShellTokens.searchQueryCursorHeightTv
+        : phone
+        ? MobileChromeTokens.searchQueryCursorHeight
         : ShellTokens.searchQueryCursorHeight;
     final hintStyle = TextStyle(
       color: ForjaShellColors.textSecondary.withValues(alpha: 0.7),
@@ -2000,7 +2012,7 @@ class _KitSearchPageState extends State<KitSearchPage> {
   }
 
   Widget _buildEmpty({String? hint}) {
-    return Center(
+    final empty = Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
@@ -2018,6 +2030,22 @@ class _KitSearchPageState extends State<KitSearchPage> {
             style: const TextStyle(color: Colors.white38),
           ),
         ],
+      ),
+    );
+    if (!_phoneProfile(context)) return empty;
+    // Phone: the keyboard can leave less height than the hint needs
+    // (landscape) — scroll instead of overflowing.
+    return LayoutBuilder(
+      builder: (context, constraints) => SingleChildScrollView(
+        child: ConstrainedBox(
+          constraints: BoxConstraints(
+            minWidth: constraints.maxWidth.isFinite ? constraints.maxWidth : 0,
+            minHeight: constraints.maxHeight.isFinite
+                ? constraints.maxHeight
+                : 0,
+          ),
+          child: empty,
+        ),
       ),
     );
   }

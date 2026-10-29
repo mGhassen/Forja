@@ -48,7 +48,7 @@ Migration: [docs/migration/README.md](../migration/README.md) — [fixed/](migra
 | [023-[fixed]-…](fixed/023-[fixed]-app-shell-redesign.md) | App shell redesign | v0.8.x | fixed | Complete · 5/5 · 18/18 | [0.8.1](../backlog/done/0.8.1-[done].md) |
 | [025-[fixed]-…](fixed/025-[fixed]-flat-cinematic-shell.md) | Flat cinematic shell & Home hero | v1.0.0 | fixed | Complete · 4/4 · 37/37 · 3/3 deferred | [1.0.0](../backlog/done/1.0.0-[done].md) |
 | [027-[draft]-…](027-[draft]-iptv-channel-guide.md) | IPTV in-player channel guide | v1.0.2 | draft | 4/4 · 1/4 | [1.0.2](../backlog/1.0.2-[draft].md) |
-| [028-[draft]-…](028-[draft]-adaptive-shell-profiles.md) | Adaptive shell profiles | v1.0.1 | draft | 6/6 · 10/10 · 4/4 · 4/4 · 3/4 · 1/1 · 1/1 · 2/2 · 1/1 · 0/4 ⏭️ | [1.0.1](../backlog/1.0.1-[open].md) — leanback blocks `[fixed]` |
+| [028-[draft]-…](028-[draft]-adaptive-shell-profiles.md) | Adaptive shell profiles | v1.0.1 | draft | 6/6 · 10/10 · 4/4 · 4/4 · 3/4 · 1/1 · 1/1 · 2/2 · 1/1 · 0/4 ⏭️ · 0/1 | [1.0.1](../backlog/1.0.1-[open].md) — leanback blocks `[fixed]` · slice 2 → [RFC-123](123-[open]-android-mobile-flavor.md) |
 | [029-[open]-…](029-[open]-dual-built-in-playback-engines.md) | Dual built-in engines (MediaKit + ExoPlayer) | v1.0.2 | open | 4/4 · 2/8 · 3/3 chrome | [1.0.2](../backlog/1.0.2-[draft].md) |
 | [030-[open]-…](030-[open]-playback-selection-engine.md) | Playback selection engine | v1.0.2 | open | 4/4 · 16/16 · 0/5 | [1.0.2](../backlog/1.0.2-[draft].md) |
 | [031-[open]-…](031-[open]-source-engine-middleware.md) | Source Engine middleware | v1.0.2 | open | 3/3 · 8/8 · 4/4 · 2/10 | [1.0.2](../backlog/1.0.2-[draft].md) → [1.0.3](../backlog/1.0.3-[draft].md) |
@@ -144,6 +144,7 @@ Migration: [docs/migration/README.md](../migration/README.md) — [fixed/](migra
 | [120-[open]-…](120-[open]-pack-plugin-platform-gating.md) | Pack plugin platform gating (manifest `platforms`) | [117](117-[open]-vod-offline-downloads.md) | open | **11 / 11** · **2 / 7** | — |
 | [121-[open]-…](121-[open]-desktop-pip-float-window.md) | Desktop PiP — placeholder + separate float | — | open | **5 / 5** · **0 / 4** | [430](../issues/430-[open]-desktop-pip-placeholder-separate-float.md) |
 | [122-[draft]-…](122-[draft]-android-tv-remote-ux.md) | Android TV remote: one-level Back, fixed-column rows, unified focus, faster first frame | — | draft | **14 / 14** · **10 / 12** | [101](../issues/101-[open]-player-back-lands-on-loading.md) · [119](../issues/119-[open]-android-tv-double-back-exit.md) · [135](../issues/135-[open]-android-tv-spatial-dpad-all-screens.md) · [139](../issues/139-[open]-android-tv-shell-focus-chrome-stutter.md) · [156](../issues/156-[open]-android-tv-hold-scroll-accel.md) · [171](../issues/171-[open]-android-tv-details-focus-after-player.md) · [180](../issues/180-[open]-android-tv-details-back-loses-catalog-focus.md) |
+| [123-[open]-…](123-[open]-android-mobile-flavor.md) | Android phone app: separate `tv` and `mobile` flavors | — | open | **0 / 6** (6 🔄) · **0 / 7** · **0 / 6** (6 🔄) · **6 / 6** emulator · **0 / 1** (1 🔄) · **1 / 1** · **0 / 6** (6 🔄) · **11 / 13** emulator · **0 / 8** ⏭️ · **0 / 10** ⏭️ | [518](../issues/518-[open]-phone-landscape-detected-as-tv.md) · [RFC-028](028-[draft]-adaptive-shell-profiles.md) |
 
 ## Related
 

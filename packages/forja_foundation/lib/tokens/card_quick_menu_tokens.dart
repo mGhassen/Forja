@@ -68,6 +68,16 @@ abstract final class CardQuickMenuTokens {
   /// Full-screen scrim behind the menu (flat tint — no blur).
   static const double scrimAlpha = 0.35;
 
+  /// Touch: long-press opens the same actions in a bottom sheet.
+  static const double sheetRowHeight = 52;
+  static const double sheetPadH = 20;
+  static const double sheetPadB = 8;
+  static const double sheetIconSize = 22;
+  static const double sheetGap = 16;
+  static const double sheetLabelFontSize = 15;
+  static const double sheetTitleFontSize = 13;
+  static const double sheetTitlePadB = 4;
+
   static double minWidthOf(bool tv) => tv ? minWidthTv : minWidth;
   static double maxWidthOf(bool tv) => tv ? maxWidthTv : maxWidth;
   static double radiusOf(bool tv) => tv ? radiusTv : radius;

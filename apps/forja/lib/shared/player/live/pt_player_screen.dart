@@ -1299,6 +1299,8 @@ class _PtPlayerScreenState extends ConsumerState<PtPlayerScreen>
 
     if (!kIsWeb && Platform.isAndroid) {
       _pipSub = PipService.instance.androidPipChanges.listen(onPipChanged);
+      // Live: an open player is a playing stream — leaving the app shrinks it.
+      PipService.instance.syncAndroidAutoEnter(token: this, playing: true);
     } else if (!kIsWeb && (Platform.isWindows || Platform.isMacOS)) {
       _pipSub = PipService.instance.desktopPipChanges.listen(onPipChanged);
       PipService.instance.bindHandoff(this);
@@ -1873,6 +1875,7 @@ class _PtPlayerScreenState extends ConsumerState<PtPlayerScreen>
     _bottomSourceFocus.dispose();
     _pipSub?.cancel();
     PipService.instance.unbindAutoEnterOnDesktopSwitch(this);
+    PipService.instance.releaseAndroidAutoEnter(this);
     PipService.instance.unbindHandoff(this);
     _watchdog?.cancel();
     _uhdDiag?.cancel();

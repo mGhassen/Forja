@@ -31,6 +31,7 @@ class ShellMetrics {
     required this.navRailLogoWidth,
     required this.navRailTopPadding,
     required this.navRailBottomPadding,
+    this.usesMobileDensity = false,
   });
 
   final double posterCardWidth;
@@ -53,6 +54,10 @@ class ShellMetrics {
   final double torrentPanelLeadingIconSize;
   final double torrentPanelSectionFontSize;
   final bool usesTvDensity;
+
+  /// Touch profile catalog density (phone rails, hero, mood chips, card
+  /// long-press sheet). Foundation reads it via `ShellPaintScope`.
+  final bool usesMobileDensity;
   final double navRailWidth;
   final double navRailItemSpacing;
   final double navRailLogoGap;
@@ -69,7 +74,9 @@ class ShellMetrics {
     heroMinTitleHeight: ShellTokens.heroMinTitleHeightDesktop,
     heroActionUseFittedBox: false,
     navRailSafeAreaVertical: true,
-    allowCompactNavDrawer: true,
+    // Touch shell never collapses the rail into a floating ☰ over hub
+    // content: phones use the bottom bar, landscape tablets a full rail.
+    allowCompactNavDrawer: false,
     torrentPanelPadding: ShellTokens.torrentPanelPaddingDesktop,
     torrentPanelTitleFontSize: ShellTokens.torrentPanelTitleFontSizeDesktop,
     torrentPanelRowTitleFontSize: ShellTokens.torrentPanelRowTitleFontSizeDesktop,
@@ -89,6 +96,7 @@ class ShellMetrics {
     navRailLogoWidth: ShellTokens.navRailLogoWidth,
     navRailTopPadding: ShellTokens.shellHeaderTopPadding,
     navRailBottomPadding: ShellTokens.navRailBottomPaddingDesktop,
+    usesMobileDensity: true,
   );
 
   static const desktop = ShellMetrics(

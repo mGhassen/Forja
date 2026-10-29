@@ -12,6 +12,7 @@ export const CHANGELOG_PLATFORM_ORDER = [
   'windows',
   'macos',
   'linux',
+  'android_mobile',
   'android_tv',
 ] as const
 

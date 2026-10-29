@@ -31,7 +31,9 @@ set -euo pipefail
 #   FORJA_WIN_REPO=\\Mac\Forja       Windows path to this repo (default share name Forja)
 #   FORJA_PLATFORMS=macos_arm64,macos_x86_64,windows,linux,android_tv_arm64,android_tv_armeabi_v7a
 #                                    same IDs as release_ci.sh / Actions (one arch per flag).
-#                                    Legacy: macos → macos_arm64; android_tv → both TV ABIs.
+#                                    Legacy: macos → macos_arm64; android_tv → both ABIs.
+#                                    android_tv_* IDs pick the ABI; each builds the tv AND
+#                                    mobile flavors (Forja-<v>-android-{tv,mobile}-<abi>.apk).
 #                                    Interactive pick if unset; default: macos_arm64 (+windows if VM)
 #   FORJA_SYNC_REPO=forjahq/forja    org mirror for the separate `sync` / `sync-from` commands
 #   FORJA_SYNC_SKIP=1                skip org mirror when running `sync` / `sync-from`
@@ -1089,9 +1091,9 @@ pick_platforms() {
     fi
     read -r -p "  Linux [y/N]: " ans
     [[ "$ans" =~ ^[Yy]$ ]] && linux=true
-    read -r -p "  Android TV arm64 [y/N]: " ans
+    read -r -p "  Android TV + mobile arm64 [y/N]: " ans
     [[ "$ans" =~ ^[Yy]$ ]] && android_tv_arm64=true
-    read -r -p "  Android TV armeabi-v7a [y/N]: " ans
+    read -r -p "  Android TV + mobile armeabi-v7a [y/N]: " ans
     [[ "$ans" =~ ^[Yy]$ ]] && android_tv_v7a=true
     local -a selected=()
     $macos_arm64 && selected+=(macos_arm64)
@@ -1113,8 +1115,8 @@ pick_platforms() {
     "macos_x86_64|macOS — Intel only (x86_64) · CI only on Apple Silicon host|0" \
     "windows|${win_hint}|${win_default}" \
     "linux|Linux (use release_ci.sh)|0" \
-    "android_tv_arm64|Android TV — arm64 only · Downloader code at R2|0" \
-    "android_tv_armeabi_v7a|Android TV — armeabi-v7a only · Downloader code at R2|0")" || {
+    "android_tv_arm64|Android TV + mobile — arm64 · Downloader code (TV) at R2|0" \
+    "android_tv_armeabi_v7a|Android TV + mobile — armeabi-v7a · Downloader code (TV) at R2|0")" || {
     rc=$?
     ((rc == 2)) && return 2
     ui_abort
@@ -1293,14 +1295,17 @@ build_android_tv() {
   target_platform="${flutter_targets[*]}"
   unset IFS
 
-  info "Flutter Android TV APKs ($ver) — ${package_abis[*]}"
+  local flavor
+  for flavor in tv mobile; do
+  info "Flutter Android ${flavor} APKs ($ver) — ${package_abis[*]}"
   (
     cd "$APP_DIR"
     flutter pub get
     # NOTE: the trailing \ after TMDB_API_KEY is mandatory — without it bash
     # runs flutter unsigned, then tries to exec -PFORJA_… as a command, and
-    # package_android_tv_apk.sh can still pick up stale flutter-apk outputs.
+    # package_android_apk.sh can still pick up stale flutter-apk outputs.
     flutter build apk --release --split-per-abi \
+      --flavor "$flavor" \
       --target-platform "$target_platform" \
       --dart-define=SUPABASE_URL="${SUPABASE_URL}" \
       --dart-define=SUPABASE_PUBLISHABLE_KEY="${SUPABASE_PUBLISHABLE_KEY}" \
@@ -1316,13 +1321,14 @@ build_android_tv() {
       -PFORJA_KEYSTORE_PASSWORD="${FORJA_KEYSTORE_PASSWORD}" \
       -PFORJA_KEY_ALIAS="$key_alias" \
       -PFORJA_KEY_PASSWORD="${FORJA_KEY_PASSWORD}"
-  ) || die "flutter build apk failed — refusing to package/upload stale APKs"
-  ./scripts/package_android_tv_apk.sh "$ver" "${package_abis[@]}"
+  ) || die "flutter build apk --flavor $flavor failed — refusing to package/upload stale APKs"
+  ./scripts/package_android_apk.sh "$flavor" "$ver" "${package_abis[@]}"
   local out
   for abi in "${package_abis[@]}"; do
-    out="$DIST/Forja-${ver}-android-tv-${abi}.apk"
+    out="$DIST/Forja-${ver}-android-${flavor}-${abi}.apk"
     [[ -f "$out" ]] || die "missing $out"
     ls -lh "$out"
+  done
   done
 }
 
@@ -1337,7 +1343,9 @@ collect_assets() {
     "$(exe_path "$ver")" \
     "$DIST/Forja-${ver}-linux-x86_64.AppImage" \
     "$DIST/Forja-${ver}-android-tv-arm64.apk" \
-    "$DIST/Forja-${ver}-android-tv-armeabi-v7a.apk"; do
+    "$DIST/Forja-${ver}-android-tv-armeabi-v7a.apk" \
+    "$DIST/Forja-${ver}-android-mobile-arm64.apk" \
+    "$DIST/Forja-${ver}-android-mobile-armeabi-v7a.apk"; do
     [[ -f "$f" ]] && files+=("$f")
   done
   ((${#files[@]} > 0)) || die "no installers in dist/ for $ver"
@@ -1590,8 +1598,8 @@ cmd_build_android_tv() {
   if ((${#abis[@]} == 0)); then
     abis=(arm64 armeabi-v7a)
   fi
-  info "Build Android TV APKs for $tag (${abis[*]})"
-  confirm "Start Android TV release build?" || die "aborted"
+  info "Build Android TV + mobile APKs for $tag (${abis[*]})"
+  confirm "Start Android TV + mobile release build?" || die "aborted"
   build_android_tv "$ver" "${abis[@]}"
   ok "APKs in dist/ for $ver"
 }
@@ -2312,7 +2320,7 @@ wizard_tools() {
   tool="$(ui_choose 1 2 "Tools" -- \
     "build_macos|Build macOS DMG (host arch only)" \
     "build_windows|Build Windows (Parallels)" \
-    "build_android_tv|Build Android TV APKs (per selected ABI)" \
+    "build_android_tv|Build Android TV + mobile APKs (per selected ABI)" \
     "publish|Publish dist/…" \
     "publish_r2|Upload dist/ → R2 only (retry)" \
     "bump_engine|Bump Rust engine version (Cargo + packages/rust)" \
