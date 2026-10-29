@@ -589,19 +589,17 @@ class _MainScreenState extends ConsumerState<MainScreen>
       // (same as profile switch) — issue 253.
       // Do not promote when the user already opened Settings (pack remove /
       // install must not yank Forja Packs → Home / IPTV).
-      final intentionalSettings =
-          currentId == 'settings' && _emptyFeaturesBodyDismissed;
-      // Keep Settings selected while an overlay is up (Account category push)
-      // or the user opened Settings — default-tab arm must not desync chrome.
-      final holdSettingsSelection =
-          intentionalSettings || (overlayOpen && currentId == 'settings');
+      // Phone Settings category pages (Account) are shell overlays. Holding
+      // only while that overlay is up keeps the bar on Settings without
+      // blocking profile-switch default-tab (splash pops overlays first).
+      final holdSettingsOverlay = overlayOpen && currentId == 'settings';
       final promoteFromSettingsOnly =
           !hadFeatureTabs &&
           visible.isNotEmpty &&
           currentId == 'settings' &&
           defaultTab != 'settings' &&
           !_emptyFeaturesBodyDismissed;
-      if (holdSettingsSelection &&
+      if (holdSettingsOverlay &&
           (_initialNavResolved || applyDefaultTab || promoteFromSettingsOnly)) {
         _initialNavResolved = true;
         if (applyDefaultTab) {
@@ -612,13 +610,6 @@ class _MainScreenState extends ConsumerState<MainScreen>
           _selectedIndex = settingsIdx;
           _mountedTabIds.add('settings');
           _touchTab('settings');
-        } else if (currentId != null) {
-          final newIndex = _visibleIds.indexOf(currentId);
-          if (newIndex >= 0) {
-            _selectedIndex = newIndex;
-          } else if (_selectedIndex >= _visibleIds.length) {
-            _selectedIndex = _visibleIds.length - 1;
-          }
         }
       } else if (!_initialNavResolved ||
           applyDefaultTab ||

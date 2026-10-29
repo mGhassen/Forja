@@ -214,7 +214,6 @@ class _BottomNavEdgeFade extends StatelessWidget {
 
 class _BottomNavItem extends StatefulWidget {
   const _BottomNavItem({
-    super.key,
     required this.destination,
     required this.selected,
     required this.compact,
@@ -222,7 +221,6 @@ class _BottomNavItem extends StatefulWidget {
     this.onLongPress,
     this.shareFilterMenuTapGroup = false,
     this.showPackUpdateBadge = false,
-    this.reloadHold = true,
   });
 
   final NavDestination destination;
@@ -239,9 +237,6 @@ class _BottomNavItem extends StatefulWidget {
 
   /// Settings slot: pack update badge.
   final bool showPackUpdateBadge;
-
-  /// Hold-to-reload a tab.
-  final bool reloadHold;
 
   @override
   State<_BottomNavItem> createState() => _BottomNavItemState();
@@ -334,13 +329,11 @@ class _BottomNavItemState extends State<_BottomNavItem> {
         child: icon,
       );
     }
-    if (widget.reloadHold) {
-      icon = NavReloadHoldIcon(
-        icon: icon,
-        loading: _reloadHold.loading,
-        size: iconBox,
-      );
-    }
+    icon = NavReloadHoldIcon(
+      icon: icon,
+      loading: _reloadHold.loading,
+      size: iconBox,
+    );
 
     final underlineWidth = ShellTokens.shellNavUnderlineWidth.clamp(
       ShellTokens.shellNavUnderlineWidthMin,
@@ -416,14 +409,10 @@ class _BottomNavItemState extends State<_BottomNavItem> {
         cursor: SystemMouseCursors.click,
         child: Listener(
           behavior: HitTestBehavior.opaque,
-          onPointerDown: widget.reloadHold
-              ? (e) => _reloadHold.pointerDown(
-                  e,
-                  hideMenuTabId: widget.destination.id,
-                )
-              : null,
-          onPointerUp: widget.reloadHold ? _reloadHold.pointerUp : null,
-          onPointerCancel: widget.reloadHold ? _reloadHold.pointerCancel : null,
+          onPointerDown: (e) =>
+              _reloadHold.pointerDown(e, hideMenuTabId: widget.destination.id),
+          onPointerUp: _reloadHold.pointerUp,
+          onPointerCancel: _reloadHold.pointerCancel,
           child: GestureDetector(
             behavior: HitTestBehavior.opaque,
             onTapDown: (_) => _setPressed(true),

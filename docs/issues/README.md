@@ -562,7 +562,7 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [523-[fixed]-…](fixed/523-[fixed]-hub-reopen-keeps-mid-scroll.md) | Hub reopen lands mid-page (kept scroll) | P2 | Medium | fixed | Complete · 1/1 · A 1/1 | [375](fixed/375-[fixed]-hub-keep-alive-keeps-fetching-off-tab.md) |
 | [524-[fixed]-…](fixed/524-[fixed]-phone-mediakit-open-process-death.md) | Phone MediaKit open kills process | P1 | High | fixed | Complete · 2/2 · A 0/2 | [163](163-[open]-android-tv-iptv-vod-live-profile.md) |
 | [525-[fixed]-…](fixed/525-[fixed]-phone-web-login-apply-dns-flake.md) | Phone Web login apply DNS flake | P1 | High | fixed | Complete · 3/3 · A 0/2 | [520](fixed/520-[fixed]-web-login-handoff-unreachable-after-apply-fail.md) |
-| [526-[open]-…](526-[open]-phone-bottom-nav-scroll-and-selection-sync.md) | Phone bottom nav scroll + selection sync | P1 | High | open | 3/3 · A 0/2 | [253](253-[open]-starred-home-opens-on-settings.md) · [RFC-123](../rfc/123-[open]-android-mobile-flavor.md) |
+| [526-[fixed]-…](fixed/526-[fixed]-phone-bottom-nav-scroll-and-selection-sync.md) | Phone bottom nav scroll + selection sync | P1 | High | fixed | Complete · 3/3 · A 1/2 | [253](253-[open]-starred-home-opens-on-settings.md) · [RFC-123](../rfc/123-[open]-android-mobile-flavor.md) |
 
 **Migration parity (draft):** [018](018-[draft]-migration-playback-parity-unverified.md) → [019](019-[draft]-webstreamr-enginejobs-e2e-test-gap.md)–[022](022-[draft]-playback-widget-integration-tests.md).
 
