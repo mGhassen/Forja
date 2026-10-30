@@ -10,7 +10,7 @@
 
 | | |
 |--|--|
-| **Progress** | **5 / 6** fix · **0 / 3** acceptance |
+| **Progress** | **6 / 6** fix · **2 / 3** acceptance |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -33,15 +33,15 @@ Vercel bills CDN→client bytes (FDT) for every JSON body. Image redirects fixed
 | 3 | I519-T03 | Runtime env bridge so Node local + Worker share `proxy.js` / `cache.js` | ✅ |
 | 4 | I519-T04 | README deploy + DNS cutover (`tmdb.forjahq.xyz` → Worker); deprecate Vercel as primary | ✅ |
 | 5 | I519-T05 | Keep Node local + unit tests green; Vercel entry left for rollback only | ✅ |
-| 6 | I519-T06 | Deploy Worker + point custom domain; smoke `/health`, `/3/*`, `/t/p/*` 302 | ⬜ |
+| 6 | I519-T06 | Deploy Worker + point custom domain; smoke `/health`, `/3/*`, `/t/p/*` 302 | ✅ |
 
 ## Acceptance
 
 | # | ID | Description | Status |
 |--:|----|-------------|--------|
-| 1 | I519-A01 | `https://tmdb.forjahq.xyz/health` reports Worker/R2 ready (not Vercel-only) | ⬜ |
-| 2 | I519-A02 | Image `curl -sI /t/p/…` → 302 + `X-TMDB-Image-Mode: redirect` | ⬜ |
-| 3 | I519-A03 | Home/API JSON works; Vercel project no longer serves production traffic | ⬜ |
+| 1 | I519-A01 | `https://tmdb.forjahq.xyz/health` reports Worker/R2 ready (not Vercel-only) | ✅ `runtime: cloudflare-workers`, `r2Binding` + `r2PublicBase` |
+| 2 | I519-A02 | Image `curl -sI /t/p/…` → 302 + `X-TMDB-Image-Mode: redirect` | ✅ → `pub-….r2.dev` |
+| 3 | I519-A03 | Home/API JSON works; Vercel project no longer serves production traffic | ⬜ optional: remove Vercel domain / pause project |
 
 ## Links
 

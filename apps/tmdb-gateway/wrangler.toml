@@ -3,9 +3,13 @@ name = "forja-tmdb-gateway"
 main = "src/worker.js"
 compatibility_date = "2024-11-12"
 compatibility_flags = ["nodejs_compat"]
+workers_dev = true
 
 # Account / zone: set via `wrangler login` or CLOUDFLARE_API_TOKEN
-# Custom domain: Workers → forja-tmdb-gateway → Domains → tmdb.forjahq.xyz
+# Custom domain (after removing Vercel DNS for tmdb.forjahq.xyz):
+# [[routes]]
+# pattern = "tmdb.forjahq.xyz"
+# custom_domain = true
 
 [[r2_buckets]]
 binding = "TMDB_R2"
