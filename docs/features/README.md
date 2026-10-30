@@ -2,6 +2,8 @@
 
 Your cinema universe in one app. This guide explains every **in-scope** feature — what it does and how to use it.
 
+**How do I…?** Step-by-step task guides → **[how-to/](how-to/README.md)** (packs, Home filters, Stremio, Sources, IPTV, Live Sports, Simkl, LAN, …).
+
 **Developer docs:** [DEVELOPMENT.md](../DEVELOPMENT.md) · [ARCHITECTURE.md](../ARCHITECTURE.md) · [Plugin SDK](https://github.com/mGhassen/forja-sdk) · [Plugin packs](https://github.com/mGhassen/forja-packs)  
 **Archived tabs & verticals:** [archive/](archive/README.md) (Search, Discover, Jellyfin, Stremio, Music, Reading, …)
 
@@ -130,20 +132,21 @@ Tabs and verticals not in the default product surface — guides kept for refere
 
 ## I want to…
 
+Full index: **[how-to/](how-to/README.md)**. Quick links:
+
 | Goal | Start here |
 |------|------------|
-| Watch a movie from Home | [TMDB details](movies-tv/tmdb-details.md) → [Torrent scrapers](scrapers/torrent.md) → [Debrid](sources/debrid.md) |
-| Play torrents on Android TV via desktop | [LAN](settings/lan.md) |
-| Watch without torrents | [Webstreaming](movies-tv/direct-streaming-mode.md) → [Stream providers](sources/stream-providers.md) |
-| Add more stream sources | [Nuvio scrapers](scrapers/nuvio.md) · [Stream providers](sources/stream-providers.md) |
-| Watch anime or Asian drama | [Anime](hubs/anime.md) / [Asian Drama](hubs/asian-drama.md) → [Hub details](hubs/hub-details.md) |
-| Watch Arabic cinema | [Arabic](hubs/arabic.md) → [Hub details](hubs/hub-details.md) |
-| Watch Aflem / Brstej series | [Aflem](hubs/aflem.md) → [Hub details](hubs/hub-details.md) |
-| Watch Arabic cartoons | [كرتون](hubs/cartoon.md) → [Hub details](hubs/hub-details.md) |
-| Watch kids cartoons | [Kids](hubs/kids.md) → [Hub details](hubs/hub-details.md) |
-| Watch live sports | [Live Sports](live/live-sports.md) |
-| Resume where I left off | [Watch history](movies-tv/watch-history.md) |
-| Clear cache or watch history | [Cache & data](settings/cache-data.md) |
-| Customize the app | [Settings overview](settings/overview.md) · [Features](settings/navigation-bar.md) |
-| Opt in to crash reports | [App updates](settings/app-updates.md) |
-| Sign in with a code or QR | [Link Android TV](accounts/tv-connect.md) |
+| Install Official / Community packs | [Official](how-to/packs/install-official.md) · [Community](how-to/packs/install-community.md) |
+| Install a pack from a URL | [Manifest URL](how-to/packs/install-from-url.md) |
+| Add a Stremio addon and play | [Stremio](how-to/sources/stremio-addon.md) |
+| Filter Home (Films / service / languages) | [Films/TV](how-to/home/filter-films-tv-categories.md) · [Streaming service](how-to/home/filter-streaming-service.md) · [SUB/DUB](how-to/home/filter-languages.md) |
+| Play from Sources / Green Play | [Sources](how-to/sources/play-from-sources.md) · [Green Play](how-to/home/green-play.md) |
+| Add debrid / play torrents | [Debrid](how-to/sources/debrid.md) · [Local torrents](how-to/sources/torrents-local.md) |
+| Play torrents on TV via desktop | [LAN pair & play](how-to/lan/pair-and-play.md) |
+| Add IPTV / watch Live Sports | [IPTV portal](how-to/live/add-iptv-portal.md) · [Live Sports](how-to/live/live-sports.md) |
+| Connect Simkl / My List | [Simkl](how-to/accounts/connect-simkl.md) · [My List](how-to/home/my-list.md) |
+| Show / reorder tabs | [Features](how-to/home/show-hide-tabs.md) |
+| Clear cache or watch data | [Clear cache](how-to/data/clear-cache.md) |
+| Link Android TV | [TV connect](how-to/accounts/link-tv.md) |
+
+Reference (what a surface *is*): [TMDB details](movies-tv/tmdb-details.md) · [LAN](settings/lan.md) · [Live Sports](live/live-sports.md) · …
