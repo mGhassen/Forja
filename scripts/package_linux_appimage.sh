@@ -57,7 +57,7 @@ cp "$ICON_SRC" "$APPDIR/forja.png"
 cat >"$APPDIR/AppRun" <<'EOF'
 #!/bin/sh
 HERE="$(dirname "$(readlink -f "$0")")"
-export LD_LIBRARY_PATH="$HERE/usr/bin/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+export LD_LIBRARY_PATH="$HERE/usr/bin/lib:$HERE/usr/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
 exec "$HERE/usr/bin/forja" "$@"
 EOF
 chmod +x "$APPDIR/AppRun" "$APPDIR/usr/bin/forja"
@@ -74,10 +74,23 @@ export PATH="$TOOLS_DIR:$PATH"
   --plugin gtk \
   --output appimage
 
-BUILT="$(find "$TOOLS_DIR" -maxdepth 1 -name '*.AppImage' -newer "$LINUXDEPLOY" 2>/dev/null | head -1 || true)"
-if [[ -z "$BUILT" ]]; then
-  BUILT="$(ls -1t "$TOOLS_DIR"/*.AppImage 2>/dev/null | head -1 || true)"
+# linuxdeploy bundles libmpv's dependencies (FFmpeg etc.) into usr/lib, but libmpv itself is
+# loaded from usr/bin/lib, so they are only found if AppRun puts usr/lib on the loader path.
+# Otherwise they resolve from the host and the app dies on machines without the same FFmpeg.
+apprun_env="$(grep '^export LD_LIBRARY_PATH=' "$APPDIR/AppRun.wrapped")"
+leaked=0
+while read -r name _ resolved _; do
+  if [[ -e "$APPDIR/usr/lib/$name" && "$resolved" != "$APPDIR"/* ]]; then
+    echo "error: $name resolves to ${resolved:-nothing}, not the copy bundled in the AppImage" >&2
+    leaked=1
+  fi
+done < <(HERE="$APPDIR" bash -c "$apprun_env; ldd \"\$HERE/usr/bin/forja\"")
+if [[ "$leaked" -ne 0 ]]; then
+  exit 1
 fi
+
+# Exact name, not "newest AppImage": a leftover from an earlier failed run would be picked up.
+BUILT="$TOOLS_DIR/Forja-${VERSION}-${ARCH}.AppImage"
 
 if [[ -z "$BUILT" || ! -f "$BUILT" ]]; then
   echo "error: linuxdeploy did not produce an AppImage" >&2
