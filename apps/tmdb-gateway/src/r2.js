@@ -1,5 +1,6 @@
 /**
- * Cloudflare R2 (S3 API) for TMDB image blobs — bucket `forja-tmdb`.
+ * Cloudflare R2 for TMDB image blobs — bucket `forja-tmdb`.
+ * On Workers: prefer `TMDB_R2` binding. On Node: S3 API credentials.
  */
 
 import {
@@ -11,27 +12,26 @@ import {
   DeleteObjectsCommand,
 } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+import { envGet, getR2Binding } from "./runtime-env.js";
 
 /** @type {S3Client | null} */
 let client = null;
 
 export function r2Config() {
-  const accessKeyId = (process.env.R2_ACCESS_KEY_ID || "").trim();
-  const secretAccessKey = (process.env.R2_SECRET_ACCESS_KEY || "").trim();
-  const accountId = (process.env.R2_ACCOUNT_ID || "").trim();
-  const bucket = (process.env.R2_TMDB_BUCKET || "").trim();
+  const accessKeyId = envGet("R2_ACCESS_KEY_ID");
+  const secretAccessKey = envGet("R2_SECRET_ACCESS_KEY");
+  const accountId = envGet("R2_ACCOUNT_ID");
+  const bucket = envGet("R2_TMDB_BUCKET");
   const endpoint = (
-    process.env.R2_ENDPOINT ||
+    envGet("R2_ENDPOINT") ||
     (accountId ? `https://${accountId}.r2.cloudflarestorage.com` : "")
-  )
-    .trim()
-    .replace(/\/$/, "");
+  ).replace(/\/$/, "");
   if (!accessKeyId || !secretAccessKey || !bucket || !endpoint) return null;
   return { accessKeyId, secretAccessKey, bucket, endpoint };
 }
 
 export function r2Configured() {
-  return Boolean(r2Config());
+  return Boolean(getR2Binding()) || Boolean(r2Config());
 }
 
 function getClient() {
@@ -57,15 +57,15 @@ export function resetR2Client() {
 }
 
 /**
- * Public CDN base for stable image URLs (no Vercel byte proxy).
+ * Public CDN base for stable image URLs (required on Workers for 302 without AWS SDK sign).
  * e.g. https://pub-….r2.dev or https://tmdb-img.forjahq.xyz
  */
 export function r2PublicBase() {
-  return (process.env.R2_TMDB_PUBLIC_BASE || "").trim().replace(/\/$/, "");
+  return envGet("R2_TMDB_PUBLIC_BASE").replace(/\/$/, "");
 }
 
 /**
- * Redirect URL for an object — public base if set, else presigned GET (private bucket).
+ * Redirect URL for an object — public base if set, else Node presigned GET.
  * @param {string} key
  * @param {number} [expiresInSeconds]
  * @returns {Promise<string | null>}
@@ -75,6 +75,9 @@ export async function r2RedirectUrl(key, expiresInSeconds = 7 * 24 * 60 * 60) {
   if (!k) return null;
   const pub = r2PublicBase();
   if (pub) return `${pub}/${k}`;
+
+  // Workers binding without public base cannot cheaply presign — caller must set R2_TMDB_PUBLIC_BASE.
+  if (getR2Binding() && !r2Config()) return null;
 
   const cfg = r2Config();
   const s3 = getClient();
@@ -97,6 +100,16 @@ export async function r2RedirectUrl(key, expiresInSeconds = 7 * 24 * 60 * 60) {
  * @returns {Promise<boolean>}
  */
 export async function r2HeadObject(key) {
+  const binding = getR2Binding();
+  if (binding) {
+    try {
+      const obj = await binding.head(key);
+      return Boolean(obj);
+    } catch {
+      return false;
+    }
+  }
+
   const cfg = r2Config();
   const s3 = getClient();
   if (!cfg || !s3 || !key) return false;
@@ -116,9 +129,27 @@ export async function r2HeadObject(key) {
 
 /**
  * @param {string} key object key e.g. t/p/w500/abc.jpg
- * @returns {Promise<{ body: Buffer, contentType: string } | null>}
+ * @returns {Promise<{ body: Buffer | Uint8Array, contentType: string } | null>}
  */
 export async function r2GetObject(key) {
+  const binding = getR2Binding();
+  if (binding) {
+    try {
+      const obj = await binding.get(key);
+      if (!obj) return null;
+      const body = new Uint8Array(await obj.arrayBuffer());
+      return {
+        body,
+        contentType: String(
+          obj.httpMetadata?.contentType || "application/octet-stream",
+        ),
+      };
+    } catch (err) {
+      console.warn("[tmdb-r2] binding get failed", err?.message || err);
+      return null;
+    }
+  }
+
   const cfg = r2Config();
   const s3 = getClient();
   if (!cfg || !s3) return null;
@@ -149,6 +180,19 @@ export async function r2GetObject(key) {
  * @param {string} contentType
  */
 export async function r2PutObject(key, body, contentType) {
+  const binding = getR2Binding();
+  if (binding) {
+    try {
+      await binding.put(key, body, {
+        httpMetadata: { contentType: contentType || "application/octet-stream" },
+      });
+      return true;
+    } catch (err) {
+      console.warn("[tmdb-r2] binding put failed", err?.message || err);
+      return false;
+    }
+  }
+
   const cfg = r2Config();
   const s3 = getClient();
   if (!cfg || !s3) return false;
@@ -172,6 +216,16 @@ export async function r2PutObject(key, body, contentType) {
  * @param {string} key
  */
 export async function r2DeleteObject(key) {
+  const binding = getR2Binding();
+  if (binding) {
+    try {
+      await binding.delete(key);
+    } catch (err) {
+      console.warn("[tmdb-r2] binding delete failed", err?.message || err);
+    }
+    return;
+  }
+
   const cfg = r2Config();
   const s3 = getClient();
   if (!cfg || !s3 || !key) return;
@@ -188,10 +242,25 @@ export async function r2DeleteObject(key) {
  * @param {string[]} keys
  */
 export async function r2DeleteObjects(keys) {
+  const unique = [...new Set(keys.filter(Boolean))];
+  if (!unique.length) return;
+
+  const binding = getR2Binding();
+  if (binding) {
+    try {
+      await binding.delete(unique);
+    } catch (err) {
+      console.warn("[tmdb-r2] binding delete multi failed", err?.message || err);
+      for (const key of unique) {
+        await r2DeleteObject(key);
+      }
+    }
+    return;
+  }
+
   const cfg = r2Config();
   const s3 = getClient();
-  if (!cfg || !s3 || !keys.length) return;
-  const unique = [...new Set(keys.filter(Boolean))];
+  if (!cfg || !s3) return;
   const chunkSize = 1000;
   for (let i = 0; i < unique.length; i += chunkSize) {
     const chunk = unique.slice(i, i + chunkSize);

@@ -1,0 +1,11 @@
+# Copy to .dev.vars for `npx wrangler dev` (gitignored).
+# Prefer R2_TMDB_PUBLIC_BASE so image 302s skip signing.
+
+TMDB_API_KEYS=
+TMDB_API_KEY=
+TMDB_READ_ACCESS_TOKEN=
+TMDB_GATEWAY_PUBLIC_URL=https://tmdb.forjahq.xyz
+SUPABASE_URL=
+SUPABASE_SERVICE_ROLE_KEY=
+TMDB_CACHE_PURGE_SECRET=
+R2_TMDB_PUBLIC_BASE=

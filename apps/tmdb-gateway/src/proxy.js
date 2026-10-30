@@ -11,6 +11,7 @@ import {
   purgeExpiredCaches,
 } from "./cache.js";
 import { r2Configured, r2PublicBase, r2RedirectUrl } from "./r2.js";
+import { envGet, getR2Binding, runtimeName } from "./runtime-env.js";
 
 
 const TMDB_API = "https://api.themoviedb.org";
@@ -40,9 +41,9 @@ const ALLOW_API_PREFIXES = [
  * https://tmdb.forjahq.xyz or http://localhost:3000
  */
 export function publicOrigin() {
-  const fromEnv = (process.env.TMDB_GATEWAY_PUBLIC_URL || "").trim().replace(/\/$/, "");
+  const fromEnv = envGet("TMDB_GATEWAY_PUBLIC_URL").replace(/\/$/, "");
   if (fromEnv) return fromEnv;
-  const vercel = (process.env.VERCEL_URL || "").trim();
+  const vercel = envGet("VERCEL_URL");
   if (vercel) return `https://${vercel.replace(/^https?:\/\//, "")}`;
   return "http://localhost:3000";
 }
@@ -82,8 +83,8 @@ export function resetApiKeyCursor(n = 0) {
 
 function bearer() {
   return (
-    process.env.TMDB_READ_ACCESS_TOKEN ||
-    process.env.TMDB_BEARER_TOKEN ||
+    envGet("TMDB_READ_ACCESS_TOKEN") ||
+    envGet("TMDB_BEARER_TOKEN") ||
     ""
   ).trim();
 }
@@ -129,8 +130,8 @@ export function classifyPath(pathname) {
 /** Bearer for Vercel Cron (`CRON_SECRET`) or `TMDB_CACHE_PURGE_SECRET`. */
 export function purgeAuthorized(request) {
   const expected = (
-    process.env.TMDB_CACHE_PURGE_SECRET ||
-    process.env.CRON_SECRET ||
+    envGet("TMDB_CACHE_PURGE_SECRET") ||
+    envGet("CRON_SECRET") ||
     ""
   ).trim();
   if (!expected) return false;
@@ -188,6 +189,7 @@ export async function handleRequest(request) {
     const keys = apiKeysFromEnv();
     return json({
       ok: true,
+      runtime: runtimeName(),
       hasApiKey: keys.length > 0,
       apiKeyCount: keys.length,
       hasBearer: Boolean(bearer()),
@@ -195,7 +197,8 @@ export async function handleRequest(request) {
       jsonCache: jsonCacheConfigured(),
       imageCache: imageCacheConfigured(),
       r2: r2Configured(),
-      imageRedirect: imageCacheConfigured(),
+      r2Binding: Boolean(getR2Binding()),
+      imageRedirect: imageCacheConfigured() && Boolean(r2PublicBase() || r2Configured()),
       r2PublicBase: Boolean(r2PublicBase()),
       publicOrigin: publicOrigin(),
     });
@@ -346,8 +349,9 @@ async function proxyApi(rest, searchParams, method) {
 async function proxyImage(rest, method) {
   const key = cacheKeyFor("image", rest, new URLSearchParams());
   const ttl = ttlSecondsFor("image", rest);
+  const onWorkers = runtimeName() === "cloudflare-workers";
 
-  // Prefer 302 → R2 so image bytes never burn Vercel Fast Origin Transfer.
+  // Prefer 302 → R2 so image bytes never burn gateway egress.
   const lookup = await cacheLookupImage(key, rest);
   if (lookup) {
     const remainingSec = Math.max(
@@ -356,7 +360,16 @@ async function proxyImage(rest, method) {
     );
     const loc = await r2RedirectUrl(lookup.storagePath, remainingSec);
     if (loc) return imageRedirect(loc, "HIT", ttl);
-    // Fallback: proxy bytes if signing/public URL unavailable.
+    if (onWorkers) {
+      return json(
+        {
+          error:
+            "Image redirect unavailable — set R2_TMDB_PUBLIC_BASE (Workers never proxy image bytes)",
+        },
+        503,
+      );
+    }
+    // Node/Vercel only: proxy bytes if signing/public URL unavailable.
     const cached = await cacheGetImage(key, rest);
     if (cached) {
       return new Response(method === "HEAD" ? null : cached.body, {
@@ -388,6 +401,25 @@ async function proxyImage(rest, method) {
     const path = storedPath || imageStoragePath(rest);
     const loc = await r2RedirectUrl(path, ttl);
     if (loc) return imageRedirect(loc, "MISS", ttl);
+    if (onWorkers) {
+      return json(
+        {
+          error:
+            "Image stored but redirect unavailable — set R2_TMDB_PUBLIC_BASE",
+        },
+        503,
+      );
+    }
+  }
+
+  if (onWorkers) {
+    return json(
+      {
+        error:
+          "Image redirect unavailable — set R2_TMDB_PUBLIC_BASE (Workers never proxy image bytes)",
+      },
+      503,
+    );
   }
 
   return new Response(method === "HEAD" ? null : buf, {

@@ -94,7 +94,7 @@ No Cursor attribution trailers in commits, PRs, or code comments.
 | `packages/rust/` | Dart FFI bridge to `libffi` + parity tests (permanent) |
 | `crates/` | Rust engine workspace → `libffi` (`ffi` aggregates domain crates; `archive/` not linked). Workspace version = engine version. |
 | `apps/web/` | Web account portal — React 19, TanStack Start/Router, Vite, Tailwind 4, Supabase (73 migrations, production) |
-| `apps/tmdb-gateway/` · `packages/forja-auth/` | Vercel function · shared TS auth helpers |
+| `apps/tmdb-gateway/` · `packages/forja-auth/` | TMDB gateway (Cloudflare Workers) · shared TS auth helpers |
 | `apps/archive/` · `crates/archive/` · `docs/features/archive/` | Out-of-scope verticals, kept for reference |
 | `docs/` | `changelog/` `issues/` `rfc/` `migration/` `features/` `architecture/` — all have a README index; `backlog/` is frozen |
 | `scripts/` | build/release/check scripts; `check_*.sh` are the boundary gates CI runs |

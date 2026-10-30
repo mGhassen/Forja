@@ -12,18 +12,16 @@ import {
   r2DeleteObject,
   r2DeleteObjects,
 } from "./r2.js";
+import { envGet } from "./runtime-env.js";
 
 const JSON_TABLE = "tmdb_response_cache";
 const IMAGE_TABLE = "tmdb_image_cache";
 const PURGE_BATCH = 500;
 
 function supabaseConfig() {
-  const url = (process.env.SUPABASE_URL || "").trim().replace(/\/$/, "");
-  const key = (
-    process.env.SUPABASE_SERVICE_ROLE_KEY ||
-    process.env.SUPABASE_SERVICE_KEY ||
-    ""
-  ).trim();
+  const url = envGet("SUPABASE_URL").replace(/\/$/, "");
+  const key =
+    envGet("SUPABASE_SERVICE_ROLE_KEY") || envGet("SUPABASE_SERVICE_KEY");
   if (!url || !key) return null;
   return { url, key };
 }

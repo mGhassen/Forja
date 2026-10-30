@@ -3,11 +3,14 @@
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "description": "Forja TMDB API + image gateway (Vercel + local)",
+  "description": "Forja TMDB API + image gateway (Cloudflare Workers primary; Node local; Vercel rollback)",
   "scripts": {
     "dev": "node --env-file=../../.env --env-file=.env --env-file=.env.local src/local.js",
     "start": "node --env-file=../../.env --env-file=.env --env-file=.env.local src/local.js",
-    "test": "node --test src/proxy.test.js"
+    "test": "node --test src/proxy.test.js",
+    "cf:dev": "wrangler dev",
+    "cf:deploy": "wrangler deploy",
+    "cf:tail": "wrangler tail"
   },
   "engines": {
     "node": ">=20.0.0"
@@ -15,5 +18,8 @@
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1158.0",
     "@aws-sdk/s3-request-presigner": "^3.1159.0"
+  },
+  "devDependencies": {
+    "wrangler": "^4.45.0"
   }
 }
