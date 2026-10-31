@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:forja/features/settings/ui/settings_ui.dart';
+import 'package:forja/l10n/app_localizations_en.dart';
+import 'package:forja/l10n/l10n.dart';
 import 'package:forja/shell/nav/pack_update_alert_icon.dart';
 import 'package:forja_foundation/tokens/forja_settings_tokens.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
@@ -8,15 +10,14 @@ import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 
 /// Shared copy for pack-update chrome (Settings bar, nav flyout, toast).
 abstract final class EnginePackUpdateCopy {
-  static String available(int count) {
-    if (count <= 0) return upToDate;
-    if (count == 1) return '1 update available';
-    return '$count updates available';
-  }
+  /// English-only variant for callers without an [AppLocalizations].
+  static String available(int count) =>
+      availableOf(AppLocalizationsEn(), count);
 
-  static const menuBadge = 'Update available';
-  static const checking = 'Checking for plugin updates…';
-  static const upToDate = 'All plugins are up to date';
+  static String availableOf(AppLocalizations l, int count) {
+    if (count <= 0) return l.packsUpdateUpToDate;
+    return l.packsUpdateAvailable(count);
+  }
 }
 
 /// Yellow “Update available” chip for Settings → Forja Packs row.
@@ -47,7 +48,7 @@ class PackUpdateMenuBadge extends StatelessWidget {
         ),
       ),
       child: Text(
-        EnginePackUpdateCopy.menuBadge,
+        context.l10n.packsUpdateMenuBadge,
         style: TextStyle(
           fontSize: tv
               ? ShellTokens.packUpdateMenuBadgeFontSizeTv
@@ -92,6 +93,7 @@ class SettingsEnginePackUpdatesBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l = context.l10n;
     final hasUpdates = updateCount > 0;
     final showStatus = hasUpdates || checking;
     if (!showStatus && actions.isEmpty) return const SizedBox.shrink();
@@ -99,10 +101,10 @@ class SettingsEnginePackUpdatesBar extends StatelessWidget {
     // Prefer known updates over "Checking…" — a hung re-check used to hide
     // Update all forever while rows already showed newer versions.
     final statusLabel = hasUpdates
-        ? EnginePackUpdateCopy.available(updateCount)
+        ? EnginePackUpdateCopy.availableOf(l, updateCount)
         : checking
-        ? EnginePackUpdateCopy.checking
-        : EnginePackUpdateCopy.upToDate;
+        ? l.packsUpdateChecking
+        : l.packsUpdateUpToDate;
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
@@ -150,7 +152,7 @@ class SettingsEnginePackUpdatesBar extends StatelessWidget {
           if (hasUpdates) ...[
             if (actions.isNotEmpty) const SizedBox(width: 12),
             SettingsFilledButton(
-              label: updating ? 'Updating…' : 'Update all',
+              label: updating ? l.packsUpdateUpdating : l.packsUpdateAll,
               icon: Icons.download_rounded,
               busy: updating,
               accent: true,
@@ -168,7 +170,7 @@ class SettingsEnginePackUpdatesBar extends StatelessWidget {
           ] else if (showStatus) ...[
             if (actions.isNotEmpty) const SizedBox(width: 12),
             SettingsTextAction(
-              label: 'Check again',
+              label: l.packsUpdateCheckAgain,
               onPressed: onCheckAgain,
             ),
           ],
@@ -196,7 +198,6 @@ class SettingsEnginePackTitle extends StatelessWidget {
   final bool unavailableHere;
 
   static const _deprecatedRed = Color(0xFFF87171);
-  static const String unavailableHereTag = 'not on this device';
 
   @override
   Widget build(BuildContext context) {
@@ -232,7 +233,7 @@ class SettingsEnginePackTitle extends StatelessWidget {
                   ),
                 ),
                 child: Text(
-                  'deprecated',
+                  context.l10n.packsPackDeprecatedTag,
                   style: TextStyle(
                     fontSize: SettingsTokens.groupLabelSizeOf(context),
                     fontWeight: FontWeight.w700,
@@ -260,7 +261,7 @@ class SettingsEnginePackTitle extends StatelessWidget {
                   border: Border.all(color: muted.withValues(alpha: 0.4)),
                 ),
                 child: Text(
-                  unavailableHereTag,
+                  context.l10n.packsPackUnavailableHereTag,
                   style: TextStyle(
                     fontSize: SettingsTokens.groupLabelSizeOf(context),
                     fontWeight: FontWeight.w700,

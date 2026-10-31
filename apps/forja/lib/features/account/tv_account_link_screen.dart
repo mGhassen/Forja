@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:forja/features/account/device_link_connect_view.dart';
 
+import 'package:forja/l10n/l10n.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:forja_foundation/widgets/feedback/fractal_glass_gradient.dart';
@@ -87,6 +88,7 @@ class _TvAccountLinkScreenState extends State<TvAccountLinkScreen>
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     return Scaffold(
       backgroundColor: AppTheme.bgDark,
       body: AnimatedBuilder(
@@ -120,7 +122,7 @@ class _TvAccountLinkScreenState extends State<TvAccountLinkScreen>
                           onAuthenticated: widget.onAuthenticated,
                         ),
                         _TvLinkStep.error => _ErrorPage(
-                          message: _error ?? 'Something went wrong.',
+                          message: _error ?? l10n.accountLinkSomethingWrong,
                           primaryFocus: _retryFocus,
                           secondaryFocus: _guestFocus,
                           onRetry: _openConnect,
@@ -234,6 +236,7 @@ class _WelcomePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     return Center(
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 520),
@@ -249,7 +252,7 @@ class _WelcomePage extends StatelessWidget {
               const _WelcomeBody(),
               const SizedBox(height: 32),
               Text(
-                'Sign in with your phone or computer in under a minute.',
+                l10n.profileSignInQuick,
                 textAlign: TextAlign.center,
                 style: GoogleFonts.plusJakartaSans(
                   textStyle: _tvText(
@@ -264,7 +267,9 @@ class _WelcomePage extends StatelessWidget {
               const SizedBox(height: 8),
               _FlatAction(
                 focusNode: guestFocus,
-                label: allowContinueAsGuest ? 'Continue as guest' : 'Cancel',
+                label: allowContinueAsGuest
+                    ? l10n.accountTvContinueGuest
+                    : l10n.settingsUiCancel,
                 onTap: onGuest,
               ),
             ],
@@ -326,8 +331,9 @@ class _WelcomeTitle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     return Text(
-      'Your cinema.\nOn the big screen.',
+      l10n.accountTvTitle,
       textAlign: TextAlign.center,
       style: GoogleFonts.outfit(
         textStyle: _tvText(
@@ -347,9 +353,9 @@ class _WelcomeBody extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     return Text(
-      'The couch is ready. So is Forja. Open a film, chase a series, '
-      'catch the match, or flip through live TV.',
+      l10n.accountTvBody,
       textAlign: TextAlign.center,
       style: GoogleFonts.plusJakartaSans(
         textStyle: _tvText(
@@ -370,6 +376,7 @@ class _SignInAction extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     return FocusableControl(
       focusNode: focusNode,
       autoFocus: true,
@@ -413,7 +420,7 @@ class _SignInAction extends StatelessWidget {
                 ),
                 const SizedBox(width: 12),
                 Text(
-                  'Sign in',
+                  l10n.profileSignIn,
                   style: GoogleFonts.outfit(
                     textStyle: _tvText(
                       color: const Color(0xFF111827),
@@ -504,6 +511,7 @@ class _ErrorPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -518,14 +526,16 @@ class _ErrorPage extends StatelessWidget {
             const Spacer(),
             _FlatAction(
               focusNode: secondaryFocus,
-              label: allowContinueAsGuest ? 'Continue as guest' : 'Cancel',
+              label: allowContinueAsGuest
+                  ? l10n.accountTvContinueGuest
+                  : l10n.settingsUiCancel,
               onTap: onGuest,
             ),
           ],
         ),
         const Spacer(),
         Text(
-          'COULD NOT LINK',
+          l10n.accountLinkCouldNot,
           style: GoogleFonts.dmMono(
             textStyle: _tvText(
               color: const Color(0xFFF87171),
@@ -555,7 +565,7 @@ class _ErrorPage extends StatelessWidget {
           focusNode: primaryFocus,
           autofocus: true,
           icon: Icons.refresh_rounded,
-          label: 'Get a new code',
+          label: l10n.accountGetNewCode,
           onTap: onRetry,
         ),
         const Spacer(),

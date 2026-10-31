@@ -485,7 +485,7 @@ mixin _MobilePlayerEpisodes on ConsumerState<MobilePlayerScreen> {
         onRightEdge: onRightEdge,
         onUpEdge: onUpEdge,
         icon: Icons.replay_10_rounded,
-        tooltip: 'Back 10s',
+        tooltip: context.l10n.playerScreenBack10s,
         size: btnSize,
         iconSize: iconSz,
         onPressed: _seekBack10Seconds,
@@ -512,7 +512,7 @@ mixin _MobilePlayerEpisodes on ConsumerState<MobilePlayerScreen> {
         onRightEdge: onRightEdge,
         onUpEdge: onUpEdge,
         icon: Icons.forward_10_rounded,
-        tooltip: 'Forward 10s',
+        tooltip: context.l10n.playerScreenForward10s,
         size: btnSize,
         iconSize: iconSz,
         onPressed: _seekForward10Seconds,
@@ -540,7 +540,7 @@ mixin _MobilePlayerEpisodes on ConsumerState<MobilePlayerScreen> {
         onRightEdge: onRightEdge,
         onUpEdge: onUpEdge,
         icon: Icons.skip_previous_rounded,
-        tooltip: 'Previous Episode',
+        tooltip: context.l10n.playerScreenPreviousEpisodeButton,
         size: btnSize,
         iconSize: iconSz,
         onPressed: () {
@@ -571,7 +571,7 @@ mixin _MobilePlayerEpisodes on ConsumerState<MobilePlayerScreen> {
         onRightEdge: onRightEdge,
         onUpEdge: onUpEdge,
         icon: Icons.skip_next_rounded,
-        tooltip: 'Next Episode',
+        tooltip: context.l10n.playerScreenNextEpisodeButton,
         size: btnSize,
         iconSize: iconSz,
         onPressed: () {
@@ -610,7 +610,7 @@ mixin _MobilePlayerEpisodes on ConsumerState<MobilePlayerScreen> {
         if (!silent && mounted) {
           _s._statusController.upsert(
             'episode',
-            'No more episodes',
+            context.l10n.playerScreenNoMoreEpisodes,
             kind: StatusRouletteKind.info,
             dismissAfter: const Duration(seconds: 2),
           );
@@ -636,7 +636,7 @@ mixin _MobilePlayerEpisodes on ConsumerState<MobilePlayerScreen> {
       if (next == null && !silent && mounted) {
         _s._statusController.upsert(
           'episode',
-          'No more episodes',
+          context.l10n.playerScreenNoMoreEpisodes,
           kind: StatusRouletteKind.info,
           dismissAfter: const Duration(seconds: 2),
         );

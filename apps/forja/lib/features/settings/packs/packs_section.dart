@@ -9,6 +9,7 @@ import 'package:forja/features/settings/packs/engine_pack_update.dart';
 import 'package:forja/features/settings/packs/engine_plugin_pack.dart';
 import 'package:forja/features/settings/packs/plugin_install_progress.dart';
 import 'package:forja/features/settings/ui/settings_ui.dart';
+import 'package:forja/l10n/l10n.dart';
 
 import 'package:forja/shared/engine/engine.dart';
 import 'package:forja/shared/engine/packs/registry/pack_hub_features.dart';
@@ -168,7 +169,10 @@ class _SettingsForjaPacksSectionState
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        SettingsGroup(label: 'Forja packs', children: [packSection]),
+        SettingsGroup(
+          label: context.l10n.packsGroupLabel,
+          children: [packSection],
+        ),
       ],
     );
   }
@@ -178,6 +182,7 @@ class _SettingsForjaPacksSectionState
     EnginePackUpdatesState packUpdates, {
     PluginInstallProgress? installProgress,
   }) {
+    final l = context.l10n;
     final installError = EngineService.officialInstallError.value;
     final sessionFailures = PackInstallFailures.latest.value;
     // Pending = lean stubs / empty script set. Reload = packs with scripts on disk.
@@ -210,8 +215,8 @@ class _SettingsForjaPacksSectionState
                 padding: const EdgeInsets.fromLTRB(2, 8, 2, 8),
                 child: Text(
                   installError == null
-                      ? 'No packs installed. Paste a manifest URL below, or sign in to sync from your profile.'
-                      : 'Pack install failed: $installError',
+                      ? l.packsEmptyNone
+                      : l.packsInstallFailed(installError),
                   style: TextStyle(
                     color: installError == null
                         ? ForjaShellColors.textSecondary.withValues(alpha: 0.9)
@@ -223,7 +228,7 @@ class _SettingsForjaPacksSectionState
               ),
               if (installError != null) ...[
                 SettingsFilledButton(
-                  label: 'Retry install',
+                  label: l.packsRetryInstall,
                   icon: Icons.refresh_rounded,
                   busy: _engineInstalling,
                   onPressed: _retryOfficialEnginePack,
@@ -234,8 +239,7 @@ class _SettingsForjaPacksSectionState
             Padding(
               padding: const EdgeInsets.fromLTRB(2, 0, 2, 8),
               child: Text(
-                'Each pack is a manifest.json URL. Forja downloads the manifest, '
-                'then every plugin script, before the pack is fully usable.',
+                l.packsManifestHint,
                 style: TextStyle(
                   color: ForjaShellColors.textSecondary.withValues(alpha: 0.85),
                   fontSize: SettingsTokens.rowSubtitleSizeOf(context),
@@ -254,8 +258,8 @@ class _SettingsForjaPacksSectionState
             ),
             SettingsTextField(
               controller: _engineController,
-              label: 'Add pack',
-              hint: 'Paste one or more manifest URLs / local paths',
+              label: l.packsAddPackLabel,
+              hint: l.packsAddPackHint,
               onSubmitted: (_) {
                 if (_engineReloading || _engineInstalling) return;
                 unawaited(_installEnginePack());
@@ -278,7 +282,7 @@ class _SettingsForjaPacksSectionState
               actions: [
                 if (downloadable.isNotEmpty)
                   SettingsFilledButton(
-                    label: 'Download all',
+                    label: l.packsDownloadAll,
                     icon: Icons.download_rounded,
                     secondary: true,
                     busy: _engineInstalling,
@@ -299,7 +303,9 @@ class _SettingsForjaPacksSectionState
                 if (reloadable.isNotEmpty)
                   _settingsTvIconButton(
                     context,
-                    tooltip: _engineReloading ? 'Reloading packs…' : 'Reload',
+                    tooltip: _engineReloading
+                        ? l.packsReloadingTooltip
+                        : l.packsReload,
                     icon: Icons.refresh_rounded,
                     busy: _engineReloading,
                     focusNode: _toolbarReloadFocus,
@@ -323,7 +329,7 @@ class _SettingsForjaPacksSectionState
                         : () => unawaited(_reloadAllEnginePacks(reloadable)),
                   ),
                 SettingsFilledButton(
-                  label: 'Install',
+                  label: l.packsInstall,
                   icon: Icons.add_rounded,
                   busy: _engineInstalling,
                   focusNode: _toolbarInstallFocus,
@@ -350,8 +356,8 @@ class _SettingsForjaPacksSectionState
             if (packs.isNotEmpty) ...[
               SettingsEngineMiniLabel(
                 downloadable.isNotEmpty && reloadable.isEmpty
-                    ? 'Pending downloads'
-                    : 'Installed packs',
+                    ? l.packsPendingDownloads
+                    : l.packsInstalledPacks,
               ),
               Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -393,8 +399,8 @@ class _SettingsForjaPacksSectionState
                     packName: pack.name,
                     sourceUrl: pack.sourceUrl,
                     progress: installProgress,
-                    badge: 'Removed from profile',
-                    actionTooltip: 'Uninstall now',
+                    badge: context.l10n.packsBadgeRemovedFromProfile,
+                    actionTooltip: context.l10n.packsActionUninstallNow,
                     actionIcon: Icons.delete_outline,
                     onAction: () => unawaited(_purgePackNow(pack)),
                   );
@@ -404,10 +410,13 @@ class _SettingsForjaPacksSectionState
                     state == PackDeviceState.failed ||
                     pack.plugins.isEmpty) {
                   final badge = switch (state) {
-                    PackDeviceState.deferred => 'Install later',
-                    PackDeviceState.failed => 'Install failed',
-                    PackDeviceState.downloading => 'Downloading',
-                    _ => 'Pending download',
+                    PackDeviceState.deferred =>
+                      context.l10n.packsBadgeInstallLater,
+                    PackDeviceState.failed =>
+                      context.l10n.packsBadgeInstallFailed,
+                    PackDeviceState.downloading =>
+                      context.l10n.packsBadgeDownloading,
+                    _ => context.l10n.packsBadgePendingDownload,
                   };
                   return SettingsEnginePackPendingTile(
                     packName: pack.name,
@@ -415,8 +424,8 @@ class _SettingsForjaPacksSectionState
                     progress: installProgress,
                     badge: badge,
                     actionTooltip: state == PackDeviceState.failed
-                        ? 'Retry download'
-                        : 'Download',
+                        ? context.l10n.packsRetryDownload
+                        : context.l10n.packsPendingDownload,
                     actionIcon: Icons.download_rounded,
                     onAction: () =>
                         unawaited(_installNamedPack(pack.sourceUrl)),
@@ -492,7 +501,11 @@ class _SettingsForjaPacksSectionState
       }
       if (rows.isEmpty) continue;
       out.add(const SizedBox(height: 12));
-      out.add(SettingsEngineMiniLabel(PluginRegistry.packKindLabel(kind)));
+      out.add(
+        SettingsEngineMiniLabel(
+          PluginRegistry.packKindLabel(kind, context.l10n),
+        ),
+      );
       out.add(const SizedBox(height: 4));
       out.addAll(rows);
     }
@@ -504,10 +517,10 @@ class _SettingsForjaPacksSectionState
     try {
       await EngineService.instance.retryOfficialInstall();
       if (!mounted) return;
-      ForjaToast.success('Packs refreshed');
+      ForjaToast.success(context.l10n.packsToastRefreshed);
     } catch (e) {
       if (!mounted) return;
-      ForjaToast.error('Pack install failed: $e');
+      ForjaToast.error(context.l10n.packsInstallFailed('$e'));
     } finally {
       if (mounted) setState(() => _engineInstalling = false);
     }
@@ -521,15 +534,15 @@ class _SettingsForjaPacksSectionState
       if (!mounted) return;
       switch (outcome) {
         case OfficialPackPromptOutcome.alreadyInstalled:
-          ForjaToast.success('Recommended packs already installed');
+          ForjaToast.success(context.l10n.packsToastRecommendedInstalled);
         case OfficialPackPromptOutcome.busy:
-          ForjaToast.info('Finish the current pack prompt first');
+          ForjaToast.info(context.l10n.packsToastFinishPrompt);
         case OfficialPackPromptOutcome.prompted:
           break;
       }
     } catch (e) {
       if (!mounted) return;
-      ForjaToast.error('Official pack install failed: $e');
+      ForjaToast.error(context.l10n.packsToastOfficialInstallFailed('$e'));
     } finally {
       if (mounted) setState(() => _engineInstalling = false);
     }
@@ -539,6 +552,7 @@ class _SettingsForjaPacksSectionState
     String sourceUrl, {
     EnginePackUpdateInfo? update,
   }) async {
+    final l10n = context.l10n;
     setState(() => _engineInstalling = true);
     try {
       final pack = await PluginInstallCoordinator.instance.installManifest(
@@ -551,21 +565,22 @@ class _SettingsForjaPacksSectionState
       await ref.read(enginePacksProvider.notifier).reload();
       ForjaToast.success(
         update != null
-            ? 'Updated ${pack.name} to v${pack.version}'
-            : 'Refreshed ${pack.name} v${pack.version}',
+            ? l10n.packsToastUpdatedTo(pack.name, pack.version)
+            : l10n.packsToastRefreshedPack(pack.name, pack.version),
       );
       if (update != null) {
         PluginInstallCoordinator.instance.clearPackUpdateToast();
       }
     } catch (e) {
       if (!mounted) return;
-      ForjaToast.error('Refresh failed: $e');
+      ForjaToast.error(l10n.packsToastRefreshFailed('$e'));
     } finally {
       if (mounted) setState(() => _engineInstalling = false);
     }
   }
 
   Future<void> _reloadAllEnginePacks(List<EnginePack> packs) async {
+    final l10n = context.l10n;
     if (packs.isEmpty || _engineReloading) return;
     setState(() {
       _engineReloading = true;
@@ -582,14 +597,14 @@ class _SettingsForjaPacksSectionState
           ok++;
         } catch (e) {
           if (!mounted) return;
-          ForjaToast.error('${pack.name} reload failed: $e');
+          ForjaToast.error(l10n.packsToastReloadFailed(pack.name, '$e'));
         }
       }
       if (!mounted) return;
       await ref.read(enginePacksProvider.notifier).reload();
       await ref.read(enginePackUpdatesProvider.notifier).refresh();
       if (ok > 0) {
-        ForjaToast.success(ok == 1 ? '1 pack reloaded' : '$ok packs reloaded');
+        ForjaToast.success(l10n.packsToastReloaded(ok));
         PluginInstallCoordinator.instance.clearPackUpdateToast();
       }
     } finally {
@@ -603,6 +618,7 @@ class _SettingsForjaPacksSectionState
   }
 
   Future<void> _downloadAllPendingPacks(List<EnginePack> packs) async {
+    final l10n = context.l10n;
     if (packs.isEmpty || _engineInstalling || _engineReloading) return;
     setState(() {
       _engineInstalling = true;
@@ -621,7 +637,7 @@ class _SettingsForjaPacksSectionState
           ok++;
         } catch (e) {
           if (!mounted) return;
-          ForjaToast.error('${pack.name} download failed: $e');
+          ForjaToast.error(l10n.packsToastDownloadFailed(pack.name, '$e'));
         }
       }
       if (installed.isNotEmpty) {
@@ -632,9 +648,7 @@ class _SettingsForjaPacksSectionState
       await ref.read(enginePacksProvider.notifier).reload();
       unawaited(ref.read(enginePackUpdatesProvider.notifier).refresh());
       if (ok > 0) {
-        ForjaToast.success(
-          ok == 1 ? '1 pack downloaded' : '$ok packs downloaded',
-        );
+        ForjaToast.success(l10n.packsToastDownloaded(ok));
       }
     } finally {
       if (mounted) {
@@ -649,6 +663,7 @@ class _SettingsForjaPacksSectionState
   Future<void> _updateAllEnginePacks(
     Map<String, EnginePackUpdateInfo> updates,
   ) async {
+    final l10n = context.l10n;
     if (updates.isEmpty || _engineUpdatingAll) return;
     final allPacks =
         ref.read(enginePacksProvider).valueOrNull ?? const <EnginePack>[];
@@ -667,14 +682,14 @@ class _SettingsForjaPacksSectionState
           ok++;
         } catch (e) {
           if (!mounted) return;
-          ForjaToast.error('${entry.packName} update failed: $e');
+          ForjaToast.error(l10n.packsToastUpdateFailed(entry.packName, '$e'));
         }
       }
       if (!mounted) return;
       await ref.read(enginePacksProvider.notifier).reload();
       await ref.read(enginePackUpdatesProvider.notifier).refresh();
       if (ok > 0) {
-        ForjaToast.success(ok == 1 ? '1 pack updated' : '$ok packs updated');
+        ForjaToast.success(l10n.packsToastUpdated(ok));
         PluginInstallCoordinator.instance.clearPackUpdateToast();
       }
     } finally {
@@ -709,7 +724,7 @@ class _SettingsForjaPacksSectionState
           manifestUrl: pack.sourceUrl,
           error: e,
         );
-        ForjaToast.error('Install failed — see details above');
+        ForjaToast.error(context.l10n.packsToastInstallFailedDetails);
         return;
       } finally {
         if (mounted) setState(() => _engineInstalling = false);
@@ -734,6 +749,7 @@ class _SettingsForjaPacksSectionState
   }
 
   Future<void> _installNamedPack(String sourceUrl) async {
+    final l10n = context.l10n;
     setState(() => _engineInstalling = true);
     try {
       final pack = await PluginInstallCoordinator.instance.installManifest(
@@ -746,7 +762,7 @@ class _SettingsForjaPacksSectionState
       scheduleForjaSyncPush();
       await ref.read(enginePacksProvider.notifier).reload();
       ForjaToast.success(
-        'Installed ${pack.name} (${pack.plugins.length} plugins)',
+        l10n.packsToastInstalled(pack.name, pack.plugins.length),
       );
     } catch (e) {
       if (!mounted) return;
@@ -755,13 +771,14 @@ class _SettingsForjaPacksSectionState
         manifestUrl: sourceUrl,
         error: e,
       );
-      ForjaToast.error('Install failed — see details above');
+      ForjaToast.error(l10n.packsToastInstallFailedDetails);
     } finally {
       if (mounted) setState(() => _engineInstalling = false);
     }
   }
 
   Future<void> _purgePackNow(EnginePack pack) async {
+    final l10n = context.l10n;
     try {
       await PackHubFeatures.deactivate(pack);
       await EngineService.instance.removePack(pack.sourceUrl);
@@ -771,7 +788,7 @@ class _SettingsForjaPacksSectionState
       ShellBus.settingsHubCategoryId.value = SettingsCategoryId.forjaPacks;
       scheduleForjaSyncPush();
       await ref.read(enginePacksProvider.notifier).reload();
-      ForjaToast.success('Pack uninstalled');
+      ForjaToast.success(l10n.packsToastPackUninstalled);
     } catch (e) {
       if (!mounted) return;
       ForjaToast.error('$e');
@@ -779,6 +796,7 @@ class _SettingsForjaPacksSectionState
   }
 
   Future<void> _installEnginePack() async {
+    final l10n = context.l10n;
     final refs = parsePackInstallRefs(_engineController.text);
     if (refs.isEmpty) return;
 
@@ -798,7 +816,7 @@ class _SettingsForjaPacksSectionState
       scheduleForjaSyncPush();
       await ref.read(enginePacksProvider.notifier).reload();
       ForjaToast.success(
-        'Installed ${pack.name} (${pack.plugins.length} plugins)',
+        l10n.packsToastInstalled(pack.name, pack.plugins.length),
       );
     } catch (e) {
       if (!mounted) return;
@@ -807,7 +825,7 @@ class _SettingsForjaPacksSectionState
         manifestUrl: url,
         error: e,
       );
-      ForjaToast.error('Install failed — see details above');
+      ForjaToast.error(l10n.packsToastInstallFailedDetails);
     } finally {
       if (mounted) setState(() => _engineInstalling = false);
     }
@@ -840,6 +858,7 @@ class _SettingsForjaPacksSectionState
   }
 
   Future<void> _removeEnginePack(EnginePack pack) async {
+    final l10n = context.l10n;
     try {
       await PackHubFeatures.deactivate(pack);
       await EngineService.instance.removePack(pack.sourceUrl);
@@ -852,7 +871,7 @@ class _SettingsForjaPacksSectionState
       ShellBus.settingsHubCategoryId.value = SettingsCategoryId.forjaPacks;
       scheduleForjaSyncPush();
       await ref.read(enginePacksProvider.notifier).reload();
-      ForjaToast.success('Pack removed');
+      ForjaToast.success(l10n.packsToastPackRemoved);
     } catch (e) {
       if (!mounted) return;
       ForjaToast.error('$e');
@@ -1059,7 +1078,7 @@ class _EnginePackActionsState extends State<_EnginePackActions> {
           Padding(
             padding: const EdgeInsets.only(right: 4),
             child: Text(
-              'Official',
+              context.l10n.packsOfficialBadge,
               style: TextStyle(
                 fontSize: SettingsTokens.groupLabelSizeOf(context),
                 fontWeight: FontWeight.w600,
@@ -1070,8 +1089,8 @@ class _EnginePackActionsState extends State<_EnginePackActions> {
         _settingsTvIconButton(
           context,
           tooltip: hasUpdate
-              ? 'Update to v${widget.update!.remoteVersion}'
-              : 'Refresh',
+              ? context.l10n.packsActionUpdateTo(widget.update!.remoteVersion)
+              : context.l10n.packsActionRefresh,
           icon: hasUpdate ? Icons.system_update_rounded : Icons.refresh_rounded,
           onPressed: widget.onRefresh,
           color: hasUpdate
@@ -1099,7 +1118,7 @@ class _EnginePackActionsState extends State<_EnginePackActions> {
             children: [
               _settingsTvIconButton(
                 context,
-                tooltip: 'Yes',
+                tooltip: context.l10n.packsPendingYes,
                 icon: Icons.check_rounded,
                 color: const Color(0xFFEF4444),
                 onPressed: () => unawaited(_confirmRemove()),
@@ -1120,7 +1139,7 @@ class _EnginePackActionsState extends State<_EnginePackActions> {
                 excluding: !_yesHasFocus,
                 child: _settingsTvIconButton(
                   context,
-                  tooltip: 'No',
+                  tooltip: context.l10n.packsPendingNo,
                   icon: Icons.close_rounded,
                   color: ForjaShellColors.iconMuted,
                   onPressed: _cancelConfirmRemove,
@@ -1133,7 +1152,7 @@ class _EnginePackActionsState extends State<_EnginePackActions> {
         else
           _settingsTvIconButton(
             context,
-            tooltip: 'Remove pack',
+            tooltip: context.l10n.packsPendingRemovePack,
             icon: Icons.delete_outline,
             color: const Color(0xFFF87171),
             onPressed: _enterConfirmRemove,
@@ -1206,9 +1225,7 @@ class _PackInstallFailuresBanner extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  failures.length == 1
-                      ? 'Pack install failed'
-                      : '${failures.length} packs failed to install',
+                  context.l10n.packsFailuresTitle(failures.length),
                   style: TextStyle(
                     color: const Color(0xFFFECACA),
                     fontSize: SettingsTokens.typeSizeOf(context, 13),
@@ -1255,7 +1272,7 @@ class _PackInstallFailuresBanner extends StatelessWidget {
           const SizedBox(width: 4),
           _settingsTvIconButton(
             context,
-            tooltip: 'Dismiss',
+            tooltip: context.l10n.packsDismiss,
             icon: Icons.close_rounded,
             color: ForjaShellColors.iconMuted,
             onPressed: PackInstallFailures.clear,

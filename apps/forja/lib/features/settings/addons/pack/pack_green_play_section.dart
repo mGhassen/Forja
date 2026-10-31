@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:forja/features/settings/ui/settings_ui.dart';
+import 'package:forja/l10n/l10n.dart';
 import 'package:forja/shared/engine/engine.dart';
 import 'package:forja/shared/engine/packs/settings/pack_green_play_config.dart';
 import 'package:forja/shared/engine/packs/settings/pack_settings_store.dart';
@@ -259,8 +260,7 @@ class _PreferredForjaEditorState extends State<_PreferredForjaEditor> {
         Padding(
           padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
           child: Text(
-            'Preferred Forja providers for the green Play button. '
-            'They are tried first; empty list races all enabled Forja providers.',
+            context.l10n.addonsPackGreenPlayIntro,
             style: TextStyle(color: muted, fontSize: 13, height: 1.35),
           ),
         ),
@@ -268,7 +268,7 @@ class _PreferredForjaEditorState extends State<_PreferredForjaEditor> {
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
             child: Text(
-              'No preferred providers — green Play races every enabled Forja plugin.',
+              context.l10n.addonsPackGreenPlayEmpty,
               style: TextStyle(color: muted, fontSize: 13),
             ),
           )
@@ -289,7 +289,7 @@ class _PreferredForjaEditorState extends State<_PreferredForjaEditor> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     IconButton(
-                      tooltip: 'Remove',
+                      tooltip: context.l10n.addonsPackGreenPlayRemove,
                       icon: const Icon(Icons.close_rounded, size: 18),
                       onPressed: () => _remove(id),
                     ),
@@ -310,7 +310,7 @@ class _PreferredForjaEditorState extends State<_PreferredForjaEditor> {
           child: Align(
             alignment: Alignment.centerLeft,
             child: ForjaShellChip(
-              label: 'Add preferred',
+              label: context.l10n.addonsPackGreenPlayAddPreferred,
               selected: false,
               icon: Icons.add_rounded,
               onTap: _catalog.length <= _preferred.length
@@ -372,7 +372,7 @@ class _PreferredProviderSearchDialogState
 
     return AlertDialog(
       backgroundColor: ForjaShellColors.surfaceElevated,
-      title: const Text('Add preferred provider'),
+      title: Text(context.l10n.addonsPackGreenPlayAddDialogTitle),
       content: SizedBox(
         width: maxW,
         height: maxH * 0.7,
@@ -381,8 +381,8 @@ class _PreferredProviderSearchDialogState
           children: [
             SettingsTextField(
               controller: _query,
-              label: 'Search',
-              hint: 'Provider name',
+              label: context.l10n.addonsPackGreenPlaySearchLabel,
+              hint: context.l10n.addonsPackGreenPlaySearchHint,
               autofocus: true,
             ),
             const SizedBox(height: 12),
@@ -391,8 +391,8 @@ class _PreferredProviderSearchDialogState
                   ? Center(
                       child: Text(
                         widget.catalog.isEmpty
-                            ? 'No Forja providers enabled'
-                            : 'No matches',
+                            ? context.l10n.addonsPackGreenPlayNoProviders
+                            : context.l10n.addonsPackGreenPlayNoMatches,
                         style: TextStyle(
                           color: ForjaShellColors.textSecondary,
                         ),
@@ -424,7 +424,7 @@ class _PreferredProviderSearchDialogState
       actions: [
         TextButton(
           onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Cancel'),
+          child: Text(context.l10n.addonsPackCancel),
         ),
       ],
     );

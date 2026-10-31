@@ -182,7 +182,7 @@ mixin _MobilePlayerBuild on ConsumerState<MobilePlayerScreen> {
                       icon: Icons.lock_rounded,
                       onPressed: _s._toggleLock,
                       active: true,
-                      tooltip: 'Unlock',
+                      tooltip: context.l10n.playerScreenUnlock,
                     ),
                   ),
                 ),
@@ -227,7 +227,10 @@ mixin _MobilePlayerBuild on ConsumerState<MobilePlayerScreen> {
                     children: [
                       if (_s._showSkipChip)
                         PlayerFloatingChip(
-                          label: _s._activeSkipLabel!,
+                          label: playerSkipChipText(
+                            context.l10n,
+                            _s._activeSkipLabel!,
+                          ),
                           onPressed: _s._performSkip,
                           tvFocusable: widget.tvRemoteEnabled,
                           focusNode: widget.tvRemoteEnabled
@@ -772,7 +775,7 @@ mixin _MobilePlayerBuild on ConsumerState<MobilePlayerScreen> {
                             icon: Icons.audiotrack_rounded,
                             size: btnSize,
                             iconSize: iconSz,
-                            tooltip: 'Audio',
+                            tooltip: context.l10n.playerScreenAudio,
                             onPressedWithContext: _s._showAudioMenu,
                           ),
                           PlayerFlatIconButton(
@@ -785,7 +788,7 @@ mixin _MobilePlayerBuild on ConsumerState<MobilePlayerScreen> {
                             icon: Icons.hd_outlined,
                             size: btnSize,
                             iconSize: iconSz,
-                            tooltip: 'Quality',
+                            tooltip: context.l10n.playerScreenQuality,
                             onPressedWithContext: _s._showQualityMenu,
                           ),
                           PlayerFlatIconButton(

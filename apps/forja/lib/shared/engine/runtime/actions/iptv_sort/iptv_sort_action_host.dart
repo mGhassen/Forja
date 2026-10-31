@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:forja/l10n/l10n.dart';
 import 'package:forja/shared/engine/portals/models.dart';
 import 'package:forja/shared/engine/runtime/actions/iptv_sort/iptv_live_sort_menu.dart';
 import 'package:forja/shared/engine/runtime/actions/iptv_sort/iptv_live_sort_providers.dart';
@@ -20,7 +21,7 @@ abstract final class IptvSortActionHost {
     BuildContext context,
     WidgetRef ref, {
     required String tabId,
-    String label = 'Sort',
+    required String label,
     IconData icon = Icons.filter_list_rounded,
     String? tvRowId,
     int? tvItemIndex,
@@ -87,7 +88,7 @@ class _IptvSortChipState extends ConsumerState<_IptvSortChip> {
     final tv = ShellPaintScope.usesTvDensityOf(context);
     PlayerPopupPanel.show(
       context: context,
-      title: 'Sort',
+      title: context.l10n.engineRuntimeSort,
       showHeader: false,
       anchorContext: _anchorKey.currentContext,
       alignment: Alignment.topRight,

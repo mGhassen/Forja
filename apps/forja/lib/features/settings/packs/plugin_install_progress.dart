@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import 'package:forja/l10n/l10n.dart';
 import 'package:forja/shared/engine/engine.dart';
 import 'package:forja/shell/tv/shell_tv_coordinator.dart';
 import 'package:forja/shell/core/forja_shell_scope.dart';
@@ -112,6 +113,7 @@ class _SettingsEnginePackPendingTileState
 
   @override
   Widget build(BuildContext context) {
+    final l = context.l10n;
     final progress = widget.progress;
     final sourceUrl = widget.sourceUrl;
     final activeProgress =
@@ -119,9 +121,9 @@ class _SettingsEnginePackPendingTileState
     final phase = activeProgress?.phase ?? PluginInstallPhase.loading;
     final status = activeProgress != null
         ? (activeProgress.phase == PluginInstallPhase.ready
-              ? 'Ready'
+              ? l.packsPendingReady
               : activeProgress.phaseTitle)
-        : (widget.badge ?? 'Waiting');
+        : (widget.badge ?? l.packsPendingWaiting);
     final detail = activeProgress?.label;
     final tv = ShellScope.inputPolicyOf(context).useFocusableMoodChips;
     final showSideActions = activeProgress == null &&
@@ -185,7 +187,7 @@ class _SettingsEnginePackPendingTileState
           if (widget.onAction != null && !_confirmingRemove) ...[
             _PendingActionIcon(
               focusNode: _actionFocus,
-              tooltip: widget.actionTooltip ?? 'Download',
+              tooltip: widget.actionTooltip ?? l.packsPendingDownload,
               icon: widget.actionIcon,
               onPressed: widget.onAction!,
               color: widget.actionIcon == Icons.delete_outline
@@ -203,7 +205,7 @@ class _SettingsEnginePackPendingTileState
               _PendingActionIcon(
                 focusNode: _confirmYesFocus,
                 autoFocus: true,
-                tooltip: 'Yes',
+                tooltip: l.packsPendingYes,
                 icon: Icons.check_rounded,
                 color: const Color(0xFFEF4444),
                 onPressed: () {
@@ -233,7 +235,7 @@ class _SettingsEnginePackPendingTileState
                 excluding: !_yesHasFocus,
                 child: _PendingActionIcon(
                   focusNode: _confirmNoFocus,
-                  tooltip: 'No',
+                  tooltip: l.packsPendingNo,
                   icon: Icons.close_rounded,
                   color: ForjaShellColors.iconMuted,
                   onPressed: () {
@@ -253,7 +255,7 @@ class _SettingsEnginePackPendingTileState
             ] else
               _PendingActionIcon(
                 focusNode: _removeFocus,
-                tooltip: 'Remove pack',
+                tooltip: l.packsPendingRemovePack,
                 icon: Icons.delete_outline,
                 color: const Color(0xFFF87171),
                 onPressed: () {
@@ -459,7 +461,7 @@ class SettingsEnginePackInstallStatus extends StatelessWidget {
     }
     if (update != null) {
       return Text(
-        'Update available: v${update!.remoteVersion}',
+        context.l10n.packsInstallUpdateAvailable(update!.remoteVersion),
         style: TextStyle(
           fontSize: SettingsTokens.groupLabelSizeOf(context),
           color: ForjaShellColors.brandGreen,

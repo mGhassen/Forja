@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import 'package:forja/l10n/l10n.dart';
 import 'package:forja/shared/engine/portals/models.dart';
 import 'package:forja/shared/engine/portals/portals_host.dart';
 import 'package:forja/shared/engine/portals/share/portal_share.dart';
@@ -497,6 +498,7 @@ class _PortalFormDialogState extends State<PortalFormDialog> {
 
   Future<void> _importShareCode(String code) async {
     if (!PortalShare.isValidCode(code)) return;
+    final l10n = context.l10n;
 
     setState(() {
       _importingShareCode = true;
@@ -510,8 +512,8 @@ class _PortalFormDialogState extends State<PortalFormDialog> {
         setState(() {
           _importingShareCode = false;
           _shareCodeError = PortalShare.isEmbeddedToken(code)
-              ? 'Share code invalid'
-              : 'Share code not found or invalid';
+              ? l10n.enginePortalsShareCodeInvalid
+              : l10n.enginePortalsShareCodeNotFound;
         });
         return;
       }
@@ -539,8 +541,8 @@ class _PortalFormDialogState extends State<PortalFormDialog> {
       setState(() {
         _importingShareCode = false;
         _shareCodeError = msg.contains('unavailable')
-            ? 'Share service temporarily unavailable. Try again later.'
-            : 'Could not load share code';
+            ? l10n.enginePortalsShareUnavailable
+            : l10n.enginePortalsShareLoadFailed;
       });
     }
   }
@@ -575,6 +577,7 @@ class _PortalFormDialogState extends State<PortalFormDialog> {
 
   Future<void> _submit() async {
     if (_addSucceeded || _submitInFlight) return;
+    final l10n = context.l10n;
     final label = _labelCtrl.text.trim();
     final url = _urlCtrl.text.trim();
     final username = _platform == PortalPlatform.m3u
@@ -584,27 +587,27 @@ class _PortalFormDialogState extends State<PortalFormDialog> {
     final userAgent = _uaCtrl.text.trim();
 
     if (_platform == PortalPlatform.m3u && label.isEmpty) {
-      setState(() => _formError = 'Portal name required for M3U playlists');
+      setState(() => _formError = l10n.enginePortalsErrM3uNameRequired);
       return;
     }
     if (url.isEmpty) {
-      setState(() => _formError = 'URL required');
+      setState(() => _formError = l10n.enginePortalsErrUrlRequired);
       return;
     }
     if (_platform == PortalPlatform.xtream &&
         (username.isEmpty || password.trim().isEmpty) &&
         !_editing) {
-      setState(() => _formError = 'URL, username, and password required');
+      setState(() => _formError = l10n.enginePortalsErrXtreamRequired);
       return;
     }
     if (_platform == PortalPlatform.stalker && username.isEmpty) {
-      setState(() => _formError = 'MAC (username) required');
+      setState(() => _formError = l10n.enginePortalsErrMacRequired);
       return;
     }
 
     if (!_editing &&
         !AccountFeatures.instance.canAddPortal(widget.currentPortalCount)) {
-      final msg = AccountFeatures.instance.iptvPortalLimitReachedMessage();
+      final msg = AccountFeatures.instance.iptvPortalLimitReachedMessage(l10n);
       setState(() => _formError = msg);
       ForjaToast.warning(msg);
       return;
@@ -638,7 +641,7 @@ class _PortalFormDialogState extends State<PortalFormDialog> {
       if (!env.ok) {
         setState(() {
           _submitInFlight = false;
-          _formError = env.error?.message ?? 'Action failed';
+          _formError = env.error?.message ?? l10n.enginePortalsActionFailed;
         });
         return;
       }
@@ -652,7 +655,7 @@ class _PortalFormDialogState extends State<PortalFormDialog> {
       final name = label.isNotEmpty
           ? label
           : (username.isEmpty || username == PortalPlatform.m3uUsernameSentinel
-              ? 'Portal'
+              ? l10n.enginePortalsDefaultName
               : username);
       setState(() {
         _submitInFlight = false;
@@ -695,7 +698,7 @@ class _PortalFormDialogState extends State<PortalFormDialog> {
   }
 
   Widget _successBody() {
-    final name = _successName ?? 'Portal';
+    final name = _successName ?? context.l10n.enginePortalsDefaultName;
     return Column(
       key: const ValueKey<String>('success'),
       mainAxisSize: MainAxisSize.min,
@@ -705,7 +708,7 @@ class _PortalFormDialogState extends State<PortalFormDialog> {
           children: [
             Expanded(
               child: Text(
-                'Portal added',
+                context.l10n.enginePortalsAdded,
                 style: GuideChromeStyle.overlayTitle.copyWith(
                   fontSize: _tv ? ShellTokens.tvTitleFontSize : 19,
                 ),
@@ -737,14 +740,18 @@ class _PortalFormDialogState extends State<PortalFormDialog> {
   }
 
   Widget _loadingBody() {
-    final label = _editing ? 'Saving…' : 'Adding portal…';
+    final label = _editing
+        ? context.l10n.enginePortalsSaving
+        : context.l10n.enginePortalsAdding;
     return Column(
       key: const ValueKey<String>('loading'),
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Text(
-          _editing ? 'Edit Portal' : 'Add Portal',
+          _editing
+              ? context.l10n.enginePortalsEditTitle
+              : context.l10n.enginePortalsAddTitle,
           style: GuideChromeStyle.overlayTitle.copyWith(
             fontSize: _tv ? ShellTokens.tvTitleFontSize : 19,
           ),
@@ -794,7 +801,7 @@ class _PortalFormDialogState extends State<PortalFormDialog> {
         onLeftEdge: () {},
         onRightEdge: () {},
         child: Tooltip(
-          message: 'Close',
+          message: context.l10n.settingsUiClose,
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 120),
             padding: const EdgeInsets.all(6),
@@ -819,7 +826,7 @@ class _PortalFormDialogState extends State<PortalFormDialog> {
       variant: ButtonVariant.plainIcon,
       size: ButtonSize.icon,
       icon: Icons.close_rounded,
-      tooltip: 'Close',
+      tooltip: context.l10n.settingsUiClose,
       color: GuideChromeStyle.iconMuted,
       iconSize: ShellPaintScope.iconOf(context, 22),
       onPressed: onTap,
@@ -920,8 +927,10 @@ class _PortalFormDialogState extends State<PortalFormDialog> {
             .toDouble()
         : ShellTokens.shareCodeDialogWidth;
     final titleLabel = _namingImported
-        ? 'Portal name'
-        : (_editing ? 'Edit Portal' : 'Add Portal');
+        ? context.l10n.enginePortalsNameLabel
+        : (_editing
+            ? context.l10n.enginePortalsEditTitle
+            : context.l10n.enginePortalsAddTitle);
     final expandBtnSize = _tv
         ? ShellTokens.shareCodeExpandSizeTv
         : ShellTokens.shareCodeExpandSize;
@@ -1010,14 +1019,14 @@ class _PortalFormDialogState extends State<PortalFormDialog> {
                             SizedBox(height: gapAfterTitle),
                             _portalField(
                               _labelCtrl,
-                              'Portal name',
-                              hint: 'My provider',
+                              context.l10n.enginePortalsNameLabel,
+                              hint: context.l10n.enginePortalsNameHint,
                               focusNode: _labelFocus,
                               dialogIndex: labelIndex,
                               suffixFocus: _labelSuffixFocus,
                               suffix: _portalFieldSuffix(
                                 icon: Icons.casino_outlined,
-                                tooltip: 'Random name',
+                                tooltip: context.l10n.enginePortalsNameRandom,
                                 fieldFocus: _labelFocus,
                                 suffixFocus: _labelSuffixFocus,
                                 dialogIndex: labelIndex,
@@ -1046,7 +1055,7 @@ class _PortalFormDialogState extends State<PortalFormDialog> {
                                 _portalDialogActionIcon(
                                   icon: Icons.check_rounded,
                                   color: ForjaShellColors.brandGreen,
-                                  tooltip: 'Add',
+                                  tooltip: context.l10n.enginePortalsAddAction,
                                   focusNode: _submitFocus,
                                   tvItemIndex: _dialogOkIndex,
                                   onTap: _submit,
@@ -1055,7 +1064,7 @@ class _PortalFormDialogState extends State<PortalFormDialog> {
                                 _portalDialogActionIcon(
                                   icon: Icons.close_rounded,
                                   color: GuideChromeStyle.textSecondary,
-                                  tooltip: 'Cancel',
+                                  tooltip: context.l10n.settingsUiCancel,
                                   focusNode: _cancelFocus,
                                   tvItemIndex: _dialogCancelIndex,
                                   onTap: _cancel,
@@ -1072,7 +1081,7 @@ class _PortalFormDialogState extends State<PortalFormDialog> {
                                       mainAxisSize: MainAxisSize.min,
                                       children: [
                                         Text(
-                                          'Share code',
+                                          context.l10n.enginePortalsShareCodeTitle,
                                           style: GuideChromeStyle.overlayTitle
                                               .copyWith(
                                             fontSize: _tv ? ShellTokens.tvTitleFontSize : 19,
@@ -1144,18 +1153,21 @@ class _PortalFormDialogState extends State<PortalFormDialog> {
                                           _portalField(
                                             _labelCtrl,
                                             _platform == PortalPlatform.m3u
-                                                ? 'Portal name (required)'
-                                                : 'Portal name',
+                                                ? context.l10n
+                                                    .enginePortalsNameRequiredLabel
+                                                : context.l10n
+                                                    .enginePortalsNameLabel,
                                             hint: _platform ==
                                                     PortalPlatform.m3u
                                                 ? 'France IPTV'
-                                                : 'My provider',
+                                                : context.l10n
+                                                    .enginePortalsNameHint,
                                             focusNode: _labelFocus,
                                             dialogIndex: labelIndex,
                                             suffixFocus: _labelSuffixFocus,
                                             suffix: _portalFieldSuffix(
                                               icon: Icons.casino_outlined,
-                                              tooltip: 'Random name',
+                                              tooltip: context.l10n.enginePortalsNameRandom,
                                               fieldFocus: _labelFocus,
                                               suffixFocus: _labelSuffixFocus,
                                               dialogIndex: labelIndex,
@@ -1169,7 +1181,7 @@ class _PortalFormDialogState extends State<PortalFormDialog> {
                                           _portalField(
                                             _urlCtrl,
                                             _platform == PortalPlatform.m3u
-                                                ? 'Playlist URL'
+                                                ? context.l10n.enginePortalsPlaylistUrl
                                                 : 'URL',
                                             hint: _platform ==
                                                     PortalPlatform.m3u
@@ -1189,8 +1201,8 @@ class _PortalFormDialogState extends State<PortalFormDialog> {
                                                     size: ButtonSize.icon,
                                                     icon: Icons
                                                         .folder_open_rounded,
-                                                    tooltip:
-                                                        'Choose local file',
+                                                    tooltip: context.l10n
+                                                        .enginePortalsChooseFile,
                                                     color: GuideChromeStyle
                                                         .iconMuted,
                                                     iconSize:
@@ -1210,13 +1222,15 @@ class _PortalFormDialogState extends State<PortalFormDialog> {
                                               _userCtrl,
                                               _platform ==
                                                       PortalPlatform.stalker
-                                                  ? 'MAC address'
-                                                  : 'Username',
+                                                  ? context.l10n.enginePortalsMacLabel
+                                                  : context.l10n
+                                                      .enginePortalsUsernameLabel,
                                               hint: _platform ==
                                                       PortalPlatform
                                                           .stalker
                                                   ? '00:1A:79:XX:XX:XX (MAG OUI)'
-                                                  : 'username',
+                                                  : context.l10n
+                                                      .enginePortalsUsernameHint,
                                               focusNode: _userFocus,
                                               dialogIndex: userIndex,
                                               suffix: _platform ==
@@ -1228,8 +1242,8 @@ class _PortalFormDialogState extends State<PortalFormDialog> {
                                                       size: ButtonSize.icon,
                                                       icon: Icons
                                                           .autorenew_rounded,
-                                                      tooltip:
-                                                          'Generate MAC',
+                                                      tooltip: context.l10n
+                                                          .enginePortalsGenerateMac,
                                                       color: GuideChromeStyle
                                                           .iconMuted,
                                                       iconSize:
@@ -1250,13 +1264,14 @@ class _PortalFormDialogState extends State<PortalFormDialog> {
                                               _passCtrl,
                                               _platform ==
                                                       PortalPlatform.stalker
-                                                  ? 'Serial (optional)'
-                                                  : 'Password',
+                                                  ? context.l10n.enginePortalsSerialLabel
+                                                  : context.l10n.profilePasswordLabel,
                                               hint: _platform ==
                                                       PortalPlatform
                                                           .stalker
-                                                  ? 'device serial'
-                                                  : 'password',
+                                                  ? context.l10n.enginePortalsSerialHint
+                                                  : context.l10n
+                                                      .enginePortalsPasswordHint,
                                               obscure: _platform ==
                                                       PortalPlatform
                                                           .xtream &&
@@ -1278,8 +1293,10 @@ class _PortalFormDialogState extends State<PortalFormDialog> {
                                                           : Icons
                                                               .visibility_off_outlined,
                                                       tooltip: _obscurePassword
-                                                          ? 'Show password'
-                                                          : 'Hide password',
+                                                          ? context.l10n
+                                                              .enginePortalsShowPassword
+                                                          : context.l10n
+                                                              .enginePortalsHidePassword,
                                                       fieldFocus: _passFocus,
                                                       suffixFocus:
                                                           _passSuffixFocus,
@@ -1298,7 +1315,8 @@ class _PortalFormDialogState extends State<PortalFormDialog> {
                                             SizedBox(height: gapBetweenFields),
                                             _portalField(
                                               _uaCtrl,
-                                              'User-Agent (optional)',
+                                              context.l10n
+                                                  .enginePortalsUserAgentLabel,
                                               hint: 'VLC/3.0.20 LibVLC/3.0.20',
                                               focusNode: _uaFocus,
                                               dialogIndex: uaIndex,
@@ -1330,7 +1348,9 @@ class _PortalFormDialogState extends State<PortalFormDialog> {
                                 _portalDialogActionIcon(
                                   icon: Icons.check_rounded,
                                   color: ForjaShellColors.brandGreen,
-                                  tooltip: _editing ? 'Save' : 'Add',
+                                  tooltip: _editing
+                                      ? context.l10n.addonsHostProvSaveButton
+                                      : context.l10n.enginePortalsAddAction,
                                   focusNode: _submitFocus,
                                   tvItemIndex: _dialogOkIndex,
                                   onTap: _submit,
@@ -1339,7 +1359,7 @@ class _PortalFormDialogState extends State<PortalFormDialog> {
                                 _portalDialogActionIcon(
                                   icon: Icons.close_rounded,
                                   color: GuideChromeStyle.textSecondary,
-                                  tooltip: 'Cancel',
+                                  tooltip: context.l10n.settingsUiCancel,
                                   focusNode: _cancelFocus,
                                   tvItemIndex: _dialogCancelIndex,
                                   onTap: _cancel,
@@ -1386,7 +1406,9 @@ class _PortalFormDialogState extends State<PortalFormDialog> {
     final radius = size * 0.28;
     final iconSize = size * 0.55;
     final child = Tooltip(
-      message: _showManualForm ? 'Hide manual entry' : 'Enter URL manually',
+      message: _showManualForm
+          ? context.l10n.enginePortalsHideManual
+          : context.l10n.enginePortalsEnterUrlManually,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 180),
         width: size,
@@ -1573,7 +1595,7 @@ class _PortalFormDialogState extends State<PortalFormDialog> {
               ),
               const SizedBox(width: 8),
               Text(
-                'Loading share code…',
+                context.l10n.enginePortalsLoadingShareCode,
                 style: GoogleFonts.plusJakartaSans(color: Colors.white54, fontSize: 12),
               ),
             ],

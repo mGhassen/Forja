@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:forja/features/settings/shell/visibility.dart';
+import 'package:forja/l10n/app_localizations.dart';
 
 /// Stable category IDs for the Settings hub (RFC-033).
 ///
@@ -31,16 +32,18 @@ abstract final class SettingsCategoryId {
 class SettingsCategoryMeta {
   const SettingsCategoryMeta({
     required this.id,
-    required this.title,
-    required this.subtitle,
+    required this.titleOf,
+    required this.subtitleOf,
     required this.icon,
     this.fillViewport = false,
     this.adminOnly = false,
   });
 
   final String id;
-  final String title;
-  final String subtitle;
+
+  /// Resolved per build so the text follows the app language.
+  final String Function(AppLocalizations l10n) titleOf;
+  final String Function(AppLocalizations l10n) subtitleOf;
   final IconData icon;
 
   /// When true, the detail body fills the pane (no outer scroll) - for tabbed UIs.
@@ -53,51 +56,51 @@ class SettingsCategoryMeta {
 /// Ordered catalog of Settings categories for the active [visibility].
 List<SettingsCategoryMeta> settingsCategories(SettingsVisibility visibility) {
   return [
-    const SettingsCategoryMeta(
+    SettingsCategoryMeta(
       id: SettingsCategoryId.profile,
-      title: 'Profile & account',
-      subtitle: 'Profile, cloud sync, sign in',
+      titleOf: (l) => l.settingsCategoryProfileTitle,
+      subtitleOf: (l) => l.settingsCategoryProfileSubtitle,
       icon: Icons.account_circle_outlined,
     ),
     if (visibility.showSourcesCategory)
-      const SettingsCategoryMeta(
+      SettingsCategoryMeta(
         id: SettingsCategoryId.sources,
-        title: 'Addons',
-        subtitle: 'Playback, IPTV, torrents, Stremio, debrid, LAN',
+        titleOf: (l) => l.settingsCategoryAddonsTitle,
+        subtitleOf: (l) => l.settingsCategoryAddonsSubtitle,
         icon: Icons.extension_rounded,
       ),
     if (visibility.showForjaPacksCategory)
-      const SettingsCategoryMeta(
+      SettingsCategoryMeta(
         id: SettingsCategoryId.forjaPacks,
-        title: 'Forja Packs',
-        subtitle: 'Install and manage plugin packs',
+        titleOf: (l) => l.settingsCategoryPacksTitle,
+        subtitleOf: (l) => l.settingsCategoryPacksSubtitle,
         icon: Icons.inventory_2_outlined,
       ),
-    const SettingsCategoryMeta(
+    SettingsCategoryMeta(
       id: SettingsCategoryId.navigation,
-      title: 'Features',
-      subtitle: 'Tabs, order, default menu',
+      titleOf: (l) => l.settingsCategoryFeaturesTitle,
+      subtitleOf: (l) => l.settingsCategoryFeaturesSubtitle,
       icon: Icons.tab_rounded,
     ),
     if (visibility.showDownloadsCategory)
-      const SettingsCategoryMeta(
+      SettingsCategoryMeta(
         id: SettingsCategoryId.downloads,
-        title: 'Downloads',
-        subtitle: 'Offline library and download progress',
+        titleOf: (l) => l.settingsCategoryDownloadsTitle,
+        subtitleOf: (l) => l.settingsCategoryDownloadsSubtitle,
         icon: Icons.download_rounded,
         fillViewport: true,
       ),
     if (visibility.showDataCategory)
-      const SettingsCategoryMeta(
+      SettingsCategoryMeta(
         id: SettingsCategoryId.data,
-        title: 'Data & backup',
-        subtitle: 'Clear cache, export, import',
+        titleOf: (l) => l.settingsCategoryDataTitle,
+        subtitleOf: (l) => l.settingsCategoryDataSubtitle,
         icon: Icons.folder_outlined,
       ),
-    const SettingsCategoryMeta(
+    SettingsCategoryMeta(
       id: SettingsCategoryId.about,
-      title: 'About',
-      subtitle: 'Updates, version, developer',
+      titleOf: (l) => l.settingsCategoryAboutTitle,
+      subtitleOf: (l) => l.settingsCategoryAboutSubtitle,
       icon: Icons.info_outline_rounded,
     ),
   ];

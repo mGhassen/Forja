@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:forja/l10n/l10n.dart';
 import 'package:forja/shared/engine/details/details_meta.dart';
 import 'package:forja/shared/engine/engine.dart';
 import 'package:forja/shared/engine/models/plugin_language.dart';
@@ -82,8 +83,8 @@ Future<void> runPackGreenPlay({
     if (context.mounted) {
       ForjaToast.info(
         langKeys.isEmpty
-            ? 'No Forja providers are enabled for green Play'
-            : 'No Forja providers match the selected languages',
+            ? context.l10n.sharedPlaybackNoProvidersEnabled
+            : context.l10n.sharedPlaybackNoProvidersMatchLanguages,
       );
     }
     return;

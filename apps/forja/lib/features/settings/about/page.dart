@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja/features/settings/about/about_panel.dart';
 import 'package:forja/features/settings/ui/settings_ui.dart';
+import 'package:forja/l10n/l10n.dart';
 import 'package:forja/shared/services/update/app_version.dart';
 import 'package:forja/shared/telemetry/product_analytics.dart';
 import 'package:forja/shared/telemetry/telemetry.dart';
@@ -28,9 +29,12 @@ class SettingsAboutPageBody extends ConsumerWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        SettingsGroup(label: 'Updates', children: const [SettingsAboutPanel()]),
         SettingsGroup(
-          label: 'Privacy',
+          label: context.l10n.aboutUpdatesGroupLabel,
+          children: const [SettingsAboutPanel()],
+        ),
+        SettingsGroup(
+          label: context.l10n.aboutPrivacyGroupLabel,
           children: [
             const SettingsCrashReportingRow(),
             const SettingsProductAnalyticsRow(),
@@ -39,22 +43,23 @@ class SettingsAboutPageBody extends ConsumerWidget {
         ),
         if (showDeveloperTools)
           SettingsGroup(
-            label: 'Developer',
+            label: context.l10n.aboutDeveloperGroupLabel,
             children: [
               SettingsActionRow(
                 leading: const Icon(
                   Icons.bug_report_outlined,
                   color: ForjaShellColors.iconActive,
                 ),
-                title: 'Verify Sentry',
+                title: context.l10n.aboutVerifySentryTitle,
                 subtitle: Telemetry.isActive
-                    ? 'Send a test exception to the Forja Flutter project'
-                    : 'Enable Crash reporting first, then tap again',
+                    ? context.l10n.aboutVerifySentrySubtitleActive
+                    : context.l10n.aboutVerifySentrySubtitleInactive,
                 adminOnly: true,
                 onTap: () async {
+                  final sentMessage = context.l10n.aboutVerifySentrySent;
                   try {
                     await Telemetry.sendTestException();
-                    ForjaToast.success('Test event sent - check Sentry Issues');
+                    ForjaToast.success(sentMessage);
                   } catch (e) {
                     ForjaToast.info('$e');
                   }
@@ -65,17 +70,16 @@ class SettingsAboutPageBody extends ConsumerWidget {
                   Icons.insights_outlined,
                   color: ForjaShellColors.iconActive,
                 ),
-                title: 'Verify PostHog',
+                title: context.l10n.aboutVerifyPostHogTitle,
                 subtitle: Telemetry.isAnalyticsActive
-                    ? 'Send analytics_verify to your PostHog project'
-                    : 'Enable Product analytics first, then tap again',
+                    ? context.l10n.aboutVerifyPostHogSubtitleActive
+                    : context.l10n.aboutVerifyPostHogSubtitleInactive,
                 adminOnly: true,
                 onTap: () async {
+                  final sentMessage = context.l10n.aboutVerifyPostHogSent;
                   try {
                     await ProductAnalytics.sendTestEvent();
-                    ForjaToast.success(
-                      'Test event sent - check PostHog → Activity',
-                    );
+                    ForjaToast.success(sentMessage);
                   } catch (e) {
                     ForjaToast.info('$e');
                   }

@@ -10,6 +10,7 @@ import 'package:forja/features/settings/profile/page.dart';
 import 'package:forja/features/settings/shell/catalog.dart';
 import 'package:forja/features/settings/shell/visibility.dart';
 import 'package:forja/features/settings/shell/visibility_provider.dart';
+import 'package:forja/l10n/l10n.dart';
 import 'package:forja/shell/tv/shell_tv_focus.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 
@@ -79,7 +80,8 @@ class _SettingsCategoryPageState extends ConsumerState<SettingsCategoryPage> {
         child: FocusTraversalGroup(
           policy: ReadingOrderTraversalPolicy(),
           child: SettingsAddonsAwareScaffold(
-            categoryTitle: meta?.title ?? 'Settings',
+            categoryTitle:
+                meta?.titleOf(context.l10n) ?? context.l10n.settingsTitle,
             categoryId: widget.categoryId,
             categoryAdminOnly: meta?.adminOnly ?? false,
             categoryBack: true,

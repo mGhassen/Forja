@@ -2,6 +2,7 @@ import 'dart:io' show Platform;
 
 import 'package:flutter/material.dart';
 import 'package:forja_foundation/components/button.dart';
+import 'package:forja/l10n/l10n.dart';
 import 'package:forja/shell/core/forja_shell_scope.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:rust/rust.dart';
@@ -41,7 +42,7 @@ class _MacOsKeychainConsentDialog extends StatelessWidget {
         side: const BorderSide(color: ForjaShellColors.borderSubtle),
       ),
       title: Text(
-        'Use macOS Keychain?',
+        context.l10n.aboutKeychainConsentTitle,
         style: TextStyle(
           color: ForjaShellColors.textPrimary,
           fontSize: SettingsTokens.typeSizeOf(context, 18),
@@ -58,8 +59,7 @@ class _MacOsKeychainConsentDialog extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Forja can store login tokens and API keys in the macOS '
-                'Keychain instead of a local app file.',
+                context.l10n.aboutKeychainConsentBodyStore,
                 style: TextStyle(
                   color: ForjaShellColors.textSecondary,
                   fontSize: SettingsTokens.typeSizeOf(context, 14),
@@ -69,10 +69,7 @@ class _MacOsKeychainConsentDialog extends StatelessWidget {
               ),
               SizedBox(height: 12),
               Text(
-                'After you allow this, macOS may show its own password dialog '
-                'once. It may mention "flutter_secure_storage_service". That '
-                'name is Forja’s secure vault, not a separate app. Choose '
-                'Always Allow if you trust Forja.',
+                context.l10n.aboutKeychainConsentBodyPrompt,
                 style: TextStyle(
                   color: ForjaShellColors.textSecondary,
                   fontSize: SettingsTokens.typeSizeOf(context, 14),
@@ -82,8 +79,7 @@ class _MacOsKeychainConsentDialog extends StatelessWidget {
               ),
               SizedBox(height: 12),
               Text(
-                'You can keep using local file storage (default) with no '
-                'Keychain prompts.',
+                context.l10n.aboutKeychainConsentBodyLocal,
                 style: TextStyle(
                   color: ForjaShellColors.textSecondary,
                   fontSize: SettingsTokens.typeSizeOf(context, 14),
@@ -98,9 +94,9 @@ class _MacOsKeychainConsentDialog extends StatelessWidget {
       actions: [
         TextButton(
           onPressed: () => _choose(context, ForjaKeychainConsent.declined),
-          child: const Text(
-            'Keep local file',
-            style: TextStyle(
+          child: Text(
+            context.l10n.aboutKeychainConsentKeepLocal,
+            style: const TextStyle(
               color: ForjaShellColors.textSecondary,
               fontWeight: FontWeight.w500,
               decoration: TextDecoration.none,
@@ -109,7 +105,7 @@ class _MacOsKeychainConsentDialog extends StatelessWidget {
         ),
         Button(
           variant: ButtonVariant.primary,
-          label: 'Use Keychain',
+          label: context.l10n.aboutKeychainConsentUseKeychain,
           onPressed: () => _choose(context, ForjaKeychainConsent.accepted),
         ),
       ],

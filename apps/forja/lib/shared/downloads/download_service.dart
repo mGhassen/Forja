@@ -10,6 +10,7 @@ import 'package:forja/shared/downloads/download_task.dart';
 import 'package:forja/shared/downloads/hls_download_engine.dart';
 import 'package:forja/shared/downloads/hls_subtitle_sidecar.dart';
 import 'package:forja/shared/downloads/storage_space_helper.dart';
+import 'package:forja/shell/routing/shell_ambient_l10n.dart';
 import 'package:forja/shared/playback/playable_stream_url.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
@@ -411,7 +412,7 @@ class DownloadService {
             if (!f.existsSync()) {
               task = task.copyWith(
                 status: DownloadStatus.failed,
-                error: 'File was moved or deleted from disk',
+                error: shellAmbientL10n.sharedDownloadsFileMovedOrDeleted,
               );
             }
           }
@@ -727,7 +728,7 @@ class DownloadService {
       _updateTask(
         task.copyWith(
           status: DownloadStatus.failed,
-          error: 'Empty download URL',
+          error: shellAmbientL10n.sharedDownloadsEmptyUrl,
         ),
       );
       return;
@@ -807,7 +808,7 @@ class DownloadService {
                   code == HttpStatus.forbidden ||
                       code == HttpStatus.unauthorized
                   ? kOfflineDownloadExpiredMessage
-                  : 'Server returned HTTP $code: $phrase',
+                  : shellAmbientL10n.sharedDownloadsServerHttp(code, phrase),
               speedBytesPerSec: 0.0,
             ),
           );
@@ -826,7 +827,7 @@ class DownloadService {
         _updateTask(
           task.copyWith(
             status: DownloadStatus.failed,
-            error: "DASH streams can't be saved offline yet",
+            error: shellAmbientL10n.sharedDownloadsDashNoOffline,
             speedBytesPerSec: 0.0,
           ),
         );
@@ -988,8 +989,8 @@ class DownloadService {
                     task.copyWith(
                       status: DownloadStatus.failed,
                       error: head.toLowerCase().contains('mpd')
-                          ? "DASH streams can't be saved offline yet"
-                          : 'Server returned a playlist/page, not a video file',
+                          ? shellAmbientL10n.sharedDownloadsDashNoOffline
+                          : shellAmbientL10n.sharedDownloadsServerPlaylist,
                       speedBytesPerSec: 0.0,
                     ),
                   );
@@ -1067,8 +1068,8 @@ class DownloadService {
                 task.copyWith(
                   status: DownloadStatus.failed,
                   error: head.toLowerCase().contains('mpd')
-                      ? "DASH streams can't be saved offline yet"
-                      : 'Server returned a playlist/page, not a video file',
+                      ? shellAmbientL10n.sharedDownloadsDashNoOffline
+                      : shellAmbientL10n.sharedDownloadsServerPlaylist,
                   speedBytesPerSec: 0.0,
                 ),
               );
@@ -1097,7 +1098,9 @@ class DownloadService {
                 status: DownloadStatus.downloading,
                 receivedBytes: diskBytes,
                 totalBytes: totalBytes,
-                error: 'Reconnecting remaining data (attempt $attempt)...',
+                error: shellAmbientL10n.sharedDownloadsReconnectingRemaining(
+                  attempt,
+                ),
                 speedBytesPerSec: 0.0,
               ),
             );
@@ -1144,7 +1147,7 @@ class DownloadService {
             _updateTask(
               task.copyWith(
                 status: DownloadStatus.downloading,
-                error: 'Reconnecting (attempt $attempt)...',
+                error: shellAmbientL10n.sharedDownloadsReconnecting(attempt),
                 speedBytesPerSec: 0.0,
               ),
             );
@@ -1187,7 +1190,7 @@ class DownloadService {
           _updateTask(
             task.copyWith(
               status: DownloadStatus.downloading,
-              error: 'Reconnecting (attempt $attempt)...',
+              error: shellAmbientL10n.sharedDownloadsReconnecting(attempt),
               speedBytesPerSec: 0.0,
             ),
           );
@@ -1235,7 +1238,7 @@ class DownloadService {
         _updateTask(
           task.copyWith(
             status: DownloadStatus.failed,
-            error: 'Download file missing',
+            error: shellAmbientL10n.sharedDownloadsFileMissingShort,
           ),
         );
         return;
@@ -1246,7 +1249,7 @@ class DownloadService {
         _updateTask(
           task.copyWith(
             status: DownloadStatus.failed,
-            error: 'Download incomplete — delete and try again',
+            error: shellAmbientL10n.sharedDownloadsIncomplete,
             receivedBytes: partBytes,
             speedBytesPerSec: 0.0,
           ),
@@ -1268,8 +1271,8 @@ class DownloadService {
               task.copyWith(
                 status: DownloadStatus.failed,
                 error: text.contains('mpd')
-                    ? "DASH streams can't be saved offline yet"
-                    : 'Server returned a playlist/page, not a video file',
+                    ? shellAmbientL10n.sharedDownloadsDashNoOffline
+                    : shellAmbientL10n.sharedDownloadsServerPlaylist,
                 speedBytesPerSec: 0.0,
               ),
             );
@@ -1282,7 +1285,7 @@ class DownloadService {
             _updateTask(
               task.copyWith(
                 status: DownloadStatus.failed,
-                error: 'Downloaded file is not a playable video',
+                error: shellAmbientL10n.sharedDownloadsNotPlayableVideo,
                 speedBytesPerSec: 0.0,
               ),
             );
@@ -1301,7 +1304,7 @@ class DownloadService {
         _updateTask(
           task.copyWith(
             status: DownloadStatus.failed,
-            error: 'Download too small to be a video file',
+            error: shellAmbientL10n.sharedDownloadsTooSmall,
             speedBytesPerSec: 0.0,
           ),
         );
@@ -1354,7 +1357,7 @@ class DownloadService {
       _updateTask(
         task.copyWith(
           status: DownloadStatus.failed,
-          error: 'Failed to save final file: $e',
+          error: shellAmbientL10n.sharedDownloadsSaveFinalFailed('$e'),
         ),
       );
     }

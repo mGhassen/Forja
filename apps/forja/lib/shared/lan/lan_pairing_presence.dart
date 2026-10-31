@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:forja/shared/lan/lan_client_service.dart';
 import 'package:forja/shared/lan/lan_prefs.dart';
 import 'package:forja/shared/lan/lan_server_service.dart';
+import 'package:forja/shell/routing/shell_ambient_l10n.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 
 /// Same window as Settings device Active/Quiet and `crates/lan` idle-watch.
@@ -61,17 +62,18 @@ class LanPresence {
       session == LanSessionMark.waiting || session == LanSessionMark.playing;
 
   String get tooltip {
+    final l10n = shellAmbientL10n;
     final s = switch (server) {
       LanServerMark.off => '',
-      LanServerMark.up => 'Server up',
-      LanServerMark.down => 'Server unreachable',
+      LanServerMark.up => l10n.sharedLanServerUp,
+      LanServerMark.down => l10n.sharedLanServerUnreachable,
     };
     final c = switch (session) {
       LanSessionMark.none => '',
-      LanSessionMark.waiting => 'waiting for pair',
-      LanSessionMark.paired => 'paired',
-      LanSessionMark.idle => 'idle',
-      LanSessionMark.playing => 'playing',
+      LanSessionMark.waiting => l10n.sharedLanWaitingForPair,
+      LanSessionMark.paired => l10n.sharedLanPaired,
+      LanSessionMark.idle => l10n.sharedLanIdleLower,
+      LanSessionMark.playing => l10n.sharedLanPlayingLower,
     };
     if (s.isEmpty) return c.isEmpty ? '' : c;
     if (c.isEmpty) return s;
@@ -203,9 +205,9 @@ extension LanDeviceTalkX on LanDeviceTalk {
   bool get pulse => this == LanDeviceTalk.playing;
 
   String get shortLabel => switch (this) {
-    LanDeviceTalk.idle => 'Idle',
-    LanDeviceTalk.active => 'Active',
-    LanDeviceTalk.playing => 'Playing',
+    LanDeviceTalk.idle => shellAmbientL10n.sharedLanIdle,
+    LanDeviceTalk.active => shellAmbientL10n.sharedLanActive,
+    LanDeviceTalk.playing => shellAmbientL10n.sharedLanPlaying,
   };
 }
 
@@ -324,8 +326,8 @@ class LanPresenceMark extends StatelessWidget {
         ? presence.tooltip
         : switch (presence.server) {
             LanServerMark.off => '',
-            LanServerMark.up => 'Desktop online',
-            LanServerMark.down => 'Desktop offline',
+            LanServerMark.up => shellAmbientL10n.sharedLanDesktopOnline,
+            LanServerMark.down => shellAmbientL10n.settingsUiLanP2pOfflineTitle,
           };
     if (tip.isEmpty) return mark;
     return Tooltip(message: tip, child: mark);

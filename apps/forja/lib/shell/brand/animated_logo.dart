@@ -2,6 +2,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:forja/l10n/l10n.dart';
 import 'package:forja/shell/core/forja_shell_input_policy.dart';
 import 'package:forja/shell/core/forja_shell_scope.dart';
 import 'package:forja/shared/services/update/app_version.dart';
@@ -197,7 +198,7 @@ class SplashContinueInBackgroundButton extends StatelessWidget {
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
         child: Text(
-          'Continue in background',
+          context.l10n.shellUpdateContinueInBackground,
           textAlign: TextAlign.center,
           style: GoogleFonts.plusJakartaSans(
             color: LogoColors.dark.base,

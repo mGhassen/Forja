@@ -4,6 +4,7 @@ import 'dart:io' show Directory, File, Link;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:forja/l10n/l10n.dart';
 import 'package:forja/shared/downloads/download_source_match.dart';
 import 'package:forja/shared/playback/cache/catalog_sources_session_cache.dart';
 import 'package:forja_foundation/protocol/protocol.dart';
@@ -3646,3 +3647,14 @@ bool isNearEndOfEpisode(Duration position, Duration duration) {
   if (remaining.isNegative) return true;
   return remaining <= threshold;
 }
+
+/// Chip text for a skip segment. The segment state keeps the English label as
+/// its key (compared in the screens), so only the display text is localized.
+String playerSkipChipText(AppLocalizations l10n, String label) =>
+    switch (label) {
+      'Skip Recap' => l10n.playerScreenSkipRecap,
+      'Skip Intro' => l10n.playerScreenSkipIntro,
+      'Skip Credits' => l10n.playerScreenSkipCredits,
+      'Skip Preview' => l10n.playerScreenSkipPreview,
+      _ => label,
+    };

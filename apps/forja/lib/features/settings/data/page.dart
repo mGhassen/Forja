@@ -8,6 +8,7 @@ import 'package:rust/rust.dart';
 import 'package:forja/features/settings/data/cache_data_section.dart';
 import 'package:forja/features/settings/shell/visibility.dart';
 import 'package:forja/features/settings/ui/settings_ui.dart';
+import 'package:forja/l10n/l10n.dart';
 import 'package:forja/shell/feedback/forja_toast.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/tokens/forja_settings_tokens.dart';
@@ -27,6 +28,8 @@ class _SettingsDataPageBodyState extends State<SettingsDataPageBody> {
   bool _isImporting = false;
 
   Future<void> _exportSettings() async {
+    // Read before the first await — the save dialog opens after it.
+    final exportDialogTitle = context.l10n.dataExportDialogTitle;
     setState(() => _isExporting = true);
     try {
       final data = await _settings.exportAllSettings();
@@ -43,7 +46,7 @@ class _SettingsDataPageBodyState extends State<SettingsDataPageBody> {
           ? Uint8List.fromList(utf8.encode(jsonStr))
           : null;
       final result = await FilePicker.platform.saveFile(
-        dialogTitle: 'Export Settings',
+        dialogTitle: exportDialogTitle,
         fileName: fileName,
         type: FileType.custom,
         allowedExtensions: const ['json'],
@@ -62,11 +65,11 @@ class _SettingsDataPageBodyState extends State<SettingsDataPageBody> {
       }
 
       if (mounted) {
-        ForjaToast.success('Settings exported');
+        ForjaToast.success(context.l10n.dataExported);
       }
     } catch (e, st) {
       debugPrint('[SettingsData] export failed: $e\n$st');
-      if (mounted) ForjaToast.error('Export failed: $e');
+      if (mounted) ForjaToast.error(context.l10n.dataExportFailed('$e'));
     } finally {
       if (mounted) setState(() => _isExporting = false);
     }
@@ -74,7 +77,7 @@ class _SettingsDataPageBodyState extends State<SettingsDataPageBody> {
 
   Future<void> _importSettings() async {
     final result = await FilePicker.platform.pickFiles(
-      dialogTitle: 'Import Settings',
+      dialogTitle: context.l10n.dataImportDialogTitle,
       type: FileType.custom,
       allowedExtensions: const ['json'],
     );
@@ -87,7 +90,7 @@ class _SettingsDataPageBodyState extends State<SettingsDataPageBody> {
     } else if (file.path != null) {
       jsonStr = await File(file.path!).readAsString();
     } else {
-      if (mounted) ForjaToast.error('Could not read file.');
+      if (mounted) ForjaToast.error(context.l10n.dataReadFileFailed);
       return;
     }
 
@@ -95,10 +98,9 @@ class _SettingsDataPageBodyState extends State<SettingsDataPageBody> {
 
     final confirm = await showSettingsConfirmDialog(
       context: context,
-      title: 'Import Settings',
-      body:
-          'This overwrites your current settings, including addons, API keys, and preferences. Continue?',
-      confirmLabel: 'Import',
+      title: context.l10n.dataImportDialogTitle,
+      body: context.l10n.dataImportConfirmBody,
+      confirmLabel: context.l10n.dataImport,
       destructive: true,
     );
     if (!confirm) return;
@@ -107,9 +109,9 @@ class _SettingsDataPageBodyState extends State<SettingsDataPageBody> {
     try {
       final data = json.decode(jsonStr) as Map<String, dynamic>;
       await _settings.importAllSettings(data);
-      if (mounted) ForjaToast.success('Settings imported');
+      if (mounted) ForjaToast.success(context.l10n.dataImported);
     } catch (e) {
-      if (mounted) ForjaToast.error('Import failed: $e');
+      if (mounted) ForjaToast.error(context.l10n.dataImportFailed('$e'));
     } finally {
       if (mounted) setState(() => _isImporting = false);
     }
@@ -117,11 +119,12 @@ class _SettingsDataPageBodyState extends State<SettingsDataPageBody> {
 
   @override
   Widget build(BuildContext context) {
+    final l = context.l10n;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         SettingsGroup(
-          label: 'Backup',
+          label: l.dataBackupLabel,
           children: [
             Padding(
               padding: const EdgeInsets.fromLTRB(2, 12, 2, 4),
@@ -129,7 +132,7 @@ class _SettingsDataPageBodyState extends State<SettingsDataPageBody> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   Text(
-                    'Export or import all your settings, addons, API keys, and preferences as a JSON file.',
+                    l.dataBackupHint,
                     style: TextStyle(
                       color: ForjaShellColors.textSecondary.withValues(
                         alpha: 0.9,
@@ -143,7 +146,7 @@ class _SettingsDataPageBodyState extends State<SettingsDataPageBody> {
                     mainAxisAlignment: MainAxisAlignment.end,
                     children: [
                       SettingsFilledButton(
-                        label: 'Import',
+                        label: l.dataImport,
                         icon: Icons.download_rounded,
                         secondary: true,
                         busy: _isImporting,
@@ -151,7 +154,7 @@ class _SettingsDataPageBodyState extends State<SettingsDataPageBody> {
                       ),
                       const SizedBox(width: 12),
                       SettingsFilledButton(
-                        label: 'Export',
+                        label: l.dataExport,
                         icon: Icons.upload_rounded,
                         busy: _isExporting,
                         onPressed: _exportSettings,

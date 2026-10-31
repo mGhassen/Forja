@@ -2,6 +2,8 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:forja/l10n/app_localizations_en.dart';
+import 'package:forja/l10n/l10n.dart';
 import 'package:forja/shared/downloads/download_service.dart';
 import 'package:forja/shared/engine/cache/engine_cache.dart';
 import 'package:forja/shared/engine/packs/install/plugin_install_coordinator.dart';
@@ -97,6 +99,10 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
   String? _categoryBeforeSearch;
   bool _layoutRtl = false;
   String? _error;
+
+  /// Refreshed in [didChangeDependencies]; async load paths read it after awaits.
+  AppLocalizations? _l10n;
+  AppLocalizations get _loc => _l10n ?? AppLocalizationsEn();
   bool _loading = true;
   final ScrollController _scroll = ScrollController();
 
@@ -176,6 +182,7 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
+    _l10n = context.l10n;
     if (_listStyleHydrateStarted) return;
     _listStyleHydrateStarted = true;
     unawaited(_hydrateListStyle());
@@ -957,7 +964,7 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
         _loading = false;
         _widgets = const [];
         _error =
-            'This hub plugin is off. Enable it under Settings → Sources → Forja (Hubs).';
+            _loc.engineRuntimeHubPluginOff;
       });
       return;
     }
@@ -998,7 +1005,7 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
         _loading = false;
         _error = userFacingCatalogError(
           envelope.error,
-          fallback: 'Couldn’t load this hub. Try again.',
+          fallback: _loc.engineRuntimeHubLoadFailed,
         );
       });
       return;
@@ -1009,7 +1016,7 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
       if (_widgets.isNotEmpty) return;
       setState(() {
         _loading = false;
-        _error = 'This hub’s layout is invalid.';
+        _error = _loc.engineRuntimeHubLayoutInvalid;
       });
       return;
     }
@@ -1852,7 +1859,7 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
               builder: (context, busy, _) {
                 if (!busy) return const SizedBox.shrink();
                 return ForjaBusyLabel(
-                  label: 'Updating',
+                  label: context.l10n.engineRuntimeUpdating,
                   color: ForjaShellColors.brandGreen,
                   fontSize: tv
                       ? LoadingStateTokens.chromeBusyLabelFontSizeTv
@@ -2168,7 +2175,7 @@ class _PackLayoutPainterLoaderState extends State<PackLayoutPainterLoader> {
     }
     final id = _pluginId?.trim() ?? '';
     if (id.isEmpty) {
-      return const Center(child: Text('No hub pack for this tab.'));
+      return Center(child: Text(context.l10n.engineRuntimeNoHubPack));
     }
     final action =
         PluginNavRegistry.pageActionForTab(widget.tabId)?.trim() ?? '';

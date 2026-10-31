@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:forja/l10n/l10n.dart';
 import 'package:forja/shared/engine/store/list_follow_from_watched.dart';
 import 'package:forja/shared/player/avplayer/av_player_bridge.dart';
 import 'package:forja/shared/player/avplayer/av_player_view.dart';
@@ -212,12 +213,12 @@ class _DesktopNativePlayerScreenState extends State<DesktopNativePlayerScreen> {
     if (_failoverToMediaKitUsed || _disposed) return;
     final handler = widget.onSwitchPlayer;
     if (handler == null) {
-      if (mounted) ForjaToast.error('Could not open stream');
+      if (mounted) ForjaToast.error(context.l10n.playerScreenCouldNotOpenStream);
       return;
     }
     _failoverToMediaKitUsed = true;
     debugPrint('[DesktopNative] failover → MediaKit ($reason)');
-    if (mounted) ForjaToast.info('Switching to MediaKit…');
+    if (mounted) ForjaToast.info(context.l10n.playerScreenSwitchingToMediaKit);
     await handler(
       _position,
       builtInEngine: BuiltInPlayerEngine.mediaKit,
@@ -446,7 +447,7 @@ class _DesktopNativePlayerScreenState extends State<DesktopNativePlayerScreen> {
       }
       if (!_escapeArmed) {
         _escapeArmed = true;
-        ForjaToast.info('Press Esc again to exit');
+        ForjaToast.info(context.l10n.playerScreenPressEscAgain);
         return KeyEventResult.handled;
       }
       unawaited(_exit());
@@ -634,7 +635,7 @@ class _DesktopNativePlayerScreenState extends State<DesktopNativePlayerScreen> {
               bottom: 100,
               right: 24,
               child: PlayerFloatingChip(
-                label: 'Next Episode',
+                label: context.l10n.playerScreenNextEpisodeButton,
                 trailingIcon: Icons.arrow_forward_rounded,
                 onPressed: () async {
                   await _saveProgress();
@@ -690,7 +691,9 @@ class _DesktopNativePlayerScreenState extends State<DesktopNativePlayerScreen> {
                                   icon: _playing
                                       ? Icons.pause_rounded
                                       : Icons.play_arrow_rounded,
-                                  tooltip: _playing ? 'Pause' : 'Play',
+                                  tooltip: _playing
+                                      ? context.l10n.downloadsPause
+                                      : context.l10n.playerScreenPlay,
                                   onPressed: () => unawaited(_playPause()),
                                 ),
                                 const SizedBox(width: 2),
@@ -718,7 +721,7 @@ class _DesktopNativePlayerScreenState extends State<DesktopNativePlayerScreen> {
                                   const SizedBox(width: 2),
                                   PlayerFlatIconButton(
                                     icon: Icons.skip_next_rounded,
-                                    tooltip: 'Next episode',
+                                    tooltip: context.l10n.playerScreenNextEpisodeTooltip,
                                     onPressed: () async {
                                       await _saveProgress();
                                       await widget.onNextEpisode?.call();
@@ -745,7 +748,7 @@ class _DesktopNativePlayerScreenState extends State<DesktopNativePlayerScreen> {
                                   Builder(
                                     builder: (anchor) => PlayerFlatIconButton(
                                       icon: Icons.smart_display_outlined,
-                                      tooltip: 'Player',
+                                      tooltip: context.l10n.playerScreenPlayer,
                                       onPressed: () =>
                                           unawaited(_showPlayerMenu(anchor)),
                                     ),

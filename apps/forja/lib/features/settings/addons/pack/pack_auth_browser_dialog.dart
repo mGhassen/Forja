@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:forja/features/settings/addons/pack/pack_auth_session_handoff.dart';
 import 'package:forja/features/settings/ui/settings_ui.dart';
+import 'package:forja/l10n/l10n.dart';
 import 'package:forja/shell/feedback/forja_toast.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
@@ -99,7 +100,7 @@ class _PackAuthBrowserDialogState extends State<PackAuthBrowserDialog> {
     final ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
     if (!mounted) return;
     setState(() => _opened = ok);
-    if (!ok) ForjaToast.error('Could not open browser');
+    if (!ok) ForjaToast.error(context.l10n.addonsPackAuthBrowserOpenFailed);
   }
 
   Future<void> _waitHandoff() async {
@@ -115,7 +116,7 @@ class _PackAuthBrowserDialogState extends State<PackAuthBrowserDialog> {
       if (e is StateError && e.message == 'cancelled') return;
       if (e is TimeoutException) {
         setState(() => _waiting = false);
-        ForjaToast.error('Timed out waiting for Shahid session');
+        ForjaToast.error(context.l10n.addonsPackAuthBrowserTimedOut);
         return;
       }
       debugPrint('[PackAuthBrowser] handoff: $e');
@@ -125,9 +126,7 @@ class _PackAuthBrowserDialogState extends State<PackAuthBrowserDialog> {
   Future<void> _copyConnectScript() async {
     await Clipboard.setData(ClipboardData(text: _consoleScript));
     if (!mounted) return;
-    ForjaToast.success(
-      'Copied — on the Shahid tab open Console (⌘⌥J), paste, Enter',
-    );
+    ForjaToast.success(context.l10n.addonsPackAuthBrowserScriptCopied);
   }
 
   void _submitPassword() {
@@ -167,7 +166,7 @@ class _PackAuthBrowserDialogState extends State<PackAuthBrowserDialog> {
             Text(
               widget.hint.isNotEmpty
                   ? widget.hint
-                  : 'Sign in on Shahid in your browser (already signed in is fine).',
+                  : context.l10n.addonsPackAuthBrowserDefaultHint,
               style: TextStyle(
                 fontSize: SettingsTokens.typeSizeOf(context, 13),
                 color: ForjaShellColors.textSecondary,
@@ -176,20 +175,20 @@ class _PackAuthBrowserDialogState extends State<PackAuthBrowserDialog> {
             const SizedBox(height: 12),
             Text(
               _opened
-                  ? '1. Shahid is open in your browser.'
-                  : '1. Opening your browser…',
+                  ? context.l10n.addonsPackAuthBrowserStep1Open
+                  : context.l10n.addonsPackAuthBrowserStep1Opening,
               style: TextStyle(fontSize: SettingsTokens.typeSizeOf(context, 13)),
             ),
             const SizedBox(height: 6),
             Text(
-              '2. On that Shahid tab: open Console (⌘⌥J / Ctrl+Shift+J), paste, Enter.',
+              context.l10n.addonsPackAuthBrowserStep2,
               style: TextStyle(fontSize: SettingsTokens.typeSizeOf(context, 13)),
             ),
             const SizedBox(height: 6),
             Text(
               _waiting
-                  ? '3. Waiting for session… then Forja shows Connected (you can close the Shahid tab).'
-                  : '3. Waiting stopped — copy again or use password.',
+                  ? context.l10n.addonsPackAuthBrowserStep3Waiting
+                  : context.l10n.addonsPackAuthBrowserStep3Stopped,
               style: TextStyle(fontSize: SettingsTokens.typeSizeOf(context, 13)),
             ),
             const SizedBox(height: 12),
@@ -202,12 +201,12 @@ class _PackAuthBrowserDialogState extends State<PackAuthBrowserDialog> {
                       Icons.copy,
                       size: SettingsTokens.filledButtonIconSizeOf(context),
                     ),
-                    label: const Text('Copy connect script'),
+                    label: Text(context.l10n.addonsPackAuthBrowserCopyScript),
                   ),
                 ),
                 const SizedBox(width: 8),
                 IconButton(
-                  tooltip: 'Open Shahid again',
+                  tooltip: context.l10n.addonsPackAuthBrowserOpenAgain,
                   onPressed: _openBrowser,
                   icon: const Icon(Icons.open_in_browser),
                 ),
@@ -226,8 +225,8 @@ class _PackAuthBrowserDialogState extends State<PackAuthBrowserDialog> {
                 onPressed: () => setState(() => _showPassword = !_showPassword),
                 child: Text(
                   _showPassword
-                      ? 'Hide email/password'
-                      : 'Use email/password instead',
+                      ? context.l10n.addonsPackAuthBrowserHidePassword
+                      : context.l10n.addonsPackAuthBrowserUsePassword,
                 ),
               ),
             ],
@@ -270,7 +269,7 @@ class _PackAuthBrowserDialogState extends State<PackAuthBrowserDialog> {
                 alignment: Alignment.centerRight,
                 child: FilledButton(
                   onPressed: _submitPassword,
-                  child: const Text('Connect'),
+                  child: Text(context.l10n.addonsPackAuthBrowserConnect),
                 ),
               ),
             ],
@@ -280,7 +279,7 @@ class _PackAuthBrowserDialogState extends State<PackAuthBrowserDialog> {
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context),
-          child: const Text('Cancel'),
+          child: Text(context.l10n.addonsPackCancel),
         ),
       ],
     );

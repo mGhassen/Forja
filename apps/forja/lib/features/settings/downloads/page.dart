@@ -6,6 +6,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:forja/features/settings/addons/pack/pack_addon_settings_section.dart';
 import 'package:forja/features/settings/ui/settings_ui.dart';
+import 'package:forja/l10n/l10n.dart';
 import 'package:forja/shared/downloads/download_guards.dart';
 import 'package:forja/shared/downloads/download_path_helper.dart';
 import 'package:forja/shared/downloads/download_service.dart';
@@ -126,7 +127,7 @@ class _SettingsDownloadsPageBodyState extends State<SettingsDownloadsPageBody>
 
   Future<void> _pickDownloadFolder() async {
     final selected = await FilePicker.platform.getDirectoryPath(
-      dialogTitle: 'Choose download folder',
+      dialogTitle: context.l10n.downloadsChooseFolder,
     );
     if (selected == null || selected.trim().isEmpty) return;
 
@@ -143,7 +144,7 @@ class _SettingsDownloadsPageBodyState extends State<SettingsDownloadsPageBody>
       await probe.delete();
     } catch (e) {
       if (mounted) {
-        ForjaToast.error('Can’t write to that folder');
+        ForjaToast.error(context.l10n.downloadsFolderNotWritable);
       }
       debugPrint('[SettingsDownloads] folder not writable: $e');
       return;
@@ -152,7 +153,7 @@ class _SettingsDownloadsPageBodyState extends State<SettingsDownloadsPageBody>
     await DownloadPathHelper.setCustomDownloadsDirectoryPath(dir.path);
     await _loadSpace();
     if (mounted) {
-      ForjaToast.success('New downloads will save here');
+      ForjaToast.success(context.l10n.downloadsFolderChanged);
     }
   }
 
@@ -160,23 +161,24 @@ class _SettingsDownloadsPageBodyState extends State<SettingsDownloadsPageBody>
     await DownloadPathHelper.clearCustomDownloadsDirectoryPath();
     await _loadSpace();
     if (mounted) {
-      ForjaToast.success('Using the default download folder');
+      ForjaToast.success(context.l10n.downloadsFolderReset);
     }
   }
 
   Future<void> _confirmDeleteAllCompleted() async {
     final ok = await showSettingsConfirmDialog(
       context: context,
-      title: 'Delete all completed?',
-      body:
-          'Removes every finished download from this device and frees the disk space.',
-      confirmLabel: 'Delete all',
+      title: context.l10n.downloadsDeleteAllCompletedTitle,
+      body: context.l10n.downloadsDeleteAllCompletedBody,
+      confirmLabel: context.l10n.downloadsDeleteAll,
       destructive: true,
     );
     if (!ok) return;
     await DownloadService.instance.deleteAllCompleted();
     await _loadSpace();
-    if (mounted) ForjaToast.success('Completed downloads deleted');
+    if (mounted) {
+      ForjaToast.success(context.l10n.downloadsCompletedDeleted);
+    }
   }
 
   Future<void> _playOffline(DownloadTask task) async {
@@ -276,8 +278,8 @@ class _SettingsDownloadsPageBodyState extends State<SettingsDownloadsPageBody>
                 fontWeight: FontWeight.w500,
               ),
               tabs: [
-                Tab(text: 'Active (${active.length})'),
-                Tab(text: 'Completed (${completed.length})'),
+                Tab(text: context.l10n.downloadsTabActive(active.length)),
+                Tab(text: context.l10n.downloadsTabCompleted(completed.length)),
                 for (final t in _packTabs) Tab(text: t.label),
               ],
             ),
@@ -292,18 +294,16 @@ class _SettingsDownloadsPageBodyState extends State<SettingsDownloadsPageBody>
                     children: [
                       _TaskList(
                         tasks: active,
-                        emptyLabel: 'No active downloads',
-                        emptyHint:
-                            'Start one from details, Sources, or the player.',
+                        emptyLabel: context.l10n.downloadsActiveEmptyTitle,
+                        emptyHint: context.l10n.downloadsActiveEmptyHint,
                         trailing: null,
                         itemBuilder: (task) =>
                             _ActiveTile(task: task, onChanged: _loadSpace),
                       ),
                       _TaskList(
                         tasks: completed,
-                        emptyLabel: 'No offline downloads yet',
-                        emptyHint:
-                            'Finished titles show up here — play anytime without a network.',
+                        emptyLabel: context.l10n.downloadsCompletedEmptyTitle,
+                        emptyHint: context.l10n.downloadsCompletedEmptyHint,
                         trailing: completed.isEmpty
                             ? null
                             : Button(
@@ -311,7 +311,7 @@ class _SettingsDownloadsPageBodyState extends State<SettingsDownloadsPageBody>
                                 onPressed: () =>
                                     unawaited(_confirmDeleteAllCompleted()),
                                 child: Text(
-                                  'Delete all',
+                                  context.l10n.downloadsDeleteAll,
                                   style: TextStyle(
                                     color: ForjaShellColors.textSecondary,
                                     fontSize: SettingsTokens.typeSizeOf(
@@ -412,7 +412,7 @@ class _StorageHeader extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Storage',
+                      context.l10n.downloadsStorageTitle,
                       style: TextStyle(
                         color: ForjaShellColors.textPrimary,
                         fontSize: SettingsTokens.typeSizeOf(context, 18),
@@ -424,7 +424,7 @@ class _StorageHeader extends StatelessWidget {
                       height: SettingsTokens.rowTitleSubtitleGapOf(context),
                     ),
                     Text(
-                      'Offline library for this profile.',
+                      context.l10n.downloadsStorageSubtitle,
                       style: TextStyle(
                         color: ForjaShellColors.textSecondary,
                         fontSize: SettingsTokens.rowSubtitleSizeOf(context),
@@ -448,7 +448,7 @@ class _StorageHeader extends StatelessWidget {
                     ),
                     const SizedBox(width: 6),
                     Text(
-                      'Refresh',
+                      context.l10n.downloadsRefresh,
                       style: TextStyle(
                         color: ForjaShellColors.textSecondary,
                         fontSize: SettingsTokens.typeSizeOf(context, 12),
@@ -473,13 +473,13 @@ class _StorageHeader extends StatelessWidget {
                   text: usedLabel,
                   style: const TextStyle(fontWeight: FontWeight.w700),
                 ),
-                const TextSpan(text: ' used of '),
+                TextSpan(text: context.l10n.downloadsUsedOf),
                 TextSpan(
                   text: totalLabel,
                   style: const TextStyle(fontWeight: FontWeight.w700),
                 ),
                 TextSpan(
-                  text: '  ·  $freeLabel free',
+                  text: context.l10n.downloadsFreeSuffix(freeLabel),
                   style: TextStyle(
                     color: ForjaShellColors.textSecondary,
                     fontWeight: FontWeight.w500,
@@ -498,19 +498,19 @@ class _StorageHeader extends StatelessWidget {
           Wrap(
             spacing: SettingsTokens.storageLegendGapOf(context),
             runSpacing: 8,
-            children: const [
+            children: [
               _StorageLegendDot(
                 color: ForjaShellColors.storageOffline,
-                label: 'Offline',
+                label: context.l10n.downloadsLegendOffline,
                 hatched: true,
               ),
               _StorageLegendDot(
                 color: ForjaShellColors.storageOther,
-                label: 'Other',
+                label: context.l10n.downloadsLegendOther,
               ),
               _StorageLegendDot(
                 color: ForjaShellColors.storageAvailable,
-                label: 'Available',
+                label: context.l10n.downloadsLegendAvailable,
               ),
             ],
           ),
@@ -538,7 +538,7 @@ class _StorageHeader extends StatelessWidget {
                     size: ButtonSize.sm,
                     onPressed: onChangeFolder,
                     child: Text(
-                      'Change',
+                      context.l10n.downloadsChange,
                       style: TextStyle(
                         color: ForjaShellColors.textSecondary,
                         fontSize: SettingsTokens.typeSizeOf(context, 12),
@@ -552,7 +552,7 @@ class _StorageHeader extends StatelessWidget {
                       size: ButtonSize.sm,
                       onPressed: onResetFolder,
                       child: Text(
-                        'Default',
+                        context.l10n.downloadsDefault,
                         style: TextStyle(
                           color: ForjaShellColors.textSecondary,
                           fontSize: SettingsTokens.typeSizeOf(context, 12),
@@ -793,12 +793,15 @@ class _ActiveTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final svc = DownloadService.instance;
+    final l10n = context.l10n;
     final statusLabel = switch (task.status) {
-      DownloadStatus.queued => 'Queued',
+      DownloadStatus.queued => l10n.downloadsStatusQueued,
       DownloadStatus.downloading => task.speedLabel,
-      DownloadStatus.paused => 'Paused',
+      DownloadStatus.paused => l10n.downloadsStatusPaused,
       DownloadStatus.failed =>
-        task.error?.trim().isNotEmpty == true ? task.error! : 'Failed',
+        task.error?.trim().isNotEmpty == true
+            ? task.error!
+            : l10n.downloadsStatusFailed,
       _ => task.status.name,
     };
 
@@ -808,7 +811,8 @@ class _ActiveTile extends StatelessWidget {
         if (task.sourceName.trim().isNotEmpty) task.sourceName,
         task.sizeLabel,
         statusLabel,
-        if (task.isDownloading && task.etaLabel != '--') 'ETA ${task.etaLabel}',
+        if (task.isDownloading && task.etaLabel != '--')
+          l10n.downloadsEta(task.etaLabel),
       ].join(' · '),
       progress: task.isDownloading || task.isPaused
           ? task.progressPercent
@@ -817,24 +821,24 @@ class _ActiveTile extends StatelessWidget {
         if (task.isDownloading)
           _IconAction(
             icon: Icons.pause_rounded,
-            tooltip: 'Pause',
+            tooltip: l10n.downloadsPause,
             onTap: () => unawaited(svc.pauseDownload(task.id)),
           ),
         if (task.isPaused || task.status == DownloadStatus.queued)
           _IconAction(
             icon: Icons.play_arrow_rounded,
-            tooltip: 'Resume',
+            tooltip: l10n.downloadsResume,
             onTap: () => unawaited(svc.resumeDownload(task.id)),
           ),
         if (task.isFailed)
           _IconAction(
             icon: Icons.refresh_rounded,
-            tooltip: 'Retry',
+            tooltip: l10n.downloadsRetry,
             onTap: () => unawaited(svc.resumeDownload(task.id)),
           ),
         _IconAction(
           icon: Icons.close_rounded,
-          tooltip: 'Cancel',
+          tooltip: l10n.downloadsCancel,
           onTap: () async {
             await svc.cancelDownload(task.id);
             await svc.deleteDownload(task.id);
@@ -871,18 +875,18 @@ class _CompletedTile extends StatelessWidget {
       actions: [
         _IconAction(
           icon: Icons.play_arrow_rounded,
-          tooltip: 'Play offline',
+          tooltip: context.l10n.downloadsPlayOffline,
           onTap: onPlay,
         ),
         _IconAction(
           icon: Icons.delete_outline_rounded,
-          tooltip: 'Delete',
+          tooltip: context.l10n.downloadsDelete,
           onTap: () async {
             final ok = await showSettingsConfirmDialog(
               context: context,
-              title: 'Delete download?',
-              body: 'Removes “${task.title}” from this device.',
-              confirmLabel: 'Delete',
+              title: context.l10n.downloadsDeleteOneTitle,
+              body: context.l10n.downloadsDeleteOneBody(task.title),
+              confirmLabel: context.l10n.downloadsDelete,
               destructive: true,
             );
             if (!ok) return;

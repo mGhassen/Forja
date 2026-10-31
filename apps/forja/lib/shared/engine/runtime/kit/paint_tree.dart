@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:forja/l10n/l10n.dart';
 import 'package:forja/shared/downloads/download_library_panel.dart';
 import 'package:forja/shared/engine/runtime/kit/hosts/hero_pill_buttons.dart';
 import 'package:forja/shared/engine/runtime/kit/hosts/kit_list_status_hero.dart';
@@ -770,7 +771,7 @@ class PackPaintTree extends StatelessWidget {
     final chromeDown = _chromeFocusDown(scope, merged);
     return Consumer(
       builder: (context, ref, _) {
-        final status = _topBarFeedStatus(ref);
+        final status = _topBarFeedStatus(ref, context.l10n);
         final paintedActions = status.actions(actions);
         return TopBodyBlock.fromProps(
           merged,
@@ -781,6 +782,7 @@ class PackPaintTree extends StatelessWidget {
           actionSelectionLabels: _topBarSelectionLabels(
             actionSelections,
             actions,
+            context.l10n,
           ),
           actionSlots: _portalsActionSlots(
             context,
@@ -851,7 +853,7 @@ class PackPaintTree extends StatelessWidget {
             emptyTitle: propsStringOr(
               props,
               'emptyTitle',
-              'Your list is empty',
+              context.l10n.engineRuntimeListEmpty,
             ),
             emptyDescription: propsString(props, 'emptyDescription'),
             cardKind: 'poster',
@@ -1127,7 +1129,7 @@ class PackPaintTree extends StatelessWidget {
         if (!context.mounted) return;
         if (dynamicOpts.isNotEmpty) {
           options = [
-            (id: 'all', label: 'All', subtitle: null),
+            (id: 'all', label: context.l10n.addonsPackSelectAll, subtitle: null),
             for (final o in dynamicOpts)
               if (o.id != 'all') (id: o.id, label: o.label, subtitle: null),
           ];
@@ -1190,7 +1192,7 @@ class PackPaintTree extends StatelessWidget {
                     ),
                     const SizedBox(height: 20),
                     Text(
-                      title.isEmpty ? 'Options' : title,
+                      title.isEmpty ? ctx.l10n.engineRuntimeOptions : title,
                       style: const TextStyle(
                         color: Colors.white,
                         fontSize: 16,
@@ -1325,9 +1327,9 @@ class PackPaintTree extends StatelessWidget {
     }
 
     if (searchAction != null) {
-      final tooltip = (searchAction['label'] ?? 'Search').toString().trim();
+      final tooltip = (searchAction['label'] ?? context.l10n.addonsPackGreenPlaySearchLabel).toString().trim();
       final hint =
-          (searchAction['placeholder'] ?? searchAction['hint'] ?? 'Search…')
+          (searchAction['placeholder'] ?? searchAction['hint'] ?? context.l10n.engineRuntimeSearchHint)
               .toString()
               .trim();
       final slotId = (searchAction['id'] ?? 'search').toString().trim();
@@ -1335,8 +1337,8 @@ class PackPaintTree extends StatelessWidget {
       out[searchId] = ShellPaintTvTabScope(
         tabId: tab,
         child: KitEventListSearch(
-          tooltip: tooltip.isEmpty ? 'Search' : tooltip,
-          placeholder: hint.isEmpty ? 'Search…' : hint,
+          tooltip: tooltip.isEmpty ? context.l10n.addonsPackGreenPlaySearchLabel : tooltip,
+          placeholder: hint.isEmpty ? context.l10n.engineRuntimeSearchHint : hint,
           tvItemIndex: _chromeIndexOfAction(context, actions, searchId),
           onDownEdge: onDownEdge,
           collapsedSize: PackPaintArtifact.packLength(
@@ -1364,14 +1366,14 @@ class PackPaintTree extends StatelessWidget {
     }
     if (sortAction != null) {
       final slotId = (sortAction['id'] ?? 'sort').toString().trim();
-      final label = (sortAction['label'] ?? 'Sort').toString().trim();
+      final label = (sortAction['label'] ?? context.l10n.engineRuntimeSort).toString().trim();
       final sortId = slotId.isEmpty ? 'sort' : slotId;
       out[sortId] = Consumer(
         builder: (ctx, ref, _) => IptvSortActionHost.buildSortChip(
           ctx,
           ref,
           tabId: tab,
-          label: label.isEmpty ? 'Sort' : label,
+          label: label.isEmpty ? ctx.l10n.engineRuntimeSort : label,
           icon: Icons.filter_list_rounded,
           tvRowId: 'chrome',
           tvItemIndex: _chromeIndexOfAction(context, actions, sortId),
@@ -1461,15 +1463,15 @@ class PackPaintTree extends StatelessWidget {
     if (verb != 'eventsearch' && search['open'] != true) return null;
     final tab = (tabId ?? '').trim();
     if (tab.isEmpty) return null;
-    final tooltip = (search['label'] ?? 'Search').toString().trim();
-    final hint = (search['placeholder'] ?? search['hint'] ?? 'Search…')
+    final tooltip = (search['label'] ?? context.l10n.addonsPackGreenPlaySearchLabel).toString().trim();
+    final hint = (search['placeholder'] ?? search['hint'] ?? context.l10n.engineRuntimeSearchHint)
         .toString()
         .trim();
     return ShellPaintTvTabScope(
       tabId: tab,
       child: KitEventListSearch(
-        tooltip: tooltip.isEmpty ? 'Search' : tooltip,
-        placeholder: hint.isEmpty ? 'Search…' : hint,
+        tooltip: tooltip.isEmpty ? context.l10n.addonsPackGreenPlaySearchLabel : tooltip,
+        placeholder: hint.isEmpty ? context.l10n.engineRuntimeSearchHint : hint,
         alwaysOpen: true,
         tvItemIndex: 0,
         collapsedSize: PackPaintArtifact.packLength(
@@ -1693,7 +1695,6 @@ class PackPaintTree extends StatelessWidget {
       return const [
         _HeroActionSpec(
           id: 'details',
-          label: 'View details',
           icon: 'info',
           tone: HeroPillPlayTone.secondary,
         ),
@@ -2202,7 +2203,7 @@ class PackPaintTree extends StatelessWidget {
               cardWidth: cardWidth,
               titleFontSize: titleFontSize,
               metaFontSize: metaFontSize,
-              emptyTitle: (spec['emptyTitle'] ?? 'Nothing here yet.')
+              emptyTitle: (spec['emptyTitle'] ?? context.l10n.engineRuntimeNothingHereYet)
                   .toString(),
               emptyDescription:
                   (spec['emptyDescription'] ?? '').toString().isEmpty
@@ -2355,7 +2356,7 @@ class PackPaintTree extends StatelessWidget {
                                   metaFontSize: metaFontSize,
                                   emptyTitle:
                                       (spec['emptyTitle'] ??
-                                              'Nothing here yet.')
+                                              context.l10n.engineRuntimeNothingHereYet)
                                           .toString(),
                                   emptyDescription:
                                       (spec['emptyDescription'] ?? '')
@@ -2644,7 +2645,7 @@ class PackPaintTree extends StatelessWidget {
   void _togglePortalsPanel(BuildContext context) {
     final key = (tabId ?? '').trim();
     if (key.isEmpty) {
-      ForjaToast.show('Portals unavailable');
+      ForjaToast.show(context.l10n.engineRuntimePortalsUnavailable);
       return;
     }
     try {
@@ -2657,7 +2658,7 @@ class PackPaintTree extends StatelessWidget {
         container.invalidate(portalsChipSummaryProvider);
       }
     } catch (_) {
-      ForjaToast.show('Portals unavailable');
+      ForjaToast.show(context.l10n.engineRuntimePortalsUnavailable);
     }
   }
 
@@ -2820,7 +2821,8 @@ class PackPaintTree extends StatelessWidget {
     BuildContext context, {
     required Map<String, dynamic> item,
   }) async {
-    final title = (item['title'] ?? item['name'] ?? 'Stream').toString().trim();
+    final l10n = context.l10n;
+    final title = (item['title'] ?? item['name'] ?? l10n.engineRuntimeStream).toString().trim();
     var played = false;
     Future<void> playFirst(List<LivePlaySource> rows) async {
       if (played || rows.isEmpty || !context.mounted) return;
@@ -2829,7 +2831,7 @@ class PackPaintTree extends StatelessWidget {
         context,
         sources: rows,
         picked: rows.first,
-        title: title.isEmpty ? 'Stream' : title,
+        title: title.isEmpty ? l10n.engineRuntimeStream : title,
       );
     }
 
@@ -2844,7 +2846,7 @@ class PackPaintTree extends StatelessWidget {
       if (!played) {
         if (rows.isEmpty) {
           if (context.mounted) {
-            ForjaToast.info('No playable stream');
+            ForjaToast.info(l10n.engineRuntimeNoPlayableStream);
           }
           return;
         }
@@ -2853,7 +2855,7 @@ class PackPaintTree extends StatelessWidget {
     } catch (e, st) {
       debugPrint('[kit] playListItemDirect failed: $e\n$st');
       if (context.mounted) {
-        ForjaToast.info('No playable stream');
+        ForjaToast.info(l10n.engineRuntimeNoPlayableStream);
       }
     }
   }
@@ -2895,8 +2897,8 @@ class PackPaintTree extends StatelessWidget {
     if (verb != 'eventsearch') return null;
     final tab = (tabId ?? '').trim();
     if (tab.isEmpty) return null;
-    final tooltip = (search['label'] ?? 'Search').toString().trim();
-    final hint = (search['placeholder'] ?? search['hint'] ?? 'Search…')
+    final tooltip = (search['label'] ?? context.l10n.addonsPackGreenPlaySearchLabel).toString().trim();
+    final hint = (search['placeholder'] ?? search['hint'] ?? context.l10n.engineRuntimeSearchHint)
         .toString()
         .trim();
     final items = layoutItemsFromSpec(spec);
@@ -2908,8 +2910,8 @@ class PackPaintTree extends StatelessWidget {
     return ShellPaintTvTabScope(
       tabId: tab,
       child: KitEventListSearch(
-        tooltip: tooltip.isEmpty ? 'Search' : tooltip,
-        placeholder: hint.isEmpty ? 'Search…' : hint,
+        tooltip: tooltip.isEmpty ? context.l10n.addonsPackGreenPlaySearchLabel : tooltip,
+        placeholder: hint.isEmpty ? context.l10n.engineRuntimeSearchHint : hint,
         tvItemIndex: items.length,
         onDownEdge: focusDown,
         collapsedSize: PackPaintArtifact.packLength(
@@ -3146,6 +3148,7 @@ class PackPaintTree extends StatelessWidget {
   Map<String, String> _topBarSelectionLabels(
     Map<String, String> selections,
     List<Map<String, dynamic>> actions,
+    AppLocalizations l10n,
   ) {
     final out = <String, String>{};
     for (final a in actions) {
@@ -3157,11 +3160,13 @@ class PackPaintTree extends StatelessWidget {
         final label = KitTopBarHostHooks.catalogChipLabel?.call(
           selected.isEmpty ? 'all' : selected,
           const [],
+          l10n,
         );
         if (label != null && label.isNotEmpty) out[id] = label;
       } else if (a['dynamicSchedule'] == true) {
         final label = KitTopBarHostHooks.scheduleChipLabel?.call(
           selected.isEmpty ? kKitScheduleDefaultPref : selected,
+          l10n,
         );
         if (label != null && label.isNotEmpty) out[id] = label;
       }
@@ -3191,7 +3196,7 @@ class PackPaintTree extends StatelessWidget {
     final chromeDown = _chromeFocusDown(scope, spec);
     return Consumer(
       builder: (context, ref, _) {
-        final status = _topBarFeedStatus(ref);
+        final status = _topBarFeedStatus(ref, context.l10n);
         final paintedActions = status.actions(actions);
         return CatalogTopChrome(
           actions: paintedActions,
@@ -3202,7 +3207,7 @@ class PackPaintTree extends StatelessWidget {
             onDownEdge: chromeDown,
           ),
           selections: selections,
-          selectionLabels: _topBarSelectionLabels(selections, actions),
+          selectionLabels: _topBarSelectionLabels(selections, actions, context.l10n),
           center: status.center,
           height: height,
           gap: gap,
@@ -3224,7 +3229,7 @@ class PackPaintTree extends StatelessWidget {
   }
 
   /// Live schedule scrape chip for the top-bar center (issue 278).
-  _TopBarFeedStatus _topBarFeedStatus(WidgetRef ref) {
+  _TopBarFeedStatus _topBarFeedStatus(WidgetRef ref, AppLocalizations l10n) {
     final tab = (tabId ?? '').trim();
     if (tab.isEmpty || KitTopBarHostHooks.readFeedBusy == null) {
       return const _TopBarFeedStatus();
@@ -3235,7 +3240,7 @@ class PackPaintTree extends StatelessWidget {
     return _TopBarFeedStatus(
       busy: true,
       center: _KitTopBarCatalogProgressChip(
-        label: raw.isEmpty ? 'Loading…' : raw,
+        label: raw.isEmpty ? l10n.engineRuntimeLoading : raw,
       ),
     );
   }
@@ -3245,7 +3250,7 @@ class PackPaintTree extends StatelessWidget {
     Map<String, dynamic> action,
   ) async {
     final chrome = PackChromeScope.maybeOf(context);
-    final hint = (action['placeholder'] ?? action['hint'] ?? 'Search…')
+    final hint = (action['placeholder'] ?? action['hint'] ?? context.l10n.engineRuntimeSearchHint)
         .toString()
         .trim();
     final verb = (action['action'] ?? '').toString().trim().toLowerCase();
@@ -3256,7 +3261,7 @@ class PackPaintTree extends StatelessWidget {
         context,
         pluginId: pluginId,
         tabId: tab,
-        hintText: hint.isEmpty ? 'Search…' : hint,
+        hintText: hint.isEmpty ? context.l10n.engineRuntimeSearchHint : hint,
       );
       return;
     }
@@ -3268,7 +3273,7 @@ class PackPaintTree extends StatelessWidget {
       builder: (ctx) => AlertDialog(
         backgroundColor: ForjaShellColors.surfaceElevated,
         title: Text(
-          (action['label'] ?? 'Search').toString(),
+          (action['label'] ?? ctx.l10n.addonsPackGreenPlaySearchLabel).toString(),
           style: const TextStyle(color: ForjaShellColors.textPrimary),
         ),
         content: TextField(
@@ -3276,7 +3281,7 @@ class PackPaintTree extends StatelessWidget {
           autofocus: true,
           style: const TextStyle(color: ForjaShellColors.textPrimary),
           decoration: InputDecoration(
-            hintText: hint.isEmpty ? 'Search…' : hint,
+            hintText: hint.isEmpty ? ctx.l10n.engineRuntimeSearchHint : hint,
             hintStyle: const TextStyle(color: ForjaShellColors.textSecondary),
           ),
           onSubmitted: (v) => Navigator.of(ctx).pop(v),
@@ -3284,11 +3289,11 @@ class PackPaintTree extends StatelessWidget {
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(''),
-            child: const Text('Clear'),
+            child: Text(ctx.l10n.dataClear),
           ),
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(controller.text),
-            child: const Text('Search'),
+            child: Text(ctx.l10n.addonsPackGreenPlaySearchLabel),
           ),
         ],
       ),
@@ -3733,7 +3738,7 @@ class _HubTvCinematicHeroState extends State<_HubTvCinematicHero> {
             }
             final hasFollow = follow != null;
             child = HeroPillPlayButton(
-              label: action.label ?? 'View details',
+              label: action.label ?? context.l10n.engineRuntimeViewDetails,
               icon: PackPaintTree._heroActionIcon(action.icon),
               tone: action.tone,
               alwaysShowLabel: true,
@@ -4507,6 +4512,7 @@ class _ContinueMountState extends State<_ContinueMount> {
   }
 
   Future<void> _resume(Map<String, dynamic> entry) async {
+    final l10n = context.l10n;
     if (isHomeWatchHistoryEntry(entry)) {
       final home = entry['homeHistory'];
       if (home is! Map || _resumingMetaId != null) return;
@@ -4520,7 +4526,7 @@ class _ContinueMountState extends State<_ContinueMount> {
         );
         if (mounted) await _reload();
       } catch (e) {
-        if (mounted) ForjaToast.error('Resume failed: $e');
+        if (mounted) ForjaToast.error(l10n.engineRuntimeResumeFailed('$e'));
       } finally {
         if (mounted) setState(() => _resumingMetaId = null);
       }
@@ -4563,7 +4569,7 @@ class _ContinueMountState extends State<_ContinueMount> {
       await runPlayFromContext(context: context, ctx: ctx);
       if (mounted) await _reload();
     } catch (e) {
-      if (mounted) ForjaToast.error('Resume failed: $e');
+      if (mounted) ForjaToast.error(l10n.engineRuntimeResumeFailed('$e'));
     } finally {
       if (mounted) setState(() => _resumingMetaId = null);
     }
@@ -4651,7 +4657,7 @@ class _ContinueMountState extends State<_ContinueMount> {
         down: true,
       ),
       child: ContinueSection(
-        title: 'Continue Watching',
+        title: context.l10n.engineRuntimeContinueWatching,
         scrollController: _scroll,
         showScrollArrows: showArrows,
         cardWidth: cardW,

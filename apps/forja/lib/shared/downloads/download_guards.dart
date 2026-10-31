@@ -1,4 +1,5 @@
 import 'package:forja/shared/playback/probe/playback_stream_guards.dart';
+import 'package:forja/shell/routing/shell_ambient_l10n.dart';
 
 /// CloudStream-style leaf segments (`…/page-52.html`) — MPEG-TS under an
 /// HTML name. Those URLs return 403 when Referer/Origin are set (issue 054).
@@ -334,16 +335,19 @@ int? parseContentRangeTotal(String? header) {
   return int.tryParse(total);
 }
 
-const String kOfflineDownloadExpiredMessage =
-    'Stream link expired — open Sources and download again';
+// Getters rather than constants so the text follows the current app language
+// (read when a toast is raised, not at startup).
+String get kOfflineDownloadExpiredMessage =>
+    shellAmbientL10n.sharedDownloadsLinkExpired;
 
-const String kOfflineDownloadMissingMessage = 'Download file is missing';
+String get kOfflineDownloadMissingMessage =>
+    shellAmbientL10n.sharedDownloadsFileMissing;
 
-const String kOfflineDownloadUnplayableMessage =
-    'Downloaded file can’t be played — delete it and download again';
+String get kOfflineDownloadUnplayableMessage =>
+    shellAmbientL10n.sharedDownloadsFileUnplayableDelete;
 
-const String kOfflineDownloadUnreadableMessage =
-    'Downloaded file can’t be played';
+String get kOfflineDownloadUnreadableMessage =>
+    shellAmbientL10n.sharedDownloadsFileUnplayable;
 
 /// User-facing reason when a URL cannot be saved offline.
 String? offlineDownloadRejectReason(
@@ -351,19 +355,20 @@ String? offlineDownloadRejectReason(
   Map<String, String>? headers,
   DateTime? now,
 }) {
+  final l10n = shellAmbientL10n;
   final u = url.trim();
-  if (u.isEmpty) return 'This stream can’t be saved offline';
+  if (u.isEmpty) return l10n.sharedDownloadsStreamNoOffline;
   if (isTorrentStreamUrl(u)) {
-    return "Torrents aren't available for offline download yet";
+    return l10n.sharedDownloadsTorrentsNoOffline;
   }
   if (isDashManifestUrl(u)) {
-    return "DASH streams can't be saved offline yet";
+    return l10n.sharedDownloadsDashNoOffline;
   }
   if (isDownloadAuthExpired(u, headers: headers, now: now)) {
-    return kOfflineDownloadExpiredMessage;
+    return l10n.sharedDownloadsLinkExpired;
   }
   if (!isDownloadableHttpUrl(u, headers: headers, now: now)) {
-    return 'This stream can’t be saved offline';
+    return l10n.sharedDownloadsStreamNoOffline;
   }
   return null;
 }

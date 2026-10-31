@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:forja/l10n/l10n.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/playback/stream_provider_probe.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
@@ -48,44 +49,76 @@ class DirectStreamLoadingPanel extends StatelessWidget {
 
   bool get _probeWorkActive => _tryingProbes.isNotEmpty;
 
-  String get _headline {
-    if (!_probeMode) return _sentenceCase(message);
+  String _headline(AppLocalizations l10n) {
+    if (!_probeMode) return _sentenceCase(message, l10n);
     final msg = message.trim().toUpperCase();
-    if (msg.contains('OPENING')) return 'Opening player…';
-    if (msg.contains('PROBING')) return 'Probing streams…';
+    if (msg.contains('OPENING')) return l10n.sharedPlaybackOpeningPlayer;
+    if (msg.contains('PROBING')) return l10n.sharedPlaybackProbingStreams;
     if (_tryingProbes.isNotEmpty || msg.contains('CHECKING')) {
-      return 'Checking servers…';
+      return l10n.sharedPlaybackCheckingServers;
     }
     if (msg.contains('FINDING') || msg.contains('LOOKING')) {
-      return 'Finding servers…';
+      return l10n.sharedPlaybackFindingServers;
     }
-    return _sentenceCase(message);
+    return _sentenceCase(message, l10n);
   }
 
   /// Status copy only — season/episode lives under the logo on [LoadingOverlay].
-  String? get _hint {
+  String? _hint(AppLocalizations l10n) {
     if (!_probeMode) return null;
     final msg = message.trim().toUpperCase();
-    if (msg.contains('OPENING')) return 'Starting playback';
-    if (msg.contains('PROBING')) return 'Testing which links play';
+    if (msg.contains('OPENING')) return l10n.sharedPlaybackHintStarting;
+    if (msg.contains('PROBING')) return l10n.sharedPlaybackHintTesting;
     if (_tryingProbes.isNotEmpty || msg.contains('CHECKING')) {
-      return 'Asking servers for streams';
+      return l10n.sharedPlaybackHintAsking;
     }
     if (msg.contains('FINDING') || msg.contains('LOOKING') || msg.isEmpty) {
-      return 'Looking up available providers';
+      return l10n.sharedPlaybackHintLookingUp;
     }
     return null;
   }
 
-  static String _sentenceCase(String raw) {
+  static final _probingProgress = RegExp(r'^Probing streams \((\d+)/(\d+)\)$');
+
+  /// Callers pass English status text (also matched by keyword above), so the
+  /// known ones are translated here, at display time.
+  static String _sentenceCase(String raw, AppLocalizations l10n) {
     final t = raw.trim();
-    if (t.isEmpty) return 'Starting stream…';
+    if (t.isEmpty) return l10n.sharedPlaybackStartingStream;
+    final bare = t.endsWith('…')
+        ? t.substring(0, t.length - 1)
+        : t.endsWith('...')
+        ? t.substring(0, t.length - 3)
+        : t;
+    final probing = _probingProgress.firstMatch(bare);
+    if (probing != null) {
+      return l10n.sharedPlaybackProbingStreamsProgress(
+        int.parse(probing.group(1)!),
+        int.parse(probing.group(2)!),
+      );
+    }
+    switch (bare) {
+      case 'Starting stream':
+        return l10n.sharedPlaybackStartingStream;
+      case 'Finding Forja servers':
+        return l10n.sharedPlaybackFindingForjaServers;
+      case 'Finding servers':
+        return l10n.sharedPlaybackFindingServers;
+      case 'Checking servers':
+        return l10n.sharedPlaybackCheckingServers;
+      case 'Opening player':
+        return l10n.sharedPlaybackOpeningPlayer;
+      case 'Probing streams':
+        return l10n.sharedPlaybackProbingStreams;
+    }
     if (t.endsWith('…') || t.endsWith('...')) return t;
     return '$t…';
   }
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
+    final hint = _hint(l10n);
     final tv = ShellPaintScope.usesTvDensityOf(context);
     final headlineSize = tv
         ? ShellTokens.streamLoadingHeadlineFontSizeTv
@@ -128,7 +161,7 @@ class DirectStreamLoadingPanel extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         Text(
-          _headline,
+          _headline(l10n),
           textAlign: TextAlign.center,
           style: TextStyle(
             color: Colors.white.withValues(alpha: 0.92),
@@ -139,12 +172,12 @@ class DirectStreamLoadingPanel extends StatelessWidget {
             fontFamily: 'Poppins',
           ),
         ),
-        if (_hint != null && _hint!.isNotEmpty) ...[
+        if (hint != null && hint.isNotEmpty) ...[
           SizedBox(height: hintGap),
           Padding(
             padding: EdgeInsets.symmetric(horizontal: hintPad),
             child: Text(
-              _hint!,
+              hint,
               textAlign: TextAlign.center,
               style: TextStyle(
                 color: Colors.white.withValues(alpha: 0.52),
@@ -179,8 +212,17 @@ class DirectStreamLoadingPanel extends StatelessWidget {
           SizedBox(height: metaGap),
           Text(
             _probeSkipped > 0
-                ? '$_probeChecked / $_probeTotal checked · $_probeReady up · $_probeSkipped skipped on TV'
-                : '$_probeChecked / $_probeTotal checked · $_probeReady up',
+                ? l10n.sharedPlaybackProbeSummarySkipped(
+                    _probeChecked,
+                    _probeTotal,
+                    _probeReady,
+                    _probeSkipped,
+                  )
+                : l10n.sharedPlaybackProbeSummary(
+                    _probeChecked,
+                    _probeTotal,
+                    _probeReady,
+                  ),
             textAlign: TextAlign.center,
             style: TextStyle(
               color: Colors.white.withValues(alpha: 0.5),

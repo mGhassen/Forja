@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart'
     hide Badge, Checkbox, ListTile, Radio, Slider, Switch, Tooltip;
+import 'package:forja/l10n/l10n.dart';
 import 'package:forja_foundation/blocks/catalog/catalog_cards_grid.dart';
 import 'package:forja_foundation/blocks/props_map.dart';
 import 'package:forja_foundation/blocks/search/search_block.dart';
@@ -215,7 +216,7 @@ Widget? paintFoundationType(
       return InputGroup(child: childOrEmpty());
     case 'searchField':
       return SearchField(
-        hintText: propsStringOr(props, 'hintText', 'Search'),
+        hintText: propsStringOr(props, 'hintText', context.l10n.addonsPackGreenPlaySearchLabel),
         enabled: propsBool(props, 'enabled', true),
         onChanged: (_) {},
         onClear: () {},
@@ -373,7 +374,7 @@ Widget? paintFoundationType(
       final labels = propsStringList(props, 'items');
       return Breadcrumb(
         items: labels.isEmpty
-            ? [BreadcrumbItem(label: propsStringOr(props, 'label', 'Home'))]
+            ? [BreadcrumbItem(label: propsStringOr(props, 'label', context.l10n.engineRuntimeHome))]
             : [for (final l in labels) BreadcrumbItem(label: l)],
       );
     case 'pageDots':
@@ -727,7 +728,7 @@ Widget? paintFoundationType(
         active: propsBool(props, 'active', true),
         pressed: propsBool(props, 'pressed'),
         expanded: propsBool(props, 'expanded', true),
-        label: propsStringOr(props, 'label', 'Play'),
+        label: propsStringOr(props, 'label', context.l10n.engineRuntimePlay),
         leading: const Icon(Icons.play_arrow_rounded, color: Colors.white),
       );
     case 'listStatusPin':
@@ -755,20 +756,20 @@ Widget? paintFoundationType(
     case 'detailsCast':
       return DetailsCastSection(
         cast: _castMaps(props),
-        title: propsStringOr(props, 'title', 'Cast'),
+        title: propsStringOr(props, 'title', context.l10n.engineRuntimeCast),
         outdentHorizontal: propsLengthOr(context, props, 'outdentHorizontal', 0),
       );
     case 'detailsTrailers':
       return DetailsTrailersSection(
         trailers: _trailers(props),
         onTap: (_) {},
-        title: propsStringOr(props, 'title', 'Trailers'),
+        title: propsStringOr(props, 'title', context.l10n.engineRuntimeTrailers),
         outdentHorizontal: propsLengthOr(context, props, 'outdentHorizontal', 0),
       );
     case 'detailsRecommendations':
       // No dedicated Recommendations widget — DetailsRails / section.
       return DetailsRailSection(
-        title: propsStringOr(props, 'title', 'Recommendations'),
+        title: propsStringOr(props, 'title', context.l10n.engineRuntimeRecommendations),
         rowHeight: propsLengthOr(context, props, 'rowHeight', 180),
         cards: kids().isEmpty
             ? [SizedBox(width: propsLengthOr(context, props, 'cardWidth', 120), height: 1)]
@@ -864,7 +865,7 @@ Widget? paintFoundationType(
         pad: panelPad != null ? EdgeInsets.all(panelPad) : null,
         statusFontSize: propsLengthOr(context, props, 'statusFontSize', 11),
         header: Text(
-          propsStringOr(props, 'header', propsStringOr(props, 'title', 'Portals')),
+          propsStringOr(props, 'header', propsStringOr(props, 'title', context.l10n.engineRuntimePortals)),
           style: const TextStyle(
             color: Colors.white,
             fontSize: 18,
@@ -894,7 +895,7 @@ Widget? paintFoundationType(
     case 'portalsChip':
       final chipW = propsLength(context, props, 'width');
       return PortalsChip(
-        label: propsStringOr(props, 'label', 'Portals'),
+        label: propsStringOr(props, 'label', context.l10n.engineRuntimePortals),
         onTap: () {},
         selected: propsBool(props, 'selected'),
         hasPortal: propsBool(props, 'hasPortal'),
@@ -976,10 +977,10 @@ Widget? paintFoundationType(
         width: propsLengthOr(context, props, 'width', ShellTokens.sidePanelWidth),
         height: propsLengthOr(context, props, 'height', 480),
         child: SourcesPanelChrome(
-          title: propsStringOr(props, 'title', 'Sources'),
+          title: propsStringOr(props, 'title', context.l10n.addonsHostProvSourcesChip),
           subtitle: propsString(props, 'subtitle'),
           tabs: tabs.isEmpty
-              ? const [SourcesTab(id: 'all', label: 'All')]
+              ? [SourcesTab(id: 'all', label: context.l10n.addonsPackSelectAll)]
               : tabs,
           embedded: propsBool(props, 'embedded'),
           showTabs: propsBool(props, 'showTabs', true),
@@ -1028,9 +1029,9 @@ Widget? paintFoundationType(
       );
     case 'errorRetryPanel':
       return ShellErrorRetryPanel(
-        message: propsStringOr(props, 'message', 'Something went wrong'),
+        message: propsStringOr(props, 'message', context.l10n.engineRuntimeSomethingWrong),
         onRetry: () {},
-        label: propsStringOr(props, 'label', 'Retry'),
+        label: propsStringOr(props, 'label', context.l10n.addonsHostProvRetryButton),
       );
     case 'cardPlayOverlay':
       return ShellCardPlayOverlay(
@@ -1062,7 +1063,7 @@ Widget? paintFoundationType(
         height: propsLengthOr(context, props, 'height', 420),
         child: ChannelGuidePanel(
           guide: ChannelGuide(
-            groups: [GuideGroup(id: gid, name: propsStringOr(props, 'groupName', 'All'))],
+            groups: [GuideGroup(id: gid, name: propsStringOr(props, 'groupName', context.l10n.addonsPackSelectAll))],
             channels: [
               GuideChannel(
                 id: cid,
@@ -1091,7 +1092,7 @@ Widget? paintFoundationType(
         hintText: propsStringOr(
           props,
           'hintText',
-          propsStringOr(props, 'hint', 'Search…'),
+          propsStringOr(props, 'hint', context.l10n.engineRuntimeSearchHint),
         ),
         structuredSearch: propsBool(props, 'structuredSearch'),
       );
@@ -1106,9 +1107,9 @@ Widget? paintFoundationType(
         filters: SearchFilters.empty,
         onFiltersChanged: (_) {},
         onSubmit: () {},
-        allLabel: propsStringOr(props, 'allLabel', 'All'),
-        movieLabel: propsStringOr(props, 'movieLabel', 'Films'),
-        seriesLabel: propsStringOr(props, 'seriesLabel', 'Series'),
+        allLabel: propsStringOr(props, 'allLabel', context.l10n.addonsPackSelectAll),
+        movieLabel: propsStringOr(props, 'movieLabel', context.l10n.engineRuntimeFilms),
+        seriesLabel: propsStringOr(props, 'seriesLabel', context.l10n.engineRuntimeSeries),
         tvLeanback: propsBool(props, 'tvLeanback') || propsBool(props, 'compact'),
       );
     case 'tvSeasonEpisodePicker':
@@ -1156,7 +1157,7 @@ Widget? paintFoundationType(
         child: ChannelGuidePanel(
           guide: ChannelGuide(
             groups: [
-              GuideGroup(id: gid, name: propsStringOr(props, 'groupName', 'All')),
+              GuideGroup(id: gid, name: propsStringOr(props, 'groupName', context.l10n.addonsPackSelectAll)),
             ],
             channels: [
               GuideChannel(
@@ -1187,7 +1188,7 @@ Widget? paintFoundationType(
         child: ChannelSearchOverlay(
           guide: ChannelGuide(
             groups: [
-              GuideGroup(id: gid, name: propsStringOr(props, 'groupName', 'All')),
+              GuideGroup(id: gid, name: propsStringOr(props, 'groupName', context.l10n.addonsPackSelectAll)),
             ],
             channels: [
               GuideChannel(
@@ -1213,7 +1214,7 @@ Widget? paintFoundationType(
       );
     case 'guideBrowseTextField':
       return _PaintGuideBrowseTextField(
-        hint: propsStringOr(props, 'hint', propsStringOr(props, 'hintText', 'Search…')),
+        hint: propsStringOr(props, 'hint', propsStringOr(props, 'hintText', context.l10n.engineRuntimeSearchHint)),
         tvBrowse: propsBool(props, 'tvBrowse') || propsBool(props, 'compact'),
         autofocus: propsBool(props, 'autofocus'),
       );
@@ -1359,7 +1360,7 @@ Widget? paintFoundationType(
           emptyTitle: propsStringOr(
             props,
             'emptyTitle',
-            'No channels in this view',
+            context.l10n.engineRuntimeNoChannelsInView,
           ),
           columnWidth: propsLength(context, props, 'columnWidth') ??
               EpgGuideTokens.columnWidth,
@@ -1414,7 +1415,7 @@ Widget? paintFoundationType(
       );
     case 'catalogListEmpty':
       return CatalogListEmpty(
-        title: propsStringOr(props, 'title', 'Nothing here'),
+        title: propsStringOr(props, 'title', context.l10n.engineRuntimeNothingHere),
         subtitle: propsStringOr(
           props,
           'subtitle',
@@ -1425,7 +1426,7 @@ Widget? paintFoundationType(
       );
     case 'catalogLoadingTicker':
       return CatalogLoadingTicker(
-        title: propsStringOr(props, 'title', 'Loading…'),
+        title: propsStringOr(props, 'title', context.l10n.engineRuntimeLoading),
         detail: propsStringOr(props, 'detail', propsStringOr(props, 'subtitle', '')),
       );
     case 'inlineAlert':
@@ -1573,7 +1574,7 @@ Widget? paintFoundationType(
         height: propsLengthOr(context, props, 'height', 320),
         child: CatalogSideRail(
           items: side.isEmpty
-              ? const [(id: 'all', label: 'All')]
+              ? [(id: 'all', label: context.l10n.addonsPackSelectAll)]
               : side,
           selectedId: propsString(props, 'selectedId') ??
               (side.isEmpty ? 'all' : side.first.id),
@@ -1587,7 +1588,7 @@ Widget? paintFoundationType(
         height: propsLengthOr(context, props, 'height', 320),
         child: CatalogCategoryRail(
           items: cats.isEmpty
-              ? const [CatalogCategoryItem(id: 'all', label: 'All', fixed: true)]
+              ? [CatalogCategoryItem(id: 'all', label: context.l10n.addonsPackSelectAll, fixed: true)]
               : cats,
           selectedId: propsString(props, 'selectedId') ??
               (cats.isEmpty ? 'all' : cats.first.id),
@@ -1605,9 +1606,9 @@ Widget? paintFoundationType(
     case 'catalogSearchTypeSegment':
       return CatalogSearchTypeSegment(
         value: _searchMediaFilter(propsString(props, 'value')),
-        allLabel: propsStringOr(props, 'allLabel', 'All'),
-        movieLabel: propsStringOr(props, 'movieLabel', 'Films'),
-        seriesLabel: propsStringOr(props, 'seriesLabel', 'Series'),
+        allLabel: propsStringOr(props, 'allLabel', context.l10n.addonsPackSelectAll),
+        movieLabel: propsStringOr(props, 'movieLabel', context.l10n.engineRuntimeFilms),
+        seriesLabel: propsStringOr(props, 'seriesLabel', context.l10n.engineRuntimeSeries),
         onChanged: (_) {},
       );
     case 'catalogSearchScoreArc':

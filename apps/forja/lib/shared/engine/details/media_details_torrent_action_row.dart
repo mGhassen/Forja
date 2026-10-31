@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:forja/l10n/l10n.dart';
 import 'package:forja/shared/engine/store/external_list_providers.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja/shared/player/platform/youtube_stream_service.dart';
@@ -111,8 +112,10 @@ class _MediaDetailsTorrentActionRowState
               onPressed: () => Navigator.pop(dialogContext, 'simkl_rate'),
               child: Text(
                 widget.userSimklRating != null
-                    ? 'Simkl rating: ${widget.userSimklRating}'
-                    : 'Rate on Simkl',
+                    ? dialogContext.l10n.engineDetailsSimklRating(
+                        widget.userSimklRating!,
+                      )
+                    : dialogContext.l10n.engineDetailsRateOnSimkl,
               ),
             ),
           ],
@@ -157,7 +160,10 @@ class _MediaDetailsTorrentActionRowState
   }
 
   Widget _buildRow(BuildContext context) {
-    final playLabel = widget.hasResume ? 'Resume' : 'Play';
+    final l10n = context.l10n;
+    final playLabel = widget.hasResume
+        ? l10n.downloadsResume
+        : l10n.engineDetailsPlay;
     var attachNextPlayFocus = widget.playFocusNode != null;
     final canPlay = !widget.isStreamingExtracting;
     final children = <Widget>[];
@@ -183,7 +189,9 @@ class _MediaDetailsTorrentActionRowState
       final idx = tvIndex;
       children.addAll([
         _playButton(
-          label: widget.isStreamingExtracting ? 'Loading' : playLabel,
+          label: widget.isStreamingExtracting
+              ? l10n.engineDetailsLoading
+              : playLabel,
           icon: widget.isStreamingExtracting ? null : Icons.play_arrow_rounded,
           tone: HeroPillPlayTone.primary,
           onTap: canPlay ? widget.onPlayStreaming : null,
@@ -226,8 +234,8 @@ class _MediaDetailsTorrentActionRowState
           slots: [
             HeroPillIconSlot(
               icon: Icons.delete_outline_rounded,
-              label: 'Clear',
-              tooltip: 'Clear progress & stream cache',
+              label: l10n.dataClear,
+              tooltip: l10n.engineDetailsClearTooltip,
               onTap: () {
                 widget.onClearProgress?.call();
                 Future<void>.delayed(const Duration(milliseconds: 400), () {
@@ -246,7 +254,7 @@ class _MediaDetailsTorrentActionRowState
       final idx = tvIndex++;
       children.addAll([
         HeroPillPlayButton(
-          label: 'Trailer',
+          label: l10n.engineDetailsTrailer,
           icon: Icons.smart_display_outlined,
           tone: HeroPillPlayTone.secondary,
           onTap: () => _openBestTrailer(context),
@@ -279,7 +287,7 @@ class _MediaDetailsTorrentActionRowState
           slots: [
             HeroPillIconSlot(
               icon: Icons.more_vert_rounded,
-              tooltip: 'More',
+              tooltip: l10n.engineDetailsMore,
               onTap: () => _showOverflowMenu(context),
             ),
           ],

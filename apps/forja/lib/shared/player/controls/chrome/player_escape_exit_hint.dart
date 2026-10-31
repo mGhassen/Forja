@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:forja/l10n/l10n.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
@@ -10,13 +11,15 @@ class PlayerEscapeExitHint extends StatelessWidget {
   /// Defaults to Back copy on TV density, Esc copy elsewhere.
   final String? message;
 
-  static const backMessage = 'Press Back again to exit';
-  static const escMessage = 'Press Esc again to exit';
-
   @override
   Widget build(BuildContext context) {
     final tv = ShellPaintScope.usesTvDensityOf(context);
-    final text = message ?? (tv ? backMessage : escMessage);
+    final l10n = context.l10n;
+    final text =
+        message ??
+        (tv
+            ? l10n.playerControlPressBackAgainToExit
+            : l10n.playerControlPressEscAgainToExit);
     return Positioned(
       top: tv ? 10 : 16,
       right: tv ? 10 : 16,

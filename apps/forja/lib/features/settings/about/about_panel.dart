@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja/features/settings/providers/settings_panel_providers.dart';
 import 'package:forja/features/settings/ui/settings_ui.dart';
+import 'package:forja/l10n/l10n.dart';
 import 'package:forja/shell/feedback/forja_toast.dart';
 import 'package:forja/shared/services/update/app_updater_service.dart';
 import 'package:forja/shared/telemetry/product_analytics.dart';
@@ -35,7 +36,7 @@ class _SettingsAboutPanelState extends State<SettingsAboutPanel> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Check for new versions of Forja',
+            context.l10n.aboutCheckForUpdatesBlurb,
             style: TextStyle(
               fontSize: SettingsTokens.typeSizeOf(context, 13),
               color: ForjaShellColors.textSecondary,
@@ -44,7 +45,9 @@ class _SettingsAboutPanelState extends State<SettingsAboutPanel> {
           ),
           const SizedBox(height: 14),
           SettingsFilledButton(
-            label: _isChecking ? 'Checking...' : 'Check for Updates',
+            label: _isChecking
+                ? context.l10n.aboutCheckingButton
+                : context.l10n.aboutCheckForUpdatesButton,
             icon: Icons.system_update_rounded,
             busy: _isChecking,
             onPressed: _isChecking ? null : _checkForUpdates,
@@ -67,16 +70,16 @@ class _SettingsAboutPanelState extends State<SettingsAboutPanel> {
           unawaited(UpdateDialog.show(context, result.info!));
         } else if (result.isFailed) {
           ForjaToast.error(
-            result.failureMessage ?? 'Could not check for updates.',
+            result.failureMessage ?? context.l10n.aboutCheckForUpdatesFailed,
           );
         } else {
-        ForjaToast.success("You're on the latest version");
+        ForjaToast.success(context.l10n.aboutUpToDate);
         }
       }
     } catch (e) {
       if (mounted) {
         setState(() => _isChecking = false);
-        ForjaToast.error('Failed to check for updates: $e');
+        ForjaToast.error(context.l10n.aboutCheckForUpdatesError('$e'));
       }
     }
   }
@@ -104,12 +107,12 @@ class _SettingsCrashReportingRowState
         _override ?? ref.watch(crashReportingEnabledProvider).valueOrNull;
     if (enabled == null) return const SizedBox.shrink();
     return SettingsToggleRow(
-      title: 'Crash reporting',
+      title: context.l10n.aboutCrashReportingTitle,
       subtitle: kDebugMode
-          ? 'Inactive in debug builds. Your choice is saved for release.'
+          ? context.l10n.aboutTelemetryDebugSubtitle
           : Telemetry.isConfigured
-          ? 'Sends crash details so we can fix bugs. No passwords or stream links.'
-          : 'Not available in this build. Your choice is still saved.',
+          ? context.l10n.aboutCrashReportingSubtitle
+          : context.l10n.aboutTelemetryUnavailableSubtitle,
       value: enabled,
       onChanged: _setCrashReporting,
     );
@@ -122,22 +125,20 @@ class _SettingsCrashReportingRowState
       ref.invalidate(crashReportingEnabledProvider);
       if (!mounted) return;
       if (value && kDebugMode) {
-        ForjaToast.info(
-          'Saved. Crash reporting stays off in debug builds.',
-        );
+        ForjaToast.info(context.l10n.aboutCrashReportingSavedDebug);
       } else if (value && !Telemetry.isConfigured) {
-        ForjaToast.info('Crash reporting is not available in this build yet.');
+        ForjaToast.info(context.l10n.aboutCrashReportingUnavailable);
       } else if (value && Telemetry.isActive) {
-        ForjaToast.success('Crash reporting on');
+        ForjaToast.success(context.l10n.aboutCrashReportingOn);
       } else if (!value) {
-        ForjaToast.success('Crash reporting off');
+        ForjaToast.success(context.l10n.aboutCrashReportingOff);
       }
     } catch (e, st) {
       debugPrint('[About] crash reporting toggle failed: $e\n$st');
       if (!mounted) return;
       setState(() => _override = null);
       ref.invalidate(crashReportingEnabledProvider);
-      ForjaToast.error('Could not update crash reporting');
+      ForjaToast.error(context.l10n.aboutCrashReportingUpdateFailed);
     }
   }
 }
@@ -161,12 +162,12 @@ class _SettingsProductAnalyticsRowState
         _override ?? ref.watch(productAnalyticsEnabledProvider).valueOrNull;
     if (enabled == null) return const SizedBox.shrink();
     return SettingsToggleRow(
-      title: 'Product analytics',
+      title: context.l10n.aboutProductAnalyticsTitle,
       subtitle: kDebugMode
-          ? 'Inactive in debug builds. Your choice is saved for release.'
+          ? context.l10n.aboutTelemetryDebugSubtitle
           : ProductAnalytics.isConfigured
-          ? 'Shares how you use Forja so we can improve it.'
-          : 'Not available in this build. Your choice is still saved.',
+          ? context.l10n.aboutProductAnalyticsSubtitle
+          : context.l10n.aboutTelemetryUnavailableSubtitle,
       value: enabled,
       onChanged: _setEnabled,
     );
@@ -179,22 +180,20 @@ class _SettingsProductAnalyticsRowState
       ref.invalidate(productAnalyticsEnabledProvider);
       if (!mounted) return;
       if (value && kDebugMode) {
-        ForjaToast.info(
-          'Saved. Product analytics stays off in debug builds.',
-        );
+        ForjaToast.info(context.l10n.aboutProductAnalyticsSavedDebug);
       } else if (value && !ProductAnalytics.isConfigured) {
-        ForjaToast.info('Product analytics is not available in this build yet.');
+        ForjaToast.info(context.l10n.aboutProductAnalyticsUnavailable);
       } else if (value && ProductAnalytics.isActive) {
-        ForjaToast.success('Product analytics on');
+        ForjaToast.success(context.l10n.aboutProductAnalyticsOn);
       } else if (!value) {
-        ForjaToast.success('Product analytics off');
+        ForjaToast.success(context.l10n.aboutProductAnalyticsOff);
       }
     } catch (e, st) {
       debugPrint('[About] product analytics toggle failed: $e\n$st');
       if (!mounted) return;
       setState(() => _override = null);
       ref.invalidate(productAnalyticsEnabledProvider);
-      ForjaToast.error('Could not update product analytics');
+      ForjaToast.error(context.l10n.aboutProductAnalyticsUpdateFailed);
     }
   }
 }
@@ -216,10 +215,8 @@ class _SettingsMacOsKeychainRowState
     final enabled = ref.watch(macOsKeychainEnabledProvider).valueOrNull;
     if (enabled == null) return const SizedBox.shrink();
     return SettingsToggleRow(
-      title: 'Store secrets in Keychain',
-      subtitle:
-          'Off by default (local app file). Turn on to use the macOS Keychain. '
-          'Forja explains first; the system may ask for your password once.',
+      title: context.l10n.aboutKeychainRowTitle,
+      subtitle: context.l10n.aboutKeychainRowSubtitle,
       value: enabled,
       onChanged: _setEnabled,
       adminOnly: true,
@@ -233,7 +230,7 @@ class _SettingsMacOsKeychainRowState
       final accepted = result == ForjaKeychainConsent.accepted;
       ref.invalidate(macOsKeychainEnabledProvider);
       if (accepted) {
-        ForjaToast.success('Keychain enabled for secrets');
+        ForjaToast.success(context.l10n.aboutKeychainEnabled);
       }
       return;
     }
@@ -242,6 +239,6 @@ class _SettingsMacOsKeychainRowState
     );
     ref.invalidate(macOsKeychainEnabledProvider);
     if (!mounted) return;
-    ForjaToast.success('Using local file storage');
+    ForjaToast.success(context.l10n.aboutKeychainLocalStorage);
   }
 }

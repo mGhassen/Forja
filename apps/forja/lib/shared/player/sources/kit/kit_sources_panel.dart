@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:forja/l10n/l10n.dart';
 import 'package:forja/shared/engine/details/sources_panel_tv.dart';
 import 'package:forja/shared/player/sources/torrent/torrent_source_tiles.dart';
 import 'package:forja/shell/core/forja_shell_scope.dart';
@@ -190,14 +191,14 @@ class KitSourcesPanel extends StatelessWidget {
           if (showReload)
             action(
               index: 0,
-              tooltip: 'Reload',
+              tooltip: context.l10n.packsReload,
               icon: Icons.refresh_rounded,
               onTap: onReload,
             ),
           if (onClose != null)
             action(
               index: showReload ? 1 : 0,
-              tooltip: 'Close',
+              tooltip: context.l10n.settingsUiClose,
               icon: Icons.close_rounded,
               onTap: onClose,
             ),
@@ -227,8 +228,8 @@ class KitSourcesPanel extends StatelessWidget {
       onTabsLeftEdge: onTabsLeftEdge,
       browseCategoryTabIds: browseCategoryTabIds,
       emptyQueryMessage: browseCategoryTabIds.isEmpty
-          ? 'No matches'
-          : 'No channels match',
+          ? context.l10n.playerSourceNoMatches
+          : context.l10n.playerSourceNoChannelsMatch,
       channelQuery: channelQuery,
       onChannelQueryChanged: onChannelQueryChanged,
       showInlineSearch: showInlineSearch,
@@ -386,7 +387,7 @@ class KitSourcesExpandingSearch extends StatelessWidget {
                 onChanged: onChanged,
                 onEscape: onEscape,
                 onSubmitted: (_) => focusNode.unfocus(),
-                browsePlaceholder: 'Search channels…',
+                browsePlaceholder: context.l10n.playerSourceSearchChannelsHint,
                 browseHintStyle: TextStyle(
                   color: Colors.white.withValues(alpha: 0.38),
                   fontSize: ShellTokens.eventSearchFontSizeTv,

@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:forja/l10n/l10n.dart';
 import 'package:forja/shared/engine/engine.dart';
 import 'package:forja/shared/engine/models/plugin_language.dart';
 import 'package:forja/shared/lan/lan_p2p_playback.dart';
@@ -252,6 +253,7 @@ Future<EngineAutoPlayPick?> runEngineAutoPlay({
   final settings = SettingsService();
   final profile = PlatformPlayback.capabilities;
   final trace = PlaybackStartTrace.instance;
+  final l10n = context.l10n;
   final session = playSession ?? enginePlaySession;
   final extract = engineExtractContext(
     open: session?.effectiveOpen,
@@ -481,10 +483,9 @@ Future<EngineAutoPlayPick?> runEngineAutoPlay({
     if (pluginIds.isEmpty) {
       final action = Completer<void>();
       failureNotifier.value = ResolveFailure(
-        title: 'Couldn’t start playback',
-        detail:
-            'No Forja plugins are on for this title. Open Sources → Forja and turn on providers.',
-        primaryLabel: 'Close',
+        title: l10n.sharedPlaybackCouldNotStart,
+        detail: l10n.sharedPlaybackNoPluginsOn,
+        primaryLabel: l10n.settingsUiClose,
         primaryIcon: Icons.close_rounded,
         onPrimary: () {
           if (!action.isCompleted) action.complete();
@@ -1030,13 +1031,13 @@ Future<EngineAutoPlayPick?> runEngineAutoPlay({
 
     final action = Completer<bool>();
     failureNotifier.value = ResolveFailure(
-      title: 'Couldn’t start playback',
-      detail: 'None of the Forja plugins returned a working stream right now.',
-      primaryLabel: 'Try again',
+      title: l10n.sharedPlaybackCouldNotStart,
+      detail: l10n.sharedPlaybackNoWorkingStream,
+      primaryLabel: l10n.sharedPlaybackTryAgain,
       onPrimary: () {
         if (!action.isCompleted) action.complete(true);
       },
-      secondaryLabel: 'Close',
+      secondaryLabel: l10n.settingsUiClose,
       onSecondary: () {
         if (!action.isCompleted) action.complete(false);
       },

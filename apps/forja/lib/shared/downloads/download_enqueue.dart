@@ -12,6 +12,7 @@ import 'package:forja/shared/downloads/open_settings_downloads.dart';
 import 'package:forja/shared/downloads/storage_space_helper.dart';
 import 'package:forja/shared/player/screens/utils.dart';
 import 'package:forja/shell/feedback/forja_toast.dart';
+import 'package:forja/shell/routing/shell_ambient_l10n.dart';
 import 'package:rust/rust.dart';
 
 /// Row label for a saved file. Prefer the Sources name (`Castle · Shared`).
@@ -118,6 +119,7 @@ Future<SourceDownloadPrep?> prepareStremioStreamDownload({
   int? episode,
 }) async {
   if (!PlatformInfo.offlineDownloadsEnabled) return null;
+  final l10n = shellAmbientL10n;
   final profile = PlatformPlayback.capabilities;
   final precheck = classifyStremioStream(stream, profile);
 
@@ -127,12 +129,12 @@ Future<SourceDownloadPrep?> prepareStremioStreamDownload({
   }
 
   if (precheck is StremioExternalLink) {
-    ForjaToast.info('External links can’t be saved offline');
+    ForjaToast.info(l10n.sharedDownloadsExternalNoOffline);
     return null;
   }
 
   if (precheck is! StremioPlayable) {
-    ForjaToast.info("Torrents aren't available for offline download yet");
+    ForjaToast.info(l10n.sharedDownloadsTorrentsNoOffline);
     return null;
   }
 
@@ -159,7 +161,7 @@ Future<SourceDownloadPrep?> prepareStremioStreamDownload({
   final err = (probe.error ?? '').toLowerCase();
   if (err == 'dash') {
     return SourceDownloadPrep(
-      sizeLabel: "DASH streams can't be saved offline yet",
+      sizeLabel: l10n.sharedDownloadsDashNoOffline,
       canConfirm: false,
       blockReason: 'dash',
       commit: () async {},
@@ -167,7 +169,7 @@ Future<SourceDownloadPrep?> prepareStremioStreamDownload({
   }
   if (err == 'not downloadable') {
     return SourceDownloadPrep(
-      sizeLabel: 'This stream can’t be saved offline',
+      sizeLabel: l10n.sharedDownloadsStreamNoOffline,
       canConfirm: false,
       blockReason: 'blocked',
       commit: () async {},
@@ -180,7 +182,7 @@ Future<SourceDownloadPrep?> prepareStremioStreamDownload({
     final dir = await DownloadPathHelper.getDownloadsDirectoryPath();
     final space = await StorageSpaceHelper.getAvailableSpace(dir);
     if (space != null) {
-      freeLine = 'Free ${space.freeFormatted}';
+      freeLine = l10n.sharedDownloadsFree(space.freeFormatted);
       if (probe.hasSize) {
         enough = await StorageSpaceHelper.hasEnoughSpace(dir, probe.bytes);
       }
@@ -278,6 +280,7 @@ Future<DownloadTask?> enqueueVodDownload({
   bool headersAlreadyResolved = false,
 }) async {
   if (!PlatformInfo.offlineDownloadsEnabled) return null;
+  final l10n = shellAmbientL10n;
   final rawUrl = url.trim();
 
   try {
@@ -318,25 +321,25 @@ Future<DownloadTask?> enqueueVodDownload({
     final sameSlot = existing != null && existing.id == task.id;
     if (sameSlot && existing.isCompleted) {
       ForjaToast.info(
-        'Already saved offline',
+        l10n.sharedDownloadsAlreadySaved,
         duration: const Duration(seconds: 5),
-        actionLabel: 'View',
+        actionLabel: l10n.sharedDownloadsView,
         onAction: openSettingsDownloads,
       );
     } else if (sameSlot &&
         (existing.isDownloading ||
             existing.status == DownloadStatus.queued)) {
       ForjaToast.info(
-        'Already downloading $title',
+        l10n.sharedDownloadsAlreadyDownloading(title),
         duration: const Duration(seconds: 5),
-        actionLabel: 'View',
+        actionLabel: l10n.sharedDownloadsView,
         onAction: openSettingsDownloads,
       );
     } else {
       ForjaToast.success(
-        'Downloading $title',
+        l10n.sharedDownloadsDownloadingTitle(title),
         duration: const Duration(seconds: 5),
-        actionLabel: 'View',
+        actionLabel: l10n.sharedDownloadsView,
         onAction: openSettingsDownloads,
       );
     }
@@ -354,7 +357,7 @@ Future<DownloadTask?> enqueueVodDownload({
     return task;
   } catch (e) {
     ForjaToast.error(
-      'Download failed to start',
+      l10n.sharedDownloadsFailedToStart,
       duration: const Duration(seconds: 4),
     );
     return null;

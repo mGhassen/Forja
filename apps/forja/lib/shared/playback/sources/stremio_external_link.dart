@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:forja/l10n/l10n.dart';
 
 import 'package:forja/shared/player/controls/sources/panel/player_sources_panel.dart';
 import 'package:forja/shell/routing/app_router.dart';
@@ -64,7 +65,7 @@ Future<bool> handleStremioExternalUrl(
   }
 
   if (context.mounted) {
-    ForjaToast.error('Unable to handle this link');
+    ForjaToast.error(context.l10n.sharedPlaybackUnableHandleLink);
   }
   return false;
 }

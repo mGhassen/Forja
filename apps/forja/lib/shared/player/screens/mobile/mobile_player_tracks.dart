@@ -22,8 +22,12 @@ mixin _MobilePlayerTracks on ConsumerState<MobilePlayerScreen> {
     }
     final url = (s['url'] ?? '').toString();
     if (url.isEmpty) return false;
-    final label = (s['display'] ?? s['language'] ?? s['lang'] ?? 'Subtitle')
-        .toString();
+    final label =
+        (s['display'] ??
+                s['language'] ??
+                s['lang'] ??
+                context.l10n.playerScreenSubtitle)
+            .toString();
     final isTranslated =
         s['translated'] == true || url.contains('/subtitlecat-translate');
     if (userInitiated) {
@@ -68,7 +72,7 @@ mixin _MobilePlayerTracks on ConsumerState<MobilePlayerScreen> {
       if (showFailureToast || userInitiated) {
         _s._statusController.upsert(
           'subtitle',
-          'Subtitle failed',
+          context.l10n.playerScreenSubtitleFailed,
           kind: StatusRouletteKind.failed,
           dismissAfter: const Duration(seconds: 2),
         );

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:forja/l10n/l10n.dart';
 import 'package:forja/shared/platform/platform_info.dart';
 import 'package:forja/shared/player/controls/menus/player_popup_panel.dart';
 import 'package:forja/shared/player/platform/built_in_player_engine_fit.dart';
@@ -45,7 +46,7 @@ class PlayerAppMenu {
   }) {
     PlayerPopupPanel.show(
       context: context,
-      title: 'Player',
+      title: context.l10n.playerControlPlayer,
       leadingIcon: Icons.smart_display_outlined,
       anchorContext: anchorContext,
       centered: centered,
@@ -94,7 +95,7 @@ class PlayerAppMenu {
       shrinkWrap: true,
       physics: physics ?? const ClampingScrollPhysics(),
       children: [
-        if (showExternal) const _SectionLabel('Built-in'),
+        if (showExternal) _SectionLabel((l) => l.playerControlBuiltIn),
         ...engines.map((engine) {
           return PlayerPopupOptionChip(
             label: engine.displayName,
@@ -111,7 +112,7 @@ class PlayerAppMenu {
         }),
         if (showExternal) ...[
           const SizedBox(height: 14),
-          const _SectionLabel('External app'),
+          _SectionLabel((l) => l.playerControlExternalApp),
           _InstalledExternalPlayers(
             usingBuiltIn: usingBuiltIn,
             externalPlayerName: externalPlayerName,
@@ -168,7 +169,7 @@ class _InstalledExternalPlayersState extends State<_InstalledExternalPlayers> {
           return Padding(
             padding: const EdgeInsets.fromLTRB(4, 4, 4, 8),
             child: Text(
-              'No external players installed',
+              context.l10n.playerControlNoExternalPlayers,
               style: GoogleFonts.plusJakartaSans(
                 color: ForjaShellColors.textSecondary,
                 fontSize: 12,
@@ -202,16 +203,16 @@ class _InstalledExternalPlayersState extends State<_InstalledExternalPlayers> {
 }
 
 class _SectionLabel extends StatelessWidget {
-  const _SectionLabel(this.text);
+  const _SectionLabel(this.textOf);
 
-  final String text;
+  final String Function(AppLocalizations l10n) textOf;
 
   @override
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.only(left: 2, bottom: 6),
       child: Text(
-        text.toUpperCase(),
+        textOf(context.l10n).toUpperCase(),
         style: GoogleFonts.plusJakartaSans(
           color: ForjaShellColors.textSecondary,
           fontSize: 10,

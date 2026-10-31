@@ -124,6 +124,7 @@ mixin _MobilePlayerSourcesProvider on ConsumerState<MobilePlayerScreen> {
   }
 
   Future<List<StreamSource>?> _switchProvider(String newProvider) async {
+    final l10n = context.l10n;
     _s._providerPinned = true;
     _s._sourcePinned = false;
     unawaited(SettingsService().setPlayerAutoServer(false));
@@ -226,7 +227,11 @@ mixin _MobilePlayerSourcesProvider on ConsumerState<MobilePlayerScreen> {
               dismissAfter: const Duration(seconds: 2),
             );
             ForjaToast.warning(
-              PlayerProviderMenu.unavailableMessage(newProvider, provider),
+              PlayerProviderMenu.unavailableMessage(
+                newProvider,
+                provider,
+                l10n,
+              ),
               duration: const Duration(seconds: 2),
             );
             setState(() => _s._hasError = true);
@@ -250,7 +255,11 @@ mixin _MobilePlayerSourcesProvider on ConsumerState<MobilePlayerScreen> {
               dismissAfter: const Duration(seconds: 2),
             );
             ForjaToast.warning(
-              PlayerProviderMenu.unavailableMessage(newProvider, provider),
+              PlayerProviderMenu.unavailableMessage(
+                newProvider,
+                provider,
+                l10n,
+              ),
               duration: const Duration(seconds: 2),
             );
             setState(() => _s._hasError = true);
@@ -338,7 +347,7 @@ mixin _MobilePlayerSourcesProvider on ConsumerState<MobilePlayerScreen> {
             dismissAfter: const Duration(seconds: 2),
           );
           ForjaToast.warning(
-            PlayerProviderMenu.unavailableMessage(newProvider, provider),
+            PlayerProviderMenu.unavailableMessage(newProvider, provider, l10n),
             duration: const Duration(seconds: 2),
           );
           setState(() => _s._hasError = true);
@@ -353,7 +362,7 @@ mixin _MobilePlayerSourcesProvider on ConsumerState<MobilePlayerScreen> {
           dismissAfter: const Duration(seconds: 2),
         );
         ForjaToast.warning(
-          PlayerProviderMenu.unavailableMessage(newProvider, provider),
+          PlayerProviderMenu.unavailableMessage(newProvider, provider, l10n),
           duration: const Duration(seconds: 2),
         );
         setState(() => _s._hasError = true);

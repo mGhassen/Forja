@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:forja/l10n/l10n.dart';
 import 'package:forja/shell/feedback/forja_toast.dart';
 import 'package:forja_foundation/protocol/protocol.dart';
 import 'package:forja/shared/lan/lan_client_service.dart';
@@ -154,6 +155,7 @@ Future<void> _playTorrent({
   int? episode,
   required KitPlayHooks hooks,
 }) async {
+  final l10n = context.l10n;
   final profile = PlatformPlayback.capabilities;
   if (!context.mounted) return;
   if (!await ensureLanP2pPlayback(context)) return;
@@ -178,9 +180,9 @@ Future<void> _playTorrent({
     }
     final action = Completer<void>();
     session.failureNotifier.value = ResolveFailure(
-      title: 'Couldn’t start playback',
+      title: l10n.playerSourcePlaybackFailedTitle,
       detail: message,
-      primaryLabel: 'Close',
+      primaryLabel: l10n.settingsUiClose,
       primaryIcon: Icons.close_rounded,
       onPrimary: () {
         if (!action.isCompleted) action.complete();
@@ -206,8 +208,8 @@ Future<void> _playTorrent({
   try {
     if (!magnetLink.startsWith('magnet:')) {
       session.torrentStatusNotifier.value = torrentLoadingStatusGeneric(
-        'Resolving download link…',
-        hint: 'Fetching the magnet from the torrent page.',
+        l10n.playerSourceResolvingLink,
+        hint: l10n.playerSourceResolvingLinkHint,
       );
       final resolved = await linkResolver.resolve(magnetLink);
       if (cancelled || session.cancelled) {
@@ -218,7 +220,7 @@ Future<void> _playTorrent({
       if (resolved.isMagnet) {
         magnetLink = resolved.link;
       } else {
-        await fail('Could not resolve a magnet link for this torrent.');
+        await fail(l10n.playerSourceMagnetResolveFailed);
         return;
       }
     }
@@ -260,7 +262,7 @@ Future<void> _playTorrent({
       return;
     }
     if (playback == null || playback.url.isEmpty) {
-      await fail('Torrent stream failed to start.');
+      await fail(l10n.playerSourceTorrentStartFailed);
       return;
     }
     resolvedUrl = playback.url;
@@ -299,7 +301,7 @@ Future<void> _playTorrent({
   }
 
   if (session.dialogContext == null) {
-    await fail('Torrent stream failed to start.');
+    await fail(l10n.playerSourceTorrentStartFailed);
     return;
   }
 
@@ -340,6 +342,7 @@ Future<void> _playStremio({
   int? episode,
   required KitPlayHooks hooks,
 }) async {
+  final l10n = context.l10n;
   final settings = SettingsService();
   final profile = PlatformPlayback.capabilities;
   if (!context.mounted) return;
@@ -411,9 +414,7 @@ Future<void> _playStremio({
       );
     } catch (_) {
       if (context.mounted) {
-        ForjaToast.info(
-          'Couldn\'t start this stream. Try again or pick another source.',
-        );
+        ForjaToast.info(l10n.playerSourceStreamStartFailed);
       }
     }
     return;
@@ -517,9 +518,9 @@ Future<void> _playStremio({
       session.dialogContext!.mounted) {
     final action = Completer<void>();
     session.failureNotifier.value = ResolveFailure(
-      title: 'Couldn’t start playback',
+      title: l10n.playerSourcePlaybackFailedTitle,
       detail: resolved.message,
-      primaryLabel: 'Close',
+      primaryLabel: l10n.settingsUiClose,
       primaryIcon: Icons.close_rounded,
       onPrimary: () {
         if (!action.isCompleted) action.complete();

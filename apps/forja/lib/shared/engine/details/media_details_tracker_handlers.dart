@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:forja/l10n/l10n.dart';
 import 'package:forja/shared/services/tracker/simkl_service.dart';
 import 'package:rust/rust.dart';
 import 'package:forja/shell/feedback/forja_toast.dart';
@@ -32,12 +33,13 @@ class MediaDetailsTrackerHandlers {
   }
 
   Future<void> handleOverflow(String value) async {
+    final l10n = context.l10n;
     switch (value) {
       case 'simkl_rate':
         if (await SimklService().isLoggedIn()) {
           showSimklRatingDialog();
         } else if (mounted) {
-          ForjaToast.error('Login to Simkl first in Settings');
+          ForjaToast.error(l10n.engineDetailsSimklLoginFirst);
         }
     }
   }
@@ -89,9 +91,9 @@ class MediaDetailsTrackerHandlers {
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setDialogState) => AlertDialog(
           backgroundColor: const Color(0xFF141414),
-          title: const Text(
-            'Rate on Simkl',
-            style: TextStyle(color: Colors.white),
+          title: Text(
+            ctx.l10n.engineDetailsRateOnSimkl,
+            style: const TextStyle(color: Colors.white),
           ),
           content: Column(
             mainAxisSize: MainAxisSize.min,
@@ -133,16 +135,16 @@ class MediaDetailsTrackerHandlers {
                   Navigator.pop(ctx);
                   _removeSimklRating();
                 },
-                child: const Text(
-                  'Remove',
-                  style: TextStyle(color: Colors.redAccent),
+                child: Text(
+                  ctx.l10n.addonsPackGreenPlayRemove,
+                  style: const TextStyle(color: Colors.redAccent),
                 ),
               ),
             TextButton(
               onPressed: () => Navigator.pop(ctx),
-              child: const Text(
-                'Cancel',
-                style: TextStyle(color: Colors.white54),
+              child: Text(
+                ctx.l10n.settingsUiCancel,
+                style: const TextStyle(color: Colors.white54),
               ),
             ),
             TextButton(
@@ -150,9 +152,9 @@ class MediaDetailsTrackerHandlers {
                 Navigator.pop(ctx);
                 _rateSimklItem(selected);
               },
-              child: const Text(
-                'Rate',
-                style: TextStyle(color: Color(0xFF0BF5E5)),
+              child: Text(
+                ctx.l10n.engineDetailsRate,
+                style: const TextStyle(color: Color(0xFF0BF5E5)),
               ),
             ),
           ],

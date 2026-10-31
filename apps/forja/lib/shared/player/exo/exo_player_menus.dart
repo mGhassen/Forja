@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 
+import 'package:forja/l10n/l10n.dart';
 import 'package:forja/shared/player/controls/menus/player_menus.dart';
 import 'package:forja/shared/player/controls/menus/player_popup_panel.dart';
 import 'package:forja/shared/player/exo/exo_player_bridge.dart';
@@ -22,10 +23,11 @@ abstract final class ExoPlayerMenus {
   }) {
     return PlayerPopupPanel.show(
       context: context,
-      title: 'Audio',
+      title: context.l10n.playerControlAudio,
       leadingIcon: Icons.audiotrack_rounded,
       anchorContext: anchorContext,
       child: _audioTrackColumn(
+        context,
         tracks: tracks.audio,
         onSelect: onSelect,
       ),
@@ -79,6 +81,7 @@ abstract final class ExoPlayerMenus {
     BuildContext? anchorContext,
     required EdgeInsets margin,
   }) async {
+    final l10n = context.l10n;
     final subtitlesOff =
         tracks.textOff && selectedExternalSubUrl == null;
     final selectedEmbedded = tracks.text.where((t) => t.selected).firstOrNull;
@@ -116,7 +119,7 @@ abstract final class ExoPlayerMenus {
 
     await PlayerPopupPanel.show(
       context: context,
-      title: 'Subtitles',
+      title: l10n.playerControlSubtitles,
       leadingIcon: Icons.subtitles_outlined,
       alignment: Alignment.bottomLeft,
       margin: margin,
@@ -162,9 +165,9 @@ abstract final class ExoPlayerMenus {
               ),
             ),
           if (!isFetchingSubs && folderKeys.isEmpty)
-            const Text(
-              'None available',
-              style: TextStyle(color: PlayerPopupTokens.muted),
+            Text(
+              l10n.playerControlNoneAvailable,
+              style: const TextStyle(color: PlayerPopupTokens.muted),
             ),
           for (var i = 0; i < folderKeys.length; i++) ...[
             if (i != 0) const SizedBox(height: 8),
@@ -258,7 +261,7 @@ abstract final class ExoPlayerMenus {
                 title: t.label,
                 language: t.language,
               ),
-              subtitle: 'In-stream',
+              subtitle: context.l10n.playerControlInStream,
               selected: selectedSubtitleId != null &&
                   selectedExternalSubUrl == null &&
                   t.id == selectedSubtitleId,
@@ -270,8 +273,11 @@ abstract final class ExoPlayerMenus {
           for (final s in online)
             PlayerPopupListTile(
               label: _onlineSubtitleLabel(s, langKey),
-              subtitle: (s['translated'] == true ? 'Translated · ' : '') +
-                  (s['sourceName']?.toString() ?? 'opensubtitles'),
+              subtitle: s['translated'] == true
+                  ? context.l10n.playerControlTranslatedFrom(
+                      s['sourceName']?.toString() ?? 'opensubtitles',
+                    )
+                  : (s['sourceName']?.toString() ?? 'opensubtitles'),
               selected: selectedExternalSubUrl != null &&
                   s['url'] == selectedExternalSubUrl,
               onTap: () async {
@@ -309,7 +315,7 @@ abstract final class ExoPlayerMenus {
   }) {
     return PlayerPopupPanel.show(
       context: context,
-      title: 'Quality',
+      title: context.l10n.playerControlQuality,
       leadingIcon: Icons.hd_outlined,
       anchorContext: anchorContext,
       child: Padding(
@@ -319,7 +325,7 @@ abstract final class ExoPlayerMenus {
           children: [
             if (!tracks.videoAuto)
               PlayerPopupOptionChip(
-                label: 'Auto',
+                label: context.l10n.settingsUiAuto,
                 selected: false,
                 expanded: true,
                 onTap: () async {
@@ -328,9 +334,9 @@ abstract final class ExoPlayerMenus {
                 },
               ),
             if (tracks.video.isEmpty && !tracks.videoAuto)
-              const Text(
-                'None available',
-                style: TextStyle(color: PlayerPopupTokens.muted),
+              Text(
+                context.l10n.playerControlNoneAvailable,
+                style: const TextStyle(color: PlayerPopupTokens.muted),
               )
             else
               for (final t in tracks.video)
@@ -368,6 +374,7 @@ abstract final class ExoPlayerMenus {
     bool showAutoSource = false,
     BuildContext? anchorContext,
   }) {
+    final l10n = context.l10n;
     showPlayerSettingsMenu(
       context: context,
       anchorContext: anchorContext,
@@ -381,8 +388,8 @@ abstract final class ExoPlayerMenus {
               subtitlePinnedOf != null)
             PlayerSettingsEntry(
               icon: Icons.auto_awesome_rounded,
-              title: 'Auto selection',
-              subtitle: 'Servers, tracks, skip intro',
+              title: l10n.playerControlAutoSelection,
+              subtitle: l10n.playerControlAutoSelectionSubtitle,
               pageBuilder: (_) => StatefulBuilder(
                 builder: (context, setPage) => Column(
                   children: [
@@ -390,7 +397,7 @@ abstract final class ExoPlayerMenus {
                         providerPinnedOf != null &&
                         onAutoServer != null) ...[
                       PlayerPopupToggleRow(
-                        label: 'Auto server',
+                        label: l10n.playerControlAutoServer,
                         value: !providerPinnedOf(),
                         onChanged: (on) async {
                           await onAutoServer(on);
@@ -403,7 +410,7 @@ abstract final class ExoPlayerMenus {
                         sourcePinnedOf != null &&
                         onAutoSource != null) ...[
                       PlayerPopupToggleRow(
-                        label: 'Auto source',
+                        label: l10n.playerControlAutoSource,
                         value: !sourcePinnedOf(),
                         onChanged: (on) async {
                           await onAutoSource(on);
@@ -414,7 +421,7 @@ abstract final class ExoPlayerMenus {
                     ],
                     if (audioPinnedOf != null && onAutoAudio != null) ...[
                       PlayerPopupToggleRow(
-                        label: 'Auto audio',
+                        label: l10n.playerControlAutoAudio,
                         value: !audioPinnedOf(),
                         onChanged: (on) async {
                           await onAutoAudio(on);
@@ -426,7 +433,7 @@ abstract final class ExoPlayerMenus {
                     if (subtitlePinnedOf != null &&
                         onAutoSubtitles != null) ...[
                       PlayerPopupToggleRow(
-                        label: 'Auto subtitles',
+                        label: l10n.playerControlAutoSubtitles,
                         value: !subtitlePinnedOf(),
                         onChanged: (on) async {
                           await onAutoSubtitles(on);
@@ -436,7 +443,7 @@ abstract final class ExoPlayerMenus {
                       const SizedBox(height: 12),
                     ],
                     PlayerPopupToggleRow(
-                      label: 'Auto skip intro',
+                      label: l10n.addonsHostPlaybackAutoSkipIntroTitle,
                       value: SettingsService.autoSkipIntroNotifier.value,
                       onChanged: (on) async {
                         await SettingsService().setAutoSkipIntro(on);
@@ -446,7 +453,7 @@ abstract final class ExoPlayerMenus {
                     ),
                     const SizedBox(height: 12),
                     PlayerPopupToggleRow(
-                      label: 'Auto next episode',
+                      label: l10n.addonsHostPlaybackAutoNextTitle,
                       value: SettingsService.autoNextEpisodeNotifier.value,
                       onChanged: (on) async {
                         await SettingsService().setAutoNextEpisode(on);
@@ -456,7 +463,7 @@ abstract final class ExoPlayerMenus {
                     ),
                     const SizedBox(height: 12),
                     PlayerPopupToggleRow(
-                      label: 'Content warnings',
+                      label: l10n.addonsHostPlaybackContentWarningsTitle,
                       value: SettingsService.contentWarningsNotifier.value,
                       onChanged: (on) async {
                         await SettingsService().setContentWarnings(on);
@@ -470,8 +477,8 @@ abstract final class ExoPlayerMenus {
             ),
           PlayerSettingsEntry(
             icon: Icons.speed_rounded,
-            title: 'Playback speed',
-            value: rate == 1.0 ? 'Normal' : '${rate}x',
+            title: l10n.playerControlPlaybackSpeed,
+            value: rate == 1.0 ? l10n.playerControlNormal : '${rate}x',
             pageBuilder: (_) => StatefulBuilder(
               builder: (context, setPage) {
                 final current = rateOf();
@@ -488,7 +495,7 @@ abstract final class ExoPlayerMenus {
                     2.0,
                   ].map((speed) {
                     return PlayerPopupOptionChip(
-                      label: speed == 1.0 ? 'Normal' : '${speed}x',
+                      label: speed == 1.0 ? l10n.playerControlNormal : '${speed}x',
                       selected: speed == current,
                       expanded: true,
                       onTap: () async {
@@ -503,20 +510,20 @@ abstract final class ExoPlayerMenus {
           ),
           PlayerSettingsEntry(
             icon: Icons.aspect_ratio_rounded,
-            title: 'Aspect ratio',
-            subtitle: 'How video fills the frame',
+            title: l10n.playerControlAspectRatio,
+            subtitle: l10n.playerControlAspectRatioSubtitle,
             value: switch (resizeMode) {
-              'fill' => 'Fill',
-              'zoom' => 'Crop',
-              _ => 'Fit',
+              'fill' => l10n.playerControlFill,
+              'zoom' => l10n.playerControlCrop,
+              _ => l10n.playerControlFit,
             },
             pageBuilder: (_) => StatefulBuilder(
               builder: (context, setPage) {
                 final current = resizeModeOf();
-                const options = [
-                  ('fit', 'Fit'),
-                  ('fill', 'Fill'),
-                  ('zoom', 'Crop'),
+                final options = [
+                  ('fit', l10n.playerControlFit),
+                  ('fill', l10n.playerControlFill),
+                  ('zoom', l10n.playerControlCrop),
                 ];
                 return playerPopupChipRow([
                   for (final (mode, label) in options)
@@ -539,16 +546,17 @@ abstract final class ExoPlayerMenus {
     );
   }
 
-  static Widget _audioTrackColumn({
+  static Widget _audioTrackColumn(
+    BuildContext context, {
     required List<ExoTrackInfo> tracks,
     required Future<void> Function(String trackId) onSelect,
   }) {
     if (tracks.isEmpty) {
-      return const Padding(
-        padding: EdgeInsets.fromLTRB(12, 12, 12, 14),
+      return Padding(
+        padding: const EdgeInsets.fromLTRB(12, 12, 12, 14),
         child: Text(
-          'None available',
-          style: TextStyle(color: PlayerPopupTokens.muted),
+          context.l10n.playerControlNoneAvailable,
+          style: const TextStyle(color: PlayerPopupTokens.muted),
         ),
       );
     }
@@ -631,7 +639,7 @@ class _ExoSubtitleHeaderTrailingState extends State<_ExoSubtitleHeaderTrailing> 
       mainAxisSize: MainAxisSize.min,
       children: [
         PlayerPopupHeaderChip(
-          label: 'Off',
+          label: context.l10n.playerControlOff,
           selected: widget.subtitlesOff,
           autoFocus: !widget.tv && widget.subtitlesOff,
           onTap: () => unawaited(widget.onOff()),
@@ -648,7 +656,7 @@ class _ExoSubtitleHeaderTrailingState extends State<_ExoSubtitleHeaderTrailing> 
         if (widget.showFile && widget.onFile != null) ...[
           const SizedBox(width: 6),
           PlayerPopupHeaderChip(
-            label: 'File',
+            label: context.l10n.playerControlFile,
             icon: Icons.upload_file_rounded,
             selected: false,
             onTap: () => unawaited(widget.onFile!()),
@@ -658,7 +666,7 @@ class _ExoSubtitleHeaderTrailingState extends State<_ExoSubtitleHeaderTrailing> 
           const SizedBox(width: 6),
           PlayerPopupChromeButton(
             icon: Icons.tune_rounded,
-            tooltip: 'Subtitle settings',
+            tooltip: context.l10n.playerControlSubtitleSettings,
             focusNode: _tuneFocus,
             onTap: () {
               PlayerPopupPanel.dismiss();

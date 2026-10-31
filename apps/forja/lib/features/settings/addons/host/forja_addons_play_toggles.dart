@@ -7,6 +7,7 @@ import 'package:forja/features/settings/shell/visibility.dart';
 import 'package:forja/features/settings/ui/p2p_streaming_ack_dialog.dart';
 import 'package:forja/features/settings/ui/focus_controls.dart';
 import 'package:forja/features/settings/ui/settings_ui.dart';
+import 'package:forja/l10n/l10n.dart';
 import 'package:forja/shared/sync/sync.dart';
 import 'package:rust/rust.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
@@ -101,15 +102,15 @@ class _SettingsForjaAddonsPlayTogglesState
     if (!showAnyToggle) return const SizedBox.shrink();
 
     return SettingsGroup(
-      label: 'Forja addons',
+      label: context.l10n.addonsHostPlayTogglesGroupLabel,
       children: [
         SettingsActionRow(
           title: snap.p2pAcknowledged
-              ? 'You are aware of P2P streaming'
-              : 'Confirm you are aware of P2P streaming',
+              ? context.l10n.addonsHostPlayTogglesP2pAckedTitle
+              : context.l10n.addonsHostPlayTogglesP2pConfirmTitle,
           subtitle: snap.p2pAcknowledged
-              ? 'Direct torrent, Stremio, and Nuvio can be used. Tap to review.'
-              : 'Required once before turning on Direct torrent, Stremio, or Nuvio.',
+              ? context.l10n.addonsHostPlayTogglesP2pAckedSubtitle
+              : context.l10n.addonsHostPlayTogglesP2pConfirmSubtitle,
           trailing: snap.p2pAcknowledged
               ? const Icon(
                   Icons.check_rounded,
@@ -127,11 +128,10 @@ class _SettingsForjaAddonsPlayTogglesState
         if (v.showPlaySourceTorrentToggle)
           settingsFocusableToggle(
             context,
-            'Direct torrent',
+            context.l10n.addonsHostPlayTogglesTorrentTitle,
             _playSourceSubtitle(
-              native: 'Search Forja indexers (Jackett / Prowlarr) below.',
-              atv:
-                  'Search torrents here. Playing a magnet needs a paired desktop (Settings → LAN).',
+              native: context.l10n.addonsHostPlayTogglesTorrentNativeSubtitle,
+              atv: context.l10n.addonsHostPlayTogglesTorrentAtvSubtitle,
             ),
             snap.playSourceTorrent,
             (val) async {
@@ -151,11 +151,10 @@ class _SettingsForjaAddonsPlayTogglesState
         if (v.showPlaySourceStremioToggle)
           settingsFocusableToggle(
             context,
-            'Stremio',
+            context.l10n.addonsHostPlayTogglesStremioTitle,
             _playSourceSubtitle(
-              native: 'Play from installed Stremio addon streams.',
-              atv:
-                  'Direct HTTP plays on this TV. Magnets need a paired desktop (Settings → LAN).',
+              native: context.l10n.addonsHostPlayTogglesStremioNativeSubtitle,
+              atv: context.l10n.addonsHostPlayTogglesDirectHttpAtvSubtitle,
             ),
             snap.playSourceStremio,
             (val) async {
@@ -171,11 +170,10 @@ class _SettingsForjaAddonsPlayTogglesState
         if (v.showPlaySourceNuvioToggle)
           settingsFocusableToggle(
             context,
-            'Nuvio',
+            context.l10n.addonsHostPlayTogglesNuvioTitle,
             _playSourceSubtitle(
-              native: 'Play from installed Nuvio scraper addons below.',
-              atv:
-                  'Direct HTTP plays on this TV. Magnets need a paired desktop (Settings → LAN).',
+              native: context.l10n.addonsHostPlayTogglesNuvioNativeSubtitle,
+              atv: context.l10n.addonsHostPlayTogglesDirectHttpAtvSubtitle,
             ),
             snap.playSourceNuvio,
             (val) async {

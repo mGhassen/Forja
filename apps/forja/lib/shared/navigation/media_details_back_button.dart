@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:forja/l10n/l10n.dart';
 import 'package:forja/shell/routing/shell_overlay_navigator.dart';
 import 'package:forja/shared/navigation/shell_back_icon_button.dart';
 import 'package:forja_foundation/tokens/forja_details_tokens.dart';
@@ -57,7 +58,7 @@ class MediaDetailsBackButton extends StatelessWidget {
                     : Icons.chevron_left_rounded,
                 size: iconSize,
                 hitSize: hitSize,
-                tooltip: 'Back',
+                tooltip: context.l10n.sharedMiscBack,
                 focusNode: focusNode,
                 onTap: onPressed ?? () => popDetails(context),
               ),

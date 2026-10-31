@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:forja/l10n/l10n.dart';
 
 import 'package:forja/shared/navigation/desktop_trackpad_nav.dart';
 import 'package:forja/shell/tv/tv_focus_graph.dart';
@@ -490,7 +491,7 @@ class _KindTabs extends StatelessWidget {
           if (showDownloaded)
             (
               id: 'downloaded',
-              label: 'Downloaded',
+              label: context.l10n.playerSourceDownloadedChip,
               iconData: Icons.download_rounded,
               icon: null,
             ),

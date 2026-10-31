@@ -1,5 +1,6 @@
 import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:forja/l10n/app_localizations.dart';
 
 /// Optional host hooks for [`kit.topBar`] **dynamic** catalog / schedule.
 ///
@@ -28,7 +29,10 @@ typedef KitTopBarScheduleSheetOpener = Future<void> Function(
   required void Function(String pref) onChanged,
 });
 
-typedef KitTopBarScheduleChipLabel = String Function(String? selectedPref);
+typedef KitTopBarScheduleChipLabel = String Function(
+  String? selectedPref,
+  AppLocalizations l10n,
+);
 
 typedef KitTopBarScheduleChipSelected = bool Function(String? selectedPref);
 
@@ -47,6 +51,7 @@ typedef KitTopBarCatalogPrefReader = String? Function(
 typedef KitTopBarCatalogChipLabel = String Function(
   String? filter,
   List<({String id, String label})> options,
+  AppLocalizations l10n,
 );
 
 typedef KitTopBarCatalogChipSelected = bool Function(String? filter);

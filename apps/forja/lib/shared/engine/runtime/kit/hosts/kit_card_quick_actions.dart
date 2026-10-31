@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:forja/l10n/l10n.dart';
 import 'package:forja/shared/engine/runtime/open/catalog_open.dart';
 import 'package:forja/shared/engine/runtime/open/meta_surface_open.dart';
 import 'package:forja/shared/engine/store/list_follow.dart';
@@ -23,12 +24,6 @@ abstract final class KitCardQuickActions {
   static const String playId = 'play';
   static const String detailsId = 'details';
   static const String listId = 'list';
-
-  static const String openLabel = 'Open';
-  static const String playLabel = 'Play';
-  static const String detailsLabel = 'Details';
-  static const String addToListLabel = 'Add to My List';
-  static const String removeFromListLabel = 'Remove from My List';
 
   /// `MetaItem.type` is a free pack string; this is best-effort for the one
   /// generic shape that opens a details page but never plays itself.
@@ -68,12 +63,13 @@ abstract final class KitCardQuickActions {
     String? knownStatus,
   }) {
     if (!canOpen(item)) return const [];
+    final l10n = context.l10n;
     final actions = <CardQuickMenuAction>[];
     if (opensViaSurfaceHandler(item)) {
       actions.add(
         CardQuickMenuAction(
           id: openId,
-          label: openLabel,
+          label: l10n.engineRuntimeOpen,
           icon: Icons.open_in_new_rounded,
           onTap: () => openMetaItem(context, pluginId: pluginId, item: item),
         ),
@@ -82,7 +78,7 @@ abstract final class KitCardQuickActions {
       actions.add(
         CardQuickMenuAction(
           id: playId,
-          label: playLabel,
+          label: l10n.engineRuntimePlay,
           icon: Icons.play_arrow_rounded,
           onTap: () => openMetaItem(
             context,
@@ -97,7 +93,7 @@ abstract final class KitCardQuickActions {
       actions.add(
         CardQuickMenuAction(
           id: detailsId,
-          label: detailsLabel,
+          label: l10n.engineRuntimeDetails,
           icon: Icons.info_outline_rounded,
           onTap: () => openMetaItem(context, pluginId: pluginId, item: item),
         ),
@@ -109,7 +105,9 @@ abstract final class KitCardQuickActions {
       actions.add(
         CardQuickMenuAction(
           id: listId,
-          label: listed ? removeFromListLabel : addToListLabel,
+          label: listed
+              ? l10n.engineRuntimeRemoveFromMyList
+              : l10n.engineRuntimeAddToMyList,
           icon: listed
               ? Icons.bookmark_remove_rounded
               : Icons.bookmark_add_outlined,
@@ -148,6 +146,7 @@ abstract final class KitCardQuickActions {
     ListFollowTarget target, {
     required bool remove,
   }) async {
+    final l10n = context.l10n;
     ProviderContainer? container;
     try {
       container = ProviderScope.containerOf(context, listen: false);
@@ -159,14 +158,16 @@ abstract final class KitCardQuickActions {
     );
     if (ok) {
       ForjaToast.success(
-        remove ? 'Removed from My List' : 'Added to My List',
+        remove
+            ? l10n.engineRuntimeRemovedFromMyList
+            : l10n.engineRuntimeAddedToMyList,
         duration: const Duration(seconds: 1),
       );
     } else {
       ForjaToast.error(
         remove
-            ? 'Removed locally · Simkl failed'
-            : 'Saved locally · Simkl failed',
+            ? l10n.engineRuntimeRemovedLocallySimklFailed
+            : l10n.engineRuntimeSavedLocallySimklFailed,
       );
     }
   }

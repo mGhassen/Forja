@@ -35,10 +35,10 @@ extension _HwDecModeX on _HwDecMode {
     _HwDecMode.software => 'SW',
   };
 
-  String get description => switch (this) {
-    _HwDecMode.autoSafe => 'Hardware Decoding: ON (GPU, safe)',
-    _HwDecMode.autoCopy => 'Hardware Decoding: ON (copy-back)',
-    _HwDecMode.software => 'Software decode + soft display (CPU)',
+  String description(AppLocalizations l10n) => switch (this) {
+    _HwDecMode.autoSafe => l10n.playerScreenHwDecGpuSafe,
+    _HwDecMode.autoCopy => l10n.playerScreenHwDecCopyBack,
+    _HwDecMode.software => l10n.playerScreenSwDecodeSoftDisplay,
   };
 
   /// With soft TextureSW, `auto-safe` zero-copy is useless — use copy-back.

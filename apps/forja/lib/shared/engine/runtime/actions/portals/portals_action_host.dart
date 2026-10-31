@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:forja/l10n/l10n.dart';
 import 'package:forja/shared/engine/portals/portals_host.dart';
 import 'package:forja/shared/engine/runtime/actions/portals/portals_panel_tv.dart';
 import 'package:forja/shared/engine/runtime/actions/portals/portals_panel_view.dart';
@@ -286,7 +287,7 @@ class _PortalsTopBarChipState extends ConsumerState<_PortalsTopBarChip> {
     final key = widget.tabId;
     final open = ref.watch(portalsPanelOpenProvider(key));
     final summary = ref.watch(portalsChipSummaryProvider);
-    var label = summary.asData?.value.label ?? 'Portals';
+    var label = summary.asData?.value.label ?? context.l10n.engineRuntimePortals;
     var hasPortal = summary.asData?.value.hasPortal ?? false;
     var portalKey = summary.asData?.value.portalKey ?? '';
     var seatsUsed = summary.asData?.value.seatsUsed;

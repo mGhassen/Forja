@@ -1,3 +1,5 @@
+import 'package:forja/l10n/l10n.dart';
+
 /// What a live MediaKit hardware-decode log line should do.
 enum IptvHwDecodeFailAction {
   /// One-shot during a known seek or reconnect. Drop the line.
@@ -96,4 +98,60 @@ double iptvReconnectArchiveSkipSeconds(double cacheAheadSecs) {
   const maxSkip = 30.0;
   if (cacheAheadSecs < minSkip || cacheAheadSecs > maxSkip) return 0;
   return cacheAheadSecs;
+}
+
+/// Display text for a live player `_statusBanner`.
+///
+/// The banner state stays English: recovery code compares it with `==` and
+/// `startsWith`. Only what the viewer reads is mapped here; an unknown banner
+/// (for example resolver progress text) is shown unchanged.
+String iptvLocalizedStatusBanner(AppLocalizations l, String banner) {
+  switch (banner) {
+    case 'Stream ended':
+      return l.playerLiveStreamEnded;
+    case 'Reconnecting…':
+      return l.playerLiveReconnecting;
+    case 'Preparing playback…':
+      return l.playerLivePreparingPlayback;
+    case 'Refreshing stream…':
+      return l.playerLiveRefreshingStream;
+    case 'Unlocking source…':
+      return l.playerLiveUnlockingSource;
+    case 'Stream offline':
+      return l.playerLiveStreamOffline;
+    case 'Playback failed':
+      return l.playerLivePlaybackFailed;
+    case 'Switching player…':
+      return l.playerLiveSwitchingPlayer;
+    case 'Switching to software decode…':
+      return l.playerLiveSwitchingSoftwareDecode;
+    case 'Buffering…':
+      return l.playerLiveBuffering;
+  }
+  const switching = 'Switching to ';
+  const trying = 'Trying ';
+  if (banner.startsWith(switching) && banner.endsWith('…')) {
+    return l.playerLiveSwitchingTo(
+      banner.substring(switching.length, banner.length - 1),
+    );
+  }
+  if (banner.startsWith(trying) && banner.endsWith('…')) {
+    return l.playerLiveTrying(
+      banner.substring(trying.length, banner.length - 1),
+    );
+  }
+  final offline = RegExp(r'^Stream offline - retrying every (\d+)s…$')
+      .firstMatch(banner);
+  if (offline != null) {
+    return l.playerLiveOfflineRetrying(int.parse(offline.group(1)!));
+  }
+  final attempt = RegExp(r'^Reconnecting… \(attempt (\d+)/(\d+)\)$')
+      .firstMatch(banner);
+  if (attempt != null) {
+    return l.playerLiveReconnectingAttempt(
+      int.parse(attempt.group(1)!),
+      int.parse(attempt.group(2)!),
+    );
+  }
+  return banner;
 }

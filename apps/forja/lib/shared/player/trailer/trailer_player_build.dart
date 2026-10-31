@@ -10,7 +10,7 @@ mixin _TrailerPlayerBuild on State<TrailerPlayerScreen> {
         mainAxisSize: MainAxisSize.min,
         children: [
           Text(
-            _s._resolveError ?? 'Could not load this trailer',
+            _s._resolveError ?? context.l10n.playerTrailerLoadFailed,
             textAlign: TextAlign.center,
             style: const TextStyle(
               color: Colors.white,
@@ -24,12 +24,12 @@ mixin _TrailerPlayerBuild on State<TrailerPlayerScreen> {
             children: [
               TextButton(
                 onPressed: () => unawaited(_s._loadCurrentTrailer()),
-                child: const Text('Retry'),
+                child: Text(context.l10n.addonsHostProvRetryButton),
               ),
               const SizedBox(width: 12),
               TextButton(
                 onPressed: () => unawaited(_s._openInYouTube()),
-                child: const Text('Open in YouTube'),
+                child: Text(context.l10n.playerTrailerOpenInYouTube),
               ),
             ],
           ),
@@ -226,7 +226,7 @@ mixin _TrailerPlayerBuild on State<TrailerPlayerScreen> {
                   order: const NumericFocusOrder(1),
                   child: PlayerFlatIconButton(
                     icon: Icons.arrow_back_rounded,
-                    tooltip: 'Back',
+                    tooltip: context.l10n.playerTrailerBack,
                     size: btn,
                     iconSize: icon,
                     tvFocusable: true,
@@ -238,7 +238,7 @@ mixin _TrailerPlayerBuild on State<TrailerPlayerScreen> {
                 )
               : PlayerFlatIconButton(
                   icon: Icons.arrow_back_rounded,
-                  tooltip: 'Back',
+                  tooltip: context.l10n.playerTrailerBack,
                   size: btn,
                   iconSize: icon,
                   onPressed: () => unawaited(_s._exitTrailer()),
@@ -312,7 +312,7 @@ mixin _TrailerPlayerBuild on State<TrailerPlayerScreen> {
                   order: const NumericFocusOrder(1),
                   child: PlayerFlatIconButton(
                     icon: Icons.arrow_back_rounded,
-                    tooltip: 'Back',
+                    tooltip: context.l10n.playerTrailerBack,
                     size: btn,
                     iconSize: icon,
                     tvFocusable: true,
@@ -324,7 +324,7 @@ mixin _TrailerPlayerBuild on State<TrailerPlayerScreen> {
                 )
               : PlayerFlatIconButton(
                   icon: Icons.arrow_back_rounded,
-                  tooltip: 'Back',
+                  tooltip: context.l10n.playerTrailerBack,
                   size: btn,
                   iconSize: icon,
                   onPressed: () => unawaited(_s._exitTrailer()),
@@ -554,7 +554,7 @@ mixin _TrailerPlayerBuild on State<TrailerPlayerScreen> {
         icon: _s._muted || _s._volume <= 0
             ? Icons.volume_off_rounded
             : Icons.volume_up_rounded,
-        tooltip: 'Mute',
+        tooltip: context.l10n.playerTrailerMute,
         onPressed: () {
           if (!_s._ready) return;
           unawaited(_s._toggleMute());
@@ -607,10 +607,10 @@ mixin _TrailerPlayerBuild on State<TrailerPlayerScreen> {
                       ? Icons.pause_rounded
                       : Icons.play_arrow_rounded,
                   tooltip: _s._showReplayControl
-                      ? 'Replay'
+                      ? context.l10n.playerTrailerReplay
                       : _s._playing
-                      ? 'Pause'
-                      : 'Play',
+                      ? context.l10n.playerTrailerPause
+                      : context.l10n.playerTrailerPlay,
                   onUpEdge: upToSeek,
                   onRightEdge: () => _s._rewindFocus.requestFocus(),
                   onPressed: () {
@@ -628,7 +628,7 @@ mixin _TrailerPlayerBuild on State<TrailerPlayerScreen> {
                   size: btn,
                   iconSize: icon,
                   icon: Icons.replay_10_rounded,
-                  tooltip: 'Back 10s',
+                  tooltip: context.l10n.playerTrailerBack10,
                   onUpEdge: upToSeek,
                   onLeftEdge: () => _s._playFocus.requestFocus(),
                   onRightEdge: () => _s._forwardFocus.requestFocus(),
@@ -647,7 +647,7 @@ mixin _TrailerPlayerBuild on State<TrailerPlayerScreen> {
                   size: btn,
                   iconSize: icon,
                   icon: Icons.forward_10_rounded,
-                  tooltip: 'Forward 10s',
+                  tooltip: context.l10n.playerTrailerForward10,
                   onUpEdge: upToSeek,
                   onLeftEdge: () => _s._rewindFocus.requestFocus(),
                   onRightEdge: () => _s._subsFocus.requestFocus(),
@@ -670,7 +670,7 @@ mixin _TrailerPlayerBuild on State<TrailerPlayerScreen> {
                   size: btn,
                   iconSize: icon,
                   icon: Icons.subtitles_outlined,
-                  tooltip: 'Subtitles',
+                  tooltip: context.l10n.playerTrailerSubtitles,
                   onUpEdge: upToSeek,
                   onLeftEdge: () => _s._forwardFocus.requestFocus(),
                   onRightEdge: () => _s._qualityFocus.requestFocus(),
@@ -686,7 +686,7 @@ mixin _TrailerPlayerBuild on State<TrailerPlayerScreen> {
                   size: btn,
                   iconSize: icon,
                   icon: Icons.hd_outlined,
-                  tooltip: 'Quality',
+                  tooltip: context.l10n.playerTrailerQuality,
                   onUpEdge: upToSeek,
                   onLeftEdge: () => _s._subsFocus.requestFocus(),
                   onRightEdge: () => _s._speedFocus.requestFocus(),
@@ -702,7 +702,7 @@ mixin _TrailerPlayerBuild on State<TrailerPlayerScreen> {
                   size: btn,
                   iconSize: icon,
                   icon: Icons.speed_rounded,
-                  tooltip: 'Playback speed',
+                  tooltip: context.l10n.playerTrailerPlaybackSpeed,
                   onUpEdge: upToSeek,
                   onLeftEdge: () => _s._qualityFocus.requestFocus(),
                   onPressedWithContext: _s._showSpeedMenu,
@@ -712,7 +712,7 @@ mixin _TrailerPlayerBuild on State<TrailerPlayerScreen> {
                 SizedBox(width: _chrome(8)),
                 ExcludeFocus(
                   child: Text(
-                    'Loading…',
+                    context.l10n.playerTrailerLoading,
                     style: TextStyle(
                       color: ForjaShellColors.textSecondary,
                       fontSize: tvType
@@ -747,10 +747,10 @@ mixin _TrailerPlayerBuild on State<TrailerPlayerScreen> {
                   ? Icons.pause_rounded
                   : Icons.play_arrow_rounded,
               tooltip: _s._showReplayControl
-                  ? 'Replay'
+                  ? context.l10n.playerTrailerReplay
                   : _s._playing
-                  ? 'Pause'
-                  : 'Play',
+                  ? context.l10n.playerTrailerPause
+                  : context.l10n.playerTrailerPlay,
               onPressed: () {
                 if (!_s._ready) return;
                 unawaited(_s._togglePlayPause());
@@ -761,7 +761,7 @@ mixin _TrailerPlayerBuild on State<TrailerPlayerScreen> {
               size: btn,
               iconSize: icon,
               icon: Icons.replay_10_rounded,
-              tooltip: 'Back 10s',
+              tooltip: context.l10n.playerTrailerBack10,
               onPressed: () {
                 if (!_s._ready) return;
                 unawaited(_s._skip(-10));
@@ -772,7 +772,7 @@ mixin _TrailerPlayerBuild on State<TrailerPlayerScreen> {
               size: btn,
               iconSize: icon,
               icon: Icons.forward_10_rounded,
-              tooltip: 'Forward 10s',
+              tooltip: context.l10n.playerTrailerForward10,
               onPressed: () {
                 if (!_s._ready) return;
                 unawaited(_s._skip(10));
@@ -789,7 +789,7 @@ mixin _TrailerPlayerBuild on State<TrailerPlayerScreen> {
               size: btn,
               iconSize: icon,
               icon: Icons.subtitles_outlined,
-              tooltip: 'Subtitles',
+              tooltip: context.l10n.playerTrailerSubtitles,
               onPressedWithContext: _s._showSubtitleMenu,
             ),
             SizedBox(width: gap),
@@ -797,7 +797,7 @@ mixin _TrailerPlayerBuild on State<TrailerPlayerScreen> {
               size: btn,
               iconSize: icon,
               icon: Icons.hd_outlined,
-              tooltip: 'Quality',
+              tooltip: context.l10n.playerTrailerQuality,
               onPressedWithContext: _s._showQualityMenu,
             ),
             SizedBox(width: gap),
@@ -805,7 +805,7 @@ mixin _TrailerPlayerBuild on State<TrailerPlayerScreen> {
               size: btn,
               iconSize: icon,
               icon: Icons.speed_rounded,
-              tooltip: 'Playback speed',
+              tooltip: context.l10n.playerTrailerPlaybackSpeed,
               onPressedWithContext: _s._showSpeedMenu,
             ),
             if (_s._supportsWindowFullscreen) ...[
@@ -816,14 +816,14 @@ mixin _TrailerPlayerBuild on State<TrailerPlayerScreen> {
                 icon: _s._isFullscreen
                     ? Icons.fullscreen_exit_rounded
                     : Icons.fullscreen_rounded,
-                tooltip: 'Fullscreen',
+                tooltip: context.l10n.playerTrailerFullscreen,
                 onPressed: () => unawaited(_s._toggleFullscreen()),
               ),
             ],
             if (!_s._ready) ...[
               SizedBox(width: _chrome(8)),
               Text(
-                'Loading…',
+                context.l10n.playerTrailerLoading,
                 style: TextStyle(
                   color: ForjaShellColors.textSecondary,
                   fontSize: ShellTokens.playerChromeStatusFontSize,
@@ -928,11 +928,11 @@ class _TrailerMoreVideosCardState extends State<_TrailerMoreVideosCard> {
     final type = widget.trailer.type.trim();
     final autoLeft = widget.autoNextSecondsLeft;
     final meta = widget.autoNext
-        ? 'Next trailer · ${autoLeft}s'
+        ? context.l10n.playerTrailerNextIn(autoLeft ?? 0)
         : [
             if (type.isNotEmpty) type,
             '${widget.index + 1}/${widget.count}',
-            if (widget.playing) 'Playing',
+            if (widget.playing) context.l10n.playerSourcePlaying,
           ].join(' · ');
     final active = _activeFor(hovered);
     final tvType = ShellPaintScope.usesTvDensityOf(context);
@@ -1093,7 +1093,9 @@ class _TrailerMoreVideosCardState extends State<_TrailerMoreVideosCard> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
-                      widget.autoNext ? 'Up next' : widget.trailer.name,
+                      widget.autoNext
+                          ? context.l10n.playerTrailerUpNext
+                          : widget.trailer.name,
                       maxLines: widget.autoNext ? 1 : 2,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(

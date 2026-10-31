@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import 'package:forja/l10n/l10n.dart';
 import 'package:forja/shared/navigation/shell_navigation_levels.dart';
 import 'package:forja/shell/tv/tv_focus_graph.dart';
 import 'package:forja/shell/bus/shell_bus.dart';
@@ -140,7 +141,9 @@ class _LanP2pRequiredDialogState extends State<_LanP2pRequiredDialog> {
         side: const BorderSide(color: ForjaShellColors.borderSubtle),
       ),
       title: Text(
-        neverPaired ? 'Pair a desktop' : 'Desktop offline',
+        neverPaired
+            ? context.l10n.settingsUiLanP2pPairTitle
+            : context.l10n.settingsUiLanP2pOfflineTitle,
         style: TextStyle(
           color: ForjaShellColors.textPrimary,
           fontWeight: FontWeight.w700,
@@ -155,12 +158,8 @@ class _LanP2pRequiredDialogState extends State<_LanP2pRequiredDialog> {
           children: [
             Text(
               neverPaired
-                  ? 'Torrents and other P2P streams play on a desktop Forja server, '
-                      'not on this TV. Direct HTTP streams still play here. '
-                      'Pair once in Settings → LAN.'
-                  : 'Torrents and other P2P streams need your paired desktop Forja '
-                      'server on the same Wi-Fi. Direct HTTP streams still play '
-                      'on this TV.',
+                  ? context.l10n.settingsUiLanP2pPairBody
+                  : context.l10n.settingsUiLanP2pOfflineBody,
               style: TextStyle(
                 color: ForjaShellColors.textSecondary,
                 fontSize: SettingsTokens.rowSubtitleSizeOf(context),
@@ -170,7 +169,7 @@ class _LanP2pRequiredDialogState extends State<_LanP2pRequiredDialog> {
             const SizedBox(height: 24),
             Button(
               variant: ButtonVariant.primary,
-              label: 'Open LAN',
+              label: context.l10n.settingsUiLanP2pOpenLan,
               expand: true,
               autofocus: true,
               focusNode: _confirmFocus,
@@ -180,7 +179,9 @@ class _LanP2pRequiredDialogState extends State<_LanP2pRequiredDialog> {
             Center(
               child: Button(
                 variant: ButtonVariant.ghost,
-                label: neverPaired ? 'Cancel' : 'Close',
+                label: neverPaired
+                    ? context.l10n.settingsUiCancel
+                    : context.l10n.settingsUiClose,
                 focusNode: _cancelFocus,
                 onPressed: widget.onCancel,
               ),

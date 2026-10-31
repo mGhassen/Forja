@@ -8,6 +8,7 @@ import 'package:forja/features/settings/providers/stremio_addons_provider.dart';
 import 'package:forja/features/settings/shell/visibility.dart';
 import 'package:forja/features/settings/packs/engine_plugin_pack.dart';
 import 'package:forja/features/settings/ui/settings_ui.dart';
+import 'package:forja/l10n/l10n.dart';
 
 import 'package:forja/shared/nuvio/nuvio.dart';
 import 'package:forja/shared/sync/sync.dart';
@@ -126,7 +127,7 @@ class _SettingsForjaAddonsSectionState
       children: [
         if (showStremio)
           SettingsGroup(
-            label: 'Stremio addons',
+            label: context.l10n.addonsHostProvStremioGroupLabel,
             children: [
               if (addonsAsync.isLoading && installedAddons.isEmpty)
                 const Padding(
@@ -145,7 +146,7 @@ class _SettingsForjaAddonsSectionState
           ),
         if (showNuvio)
           SettingsGroup(
-            label: 'Nuvio addons',
+            label: context.l10n.addonsHostProvNuvioGroupLabel,
             children: [_buildNuvioAddonSection(nuvioAddons)],
           ),
         if (showIndexers) ...[
@@ -177,12 +178,16 @@ class _SettingsForjaAddonsSectionState
         _addonController.clear();
         // saveStremioAddon bumps addonChangeNotifier → stremioAddonsProvider.
         scheduleStremioSyncPush();
-        if (mounted) ForjaToast.success('Addon installed');
+        if (mounted) ForjaToast.success(context.l10n.addonsHostProvAddonInstalledToast);
       } else {
-        if (mounted) ForjaToast.error('Failed to install addon. Check URL.');
+        if (mounted) {
+          ForjaToast.error(context.l10n.addonsHostProvInstallFailedError);
+        }
       }
     } catch (e) {
-      if (mounted) ForjaToast.error('Error: $e');
+      if (mounted) {
+        ForjaToast.error(context.l10n.addonsHostProvGenericError('$e'));
+      }
     } finally {
       if (mounted) setState(() => _isInstalling = false);
     }
@@ -191,7 +196,7 @@ class _SettingsForjaAddonsSectionState
   Future<void> _removeAddon(String baseUrl) async {
     await _settings.removeStremioAddon(baseUrl);
     scheduleStremioSyncPush();
-    if (mounted) ForjaToast.success('Addon removed');
+    if (mounted) ForjaToast.success(context.l10n.addonsHostProvAddonRemovedToast);
   }
 
   Future<void> _setAddonEnabled(
@@ -232,20 +237,20 @@ class _SettingsForjaAddonsSectionState
         children: [
           SettingsTextField(
             controller: _addonController,
-            label: 'Install Stremio Addon',
+            label: context.l10n.addonsHostProvInstallStremioLabel,
             hint: 'stremio://... or https://...',
             onSubmitted: (_) => _installAddon(),
           ),
           const SizedBox(height: 14),
           SettingsFilledButton(
-            label: 'Install',
+            label: context.l10n.addonsHostProvInstallButton,
             icon: Icons.add_rounded,
             busy: _isInstalling,
             onPressed: _installAddon,
           ),
           if (installedAddons.isNotEmpty) ...[
             const SizedBox(height: 20),
-            const SettingsEngineMiniLabel('Installed addons'),
+            SettingsEngineMiniLabel(context.l10n.addonsHostProvInstalledAddonsLabel),
             const SizedBox(height: 4),
             ...installedAddons.map((addon) {
               final icon = addon['icon']?.toString().trim() ?? '';
@@ -278,7 +283,7 @@ class _SettingsForjaAddonsSectionState
                               color: ForjaShellColors.iconActive,
                             ),
                       title: (name == null || name.isEmpty)
-                          ? 'Untitled addon'
+                          ? context.l10n.addonsHostProvUntitledAddon
                           : name,
                       subtitle: baseUrl,
                       enabled: enabled,
@@ -294,7 +299,7 @@ class _SettingsForjaAddonsSectionState
                         runSpacing: 8,
                         children: [
                           _AddonFeatureChip(
-                            label: 'Sources',
+                            label: context.l10n.addonsHostProvSourcesChip,
                             selected: features.contains(
                               StremioAddonFeatures.vod,
                             ),
@@ -339,20 +344,20 @@ class _SettingsForjaAddonsSectionState
         children: [
           SettingsTextField(
             controller: _nuvioController,
-            label: 'Install Nuvio Addon',
+            label: context.l10n.addonsHostProvInstallNuvioLabel,
             hint: 'https://.../manifest.json',
             onSubmitted: (_) => _installNuvioAddon(),
           ),
           const SizedBox(height: 14),
           SettingsFilledButton(
-            label: 'Install',
+            label: context.l10n.addonsHostProvInstallButton,
             icon: Icons.add_rounded,
             busy: _nuvioInstalling,
             onPressed: _installNuvioAddon,
           ),
           if (nuvioAddons.isNotEmpty) ...[
             const SizedBox(height: 20),
-            const SettingsEngineMiniLabel('Nuvio addons'),
+            SettingsEngineMiniLabel(context.l10n.addonsHostProvNuvioGroupLabel),
             const SizedBox(height: 4),
             ...nuvioAddons.map(
               (addon) => _NuvioAddonTile(
@@ -379,12 +384,15 @@ class _SettingsForjaAddonsSectionState
       if (!mounted) return;
       _nuvioController.clear();
       ForjaToast.success(
-        'Installed ${addon.name} (${addon.scrapers.length} scrapers)',
+        context.l10n.addonsHostProvNuvioInstalledToast(
+          addon.name,
+          addon.scrapers.length,
+        ),
       );
       scheduleNuvioSyncPush();
     } catch (e) {
       if (!mounted) return;
-      ForjaToast.error('Install failed: $e');
+      ForjaToast.error(context.l10n.addonsHostProvInstallFailedDetailError('$e'));
     } finally {
       if (mounted) setState(() => _nuvioInstalling = false);
     }
@@ -395,7 +403,7 @@ class _SettingsForjaAddonsSectionState
       await NuvioService.instance.remove(manifestUrl);
       scheduleNuvioSyncPush();
       if (!mounted) return;
-      ForjaToast.success('Nuvio addon removed');
+      ForjaToast.success(context.l10n.addonsHostProvNuvioRemovedToast);
     } catch (e) {
       if (!mounted) return;
       ForjaToast.error('$e');
@@ -410,15 +418,15 @@ class _SettingsForjaAddonsSectionState
         children: [
           SettingsTextField(
             controller: _jackettUrlController,
-            label: 'Base URL',
+            label: context.l10n.addonsHostProvBaseUrlLabel,
             hint: 'http://localhost:9117',
             onSubmitted: (_) => setState(() => _jackettTestResult = null),
           ),
           const SizedBox(height: 16),
           SettingsTextField(
             controller: _jackettApiKeyController,
-            label: 'API Key',
-            hint: 'Enter Jackett API Key',
+            label: context.l10n.addonsHostProvApiKeyLabel,
+            hint: context.l10n.addonsHostProvJackettApiKeyHint,
             obscureText: true,
             onSubmitted: (_) => setState(() => _jackettTestResult = null),
           ),
@@ -427,14 +435,14 @@ class _SettingsForjaAddonsSectionState
             mainAxisAlignment: MainAxisAlignment.end,
             children: [
               SettingsFilledButton(
-                label: 'Test Connection',
+                label: context.l10n.addonsHostProvTestConnectionButton,
                 secondary: true,
                 busy: _isTestingJackett,
                 onPressed: _testJackettConnection,
               ),
               const SizedBox(width: 12),
               SettingsFilledButton(
-                label: 'Save',
+                label: context.l10n.addonsHostProvSaveButton,
                 onPressed: _saveJackettSettings,
               ),
             ],
@@ -454,7 +462,7 @@ class _SettingsForjaAddonsSectionState
         children: [
           SettingsTextField(
             controller: _prowlarrUrlController,
-            label: 'Base URL',
+            label: context.l10n.addonsHostProvBaseUrlLabel,
             hint: 'http://localhost:9696',
             onSubmitted: (_) => setState(() {
               _prowlarrTestResult = null;
@@ -465,8 +473,8 @@ class _SettingsForjaAddonsSectionState
           const SizedBox(height: 16),
           SettingsTextField(
             controller: _prowlarrApiKeyController,
-            label: 'API Key',
-            hint: 'Enter Prowlarr API Key',
+            label: context.l10n.addonsHostProvApiKeyLabel,
+            hint: context.l10n.addonsHostProvProwlarrApiKeyHint,
             obscureText: true,
             onSubmitted: (_) => setState(() {
               _prowlarrTestResult = null;
@@ -475,11 +483,11 @@ class _SettingsForjaAddonsSectionState
             }),
           ),
           const SizedBox(height: 20),
-          const SettingsEngineMiniLabel('Filter by tag'),
+          SettingsEngineMiniLabel(context.l10n.addonsHostProvFilterByTagLabel),
           const SizedBox(height: 8),
           if (!_prowlarrTagsLoaded) ...[
             Text(
-              'Use the Test Connection button to load available tags.',
+              context.l10n.addonsHostProvLoadTagsHint,
               style: TextStyle(
                 fontSize: SettingsTokens.typeSizeOf(context, 12),
                 color: Colors.white.withValues(alpha: 0.4),
@@ -487,7 +495,7 @@ class _SettingsForjaAddonsSectionState
             ),
           ] else if (_prowlarrAvailableTags.isEmpty) ...[
             Text(
-              'No tags found in Prowlarr. Add tags to your indexers to use this filter.',
+              context.l10n.addonsHostProvNoTagsFound,
               style: TextStyle(
                 fontSize: SettingsTokens.typeSizeOf(context, 12),
                 color: Colors.white.withValues(alpha: 0.4),
@@ -495,7 +503,7 @@ class _SettingsForjaAddonsSectionState
             ),
           ] else ...[
             Text(
-              'Limit searches to indexers with the selected tags. Leave all unselected to search all indexers.',
+              context.l10n.addonsHostProvTagFilterHint,
               style: TextStyle(
                 fontSize: SettingsTokens.typeSizeOf(context, 12),
                 color: Colors.white.withValues(alpha: 0.6),
@@ -547,7 +555,7 @@ class _SettingsForjaAddonsSectionState
               Padding(
                 padding: const EdgeInsets.only(top: 6),
                 child: Text(
-                  'All indexers will be searched.',
+                  context.l10n.addonsHostProvAllIndexersSearched,
                   style: TextStyle(
                     fontSize: SettingsTokens.typeSizeOf(context, 11),
                     color: Colors.white.withValues(alpha: 0.4),
@@ -560,14 +568,14 @@ class _SettingsForjaAddonsSectionState
             mainAxisAlignment: MainAxisAlignment.end,
             children: [
               SettingsFilledButton(
-                label: 'Test Connection',
+                label: context.l10n.addonsHostProvTestConnectionButton,
                 secondary: true,
                 busy: _isTestingProwlarr,
                 onPressed: _testProwlarrConnection,
               ),
               const SizedBox(width: 12),
               SettingsFilledButton(
-                label: 'Save',
+                label: context.l10n.addonsHostProvSaveButton,
                 onPressed: _saveProwlarrSettings,
               ),
             ],
@@ -585,7 +593,8 @@ class _SettingsForjaAddonsSectionState
 
     if (url.isEmpty || apiKey.isEmpty) {
       setState(
-        () => _jackettTestResult = '❌ Please enter both Base URL and API Key',
+        () => _jackettTestResult =
+            context.l10n.addonsHostProvEnterUrlAndKeyResult,
       );
       return;
     }
@@ -606,7 +615,7 @@ class _SettingsForjaAddonsSectionState
     } catch (e) {
       if (mounted) {
         setState(() {
-          _jackettTestResult = '❌ Error: $e';
+          _jackettTestResult = context.l10n.addonsHostProvTestErrorResult('$e');
           _isTestingJackett = false;
         });
       }
@@ -622,7 +631,7 @@ class _SettingsForjaAddonsSectionState
     ref.read(settingsIndexerProvider.notifier).reload();
 
     if (mounted) {
-      ForjaToast.success('Jackett settings saved');
+      ForjaToast.success(context.l10n.addonsHostProvJackettSavedToast);
     }
   }
 
@@ -632,7 +641,8 @@ class _SettingsForjaAddonsSectionState
 
     if (url.isEmpty || apiKey.isEmpty) {
       setState(
-        () => _prowlarrTestResult = '❌ Please enter both Base URL and API Key',
+        () => _prowlarrTestResult =
+            context.l10n.addonsHostProvEnterUrlAndKeyResult,
       );
       return;
     }
@@ -656,7 +666,7 @@ class _SettingsForjaAddonsSectionState
     } catch (e) {
       if (mounted) {
         setState(() {
-          _prowlarrTestResult = '❌ Error: $e';
+          _prowlarrTestResult = context.l10n.addonsHostProvTestErrorResult('$e');
           _isTestingProwlarr = false;
         });
       }
@@ -673,7 +683,7 @@ class _SettingsForjaAddonsSectionState
     ref.read(settingsIndexerProvider.notifier).reload();
 
     if (mounted) {
-      ForjaToast.success('Prowlarr settings saved');
+      ForjaToast.success(context.l10n.addonsHostProvProwlarrSavedToast);
     }
   }
 
@@ -768,7 +778,9 @@ class _NuvioAddonTile extends StatelessWidget {
         return SettingsToggleRow(
           key: ValueKey('${addon.manifestUrl}::${s.id}'),
           title: s.name,
-          subtitle: subtitle.isEmpty ? 'Scraper' : subtitle,
+          subtitle: subtitle.isEmpty
+              ? context.l10n.addonsHostProvScraperFallback
+              : subtitle,
           value: s.enabled,
           onChanged: (val) async {
             await NuvioService.instance.setScraperEnabled(
@@ -810,8 +822,11 @@ class _NuvioAddonTile extends StatelessWidget {
       ),
       subtitle: Text(
         lean
-            ? 'Expand to download scrapers \u00b7 v${addon.version}'
-            : '${addon.scrapers.length} scraper${addon.scrapers.length == 1 ? '' : 's'} \u00b7 v${addon.version}',
+            ? context.l10n.addonsHostProvNuvioLeanSubtitle(addon.version)
+            : context.l10n.addonsHostProvNuvioScrapersSubtitle(
+                addon.scrapers.length,
+                addon.version,
+              ),
         style: TextStyle(
           fontSize: SettingsTokens.typeSizeOf(context, 11),
           color: ForjaShellColors.textSecondary,
@@ -857,7 +872,10 @@ class _NuvioLeanHydrateBodyState extends State<_NuvioLeanHydrateBody> {
       scheduleNuvioSyncPush();
       if (!mounted) return;
       ForjaToast.success(
-        'Loaded ${addon.name} (${addon.scrapers.length} scrapers)',
+        context.l10n.addonsHostProvNuvioLoadedToast(
+          addon.name,
+          addon.scrapers.length,
+        ),
       );
     } catch (e) {
       if (!mounted) return;
@@ -883,7 +901,7 @@ class _NuvioLeanHydrateBodyState extends State<_NuvioLeanHydrateBody> {
             const SizedBox(width: 12),
             Expanded(
               child: Text(
-                'Downloading scrapers…',
+                context.l10n.addonsHostProvDownloadingScrapers,
                 style: TextStyle(
                   color: ForjaShellColors.textSecondary,
                   fontSize: SettingsTokens.rowSubtitleSizeOf(context),
@@ -900,7 +918,7 @@ class _NuvioLeanHydrateBodyState extends State<_NuvioLeanHydrateBody> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Text(
-            _error ?? 'Could not load scrapers',
+            _error ?? context.l10n.addonsHostProvLoadScrapersFailed,
             style: TextStyle(
               color: const Color(0xFFF87171),
               fontSize: SettingsTokens.rowSubtitleSizeOf(context),
@@ -908,7 +926,7 @@ class _NuvioLeanHydrateBodyState extends State<_NuvioLeanHydrateBody> {
           ),
           const SizedBox(height: 10),
           SettingsFilledButton(
-            label: 'Retry',
+            label: context.l10n.addonsHostProvRetryButton,
             icon: Icons.refresh_rounded,
             onPressed: () => unawaited(_load()),
           ),
@@ -958,7 +976,7 @@ class _AddonRemoveRowState extends State<_AddonRemoveRow> {
 
     final titleBlock = _confirming
         ? Text(
-            'Remove this addon?',
+            context.l10n.addonsHostProvRemoveConfirmTitle,
             style: TextStyle(
               color: Color(0xFFF87171),
               fontSize: SettingsTokens.typeSizeOf(context, 15),
@@ -1183,7 +1201,7 @@ class _AddonRemoveActionsState extends State<_AddonRemoveActions> {
         mainAxisSize: MainAxisSize.min,
         children: [
           _action(
-            tooltip: 'Yes',
+            tooltip: context.l10n.addonsHostProvYesTooltip,
             icon: Icons.check_rounded,
             color: const Color(0xFFEF4444),
             onTap: () => unawaited(_confirm()),
@@ -1200,7 +1218,7 @@ class _AddonRemoveActionsState extends State<_AddonRemoveActions> {
           ExcludeFocus(
             excluding: !_yesHasFocus,
             child: _action(
-              tooltip: 'No',
+              tooltip: context.l10n.addonsHostProvNoTooltip,
               icon: Icons.close_rounded,
               color: ForjaShellColors.iconMuted,
               onTap: _cancelConfirm,
@@ -1212,7 +1230,7 @@ class _AddonRemoveActionsState extends State<_AddonRemoveActions> {
       );
     }
     return _action(
-      tooltip: 'Remove addon',
+      tooltip: context.l10n.addonsHostProvRemoveAddonTooltip,
       icon: Icons.delete_outline,
       color: const Color(0xFFF87171),
       onTap: _enterConfirm,

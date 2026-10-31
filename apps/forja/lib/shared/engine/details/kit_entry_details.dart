@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:forja/l10n/l10n.dart';
 import 'package:forja/shared/player/sources/kit/kit_panel_host.dart';
 import 'package:forja/shared/player/sources/resolve/resolve_panel_host.dart';
 import 'package:forja/shell/routing/app_router.dart';
@@ -64,7 +65,9 @@ class KitEntryDetailsPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final host = _hostFor(listSourceId);
-    final title = entry.meta.name.trim().isEmpty ? 'Details' : entry.meta.name;
+    final title = entry.meta.name.trim().isEmpty
+        ? context.l10n.engineDetailsFallbackTitle
+        : entry.meta.name;
 
     return EntryDetails(
       title: title,

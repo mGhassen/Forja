@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter/services.dart';
+import 'package:forja/l10n/l10n.dart';
 import 'package:forja/shell/nav/nav_config.dart';
 import 'package:forja/shell/bus/shell_bus.dart';
 import 'package:forja/shell/nav/nav_complete_reload_hold.dart';
@@ -161,7 +162,8 @@ class ShellNavRail extends StatefulWidget {
 class _ShellNavRailState extends State<ShellNavRail> {
   bool _coldStartNavFocusDone = false;
   bool _coldStartNavFocusScheduled = false;
-  String _profileLabel = 'Guest';
+  String? _profileName;
+  bool _profileSignedIn = false;
   Timer? _lanPairPoll;
 
   List<String> get _navIds =>
@@ -173,11 +175,15 @@ class _ShellNavRailState extends State<ShellNavRail> {
   }
 
   void _onActiveProfile(SyncProfile? profile) {
-    final label =
-        profile?.name ??
-        (SyncService.instance.isSignedIn ? 'Profile' : 'Guest');
-    if (!mounted || label == _profileLabel) return;
-    setState(() => _profileLabel = label);
+    final name = profile?.name;
+    final signedIn = SyncService.instance.isSignedIn;
+    if (!mounted || (name == _profileName && signedIn == _profileSignedIn)) {
+      return;
+    }
+    setState(() {
+      _profileName = name;
+      _profileSignedIn = signedIn;
+    });
   }
 
   @override
@@ -402,7 +408,10 @@ class _ShellNavRailState extends State<ShellNavRail> {
                                 pageDirection: widget.pageDirection,
                                 destination: navDestinations['settings']!,
                                 label: showDesktopProfile
-                                    ? _profileLabel
+                                    ? (_profileName ??
+                                          (_profileSignedIn
+                                              ? context.l10n.shellProfile
+                                              : context.l10n.shellGuest))
                                     : null,
                                 icon: showDesktopProfile
                                     ? ForjaActiveProfileAvatar(
@@ -1091,7 +1100,8 @@ class _ShellNavRailItemState extends State<_ShellNavRailItem> {
       fontWeight: FontWeight.w500,
       height: ShellTokens.navRailLabelLineHeight,
     );
-    final label = widget.label ?? widget.destination.label;
+    final label =
+        widget.label ?? navDestinationLabel(widget.destination, context.l10n);
     final chromeAnim = _chromeAnim(policy);
     // Paint at hover size. Idle scale is idle/hover, so the glyph lands on
     // iconSize * idleScale. Painting at iconSize then applying that scale

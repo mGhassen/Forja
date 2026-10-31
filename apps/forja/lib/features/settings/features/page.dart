@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:rust/rust.dart';
 import 'package:forja/features/settings/providers/settings_panel_providers.dart';
 import 'package:forja/features/settings/ui/settings_ui.dart';
+import 'package:forja/l10n/l10n.dart';
 import 'package:forja/shell/tv/shell_tv_coordinator.dart';
 import 'package:forja/shell/tv/shell_tv_focus.dart';
 import 'package:forja/shell/tv/tv_focus_graph.dart';
@@ -263,7 +264,9 @@ class _SettingsNavigationPageBodyState
     );
     if (!tv) {
       return IconButton(
-        tooltip: isDefault ? 'Default menu' : 'Set as default menu',
+        tooltip: isDefault
+            ? context.l10n.featuresDefaultMenu
+            : context.l10n.featuresSetDefaultMenu,
         onPressed: enabled ? () => unawaited(_setDefaultNavTab(id)) : null,
         icon: icon,
       );
@@ -372,8 +375,8 @@ class _SettingsNavigationPageBodyState
           padding: const EdgeInsets.only(left: 4, bottom: 12),
           child: Text(
             leanback
-                ? 'OK toggles a tab. Star sets the default menu. ↑/↓ on arrows reorder. ↓ stays in the same column.'
-                : 'Show, hide, and reorder tabs. Drag to reorder. Settings stays visible.',
+                ? context.l10n.featuresHintLeanback
+                : context.l10n.featuresHint,
             style: TextStyle(
               color: ForjaShellColors.textSecondary.withValues(alpha: 0.9),
               fontSize: SettingsTokens.typeSizeOf(context, 13),
@@ -637,7 +640,7 @@ class _SettingsNavigationPageBodyState
                       ),
                       Expanded(
                         child: Text(
-                          'Settings',
+                          context.l10n.settingsTitle,
                           style: TextStyle(
                             color: ForjaShellColors.brandGreen,
                             fontSize: SettingsTokens.typeSizeOf(context, 14),
@@ -662,7 +665,7 @@ class _SettingsNavigationPageBodyState
                         width: SettingsTokens.pagePaddingOf(context) * 0.4,
                       ),
                       Text(
-                        'Always visible',
+                        context.l10n.featuresAlwaysVisible,
                         style: TextStyle(
                           color: ForjaShellColors.textSecondary.withValues(
                             alpha: 0.7,

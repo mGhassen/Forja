@@ -5,6 +5,7 @@ import 'package:forja_foundation/components/forja_image_cache.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:forja/l10n/l10n.dart';
 
 import 'package:forja/shared/platform/platform_info.dart';
 import 'package:forja/shared/player/controls/chrome/player_back_exit_gate.dart';

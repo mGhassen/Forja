@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:forja/l10n/l10n.dart';
 import 'package:forja/shared/player/controls/menus/player_popup_panel.dart';
 import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 
@@ -12,7 +13,7 @@ void showSpeedMenu(
 }) {
   PlayerPopupPanel.show(
     context: context,
-    title: 'Playback speed',
+    title: context.l10n.playerControlPlaybackSpeed,
     leadingIcon: Icons.speed_rounded,
     anchorContext: anchorContext,
     width: 300,
@@ -23,7 +24,9 @@ void showSpeedMenu(
         children: _kPlaybackSpeeds.map((speed) {
           final selected = speed == currentSpeed;
           return PlayerPopupOptionChip(
-            label: speed == 1.0 ? 'Normal' : '${speed}x',
+            label: speed == 1.0
+                ? context.l10n.playerControlNormal
+                : '${speed}x',
             selected: selected,
             expanded: true,
             onTap: () {
@@ -148,13 +151,14 @@ class PlayerSettingsEntry {
 void showPlayerSettingsMenu({
   required BuildContext context,
   BuildContext? anchorContext,
-  String title = 'Settings',
+  String? title,
   required List<PlayerSettingsEntry> Function() buildEntries,
 }) {
+  final resolvedTitle = title ?? context.l10n.settingsTitle;
   final entries = buildEntries();
   PlayerPopupPanel.show(
     context: context,
-    title: title,
+    title: resolvedTitle,
     leadingIcon: Icons.tune_rounded,
     anchorContext: anchorContext,
     width: 340,
@@ -176,7 +180,7 @@ void showPlayerSettingsMenu({
             onTap: () => _openPlayerSettingsPage(
               context: context,
               anchorContext: anchorContext,
-              rootTitle: title,
+              rootTitle: resolvedTitle,
               buildEntries: buildEntries,
               index: i,
             ),
@@ -234,22 +238,24 @@ Widget playerPopupOnOffChips({
   required bool value,
   required ValueChanged<bool> onChanged,
 }) {
-  return playerPopupChipRow([
-    PlayerPopupOptionChip(
-      label: 'On',
-      selected: value,
-      expanded: true,
-      grouped: true,
-      onTap: () => onChanged(true),
-    ),
-    PlayerPopupOptionChip(
-      label: 'Off',
-      selected: !value,
-      expanded: true,
-      grouped: true,
-      onTap: () => onChanged(false),
-    ),
-  ]);
+  return Builder(
+    builder: (context) => playerPopupChipRow([
+      PlayerPopupOptionChip(
+        label: context.l10n.playerControlOn,
+        selected: value,
+        expanded: true,
+        grouped: true,
+        onTap: () => onChanged(true),
+      ),
+      PlayerPopupOptionChip(
+        label: context.l10n.playerControlOff,
+        selected: !value,
+        expanded: true,
+        grouped: true,
+        onTap: () => onChanged(false),
+      ),
+    ]),
+  );
 }
 
 /// Labeled On/Off chip pair for Settings section cards.

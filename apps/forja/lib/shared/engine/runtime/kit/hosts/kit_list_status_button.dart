@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:forja/l10n/l10n.dart';
 import 'package:forja/shared/engine/runtime/kit/hosts/hero_pill_buttons.dart';
 import 'package:forja_foundation/widgets/details/list_status_pin.dart';
 
@@ -18,15 +19,20 @@ import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 
-void _toastStatusWrite(bool ok, String to, {String? simklResolved}) {
+void _toastStatusWrite(
+  AppLocalizations l10n,
+  bool ok,
+  String to, {
+  String? simklResolved,
+}) {
   if (to.isEmpty) {
     if (ok) {
       ForjaToast.success(
-        'Removed from My List',
+        l10n.engineRuntimeRemovedFromMyList,
         duration: const Duration(seconds: 1),
       );
     } else {
-      ForjaToast.error('Removed locally · Simkl failed');
+      ForjaToast.error(l10n.engineRuntimeRemovedLocallySimklFailed);
     }
     return;
   }
@@ -36,12 +42,12 @@ void _toastStatusWrite(bool ok, String to, {String? simklResolved}) {
     if (to == 'completed' &&
         (resolved == 'watching' || resolved == 'plantowatch')) {
       ForjaToast.info(
-        'Still airing on Simkl · kept as $got',
+        l10n.engineRuntimeSimklStillAiring(got),
         duration: const Duration(seconds: 3),
       );
     } else {
       ForjaToast.info(
-        'Simkl saved as $got (not ${listStatusLabel(to, fallback: to)})',
+        l10n.engineRuntimeSimklSavedAs(got, listStatusLabel(to, fallback: to)),
         duration: const Duration(seconds: 3),
       );
     }
@@ -51,7 +57,7 @@ void _toastStatusWrite(bool ok, String to, {String? simklResolved}) {
   if (ok) {
     ForjaToast.success(label, duration: const Duration(seconds: 1));
   } else {
-    ForjaToast.error('Saved locally · Simkl failed');
+    ForjaToast.error(l10n.engineRuntimeSavedLocallySimklFailed);
   }
 }
 
@@ -197,6 +203,7 @@ class KitListStatusButton extends StatelessWidget {
     Movie movie,
     String to,
   ) async {
+    final l10n = context.l10n;
     ProviderContainer? container;
     try {
       container = ProviderScope.containerOf(context, listen: false);
@@ -266,7 +273,7 @@ class KitListStatusButton extends StatelessWidget {
           listStatus: write.resolvedTo!,
         );
         ListFollow.suppressNextStatusToast = true;
-        _toastStatusWrite(ok, to, simklResolved: write.resolvedTo);
+        _toastStatusWrite(l10n, ok, to, simklResolved: write.resolvedTo);
       }
     }
     invalidateListHubFeeds(container);
@@ -348,9 +355,10 @@ class _WiredStatusPin extends StatelessWidget {
           onLeftEdge: onLeftEdge,
           onRightEdge: onRightEdge,
           onSelect: (to) async {
+            final l10n = context.l10n;
             final ok = await onSetStatus(to);
             if (ListFollow.takeSuppressNextStatusToast()) return;
-            _toastStatusWrite(ok, to);
+            _toastStatusWrite(l10n, ok, to);
           },
         );
       },
@@ -440,6 +448,7 @@ class _DialogStatusPinState extends State<_DialogStatusPin> {
   }
 
   Future<void> _setStatus(String to) async {
+    final l10n = context.l10n;
     if (_busy) return;
     setState(() => _busy = true);
     _entry?.markNeedsBuild();
@@ -448,7 +457,7 @@ class _DialogStatusPinState extends State<_DialogStatusPin> {
     setState(() => _busy = false);
     _close();
     if (ListFollow.takeSuppressNextStatusToast()) return;
-    _toastStatusWrite(ok, to);
+    _toastStatusWrite(l10n, ok, to);
   }
 
   void _openMenu() {
@@ -631,6 +640,7 @@ class _LegacyTogglePin extends StatelessWidget {
   }
 
   Future<void> _toggle(BuildContext context) async {
+    final l10n = context.l10n;
     if (movie != null) {
       final added = await BookmarkStore().toggleMovie(
         tmdbId: movie!.id,
@@ -643,7 +653,9 @@ class _LegacyTogglePin extends StatelessWidget {
       );
       if (context.mounted) {
         ForjaToast.success(
-          added ? 'Added to My List' : 'Removed from My List',
+          added
+              ? l10n.engineRuntimeAddedToMyList
+              : l10n.engineRuntimeRemovedFromMyList,
           duration: const Duration(seconds: 1),
         );
       }
@@ -651,7 +663,9 @@ class _LegacyTogglePin extends StatelessWidget {
       final added = await BookmarkStore().toggleStremioItem(stremioItem!);
       if (context.mounted) {
         ForjaToast.success(
-          added ? 'Added to My List' : 'Removed from My List',
+          added
+              ? l10n.engineRuntimeAddedToMyList
+              : l10n.engineRuntimeRemovedFromMyList,
           duration: const Duration(seconds: 1),
         );
       }
@@ -936,6 +950,7 @@ class _KitListStatusControlState extends State<KitListStatusControl> {
   }
 
   Future<void> _setStatus(String to) async {
+    final l10n = context.l10n;
     if (_busy) return;
     setState(() => _busy = true);
     _entry?.markNeedsBuild();
@@ -944,7 +959,7 @@ class _KitListStatusControlState extends State<KitListStatusControl> {
     setState(() => _busy = false);
     _close();
     if (ListFollow.takeSuppressNextStatusToast()) return;
-    _toastStatusWrite(ok, to);
+    _toastStatusWrite(l10n, ok, to);
   }
 
   @override
@@ -1042,6 +1057,7 @@ class BookmarkHeroPillButton {
     Movie? movie,
     Map<String, dynamic>? stremioItem,
   }) async {
+    final l10n = context.l10n;
     if (movie != null) {
       final added = await BookmarkStore().toggleMovie(
         tmdbId: movie.id,
@@ -1054,7 +1070,9 @@ class BookmarkHeroPillButton {
       );
       if (context.mounted) {
         ForjaToast.success(
-          added ? 'Added to My List' : 'Removed from My List',
+          added
+              ? l10n.engineRuntimeAddedToMyList
+              : l10n.engineRuntimeRemovedFromMyList,
           duration: const Duration(seconds: 1),
         );
       }
@@ -1062,7 +1080,9 @@ class BookmarkHeroPillButton {
       final added = await BookmarkStore().toggleStremioItem(stremioItem);
       if (context.mounted) {
         ForjaToast.success(
-          added ? 'Added to My List' : 'Removed from My List',
+          added
+              ? l10n.engineRuntimeAddedToMyList
+              : l10n.engineRuntimeRemovedFromMyList,
           duration: const Duration(seconds: 1),
         );
       }
@@ -1074,7 +1094,7 @@ class BookmarkHeroPillButton {
     required Movie movie,
   }) {
     return HeroPillIconSlot(
-      label: 'My List',
+      label: context.l10n.engineRuntimeMyList,
       iconWidget: BookmarkHeroIcon.movie(movie: movie),
       onTap: () => toggle(context, movie: movie),
     );
@@ -1085,7 +1105,7 @@ class BookmarkHeroPillButton {
     required Map<String, dynamic> stremioItem,
   }) {
     return HeroPillIconSlot(
-      label: 'My List',
+      label: context.l10n.engineRuntimeMyList,
       iconWidget: BookmarkHeroIcon.stremio(stremioItem: stremioItem),
       onTap: () => toggle(context, stremioItem: stremioItem),
     );

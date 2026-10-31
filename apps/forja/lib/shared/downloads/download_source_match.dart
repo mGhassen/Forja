@@ -214,13 +214,13 @@ Future<OfflineLocalPlay?> offlineLocalPlayForTask({
   if (task == null || !task.isCompleted) return null;
   final path = task.targetFilePath.trim();
   if (path.isEmpty) {
-    return const OfflineLocalPlay._(error: kOfflineDownloadMissingMessage);
+    return OfflineLocalPlay._(error: kOfflineDownloadMissingMessage);
   }
   final file = File(
     path.startsWith('file://') ? Uri.parse(path).toFilePath() : path,
   );
   if (!await file.exists()) {
-    return const OfflineLocalPlay._(error: kOfflineDownloadMissingMessage);
+    return OfflineLocalPlay._(error: kOfflineDownloadMissingMessage);
   }
   final blocked = await offlineFilePlayError(file);
   if (blocked != null) {

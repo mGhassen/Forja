@@ -1,3 +1,5 @@
+import 'package:forja/l10n/l10n.dart';
+
 /// Kit schedule sheet axes — Status × Horizon (live schedule product UX).
 enum KitScheduleStatus { airing, upcoming, both }
 
@@ -10,19 +12,16 @@ extension KitScheduleStatusX on KitScheduleStatus {
         KitScheduleStatus.both => 'both',
       };
 
-  String get label => switch (this) {
-        KitScheduleStatus.airing => 'Airing',
-        KitScheduleStatus.upcoming => 'Upcoming',
-        KitScheduleStatus.both => 'Airing + upcoming',
+  String label(AppLocalizations l10n) => switch (this) {
+        KitScheduleStatus.airing => l10n.engineRuntimeScheduleAiring,
+        KitScheduleStatus.upcoming => l10n.engineRuntimeScheduleUpcoming,
+        KitScheduleStatus.both => l10n.engineRuntimeScheduleAiringUpcoming,
       };
 
-  String get subtitle => switch (this) {
-        KitScheduleStatus.airing =>
-          'In-play and 24/7 — including rows without streams yet',
-        KitScheduleStatus.upcoming =>
-          'Not started yet, within the horizon below',
-        KitScheduleStatus.both =>
-          'Airing + 24/7, plus upcoming within the horizon',
+  String subtitle(AppLocalizations l10n) => switch (this) {
+        KitScheduleStatus.airing => l10n.engineRuntimeScheduleAiringHint,
+        KitScheduleStatus.upcoming => l10n.engineRuntimeScheduleUpcomingHint,
+        KitScheduleStatus.both => l10n.engineRuntimeScheduleBothHint,
       };
 }
 
@@ -36,14 +35,14 @@ extension KitScheduleHorizonX on KitScheduleHorizon {
 
   String get label => prefToken;
 
-  String get subtitle {
+  String subtitle(AppLocalizations l10n) {
     final h = switch (this) {
       KitScheduleHorizon.h1 => 1,
       KitScheduleHorizon.h3 => 3,
       KitScheduleHorizon.h6 => 6,
       KitScheduleHorizon.h24 => 24,
     };
-    return 'Upcoming kickoffs in the next ${h}h';
+    return l10n.engineRuntimeScheduleHorizonHint(h);
   }
 }
 
@@ -123,13 +122,14 @@ KitScheduleHorizon? _horizonFromToken(String raw) => switch (raw
 
 /// Top-bar chip: Airing · Next · 3h · 24h (both).
 String kitScheduleChipLabel({
+  required AppLocalizations l10n,
   required KitScheduleStatus status,
   required KitScheduleHorizon horizon,
 }) {
   final h = horizon.label;
   return switch (status) {
-    KitScheduleStatus.airing => 'Airing',
-    KitScheduleStatus.upcoming => 'Next · $h',
+    KitScheduleStatus.airing => l10n.engineRuntimeScheduleAiring,
+    KitScheduleStatus.upcoming => l10n.engineRuntimeScheduleNext(h),
     KitScheduleStatus.both => h,
   };
 }

@@ -70,6 +70,7 @@ mixin _MobilePlayerSourcesSettings on ConsumerState<MobilePlayerScreen> {
   }
 
   void _showSettingsMenu(BuildContext anchorContext) {
+    final l10n = context.l10n;
     final hasProviders =
         widget.providers != null &&
         widget.providers!.isNotEmpty &&
@@ -83,14 +84,14 @@ mixin _MobilePlayerSourcesSettings on ConsumerState<MobilePlayerScreen> {
       return [
         PlayerSettingsEntry(
           icon: Icons.auto_awesome_rounded,
-          title: 'Auto selection',
-          subtitle: 'Servers, tracks, skip intro',
+          title: l10n.playerScreenAutoSelection,
+          subtitle: l10n.playerScreenAutoSelectionSubtitle,
           pageBuilder: (_) => StatefulBuilder(
             builder: (context, setPage) => Column(
               children: [
                 if (hasProviders) ...[
                   PlayerPopupToggleRow(
-                    label: 'Auto server',
+                    label: l10n.playerScreenAutoServer,
                     value: !_s._providerPinned,
                     onChanged: (on) async {
                       final settings = SettingsService();
@@ -110,7 +111,7 @@ mixin _MobilePlayerSourcesSettings on ConsumerState<MobilePlayerScreen> {
                 ],
                 if (hasSources) ...[
                   PlayerPopupToggleRow(
-                    label: 'Auto source',
+                    label: l10n.playerScreenAutoSource,
                     value: !_s._sourcePinned,
                     onChanged: (on) async {
                       final settings = SettingsService();
@@ -129,7 +130,7 @@ mixin _MobilePlayerSourcesSettings on ConsumerState<MobilePlayerScreen> {
                   const SizedBox(height: 12),
                 ],
                 PlayerPopupToggleRow(
-                  label: 'Auto audio',
+                  label: l10n.playerScreenAutoAudio,
                   value: !_s._audioPinned,
                   onChanged: (on) async {
                     final settings = SettingsService();
@@ -148,7 +149,7 @@ mixin _MobilePlayerSourcesSettings on ConsumerState<MobilePlayerScreen> {
                 ),
                 const SizedBox(height: 12),
                 PlayerPopupToggleRow(
-                  label: 'Auto subtitles',
+                  label: l10n.playerScreenAutoSubtitles,
                   value: !_s._subtitlePinned,
                   onChanged: (on) async {
                     final settings = SettingsService();
@@ -166,7 +167,7 @@ mixin _MobilePlayerSourcesSettings on ConsumerState<MobilePlayerScreen> {
                 ),
                 const SizedBox(height: 12),
                 PlayerPopupToggleRow(
-                  label: 'Auto skip intro',
+                  label: l10n.playerScreenAutoSkipIntro,
                   value: SettingsService.autoSkipIntroNotifier.value,
                   onChanged: (on) async {
                     await SettingsService().setAutoSkipIntro(on);
@@ -176,7 +177,7 @@ mixin _MobilePlayerSourcesSettings on ConsumerState<MobilePlayerScreen> {
                 ),
                 const SizedBox(height: 12),
                 PlayerPopupToggleRow(
-                  label: 'Auto next episode',
+                  label: l10n.playerScreenAutoNextEpisode,
                   value: SettingsService.autoNextEpisodeNotifier.value,
                   onChanged: (on) async {
                     await SettingsService().setAutoNextEpisode(on);
@@ -186,7 +187,7 @@ mixin _MobilePlayerSourcesSettings on ConsumerState<MobilePlayerScreen> {
                 ),
                 const SizedBox(height: 12),
                 PlayerPopupToggleRow(
-                  label: 'Content warnings',
+                  label: l10n.addonsHostPlaybackContentWarningsTitle,
                   value: SettingsService.contentWarningsNotifier.value,
                   onChanged: (on) async {
                     await SettingsService().setContentWarnings(on);
@@ -200,8 +201,8 @@ mixin _MobilePlayerSourcesSettings on ConsumerState<MobilePlayerScreen> {
         ),
         PlayerSettingsEntry(
           icon: Icons.memory_rounded,
-          title: 'Video decode',
-          subtitle: _s._hwDecMode.description,
+          title: l10n.playerScreenVideoDecode,
+          subtitle: _s._hwDecMode.description(l10n),
           value: _s._hwDecMode.label,
           pageBuilder: (_) => StatefulBuilder(
             builder: (context, setPage) => playerPopupChipRow([
@@ -228,9 +229,9 @@ mixin _MobilePlayerSourcesSettings on ConsumerState<MobilePlayerScreen> {
         ),
         PlayerSettingsEntry(
           icon: Icons.speed_rounded,
-          title: 'Playback speed',
-          subtitle: 'How fast playback runs',
-          value: speed == 1.0 ? 'Normal' : '${speed}x',
+          title: l10n.playerScreenPlaybackSpeed,
+          subtitle: l10n.playerScreenPlaybackSpeedSubtitle,
+          value: speed == 1.0 ? l10n.playerScreenSpeedNormal : '${speed}x',
           pageBuilder: (_) => StatefulBuilder(
             builder: (context, setPage) {
               final current = _s._player.state.rate;
@@ -248,7 +249,7 @@ mixin _MobilePlayerSourcesSettings on ConsumerState<MobilePlayerScreen> {
                     2.0,
                   ])
                     PlayerPopupOptionChip(
-                      label: s == 1.0 ? 'Normal' : '${s}x',
+                      label: s == 1.0 ? l10n.playerScreenSpeedNormal : '${s}x',
                       selected: s == current,
                       expanded: true,
                       onTap: () {
@@ -263,15 +264,15 @@ mixin _MobilePlayerSourcesSettings on ConsumerState<MobilePlayerScreen> {
         ),
         PlayerSettingsEntry(
           icon: Icons.aspect_ratio_rounded,
-          title: 'Aspect ratio',
-          subtitle: 'Fit video in the frame',
+          title: l10n.playerScreenAspectRatio,
+          subtitle: l10n.playerScreenAspectRatioSubtitle,
           value: _s._videoFitLabel,
           pageBuilder: (_) => StatefulBuilder(
             builder: (context, setPage) => playerPopupChipRow([
-              for (final entry in const [
-                (BoxFit.contain, 'FIT'),
-                (BoxFit.cover, 'CROP'),
-                (BoxFit.fill, 'FILL'),
+              for (final entry in [
+                (BoxFit.contain, l10n.playerScreenFitFit),
+                (BoxFit.cover, l10n.playerScreenFitCrop),
+                (BoxFit.fill, l10n.playerScreenFitFill),
               ])
                 PlayerPopupOptionChip(
                   label: entry.$2,
@@ -288,9 +289,9 @@ mixin _MobilePlayerSourcesSettings on ConsumerState<MobilePlayerScreen> {
         ),
         PlayerSettingsEntry(
           icon: Icons.loop_rounded,
-          title: 'Loop',
-          subtitle: 'Repeat the current title',
-          value: _s._loopEnabled ? 'On' : 'Off',
+          title: l10n.playerScreenLoop,
+          subtitle: l10n.playerScreenLoopSubtitle,
+          value: _s._loopEnabled ? l10n.playerScreenOn : l10n.playerScreenOff,
           pageBuilder: (_) => StatefulBuilder(
             builder: (context, setPage) => playerPopupOnOffChips(
               value: _s._loopEnabled,

@@ -1,4 +1,6 @@
 import 'package:flutter/foundation.dart';
+import 'package:forja/l10n/app_localizations_en.dart';
+import 'package:forja/l10n/l10n.dart';
 
 /// Account-level remote feature flags (`accounts.features` + `accounts.is_admin`
 /// + `accounts.iptv_credits`).
@@ -67,15 +69,22 @@ class AccountFeatures {
   }
 
   /// User-facing limit label (e.g. for tooltips).
-  String iptvPortalLimitLabel() {
-    if (hasUnlimitedPortals) return 'Unlimited';
+  ///
+  /// English unless [l10n] is passed.
+  String iptvPortalLimitLabel([AppLocalizations? l10n]) {
+    if (hasUnlimitedPortals) {
+      return (l10n ?? AppLocalizationsEn()).syncPortalLimitUnlimited;
+    }
     return '$_maxPortals';
   }
 
   /// Message when Add / scrape / deal / import hits the cap.
-  String iptvPortalLimitReachedMessage() {
-    if (hasUnlimitedPortals) return 'Portal limit reached.';
-    return 'Maximum of $_maxPortals portals per profile';
+  ///
+  /// English unless [l10n] is passed.
+  String iptvPortalLimitReachedMessage([AppLocalizations? l10n]) {
+    final l = l10n ?? AppLocalizationsEn();
+    if (hasUnlimitedPortals) return l.syncPortalLimitReached;
+    return l.syncPortalLimitMax(_maxPortals);
   }
 
   static int _parseMaxPortals(Map<String, dynamic>? raw) {

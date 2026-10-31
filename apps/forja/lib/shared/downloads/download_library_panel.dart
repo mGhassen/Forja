@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:forja/features/settings/ui/settings_ui.dart';
+import 'package:forja/l10n/l10n.dart';
 import 'package:forja/shared/downloads/download_enqueue.dart';
 import 'package:forja/shared/downloads/download_page_store.dart';
 import 'package:forja/shared/downloads/download_play.dart';
@@ -110,7 +111,7 @@ class _DownloadLibrarySidePanelState extends State<DownloadLibrarySidePanel> {
 
   Future<void> _play(DownloadTask? task) async {
     if (task == null) {
-      ForjaToast.info('No saved file');
+      ForjaToast.info(context.l10n.sharedDownloadsNoSavedFile);
       return;
     }
     final movie = metaItemToMovie(_meta);
@@ -125,11 +126,12 @@ class _DownloadLibrarySidePanelState extends State<DownloadLibrarySidePanel> {
   }
 
   Future<void> _confirmDelete(DownloadTask task) async {
+    final l10n = context.l10n;
     final ok = await showSettingsConfirmDialog(
       context: context,
-      title: 'Delete download?',
-      body: 'Removes “${task.title}” from this device.',
-      confirmLabel: 'Delete',
+      title: l10n.downloadsDeleteOneTitle,
+      body: l10n.downloadsDeleteOneBody(task.title),
+      confirmLabel: l10n.downloadsDelete,
       destructive: true,
     );
     if (!ok) return;
@@ -237,7 +239,9 @@ class _DownloadLibrarySidePanelState extends State<DownloadLibrarySidePanel> {
   }
 
   Widget _hero(double pad) {
-    final title = _meta.name.trim().isEmpty ? 'Saved' : _meta.name.trim();
+    final title = _meta.name.trim().isEmpty
+        ? context.l10n.sharedDownloadsSaved
+        : _meta.name.trim();
     final backdrop = _meta.background.trim().isNotEmpty
         ? _meta.background.trim()
         : _meta.poster.trim();
@@ -359,7 +363,10 @@ class _DownloadLibrarySidePanelState extends State<DownloadLibrarySidePanel> {
             value: season,
             options: [
               for (final number in seasons)
-                SelectOption(value: number, label: 'Season $number'),
+                SelectOption(
+                  value: number,
+                  label: context.l10n.sharedDownloadsSeasonNumber(number),
+                ),
             ],
             onChanged: (next) {
               if (next == null || next == _season) return;
@@ -368,9 +375,9 @@ class _DownloadLibrarySidePanelState extends State<DownloadLibrarySidePanel> {
           ),
           SizedBox(height: pad),
           if (episodes.isEmpty)
-            const Text(
-              'No saved file',
-              style: TextStyle(color: ForjaShellColors.textSecondary),
+            Text(
+              context.l10n.sharedDownloadsNoSavedFile,
+              style: const TextStyle(color: ForjaShellColors.textSecondary),
             )
           else
             for (var i = 0; i < episodes.length; i++) ...[
@@ -394,9 +401,9 @@ class _DownloadLibrarySidePanelState extends State<DownloadLibrarySidePanel> {
         ),
         const SizedBox(height: 8),
         if (files.isEmpty)
-          const Text(
-            'No saved file',
-            style: TextStyle(color: ForjaShellColors.textSecondary),
+          Text(
+            context.l10n.sharedDownloadsNoSavedFile,
+            style: const TextStyle(color: ForjaShellColors.textSecondary),
           )
         else
           for (var i = 0; i < files.length; i++) ...[
@@ -432,11 +439,16 @@ class _DownloadLibrarySidePanelState extends State<DownloadLibrarySidePanel> {
   }
 
   String _filesHeading(List<DownloadTask> files) {
+    final l10n = context.l10n;
     final saving = files.where((task) => task.isActive).length;
     if (saving > 0) {
-      return saving == 1 ? 'Downloading' : 'Downloading · $saving';
+      return saving == 1
+          ? l10n.sharedDownloadsDownloading
+          : l10n.sharedDownloadsDownloadingCount(saving);
     }
-    return files.length == 1 ? 'Saved' : 'Saved · ${files.length}';
+    return files.length == 1
+        ? l10n.sharedDownloadsSaved
+        : l10n.sharedDownloadsSavedCount(files.length);
   }
 
   Widget _fileRow(DownloadTask task) {
@@ -605,11 +617,12 @@ class _DownloadActiveRow extends StatelessWidget {
         ? task.speedLabel
         : null;
     final eta = task.isDownloading && task.etaLabel != '--'
-        ? 'ETA ${task.etaLabel}'
+        ? context.l10n.downloadsEta(task.etaLabel)
         : null;
     final status = [
-      if (task.status == DownloadStatus.queued) 'Queued',
-      if (task.isPaused) 'Paused',
+      if (task.status == DownloadStatus.queued)
+        context.l10n.downloadsStatusQueued,
+      if (task.isPaused) context.l10n.downloadsStatusPaused,
       ?speed,
       ?pct,
       ?eta,
@@ -804,7 +817,7 @@ class _DownloadSourceRowState extends State<_DownloadSourceRow> {
                           ),
                           SizedBox(width: titleGap),
                           Text(
-                            'Offline',
+                            context.l10n.downloadsLegendOffline,
                             style: TextStyle(
                               color: ForjaShellColors.brandGreen,
                               fontSize: metaSize,
@@ -816,12 +829,12 @@ class _DownloadSourceRowState extends State<_DownloadSourceRow> {
                       ),
                     ),
                     _DownloadRowIcon(
-                      tooltip: 'Play online',
+                      tooltip: context.l10n.sharedDownloadsPlayOnline,
                       icon: Icons.cloud_outlined,
                       onTap: widget.onPlayCloud,
                     ),
                     _DownloadRowIcon(
-                      tooltip: 'Delete',
+                      tooltip: context.l10n.downloadsDelete,
                       icon: Icons.delete_outline_rounded,
                       onTap: widget.onDelete,
                     ),

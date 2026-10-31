@@ -20,6 +20,7 @@ mixin _ExoPlayerFailover on ConsumerState<ExoPlayerScreen> {
 
   Future<void> _failCurrentSource(String message) async {
     if (_s._disposed || !mounted) return;
+    final l10n = context.l10n;
     if (_s._failoverInFlight) {
       _s._pendingOpenError = message;
       return;
@@ -56,7 +57,7 @@ mixin _ExoPlayerFailover on ConsumerState<ExoPlayerScreen> {
       if (nextIdx < _s._sources.length) {
         _s._statusController.upsert(
           'auto-hop',
-          'Trying next stream…',
+          l10n.playerScreenTryingNextStream,
           kind: StatusRouletteKind.loading,
         );
         if (mounted) {
@@ -88,7 +89,7 @@ mixin _ExoPlayerFailover on ConsumerState<ExoPlayerScreen> {
 
       _s._statusController.upsert(
         'auto-hop',
-        'Finding another stream…',
+        l10n.playerScreenFindingAnotherStream,
         kind: StatusRouletteKind.loading,
       );
       if (mounted) {
@@ -220,7 +221,7 @@ mixin _ExoPlayerFailover on ConsumerState<ExoPlayerScreen> {
     debugPrint('[ExoPlayer] Dead sources - full Auto re-resolve like first Play');
     _s._statusController.upsert(
       'reresolve',
-      'Finding servers…',
+      context.l10n.playerScreenFindingServers,
       kind: StatusRouletteKind.loading,
     );
     final restoreProviderPin = _s._providerPinned;
@@ -466,7 +467,7 @@ mixin _ExoPlayerFailover on ConsumerState<ExoPlayerScreen> {
     }
     _s._statusController.upsert(
       'playback-failed',
-      'Failed to stream',
+      context.l10n.playerScreenFailedToStream,
       kind: StatusRouletteKind.failed,
     );
     setState(() {

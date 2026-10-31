@@ -4,6 +4,7 @@ import 'package:forja/features/settings/providers/settings_panel_providers.dart'
 import 'package:rust/rust.dart';
 import 'package:forja/features/settings/ui/focus_controls.dart';
 import 'package:forja/features/settings/ui/settings_ui.dart';
+import 'package:forja/l10n/l10n.dart';
 import 'package:forja_foundation/tokens/forja_settings_tokens.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 
@@ -55,14 +56,13 @@ class _SettingsSearchTorrentsSectionState
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         SettingsGroup(
-          label: 'Torrent search',
+          label: context.l10n.addonsHostTorrentSearchGroupLabel,
           children: [
             if (!TorrentSearchCatalog.hasInstalled)
               Padding(
                 padding: const EdgeInsets.fromLTRB(2, 8, 2, 12),
                 child: Text(
-                  'Install the ForjaHQ Torrent pack under Settings → Forja Packs '
-                  'and enable indexers per plugin.',
+                  context.l10n.addonsHostTorrentInstallPackHint,
                   style: TextStyle(
                     color: ForjaShellColors.textSecondary,
                     fontSize: SettingsTokens.rowSubtitleSizeOf(context),
@@ -72,8 +72,8 @@ class _SettingsSearchTorrentsSectionState
               ),
             settingsFocusableDropdown(
               context,
-              'Default Sort Order',
-              'How torrent results are sorted automatically.',
+              context.l10n.addonsHostTorrentSortTitle,
+              context.l10n.addonsHostTorrentSortSubtitle,
               snap.sortPreference,
               const [
                 'Seeders (High to Low)',
@@ -102,8 +102,7 @@ class _SettingsSearchTorrentsSectionState
             Padding(
               padding: const EdgeInsets.fromLTRB(2, 4, 2, 8),
               child: Text(
-                'UIndex is behind Cloudflare. Point this at a local FlareSolverr or Byparr '
-                'instance (same /v1 API as Prowlarr indexers).',
+                context.l10n.addonsHostTorrentFlareSolverrNote,
                 style: TextStyle(
                   color: ForjaShellColors.textSecondary,
                   fontSize: SettingsTokens.rowSubtitleSizeOf(context),
@@ -114,12 +113,13 @@ class _SettingsSearchTorrentsSectionState
           ],
         ),
         SettingsGroup(
-          label: 'Torrent engine',
+          label: context.l10n.addonsHostTorrentEngineGroupLabel,
           children: [
             settingsFocusableSlider(
-              title: 'Disk cache: ${snap.diskCacheGb} GB',
-              subtitle:
-                  'Max torrent data on disk. The file playing now is never deleted. Oldest idle downloads are removed when over this size.',
+              title: context.l10n.addonsHostTorrentDiskCacheTitle(
+                snap.diskCacheGb,
+              ),
+              subtitle: context.l10n.addonsHostTorrentDiskCacheSubtitle,
               value: snap.diskCacheGb.toDouble().clamp(
                 SettingsService.minTorrentDiskCacheGb.toDouble(),
                 SettingsService.maxTorrentDiskCacheGb.toDouble(),
@@ -128,7 +128,7 @@ class _SettingsSearchTorrentsSectionState
               max: SettingsService.maxTorrentDiskCacheGb.toDouble(),
               divisions: SettingsService.maxTorrentDiskCacheGb -
                   SettingsService.minTorrentDiskCacheGb,
-              label: '${snap.diskCacheGb} GB',
+              label: context.l10n.addonsHostTorrentGbLabel(snap.diskCacheGb),
               onChanged: (val) => notifier.patch(
                 (s) => s.copyWith(diskCacheGb: val.round()),
               ),
@@ -137,9 +137,10 @@ class _SettingsSearchTorrentsSectionState
               },
             ),
             settingsFocusableSlider(
-              title: 'Connections per torrent: ${snap.connectionsLimit}',
-              subtitle:
-                  'Lower (5–25) often streams better on high-seed swarms.',
+              title: context.l10n.addonsHostTorrentConnectionsTitle(
+                snap.connectionsLimit,
+              ),
+              subtitle: context.l10n.addonsHostTorrentConnectionsSubtitle,
               value: snap.connectionsLimit.toDouble().clamp(5, 200),
               min: 5,
               max: 200,

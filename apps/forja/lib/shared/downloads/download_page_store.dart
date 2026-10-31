@@ -6,6 +6,7 @@ import 'package:forja/shared/downloads/download_service.dart';
 import 'package:forja/shared/downloads/download_source_match.dart';
 import 'package:forja/shared/downloads/download_task.dart';
 import 'package:forja/shared/engine/runtime/open/meta_movie.dart';
+import 'package:forja/shell/routing/shell_ambient_l10n.dart';
 import 'package:forja_foundation/protocol/protocol.dart';
 import 'package:path/path.dart' as p;
 import 'package:rust/rust.dart';
@@ -216,7 +217,9 @@ SavedEpisodeSlot _savedEpisodeSlot({
       .firstWhere((title) => title.isNotEmpty, orElse: () => '');
   final title = fromVideo.isNotEmpty
       ? fromVideo
-      : (fromTask.isNotEmpty ? fromTask : 'Episode $episode');
+      : (fromTask.isNotEmpty
+            ? fromTask
+            : shellAmbientL10n.sharedPlaybackEpisodeNumber(episode));
   final still = video?.thumbnail.trim() ?? '';
   final overview = video?.overview.trim() ?? '';
   return SavedEpisodeSlot(

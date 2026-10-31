@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:forja/l10n/l10n.dart';
 import 'package:forja/shell/feedback/forja_toast.dart';
 
 import 'package:forja/shared/engine/packs/install/plugin_install_coordinator.dart';
@@ -62,8 +63,8 @@ class _PluginInstallBanner extends StatelessWidget {
     final style = forjaToastStyle(kind);
     final percent = (progress.fraction * 100).clamp(0, 100).round();
     final title = progress.isUpdate
-        ? 'Updating plugins…'
-        : 'Downloading plugins…';
+        ? context.l10n.packsInstallBannerUpdating
+        : context.l10n.packsInstallBannerDownloading;
     final icon = progress.isUpdate
         ? Icons.system_update_alt_rounded
         : Icons.download_rounded;

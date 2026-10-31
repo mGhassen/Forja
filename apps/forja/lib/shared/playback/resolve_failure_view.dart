@@ -2,6 +2,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:forja_foundation/components/forja_image_cache.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:forja/l10n/l10n.dart';
 
 import 'package:forja/shared/playback/loading_overlay.dart';
 import 'package:forja/shell/focus/shell_focusable_tap.dart';
@@ -27,20 +28,22 @@ class ResolveFailure {
   final String title;
   final String? detail;
   final ResolveFailureTone tone;
-  final String primaryLabel;
+  /// Null falls back to the localized "Try again".
+  final String? primaryLabel;
   final IconData primaryIcon;
   final VoidCallback? onPrimary;
-  final String secondaryLabel;
+  /// Null falls back to the localized "Close".
+  final String? secondaryLabel;
   final VoidCallback? onSecondary;
 
   const ResolveFailure({
     required this.title,
     this.detail,
     this.tone = ResolveFailureTone.error,
-    this.primaryLabel = 'Try again',
+    this.primaryLabel,
     this.primaryIcon = Icons.refresh_rounded,
     this.onPrimary,
-    this.secondaryLabel = 'Close',
+    this.secondaryLabel,
     this.onSecondary,
   });
 
@@ -258,7 +261,7 @@ class _ResolveFailurePanelState extends State<ResolveFailurePanel> {
                           }
                         : null,
                     child: _PrimaryFailureButtonFace(
-                      label: failure.primaryLabel,
+                      label: failure.primaryLabel ?? context.l10n.sharedPlaybackTryAgain,
                       icon: failure.primaryIcon,
                     ),
                   )
@@ -268,7 +271,10 @@ class _ResolveFailurePanelState extends State<ResolveFailurePanel> {
                       failure.primaryIcon,
                       size: ShellPaintScope.iconOf(context, 18),
                     ),
-                    label: Text(failure.primaryLabel),
+                    label: Text(
+                      failure.primaryLabel ??
+                          context.l10n.sharedPlaybackTryAgain,
+                    ),
                     style: FilledButton.styleFrom(
                       backgroundColor: Colors.white,
                       foregroundColor: Colors.black,
@@ -301,13 +307,13 @@ class _ResolveFailurePanelState extends State<ResolveFailurePanel> {
                       horizontal: secondaryPadH,
                       vertical: secondaryPadV,
                     ),
-                    label: failure.secondaryLabel,
+                    label: failure.secondaryLabel ?? context.l10n.settingsUiClose,
                     fontSize: secondaryFont,
                   )
                 : TextButton(
                     onPressed: failure.onSecondary,
                     child: Text(
-                      failure.secondaryLabel,
+                      failure.secondaryLabel ?? context.l10n.settingsUiClose,
                       style: TextStyle(
                         color: Colors.white.withValues(alpha: 0.55),
                         fontFamily: 'Poppins',

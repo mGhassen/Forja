@@ -2,6 +2,8 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:forja/l10n/app_localizations_en.dart';
+import 'package:forja/l10n/l10n.dart';
 
 import 'package:forja/shared/downloads/download_source_match.dart';
 import 'package:forja/shared/engine/engine.dart';
@@ -88,12 +90,13 @@ List<SourcesPanelProviderOption> torrentProviderChipOptions({
   required Iterable<String> enabledProviders,
   required bool jackettConfigured,
   required bool prowlarrConfigured,
+  AppLocalizations? l,
 }) {
   final enabled = enabledProviders.toSet();
   return [
-    const SourcesPanelProviderOption(
+    SourcesPanelProviderOption(
       id: TorrentSearchProviders.allId,
-      label: 'All',
+      label: (l ?? AppLocalizationsEn()).playerSourceFilterAll,
     ),
     for (final id in TorrentSearchProviders.all)
       if (enabled.contains(id))
@@ -143,6 +146,17 @@ bool sourcesPanelChipIsViewFilterSelection({
   }
   return false;
 }
+
+/// Localized text for a stored sort preference value (the value stays English).
+String torrentSortLabel(AppLocalizations l, String sort) => switch (sort) {
+  'Seeders (High to Low)' => l.playerSourceSortSeedersHigh,
+  'Seeders (Low to High)' => l.playerSourceSortSeedersLow,
+  'Quality (High to Low)' => l.playerSourceSortQualityHigh,
+  'Quality (Low to High)' => l.playerSourceSortQualityLow,
+  'Size (High to Low)' => l.playerSourceSortSizeHigh,
+  'Size (Low to High)' => l.playerSourceSortSizeLow,
+  _ => sort,
+};
 
 const kTorrentAudioTags = [
   'Atmos',
@@ -231,7 +245,7 @@ class _TorrentAudioFilterMenuState extends State<TorrentAudioFilterMenu> {
                   const SizedBox(width: 6),
                   Expanded(
                     child: Text(
-                      'Audio',
+                      context.l10n.playerSourceFilterAudio,
                       style: GoogleFonts.plusJakartaSans(
                         color: cinematic.textPrimary,
                         fontSize: 12,
@@ -256,7 +270,7 @@ class _TorrentAudioFilterMenuState extends State<TorrentAudioFilterMenu> {
                             vertical: 2,
                           ),
                           child: Text(
-                            'Clear',
+                            context.l10n.dataClear,
                             style: GoogleFonts.plusJakartaSans(
                               color: cinematic.textSecondary,
                               fontSize: 11,
@@ -764,7 +778,7 @@ class TorrentSourceResultsHeader extends StatelessWidget {
               SizedBox(width: gap),
               Flexible(
                 child: Text(
-                  'Available Sources',
+                  context.l10n.playerSourceAvailableSources,
                   overflow: TextOverflow.ellipsis,
                   maxLines: 1,
                   style: TextStyle(
@@ -822,7 +836,7 @@ class TorrentSourceResultsHeader extends StatelessWidget {
                     tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                   ),
                   child: Text(
-                    'Cancel',
+                    context.l10n.settingsUiCancel,
                     style: TextStyle(
                       color: ForjaShellColors.cinematic.textSecondary,
                       fontSize: metaFs,
@@ -870,7 +884,10 @@ class TorrentSourceResultsHeader extends StatelessWidget {
                               'Size (Low to High)',
                             ]
                             .map(
-                              (s) => DropdownMenuItem(value: s, child: Text(s)),
+                              (s) => DropdownMenuItem(
+                                value: s,
+                                child: Text(torrentSortLabel(context.l10n, s)),
+                              ),
                             )
                             .toList(),
                     onChanged: (val) {
@@ -1055,6 +1072,7 @@ class _TorrentCacheStorageLineState extends State<TorrentCacheStorageLine> {
 
   Future<void> _clear() async {
     if (_clearing) return;
+    final l10n = context.l10n;
     setState(() => _clearing = true);
     try {
       final hadDownloads = (_snapshot?.torrentCount ?? 0) > 0;
@@ -1066,14 +1084,16 @@ class _TorrentCacheStorageLineState extends State<TorrentCacheStorageLine> {
       });
       if (hadDownloads) {
         ForjaToast.success(
-          snap.hasClearableData ? 'Stopped active download' : 'Downloads cleared',
+          snap.hasClearableData
+              ? l10n.playerSourceStoppedActiveDownload
+              : l10n.playerSourceDownloadsCleared,
           duration: const Duration(seconds: 2),
         );
       }
     } catch (_) {
       if (mounted) {
         ForjaToast.error(
-          'Could not stop or clear torrent downloads',
+          l10n.playerSourceStopClearFailed,
           duration: const Duration(seconds: 2),
         );
       }
@@ -1127,7 +1147,9 @@ class _TorrentCacheStorageLineState extends State<TorrentCacheStorageLine> {
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
                   child: Text(
-                    (snap?.torrentCount ?? 0) > 0 ? 'Stop & clear' : 'Clear',
+                    (snap?.torrentCount ?? 0) > 0
+                        ? context.l10n.playerSourceStopAndClear
+                        : context.l10n.dataClear,
                     style: TextStyle(
                       color: cinematic.textSecondary,
                       fontSize: metrics.torrentPanelMetaFontSize,
@@ -1670,7 +1692,7 @@ class _SearchFieldState extends State<_SearchField> {
     // Zero vertical pad: the SizedBox face centers the line. ContentPadding
     // vertical used to fight the fixed height and still looked thin on desktop.
     final decoration = InputDecoration(
-      hintText: 'Search',
+      hintText: context.l10n.playerSourceSearchHint,
       hintStyle: hintStyle,
       border: InputBorder.none,
       isDense: true,
@@ -1929,7 +1951,7 @@ class _TorrentSourceFilterSheetState extends State<_TorrentSourceFilterSheet> {
     Widget header = Row(
       children: [
         Text(
-          'Filters',
+          context.l10n.playerSourceFiltersTitle,
           style: TextStyle(
             color: cinematic.textPrimary,
             fontSize: metrics.torrentPanelTitleFontSize,
@@ -1961,13 +1983,13 @@ class _TorrentSourceFilterSheetState extends State<_TorrentSourceFilterSheet> {
       const rowId = 'filters-category';
       sections.add(
         _sheetSection(
-          'Category',
+          context.l10n.playerSourceFilterCategory,
           rowId: rowId,
           sortOrder: nextSort++,
           chips: [
             for (var i = 0; i < ids.length; i++)
               _sheetChip(
-                label: EngineCategories.typeLabel(ids[i]),
+                label: EngineCategories.typeLabel(ids[i], context.l10n),
                 selected: _engineCats.contains(ids[i]),
                 onTap: () => _toggleEngineCategory(ids[i]),
                 rowId: rowId,
@@ -1989,13 +2011,13 @@ class _TorrentSourceFilterSheetState extends State<_TorrentSourceFilterSheet> {
       const rowId = 'filters-sort';
       sections.add(
         _sheetSection(
-          'Sort',
+          context.l10n.playerSourceFilterSort,
           rowId: rowId,
           sortOrder: nextSort++,
           chips: [
             for (var i = 0; i < sorts.length; i++)
               _sheetChip(
-                label: sorts[i],
+                label: torrentSortLabel(context.l10n, sorts[i]),
                 selected: _sort == sorts[i],
                 onTap: () {
                   setState(() => _sort = sorts[i]);
@@ -2015,7 +2037,7 @@ class _TorrentSourceFilterSheetState extends State<_TorrentSourceFilterSheet> {
       const rowId = 'filters-quality';
       sections.add(
         _sheetSection(
-          'Quality',
+          context.l10n.playerSourceFilterQuality,
           rowId: rowId,
           sortOrder: nextSort++,
           chips: [
@@ -2040,7 +2062,7 @@ class _TorrentSourceFilterSheetState extends State<_TorrentSourceFilterSheet> {
       const rowId = 'filters-size';
       sections.add(
         _sheetSection(
-          'Size',
+          context.l10n.playerSourceFilterSize,
           rowId: rowId,
           sortOrder: nextSort++,
           chips: [
@@ -2062,7 +2084,7 @@ class _TorrentSourceFilterSheetState extends State<_TorrentSourceFilterSheet> {
       const rowId = 'filters-language';
       sections.add(
         _sheetSection(
-          'Language',
+          context.l10n.playerSourceFilterLanguage,
           rowId: rowId,
           sortOrder: nextSort++,
           chips: [
@@ -2089,7 +2111,7 @@ class _TorrentSourceFilterSheetState extends State<_TorrentSourceFilterSheet> {
       const rowId = 'filters-tech';
       sections.add(
         _sheetSection(
-          'Tech',
+          context.l10n.playerSourceFilterTech,
           rowId: rowId,
           sortOrder: nextSort++,
           chips: [
@@ -2111,7 +2133,7 @@ class _TorrentSourceFilterSheetState extends State<_TorrentSourceFilterSheet> {
       const rowId = 'filters-audio';
       sections.add(
         _sheetSection(
-          'Audio',
+          context.l10n.playerSourceFilterAudio,
           rowId: rowId,
           sortOrder: nextSort++,
           chips: [
@@ -2130,13 +2152,13 @@ class _TorrentSourceFilterSheetState extends State<_TorrentSourceFilterSheet> {
     }
     if (widget.onOfflineFiltersChanged != null) {
       const rowId = 'filters-offline';
-      const options = [
-        (kSourcesOfflineFilterId, 'Offline'),
-        (kSourcesOnlineFilterId, 'Online'),
+      final options = [
+        (kSourcesOfflineFilterId, context.l10n.downloadsLegendOffline),
+        (kSourcesOnlineFilterId, context.l10n.playerSourceFilterOnline),
       ];
       sections.add(
         _sheetSection(
-          'Offline',
+          context.l10n.downloadsLegendOffline,
           rowId: rowId,
           sortOrder: nextSort++,
           chips: [
@@ -2269,7 +2291,7 @@ class _FilterClearButton extends StatelessWidget {
         ? ShellTokens.tvBodyFontSize
         : ShellTokens.filterSheetMetaFontSize;
     final label = Text(
-      'Clear',
+      context.l10n.dataClear,
       style: TextStyle(
         color: ForjaShellColors.cinematic.textSecondary,
         fontSize: clearFs,

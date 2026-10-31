@@ -6,6 +6,11 @@
 		<true/>
 		<key>CFBundleDevelopmentRegion</key>
 		<string>$(DEVELOPMENT_LANGUAGE)</string>
+		<key>CFBundleLocalizations</key>
+		<array>
+			<string>en</string>
+			<string>fr</string>
+		</array>
 		<key>CFBundleDisplayName</key>
 		<string>$(PRODUCT_DISPLAY_NAME)</string>
 		<key>CFBundleExecutable</key>

@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:forja/shared/downloads/download_guards.dart';
 import 'package:forja/shared/downloads/hls_download_engine.dart';
+import 'package:forja/shell/routing/shell_ambient_l10n.dart';
 
 /// Result of a pre-download size probe (no file write).
 class DownloadSizeProbeResult {
@@ -29,7 +30,7 @@ class DownloadSizeProbeResult {
   bool get hasSize => bytes > 0;
 
   String get sizeLabel {
-    if (!hasSize) return 'Size unknown';
+    if (!hasSize) return shellAmbientL10n.sharedDownloadsSizeUnknown;
     final formatted = _formatBytes(bytes);
     return estimated ? '~$formatted' : formatted;
   }

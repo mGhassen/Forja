@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import 'package:forja/l10n/l10n.dart';
 import 'package:forja/shared/engine/packs/catalog/official_forjahq_install.dart';
 import 'package:forja/shared/engine/packs/catalog/official_forjahq_packs.dart';
 import 'package:forja/shared/engine/packs/install/plugin_install_prompt.dart';
@@ -104,28 +105,30 @@ class _PacksOnboardingScreenState extends State<PacksOnboardingScreen> {
   }
 
   Future<void> _browseCommunityPacks() async {
+    final l10n = context.l10n;
     final uri = Uri.parse(kCommunityPacksUrl);
     if (_isTv) {
       await Clipboard.setData(const ClipboardData(text: kCommunityPacksUrl));
       if (!mounted) return;
       setState(() {
-        _status = 'URL copied — open on your phone';
+        _status = l10n.accountPacksUrlCopied;
         _error = null;
       });
       return;
     }
     final ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
     if (!ok && mounted) {
-      setState(() => _error = 'Could not open Community Packs.');
+      setState(() => _error = l10n.accountPacksOpenCommunityFailed);
     }
   }
 
   Future<void> _openOfficialPicker() async {
+    final l10n = context.l10n;
     if (_busy || _loadingPicker) return;
     setState(() {
       _loadingPicker = true;
       _error = null;
-      _status = 'Loading official packs…';
+      _status = l10n.accountPacksLoadingOfficial;
     });
     try {
       final bundle = await resolveRecommendedBundle();
@@ -159,8 +162,7 @@ class _PacksOnboardingScreenState extends State<PacksOnboardingScreen> {
       setState(() {
         _loadingPicker = false;
         _status = null;
-        _error =
-            'Could not load official packs. Skip and add them later in Settings.';
+        _error = l10n.accountPacksLoadOfficialFailed;
       });
     }
   }
@@ -180,6 +182,7 @@ class _PacksOnboardingScreenState extends State<PacksOnboardingScreen> {
   }
 
   Future<void> _installSelected() async {
+    final l10n = context.l10n;
     if (_busy || _selectedCount == 0) return;
     final selected = [
       for (final c in _candidates)
@@ -188,7 +191,7 @@ class _PacksOnboardingScreenState extends State<PacksOnboardingScreen> {
     setState(() {
       _busy = true;
       _error = null;
-      _status = 'Preparing official packs…';
+      _status = l10n.accountPacksPreparing;
       _done = 0;
       _total = selected.length;
     });
@@ -213,10 +216,12 @@ class _PacksOnboardingScreenState extends State<PacksOnboardingScreen> {
       if (!mounted) return;
       if (failures.isNotEmpty) {
         setState(() {
-          _error =
-              'Installed with ${failures.length} error(s): ${failures.take(3).join(', ')}'
-              '${failures.length > 3 ? '…' : ''}';
-          _status = 'Finishing…';
+          _error = l10n.accountPacksInstalledWithErrors(
+            failures.length,
+            '${failures.take(3).join(', ')}'
+            '${failures.length > 3 ? '…' : ''}',
+          );
+          _status = l10n.accountPacksFinishing;
         });
       }
       await _finish();
@@ -224,14 +229,14 @@ class _PacksOnboardingScreenState extends State<PacksOnboardingScreen> {
       if (!mounted) return;
       setState(() {
         _busy = false;
-        _error =
-            'Install failed. You can skip and add packs later in Settings.';
+        _error = l10n.accountPacksInstallFailed;
         _status = null;
       });
     }
   }
 
   Widget _header({required bool picking}) {
+    final l10n = context.l10n;
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -243,7 +248,9 @@ class _PacksOnboardingScreenState extends State<PacksOnboardingScreen> {
         ),
         const SizedBox(height: 28),
         Text(
-          picking ? 'Choose official packs' : 'Unlock the best experience',
+          picking
+              ? l10n.accountPacksTitleChoose
+              : l10n.accountPacksTitleUnlock,
           textAlign: TextAlign.center,
           style: GoogleFonts.outfit(
             textStyle: _onboardText(
@@ -258,10 +265,8 @@ class _PacksOnboardingScreenState extends State<PacksOnboardingScreen> {
         const SizedBox(height: 14),
         Text(
           picking
-              ? 'Recommended packs are checked. Add or remove any, then Install.'
-              : 'Packs add catalogs, stream sources, live sports, and more. '
-                  'Pick official ForjaHQ packs, or browse Community Packs '
-                  'and choose on the web.',
+              ? l10n.accountPacksBodyPicking
+              : l10n.accountPacksBodyIntro,
           textAlign: TextAlign.center,
           style: GoogleFonts.plusJakartaSans(
             textStyle: _onboardText(
@@ -318,6 +323,7 @@ class _PacksOnboardingScreenState extends State<PacksOnboardingScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     final padH = _isTv ? 56.0 : 40.0;
     // Fill the viewport while picking so Install stays pinned (Update Forja).
     final fillPicker = _picking && !_busy && !_loadingPicker;
@@ -400,7 +406,7 @@ class _PacksOnboardingScreenState extends State<PacksOnboardingScreen> {
                                     ),
                                   ),
                                 Text(
-                                  _status ?? 'Working…',
+                                  _status ?? l10n.packsPromptWorking,
                                   textAlign: TextAlign.center,
                                   style: GoogleFonts.plusJakartaSans(
                                     textStyle: _onboardText(
@@ -411,7 +417,7 @@ class _PacksOnboardingScreenState extends State<PacksOnboardingScreen> {
                                 ),
                               ] else if (_loadingPicker) ...[
                                 Text(
-                                  _status ?? 'Loading…',
+                                  _status ?? l10n.accountPacksLoading,
                                   textAlign: TextAlign.center,
                                   style: GoogleFonts.plusJakartaSans(
                                     textStyle: _onboardText(
@@ -426,7 +432,9 @@ class _PacksOnboardingScreenState extends State<PacksOnboardingScreen> {
                                   browseFocusNode: _browseFocus,
                                   autofocusInstall: true,
                                   communitySubtitle: _isTv
-                                      ? 'Choose packs on your phone\n$kCommunityPacksUrl'
+                                      ? l10n.accountPacksTvCommunity(
+                                          kCommunityPacksUrl,
+                                        )
                                       : null,
                                   onInstallOfficial: () =>
                                       unawaited(_openOfficialPicker()),
@@ -513,6 +521,7 @@ class _OfficialPicker extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     final actionable = candidates.where((c) => !c.alreadyInstalled).toList();
     final allSelected = actionable.isNotEmpty &&
         actionable.every((c) => selected.contains(_key(c)));
@@ -523,7 +532,7 @@ class _OfficialPicker extends StatelessWidget {
         Row(
           children: [
             Text(
-              '$selectedCount selected',
+              l10n.packsPromptSelected(selectedCount),
               style: GoogleFonts.plusJakartaSans(
                 textStyle: _onboardText(
                   color: ForjaShellColors.textSecondary,
@@ -533,17 +542,17 @@ class _OfficialPicker extends StatelessWidget {
             ),
             const Spacer(),
             _TextChip(
-              label: 'Recommended',
+              label: l10n.packsPromptRecommended,
               onTap: onSelectRecommended,
             ),
             const SizedBox(width: 8),
             _TextChip(
-              label: 'Select all',
+              label: l10n.packsPromptSelectAll,
               onTap: allSelected ? null : onSelectAll,
             ),
             const SizedBox(width: 8),
             _TextChip(
-              label: 'Clear',
+              label: l10n.packsPromptClear,
               onTap: selectedCount == 0 ? null : onClear,
             ),
           ],
@@ -570,9 +579,7 @@ class _OfficialPicker extends StatelessWidget {
         ),
         const SizedBox(height: 16),
         Button(
-          label: selectedCount == 1
-              ? 'Install 1 pack'
-              : 'Install $selectedCount packs',
+          label: l10n.packsPromptInstallCount(selectedCount),
           icon: Icons.download_rounded,
           expand: true,
           focusNode: confirmFocus,
@@ -591,7 +598,7 @@ class _OfficialPicker extends StatelessWidget {
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               child: Text(
-                'Back',
+                l10n.accountBack,
                 style: GoogleFonts.dmSans(
                   textStyle: _onboardText(
                     color: ForjaShellColors.textSecondary,
@@ -657,9 +664,10 @@ class _OnboardPackRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     final title = candidate.displayName?.trim().isNotEmpty == true
         ? candidate.displayName!.trim()
-        : 'Plugin pack';
+        : l10n.packsPromptDefaultTitle;
     final desc = candidate.description?.trim();
     final tv = PlatformInfo.isAndroidTv;
 
@@ -739,9 +747,9 @@ class _OnboardPackRow extends StatelessWidget {
                                 const Color(0xFFFF4D1C).withValues(alpha: 0.4),
                           ),
                         ),
-                        child: const Text(
-                          'Recommended',
-                          style: TextStyle(
+                        child: Text(
+                          l10n.packsPromptRecommended,
+                          style: const TextStyle(
                             color: Color(0xFFFF4D1C),
                             fontSize: 9,
                             fontWeight: FontWeight.w700,
@@ -839,6 +847,7 @@ class _SkipAction extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     return Center(
       child: FocusableControl(
         focusNode: focusNode,
@@ -850,7 +859,7 @@ class _SkipAction extends StatelessWidget {
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           child: Text(
-            'Skip for now',
+            l10n.accountPacksSkip,
             textAlign: TextAlign.center,
             style: GoogleFonts.dmSans(
               textStyle: _onboardText(

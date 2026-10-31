@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:forja/l10n/l10n.dart';
 import 'package:forja/shared/player/controls/menus/hls_instream_audio.dart';
 import 'package:forja/shared/player/controls/menus/player_popup_panel.dart';
 import 'package:forja/shared/player/screens/utils.dart';
@@ -15,6 +16,7 @@ class PlayerAudioMenu {
     Alignment alignment = Alignment.bottomLeft,
     EdgeInsets margin = const EdgeInsets.only(left: 16, bottom: 88),
   }) async {
+    final l10n = context.l10n;
     final tracks = await hlsLabeledAudioTracks(
       player.state.tracks.audio
           .where((t) => t.id != 'no' && t.id != 'auto')
@@ -30,17 +32,17 @@ class PlayerAudioMenu {
 
     await PlayerPopupPanel.show(
       context: context,
-      title: 'Audio',
+      title: l10n.playerControlAudio,
       leadingIcon: Icons.audiotrack_rounded,
       alignment: alignment,
       margin: margin,
       anchorContext: anchorContext,
       child: tracks.isEmpty
-          ? const Padding(
-              padding: EdgeInsets.fromLTRB(12, 12, 12, 14),
+          ? Padding(
+              padding: const EdgeInsets.fromLTRB(12, 12, 12, 14),
               child: Text(
-                'No audio tracks found',
-                style: TextStyle(color: PlayerPopupTokens.muted),
+                l10n.playerControlNoAudioTracks,
+                style: const TextStyle(color: PlayerPopupTokens.muted),
               ),
             )
           : ListView(

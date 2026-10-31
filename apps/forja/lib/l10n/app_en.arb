@@ -1,0 +1,2935 @@
+{
+  "@@locale": "en",
+  "settingsTitle": "Settings",
+  "@settingsTitle": {
+    "description": "Title of the Settings screen, shown when no category is selected."
+  },
+  "settingsCategoryProfileTitle": "Profile & account",
+  "settingsCategoryProfileSubtitle": "Profile, cloud sync, sign in",
+  "settingsCategoryAddonsTitle": "Addons",
+  "@settingsCategoryAddonsTitle": {
+    "description": "Name of the Addons settings category. Product name, keep it consistent with the other Settings screens."
+  },
+  "settingsCategoryAddonsSubtitle": "Playback, IPTV, torrents, Stremio, debrid, LAN",
+  "settingsCategoryPacksTitle": "Forja Packs",
+  "@settingsCategoryPacksTitle": {
+    "description": "Name of the plugin packs settings category. 'Forja Packs' is a product name."
+  },
+  "settingsCategoryPacksSubtitle": "Install and manage plugin packs",
+  "settingsCategoryFeaturesTitle": "Features",
+  "settingsCategoryFeaturesSubtitle": "Tabs, order, default menu",
+  "settingsCategoryDownloadsTitle": "Downloads",
+  "settingsCategoryDownloadsSubtitle": "Offline library and download progress",
+  "settingsCategoryDataTitle": "Data & backup",
+  "settingsCategoryDataSubtitle": "Clear cache, export, import",
+  "settingsCategoryAboutTitle": "About",
+  "settingsCategoryAboutSubtitle": "Updates, version, developer",
+  "settingsLanguageGroupLabel": "Language",
+  "settingsLanguageRowTitle": "App language",
+  "settingsLanguageRowSubtitle": "Menus and screens change right away. Restart Forja to update titles and descriptions.",
+  "@settingsLanguageRowSubtitle": {
+    "description": "Subtitle under the app language picker. The app's own screens switch at once; titles and descriptions loaded from TMDB follow after a restart."
+  },
+  "settingsLanguageSystemDefault": "System default",
+  "@settingsLanguageSystemDefault": {
+    "description": "Picker option that follows the device language."
+  },
+  "addonsHostDebridGroupLabel": "Debrid",
+  "addonsHostDebridResolveTitle": "Resolve magnets with debrid",
+  "addonsHostDebridResolveSubtitle": "Use an installed debrid pack plugin for torrent magnets.",
+  "addonsHostDebridPluginTitle": "Magnet resolve plugin",
+  "addonsHostDebridPluginSubtitle": "Only one debrid plugin can be active.",
+  "addonsHostPlayTogglesGroupLabel": "Forja addons",
+  "addonsHostPlayTogglesP2pAckedTitle": "You are aware of P2P streaming",
+  "addonsHostPlayTogglesP2pConfirmTitle": "Confirm you are aware of P2P streaming",
+  "addonsHostPlayTogglesP2pAckedSubtitle": "Direct torrent, Stremio, and Nuvio can be used. Tap to review.",
+  "addonsHostPlayTogglesP2pConfirmSubtitle": "Required once before turning on Direct torrent, Stremio, or Nuvio.",
+  "addonsHostPlayTogglesTorrentTitle": "Direct torrent",
+  "addonsHostPlayTogglesTorrentNativeSubtitle": "Search Forja indexers (Jackett / Prowlarr) below.",
+  "addonsHostPlayTogglesTorrentAtvSubtitle": "Search torrents here. Playing a magnet needs a paired desktop (Settings → LAN).",
+  "addonsHostPlayTogglesStremioTitle": "Stremio",
+  "addonsHostPlayTogglesStremioNativeSubtitle": "Play from installed Stremio addon streams.",
+  "addonsHostPlayTogglesNuvioTitle": "Nuvio",
+  "addonsHostPlayTogglesNuvioNativeSubtitle": "Play from installed Nuvio scraper addons below.",
+  "addonsHostPlayTogglesDirectHttpAtvSubtitle": "Direct HTTP plays on this TV. Magnets need a paired desktop (Settings → LAN).",
+  "addonsHostMdblistEnterKeyWarning": "Please enter an API key",
+  "addonsHostMdblistConnectedToast": "MDBlist connected!",
+  "addonsHostMdblistConnectedAsToast": "MDBlist connected as {username}!",
+  "@addonsHostMdblistConnectedAsToast": {
+    "placeholders": {
+      "username": {
+        "type": "String"
+      }
+    }
+  },
+  "addonsHostMdblistInvalidKeyError": "Invalid MDBlist API key",
+  "addonsHostMdblistKeyRemovedToast": "MDBlist API key removed",
+  "addonsHostMdblistIntro": "Aggregated ratings from IMDb, TMDB, Trakt, Letterboxd, RT, and more",
+  "addonsHostMdblistConnectedStatus": "Connected",
+  "addonsHostMdblistConnectedAsStatus": "Connected as {username}",
+  "@addonsHostMdblistConnectedAsStatus": {
+    "placeholders": {
+      "username": {
+        "type": "String"
+      }
+    }
+  },
+  "addonsHostMdblistRemoveKeyButton": "Remove API Key",
+  "addonsHostMdblistKeyLabel": "MDBlist API Key",
+  "addonsHostMdblistKeyHint": "Paste your API key from mdblist.com",
+  "addonsHostMdblistSaveKeyButton": "Save API Key",
+  "addonsHostPlayerGroupLabel": "Player",
+  "addonsHostPlaybackEngineTitle": "Movies & series engine",
+  "addonsHostPlaybackEngineSubtitle": "Used for Home, Search, Anime, Asian Drama, and IPTV Movies/Series. Live IPTV has its own setting under IPTV.",
+  "addonsHostPlaybackAudioLangTitle": "Preferred Audio Language",
+  "addonsHostPlaybackAudioLangSubtitle": "Switch to a matching audio track when playback starts. Pick \"None\" to keep the stream default.",
+  "addonsHostPlaybackSubtitleLangTitle": "Preferred Subtitle Language",
+  "addonsHostPlaybackSubtitleLangSubtitle": "Prefer this language for in-stream or online subtitles. In-stream tracks win when they match. Pick \"None\" to start with subs off.",
+  "addonsHostPlaybackAvoidAudioTitle": "Avoid unsupported audio (Atmos / TrueHD / 7.1)",
+  "addonsHostPlaybackAvoidAudioSubtitle": "Fall back to AC-3, E-AC-3, or AAC when Atmos, TrueHD, or 7.1 is not supported.",
+  "addonsHostPlaybackAutoNextTitle": "Auto next episode",
+  "addonsHostPlaybackAutoNextSubtitle": "Start the next episode when one ends. Also available in the player Episodes panel.",
+  "addonsHostPlaybackAutoSkipIntroTitle": "Auto skip intro",
+  "addonsHostPlaybackAutoSkipIntroSubtitle": "Skip intro and recap segments automatically when timestamps are available.",
+  "addonsHostPlaybackContentWarningsTitle": "Content warnings",
+  "addonsHostPlaybackContentWarningsSubtitle": "Show IMDb content ratings (nudity, violence, and similar) when playback starts.",
+  "addonsHostPlaybackBackgroundTitle": "Play in background",
+  "addonsHostPlaybackBackgroundDesktopSubtitle": "Keep movies, series, and IPTV playing when Forja is in the background.",
+  "addonsHostPlaybackBackgroundMobileSubtitle": "Keep movies, series, and IPTV playing when Forja is in the background. (playback pauses until you return).",
+  "addonsHostPlaybackRemoteSoundsTitle": "Remote click sounds",
+  "addonsHostPlaybackRemoteSoundsSubtitle": "Play a short system click when you move D-pad focus or press OK. Off while a video is playing.",
+  "addonsHostPlaybackAutoPipTitle": "Auto picture-in-picture",
+  "addonsHostPlaybackAutoPipSubtitle": "Enter picture-in-picture when you switch Space (macOS) or virtual desktop (Windows) while playing. You can still use the player PiP button anytime.",
+  "addonsHostPlaybackMiniPlayerTitle": "Escape to mini player",
+  "addonsHostPlaybackMiniPlayerSubtitle": "When Escape would leave the player, demote to the in-app mini instead. Off by default. The top-right mini button always works. Distinct from picture-in-picture.",
+  "addonsHostPlaybackMaxQualityTitle": "Max stream quality",
+  "addonsHostPlaybackMaxQualitySubtitle": "Limit Auto stream quality and HLS start bitrate. Auto aims for a faster first frame. Pick 4K for the highest ladder.",
+  "addonsHostPortalEngineTitle": "IPTV engine",
+  "addonsHostPortalEngineAndroidSubtitle": "Live channels only. Does not change Movies & series or Live Sports.",
+  "addonsHostPortalEngineDesktopSubtitle": "Live channels only. HLS prefers AVPlayer (Mac) or VLC (Windows) when available; MPEG-TS uses MediaKit.",
+  "addonsHostPortalEpgTitle": "IPTV programme guide (EPG)",
+  "addonsHostPortalEpgSubtitle": "Show NOW and NEXT programme info in the player and channel browser.",
+  "addonsHostPortalMaxQualityTitle": "IPTV live max quality",
+  "addonsHostPortalMaxQualitySubtitle": "ExoPlayer only. Auto uses the portal’s full quality. Cap at 1080p, 720p, or 480p only on weak devices.",
+  "addonsHostPortalRecoveryTitle": "IPTV live recovery",
+  "addonsHostPortalRecoverySubtitle": "ExoPlayer only. How live channels reconnect after a stall. Auto picks per source. Stable forces one policy. Classic uses freeze timers. MediaKit ignores this (ffmpeg reconnect). Applies the next time you open the player.",
+  "addonsHostPortalReopenStallTitle": "Reopen on buffer stall",
+  "addonsHostPortalReopenStallSubtitle": "ExoPlayer Stable mode only. Reconnect when the picture freezes even if cache still reports data. Leave off unless you need it. Applies the next time you open the player.",
+  "addonsHostPortalMatchRefreshTitle": "IPTV match display refresh",
+  "addonsHostPortalMatchRefreshSubtitle": "MediaKit only. Match the TV refresh rate to the channel (for example 50 Hz for 50 fps). Helps 4K stutter. May briefly blink HDMI after the first frame. Applies the next time you open the player.",
+  "addonsHostPortalLiveBufferTitle": "IPTV live buffer",
+  "addonsHostPortalLiveBufferSubtitle": "MediaKit only. Live buffer ahead of playback. Auto uses 30s (same as desktop). Manual 15–30s. Helps underruns, not frame judder. Applies the next time you open the player.",
+  "addonsHostTorrentSearchGroupLabel": "Torrent search",
+  "addonsHostTorrentInstallPackHint": "Install the ForjaHQ Torrent pack under Settings → Forja Packs and enable indexers per plugin.",
+  "addonsHostTorrentSortTitle": "Default Sort Order",
+  "addonsHostTorrentSortSubtitle": "How torrent results are sorted automatically.",
+  "addonsHostTorrentFlareSolverrNote": "UIndex is behind Cloudflare. Point this at a local FlareSolverr or Byparr instance (same /v1 API as Prowlarr indexers).",
+  "addonsHostTorrentEngineGroupLabel": "Torrent engine",
+  "addonsHostTorrentDiskCacheTitle": "Disk cache: {gb} GB",
+  "@addonsHostTorrentDiskCacheTitle": {
+    "placeholders": {
+      "gb": {
+        "type": "int"
+      }
+    }
+  },
+  "addonsHostTorrentDiskCacheSubtitle": "Max torrent data on disk. The file playing now is never deleted. Oldest idle downloads are removed when over this size.",
+  "addonsHostTorrentGbLabel": "{gb} GB",
+  "@addonsHostTorrentGbLabel": {
+    "placeholders": {
+      "gb": {
+        "type": "int"
+      }
+    }
+  },
+  "addonsHostTorrentConnectionsTitle": "Connections per torrent: {count}",
+  "@addonsHostTorrentConnectionsTitle": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "addonsHostTorrentConnectionsSubtitle": "Lower (5–25) often streams better on high-seed swarms.",
+  "addonsHostSimklLoginUnavailableError": "Simkl login isn’t available in this build",
+  "addonsHostSimklLoginStartFailedError": "Failed to start Simkl login",
+  "addonsHostSimklCodeCopiedToast": "Code {code} copied. Opening {url}…",
+  "@addonsHostSimklCodeCopiedToast": {
+    "placeholders": {
+      "code": {
+        "type": "String"
+      },
+      "url": {
+        "type": "String"
+      }
+    }
+  },
+  "addonsHostSimklLoggedInToast": "Logged in to Simkl!",
+  "addonsHostSimklLoggedInAsToast": "Logged in to Simkl as {username}!",
+  "@addonsHostSimklLoggedInAsToast": {
+    "placeholders": {
+      "username": {
+        "type": "String"
+      }
+    }
+  },
+  "addonsHostSimklLoggedOutToast": "Logged out of Simkl",
+  "addonsHostSimklPickSyncModeError": "Pick how lists sync first",
+  "addonsHostSimklSyncError": "Simkl sync error: {error}",
+  "@addonsHostSimklSyncError": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "addonsHostSimklSyncedKeptLocal": "Kept local",
+  "addonsHostSimklSyncedUsedSimkl": "Used Simkl",
+  "addonsHostSimklSyncedMerged": "Merged",
+  "addonsHostSimklSyncedMergedDeleted": "Merged + deleted",
+  "addonsHostSimklSyncedGeneric": "Synced",
+  "addonsHostSimklSyncSummaryToast": "{mode} · list ↑{listExported} ↓{listImported}{removed}, progress {progress}, movies {movies}, eps ↑{epsExported} ↓{epsImported}",
+  "@addonsHostSimklSyncSummaryToast": {
+    "placeholders": {
+      "mode": {
+        "type": "String"
+      },
+      "listExported": {
+        "type": "int"
+      },
+      "listImported": {
+        "type": "int"
+      },
+      "removed": {
+        "type": "String"
+      },
+      "progress": {
+        "type": "int"
+      },
+      "movies": {
+        "type": "int"
+      },
+      "epsExported": {
+        "type": "int"
+      },
+      "epsImported": {
+        "type": "int"
+      }
+    }
+  },
+  "addonsHostSimklIntro": "Sync your watchlist and watch history with Simkl",
+  "addonsHostSimklConnectedStatus": "Connected",
+  "addonsHostSimklConnectedAsStatus": "Connected as {username}",
+  "@addonsHostSimklConnectedAsStatus": {
+    "placeholders": {
+      "username": {
+        "type": "String"
+      }
+    }
+  },
+  "addonsHostSimklSyncModeTitle": "How should lists sync?",
+  "addonsHostSimklSyncModeSubtitleAuto": "Saved for Sync Now and Auto sync on My List",
+  "addonsHostSimklSyncModeSubtitle": "Saved for Sync Now",
+  "addonsHostSimklAutoSyncTitle": "Auto sync lists on My List",
+  "addonsHostSimklAutoSyncSubtitle": "When you open My List, sync with {mode} and refresh the cached library",
+  "@addonsHostSimklAutoSyncSubtitle": {
+    "placeholders": {
+      "mode": {
+        "type": "String"
+      }
+    }
+  },
+  "addonsHostSimklSyncingButton": "Syncing...",
+  "addonsHostSimklSyncNowButton": "Sync Now",
+  "addonsHostSimklLogoutButton": "Logout from Simkl",
+  "addonsHostSimklEnterCodePrompt": "Go to the URL below and enter this code:",
+  "addonsHostSimklWaitingAuth": "Waiting for authorization...",
+  "addonsHostSimklLoginButton": "Login with Simkl",
+  "addonsHostLanUnpairButton": "Unpair",
+  "addonsHostLanRemoveTorrentError": "Could not remove torrent",
+  "addonsHostLanRemoveTorrentToast": "Removed torrent cache entry",
+  "addonsHostLanClearCacheError": "Could not clear torrent cache",
+  "addonsHostLanClearCacheToast": "Torrent cache cleared",
+  "addonsHostLanServerStartFailedError": "Failed to start LAN server",
+  "addonsHostLanServerStartFailedDetailError": "Failed to start LAN server: {detail}",
+  "@addonsHostLanServerStartFailedDetailError": {
+    "placeholders": {
+      "detail": {
+        "type": "String"
+      }
+    }
+  },
+  "addonsHostLanNoDesktopFoundInfo": "No desktop found. Enter the IP and port from Settings → LAN on the desktop.",
+  "addonsHostLanEnterPairDetailsInfo": "Enter desktop address, port, and 6-digit code",
+  "addonsHostLanPairFailedError": "Pairing failed. Check the code, IP, and that desktop LAN is on.",
+  "addonsHostLanPairedToast": "Paired. Enable Direct torrent in Settings → Playback.",
+  "addonsHostLanCodeCopiedToast": "Code copied",
+  "addonsHostLanAddressCopiedToast": "Address copied",
+  "addonsHostLanPortOnlyLabel": "port {port}",
+  "@addonsHostLanPortOnlyLabel": {
+    "placeholders": {
+      "port": {
+        "type": "int"
+      }
+    }
+  },
+  "addonsHostLanAddressMoreLabel": "{address} (+{more} more)",
+  "@addonsHostLanAddressMoreLabel": {
+    "placeholders": {
+      "address": {
+        "type": "String"
+      },
+      "more": {
+        "type": "int"
+      }
+    }
+  },
+  "addonsHostLanIntroDesktop": "Turn this PC into a Forja LAN server. Pair TVs and phones once. They pick torrents; this desktop downloads and streams.",
+  "addonsHostLanIntroClient": "Pair once with a desktop Forja on the same Wi‑Fi. After that, torrent sources on this device play through the desktop.",
+  "addonsHostLanEnableServerTitle": "Enable LAN server",
+  "addonsHostLanListeningSubtitle": "Listening · {address}",
+  "@addonsHostLanListeningSubtitle": {
+    "placeholders": {
+      "address": {
+        "type": "String"
+      }
+    }
+  },
+  "addonsHostLanServerOffSubtitle": "Off. TVs cannot use this desktop for torrents",
+  "addonsHostLanDesktopAddressHeader": "DESKTOP ADDRESS",
+  "addonsHostLanDesktopAddressHint": "On the TV: Settings → LAN → enter this IP and port if Discover does not find this PC.",
+  "addonsHostLanNoIpDetected": "Port {port}. Could not detect a LAN IP. Check Wi‑Fi or Ethernet.",
+  "@addonsHostLanNoIpDetected": {
+    "placeholders": {
+      "port": {
+        "type": "int"
+      }
+    }
+  },
+  "addonsHostLanPairingCodeHeader": "PAIRING CODE",
+  "addonsHostLanPairingCodeHint": "On the TV: Settings → LAN → enter this code (valid ~5 minutes, one use).",
+  "addonsHostLanCopyTooltip": "Copy",
+  "addonsHostLanNewCodeTooltip": "New code",
+  "addonsHostLanPairedDevicesHeader": "PAIRED DEVICES",
+  "addonsHostLanReloadDevicesTooltip": "Reload paired devices",
+  "addonsHostLanNoDevicesPaired": "No TVs or phones paired yet.",
+  "addonsHostLanRevokeHint": "Revoke to force that device to pair again.",
+  "addonsHostLanWaitingForDevice": "Waiting for a device to enter the code…",
+  "addonsHostLanDeviceFallback": "Device",
+  "addonsHostLanRevokeButton": "Revoke",
+  "addonsHostLanTorrentActivityHeader": "TORRENT ACTIVITY",
+  "addonsHostLanClearAllButton": "Clear all",
+  "addonsHostLanTorrentActivityHint": "Torrents opened by paired TVs/phones. Delete removes the cached download.",
+  "addonsHostLanCacheOnDisk": "Cache on disk: {size}",
+  "@addonsHostLanCacheOnDisk": {
+    "placeholders": {
+      "size": {
+        "type": "String"
+      }
+    }
+  },
+  "addonsHostLanActiveTorrentFallback": "Active torrent",
+  "addonsHostLanNoTorrentsYet": "No LAN torrents yet. Play one from a paired TV.",
+  "addonsHostLanServingNow": "Serving now (not yet in history).",
+  "addonsHostLanPeersChip": "{count} peers",
+  "@addonsHostLanPeersChip": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "addonsHostLanDeleteCachedTooltip": "Delete cached download",
+  "addonsHostLanPairedStatus": "Paired",
+  "addonsHostLanNotPairedStatus": "Not paired",
+  "addonsHostLanDesktopOnline": "Desktop online",
+  "addonsHostLanDesktopOffline": "Desktop offline",
+  "addonsHostLanPlayingStatus": "playing",
+  "addonsHostLanPairedAddressNote": "{host}:{port}. Torrents play via desktop.",
+  "@addonsHostLanPairedAddressNote": {
+    "placeholders": {
+      "host": {
+        "type": "String"
+      },
+      "port": {
+        "type": "String"
+      }
+    }
+  },
+  "addonsHostLanPairOnceNote": "Pair once. Then open Sources → Torrents on a title.",
+  "addonsHostLanReloadStatusTooltip": "Reload desktop status",
+  "addonsHostLanFindDesktopHeader": "FIND DESKTOP",
+  "addonsHostLanSearchingButton": "Searching…",
+  "addonsHostLanDiscoverButton": "Discover on Wi‑Fi",
+  "addonsHostLanPortValue": "Port {port}",
+  "@addonsHostLanPortValue": {
+    "placeholders": {
+      "port": {
+        "type": "int"
+      }
+    }
+  },
+  "addonsHostLanUseButton": "Use",
+  "addonsHostLanEnterManuallyHeader": "OR ENTER MANUALLY",
+  "addonsHostLanDesktopIpLabel": "Desktop IP",
+  "addonsHostLanPortLabel": "Port",
+  "addonsHostLanPortHint": "Shown under Enable LAN server on desktop",
+  "addonsHostLanCodeLabel": "6-digit code",
+  "addonsHostLanCodeHint": "From desktop Settings → LAN",
+  "addonsHostLanPairButton": "Pair with desktop",
+  "addonsHostLanLocalTorrentTitle": "Allow local torrent on this device",
+  "addonsHostLanLocalTorrentSubtitle": "Advanced. Use the on-device engine instead of the desktop. Leave off on TV.",
+  "addonsHostProvStremioGroupLabel": "Stremio addons",
+  "addonsHostProvNuvioGroupLabel": "Nuvio addons",
+  "addonsHostProvAddonInstalledToast": "Addon installed",
+  "addonsHostProvInstallFailedError": "Failed to install addon. Check URL.",
+  "addonsHostProvGenericError": "Error: {error}",
+  "@addonsHostProvGenericError": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "addonsHostProvAddonRemovedToast": "Addon removed",
+  "addonsHostProvInstallStremioLabel": "Install Stremio Addon",
+  "addonsHostProvInstallButton": "Install",
+  "addonsHostProvInstalledAddonsLabel": "Installed addons",
+  "addonsHostProvUntitledAddon": "Untitled addon",
+  "addonsHostProvSourcesChip": "Sources",
+  "addonsHostProvInstallNuvioLabel": "Install Nuvio Addon",
+  "addonsHostProvNuvioInstalledToast": "Installed {name} ({count} scrapers)",
+  "@addonsHostProvNuvioInstalledToast": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "addonsHostProvInstallFailedDetailError": "Install failed: {error}",
+  "@addonsHostProvInstallFailedDetailError": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "addonsHostProvNuvioRemovedToast": "Nuvio addon removed",
+  "addonsHostProvBaseUrlLabel": "Base URL",
+  "addonsHostProvApiKeyLabel": "API Key",
+  "addonsHostProvJackettApiKeyHint": "Enter Jackett API Key",
+  "addonsHostProvProwlarrApiKeyHint": "Enter Prowlarr API Key",
+  "addonsHostProvTestConnectionButton": "Test Connection",
+  "addonsHostProvSaveButton": "Save",
+  "addonsHostProvFilterByTagLabel": "Filter by tag",
+  "addonsHostProvLoadTagsHint": "Use the Test Connection button to load available tags.",
+  "addonsHostProvNoTagsFound": "No tags found in Prowlarr. Add tags to your indexers to use this filter.",
+  "addonsHostProvTagFilterHint": "Limit searches to indexers with the selected tags. Leave all unselected to search all indexers.",
+  "addonsHostProvAllIndexersSearched": "All indexers will be searched.",
+  "addonsHostProvEnterUrlAndKeyResult": "❌ Please enter both Base URL and API Key",
+  "addonsHostProvTestErrorResult": "❌ Error: {error}",
+  "@addonsHostProvTestErrorResult": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "addonsHostProvJackettSavedToast": "Jackett settings saved",
+  "addonsHostProvProwlarrSavedToast": "Prowlarr settings saved",
+  "addonsHostProvScraperFallback": "Scraper",
+  "addonsHostProvNuvioLeanSubtitle": "Expand to download scrapers · v{version}",
+  "@addonsHostProvNuvioLeanSubtitle": {
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "addonsHostProvNuvioScrapersSubtitle": "{count, plural, =1{1 scraper · v{version}} other{{count} scrapers · v{version}}}",
+  "@addonsHostProvNuvioScrapersSubtitle": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "addonsHostProvNuvioLoadedToast": "Loaded {name} ({count} scrapers)",
+  "@addonsHostProvNuvioLoadedToast": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "addonsHostProvDownloadingScrapers": "Downloading scrapers…",
+  "addonsHostProvLoadScrapersFailed": "Could not load scrapers",
+  "addonsHostProvRetryButton": "Retry",
+  "addonsHostProvRemoveConfirmTitle": "Remove this addon?",
+  "addonsHostProvYesTooltip": "Yes",
+  "addonsHostProvNoTooltip": "No",
+  "addonsHostProvRemoveAddonTooltip": "Remove addon",
+  "aboutUpdatesGroupLabel": "Updates",
+  "aboutPrivacyGroupLabel": "Privacy",
+  "aboutDeveloperGroupLabel": "Developer",
+  "aboutVerifySentryTitle": "Verify Sentry",
+  "aboutVerifySentrySubtitleActive": "Send a test exception to the Forja Flutter project",
+  "aboutVerifySentrySubtitleInactive": "Enable Crash reporting first, then tap again",
+  "aboutVerifySentrySent": "Test event sent - check Sentry Issues",
+  "aboutVerifyPostHogTitle": "Verify PostHog",
+  "aboutVerifyPostHogSubtitleActive": "Send analytics_verify to your PostHog project",
+  "aboutVerifyPostHogSubtitleInactive": "Enable Product analytics first, then tap again",
+  "aboutVerifyPostHogSent": "Test event sent - check PostHog → Activity",
+  "aboutCheckForUpdatesBlurb": "Check for new versions of Forja",
+  "aboutCheckingButton": "Checking...",
+  "aboutCheckForUpdatesButton": "Check for Updates",
+  "aboutCheckForUpdatesFailed": "Could not check for updates.",
+  "aboutUpToDate": "You're on the latest version",
+  "aboutCheckForUpdatesError": "Failed to check for updates: {error}",
+  "@aboutCheckForUpdatesError": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "aboutCrashReportingTitle": "Crash reporting",
+  "aboutTelemetryDebugSubtitle": "Inactive in debug builds. Your choice is saved for release.",
+  "@aboutTelemetryDebugSubtitle": {
+    "description": "Shared by the Crash reporting and Product analytics rows."
+  },
+  "aboutTelemetryUnavailableSubtitle": "Not available in this build. Your choice is still saved.",
+  "@aboutTelemetryUnavailableSubtitle": {
+    "description": "Shared by the Crash reporting and Product analytics rows."
+  },
+  "aboutCrashReportingSubtitle": "Sends crash details so we can fix bugs. No passwords or stream links.",
+  "aboutCrashReportingSavedDebug": "Saved. Crash reporting stays off in debug builds.",
+  "aboutCrashReportingUnavailable": "Crash reporting is not available in this build yet.",
+  "aboutCrashReportingOn": "Crash reporting on",
+  "aboutCrashReportingOff": "Crash reporting off",
+  "aboutCrashReportingUpdateFailed": "Could not update crash reporting",
+  "aboutProductAnalyticsTitle": "Product analytics",
+  "aboutProductAnalyticsSubtitle": "Shares how you use Forja so we can improve it.",
+  "aboutProductAnalyticsSavedDebug": "Saved. Product analytics stays off in debug builds.",
+  "aboutProductAnalyticsUnavailable": "Product analytics is not available in this build yet.",
+  "aboutProductAnalyticsOn": "Product analytics on",
+  "aboutProductAnalyticsOff": "Product analytics off",
+  "aboutProductAnalyticsUpdateFailed": "Could not update product analytics",
+  "aboutKeychainRowTitle": "Store secrets in Keychain",
+  "@aboutKeychainRowTitle": {
+    "description": "Keychain is the macOS Keychain (Trousseau d'accès in French macOS)."
+  },
+  "aboutKeychainRowSubtitle": "Off by default (local app file). Turn on to use the macOS Keychain. Forja explains first; the system may ask for your password once.",
+  "aboutKeychainEnabled": "Keychain enabled for secrets",
+  "aboutKeychainLocalStorage": "Using local file storage",
+  "aboutKeychainConsentTitle": "Use macOS Keychain?",
+  "aboutKeychainConsentBodyStore": "Forja can store login tokens and API keys in the macOS Keychain instead of a local app file.",
+  "aboutKeychainConsentBodyPrompt": "After you allow this, macOS may show its own password dialog once. It may mention \"flutter_secure_storage_service\". That name is Forja’s secure vault, not a separate app. Choose Always Allow if you trust Forja.",
+  "aboutKeychainConsentBodyLocal": "You can keep using local file storage (default) with no Keychain prompts.",
+  "aboutKeychainConsentKeepLocal": "Keep local file",
+  "aboutKeychainConsentUseKeychain": "Use Keychain",
+  "addonsPlaybackTitle": "Playback",
+  "addonsPlaybackSubtitle": "Quality, audio, auto-play",
+  "addonsTorrentTitle": "Direct torrent",
+  "addonsTorrentSubtitle": "Jackett, Prowlarr, torrent engine",
+  "addonsStremioSubtitle": "Stremio addons",
+  "addonsNuvioSubtitle": "Nuvio scrapers",
+  "addonsConnectedServicesTitle": "Connected services",
+  "addonsConnectedServicesSubtitle": "Simkl; MDBlist (admin)",
+  "addonsLanSubtitle": "Desktop server, pairing, torrent relay",
+  "addonsPackSettingsCount": "{count, plural, =1{Pack settings} other{{count} pack settings}}",
+  "@addonsPackSettingsCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "addonsBuiltInGroupLabel": "Built-in addons",
+  "addonsPackSettingsGroupLabel": "Pack settings",
+  "addonsNoPackSettings": "No pack settings yet. Enable packs with Addon settings under Forja Packs.",
+  "addonsPackCancel": "Cancel",
+  "addonsPackActionFailed": "Could not {action} {title}",
+  "@addonsPackActionFailed": {
+    "description": "{action} is a pack-supplied action id (e.g. a verb), {title} the row title.",
+    "placeholders": {
+      "action": {
+        "type": "String"
+      },
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "addonsPackSelectAll": "All",
+  "addonsPackSelectNone": "None",
+  "addonsPackAutoOption": "Auto",
+  "addonsPackAuthBrowserOpenFailed": "Could not open browser",
+  "addonsPackAuthBrowserTimedOut": "Timed out waiting for Shahid session",
+  "addonsPackAuthBrowserScriptCopied": "Copied — on the Shahid tab open Console (⌘⌥J), paste, Enter",
+  "addonsPackAuthBrowserDefaultHint": "Sign in on Shahid in your browser (already signed in is fine).",
+  "addonsPackAuthBrowserStep1Open": "1. Shahid is open in your browser.",
+  "addonsPackAuthBrowserStep1Opening": "1. Opening your browser…",
+  "addonsPackAuthBrowserStep2": "2. On that Shahid tab: open Console (⌘⌥J / Ctrl+Shift+J), paste, Enter.",
+  "addonsPackAuthBrowserStep3Waiting": "3. Waiting for session… then Forja shows Connected (you can close the Shahid tab).",
+  "addonsPackAuthBrowserStep3Stopped": "3. Waiting stopped — copy again or use password.",
+  "addonsPackAuthBrowserCopyScript": "Copy connect script",
+  "addonsPackAuthBrowserOpenAgain": "Open Shahid again",
+  "addonsPackAuthBrowserHidePassword": "Hide email/password",
+  "addonsPackAuthBrowserUsePassword": "Use email/password instead",
+  "addonsPackAuthBrowserConnect": "Connect",
+  "addonsPackAuthPinUnavailable": "PIN login for {label} is not available in this build",
+  "@addonsPackAuthPinUnavailable": {
+    "placeholders": {
+      "label": {
+        "type": "String"
+      }
+    }
+  },
+  "addonsPackAuthNoMethods": "No login methods from {label}",
+  "@addonsPackAuthNoMethods": {
+    "placeholders": {
+      "label": {
+        "type": "String"
+      }
+    }
+  },
+  "addonsPackAuthConnectedTo": "Connected to {label}",
+  "@addonsPackAuthConnectedTo": {
+    "placeholders": {
+      "label": {
+        "type": "String"
+      }
+    }
+  },
+  "addonsPackAuthNoUrl": "No login URL from {label}",
+  "@addonsPackAuthNoUrl": {
+    "placeholders": {
+      "label": {
+        "type": "String"
+      }
+    }
+  },
+  "addonsPackAuthSignInTo": "Sign in to {label}",
+  "@addonsPackAuthSignInTo": {
+    "placeholders": {
+      "label": {
+        "type": "String"
+      }
+    }
+  },
+  "addonsPackAuthSignedOutOf": "Signed out of {label}",
+  "@addonsPackAuthSignedOutOf": {
+    "placeholders": {
+      "label": {
+        "type": "String"
+      }
+    }
+  },
+  "addonsPackAuthConnectedAs": "Connected as {who}",
+  "@addonsPackAuthConnectedAs": {
+    "placeholders": {
+      "who": {
+        "type": "String"
+      }
+    }
+  },
+  "addonsPackAuthConnected": "Connected",
+  "addonsPackAuthLogoutFrom": "Logout from {label}",
+  "@addonsPackAuthLogoutFrom": {
+    "placeholders": {
+      "label": {
+        "type": "String"
+      }
+    }
+  },
+  "addonsPackAuthLoginWith": "Login with {label}",
+  "@addonsPackAuthLoginWith": {
+    "placeholders": {
+      "label": {
+        "type": "String"
+      }
+    }
+  },
+  "addonsPackAuthLoginDialogTitle": "Login · {title}",
+  "@addonsPackAuthLoginDialogTitle": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "addonsPackAuthLoginButton": "Login",
+  "addonsPackGreenPlayIntro": "Preferred Forja providers for the green Play button. They are tried first; empty list races all enabled Forja providers.",
+  "addonsPackGreenPlayEmpty": "No preferred providers — green Play races every enabled Forja plugin.",
+  "addonsPackGreenPlayRemove": "Remove",
+  "addonsPackGreenPlayAddPreferred": "Add preferred",
+  "addonsPackGreenPlayAddDialogTitle": "Add preferred provider",
+  "addonsPackGreenPlaySearchLabel": "Search",
+  "addonsPackGreenPlaySearchHint": "Provider name",
+  "addonsPackGreenPlayNoProviders": "No Forja providers enabled",
+  "addonsPackGreenPlayNoMatches": "No matches",
+  "dataStreamSubtitleTorrent": "Saved stream provider URLs, torrent temp files, and seek buffers. Next play re-resolves. Settings and watch history stay.",
+  "dataStreamSubtitle": "Saved stream provider URLs and seek buffers. Next play re-resolves. Settings and watch history stay.",
+  "dataStreamBodyTorrent": "Clears saved stream extracts, torrent download cache, and temporary seek buffers for the current profile (or Guest).\n\nWatch history, provider scores, and settings are not affected. Torrent temp files are shared on this device.",
+  "dataStreamBody": "Clears saved stream extracts and temporary seek buffers for the current profile (or Guest).\n\nWatch history, provider scores, and settings are not affected.",
+  "dataGroupSafeToClear": "Safe to clear",
+  "dataStreamCacheTitle": "Stream cache",
+  "dataStreamClearTitle": "Clear stream cache?",
+  "dataClear": "Clear",
+  "dataStreamCleared": "Stream cache cleared",
+  "dataImagesTitle": "Images & WebView",
+  "dataImagesSubtitle": "Poster thumbnails and extractor WebView caches. Frees disk; images download again when needed.",
+  "dataImagesClearTitle": "Clear images & WebView?",
+  "dataImagesClearBody": "Clears cached posters and WebView extract data on this device. Your lists and watch history are not affected.",
+  "dataImagesCleared": "Images & WebView cache cleared",
+  "dataPortalTitle": "IPTV portal cache",
+  "dataPortalSubtitle": "Catalogs, alive checks, and channel scans. Portals and favorites stay. Re-fetches on next open.",
+  "dataPortalClearTitle": "Clear IPTV portal cache?",
+  "dataPortalClearBody": "Clears saved catalogs, alive-channel checks, and channel scan hits for IPTV portals on the current profile (or Guest).\n\nSaved portals, favorites, and M3U playlists are not affected.",
+  "dataPortalCleared": "IPTV portal cache cleared",
+  "dataUpdatesTitle": "Downloaded updates",
+  "dataUpdatesSubtitle": "Installer files from in-app update (.dmg, .exe, AppImage). Safe to remove after you install.",
+  "dataUpdatesClearTitle": "Clear downloaded updates?",
+  "dataUpdatesClearBody": "Removes update installers Forja saved in Downloads, app storage, or temp while downloading.\n\nYour installed app version and settings are not affected.",
+  "dataUpdatesCleared": "Downloaded update files cleared",
+  "dataGroupLearned": "Learned",
+  "dataScoresTitle": "Provider scores",
+  "dataScoresSubtitle": "Reliability totals for Settings Score and Auto order. Drag order is kept; scores start over.",
+  "dataScoresResetTitle": "Reset provider scores?",
+  "dataScoresResetBody": "Clears learned reliability for all providers on the current profile (or Guest). Settings Score goes back to 0 and Auto re-learns from new checks.\n\nYour preferred drag order is not changed.",
+  "dataScoresResetConfirm": "Reset scores",
+  "dataScoresReset": "Provider scores reset",
+  "dataGroupWatchData": "Watch data",
+  "dataContinueTitle": "Continue watching",
+  "dataContinueSubtitle": "Resume rows on Home, Anime, and Asian Drama. Cannot be undone for this profile.",
+  "dataContinueClearTitle": "Clear continue watching?",
+  "dataContinueClearBody": "Removes resume / continue-watching entries for movies, TV, anime, Asian drama, and anime Arabic on the current profile (or Guest).\n\nOther profiles are not affected. Trakt or Simkl cloud history is not deleted. My List and liked items are kept.",
+  "dataContinueClearConfirm": "Clear history",
+  "dataContinueCleared": "Continue watching cleared",
+  "dataWatchedTitle": "Watched episode marks",
+  "dataWatchedSubtitle": "Local watched checkmarks on TV episode lists. Trakt / Simkl online history stays.",
+  "dataWatchedClearTitle": "Clear watched marks?",
+  "dataWatchedClearBody": "Removes local episode watched checkmarks on the current profile (or Guest). Continue watching progress is kept unless you clear it separately.\n\nTrakt / Simkl may show episodes as watched again after sync.",
+  "dataWatchedClearConfirm": "Clear marks",
+  "dataWatchedCleared": "Watched marks cleared",
+  "dataFailed": "Failed: {error}",
+  "@dataFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "dataExportDialogTitle": "Export Settings",
+  "dataExported": "Settings exported",
+  "dataExportFailed": "Export failed: {error}",
+  "@dataExportFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "dataImportDialogTitle": "Import Settings",
+  "dataReadFileFailed": "Could not read file.",
+  "dataImportConfirmBody": "This overwrites your current settings, including addons, API keys, and preferences. Continue?",
+  "dataImport": "Import",
+  "dataImported": "Settings imported",
+  "dataImportFailed": "Import failed: {error}",
+  "@dataImportFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "dataBackupLabel": "Backup",
+  "dataBackupHint": "Export or import all your settings, addons, API keys, and preferences as a JSON file.",
+  "dataExport": "Export",
+  "packsUpdateAvailable": "{count, plural, =1{1 update available} other{{count} updates available}}",
+  "@packsUpdateAvailable": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "packsUpdateUpToDate": "All plugins are up to date",
+  "packsUpdateMenuBadge": "Update available",
+  "packsUpdateChecking": "Checking for plugin updates…",
+  "packsUpdateUpdating": "Updating…",
+  "packsUpdateAll": "Update all",
+  "packsUpdateCheckAgain": "Check again",
+  "packsPackDeprecatedTag": "deprecated",
+  "packsPackUnavailableHereTag": "not on this device",
+  "packsPluginsMiniLabel": "Forja plugins",
+  "packsPackMeta": "{kind} · {count, plural, =1{1 plugin} other{{count} plugins}} · v{version}",
+  "@packsPackMeta": {
+    "placeholders": {
+      "kind": {
+        "type": "String"
+      },
+      "count": {
+        "type": "int"
+      },
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "packsPluginUnavailableHere": "Not available on this device",
+  "packsLiveTabCatalog": "Catalog",
+  "packsLiveTabProvider": "Provider",
+  "packsLiveCatalogSubtitle": "Schedule feed for Live Sports",
+  "packsLiveProviderSubtitle": "Stream resolve for Forja Live",
+  "featuresDefaultMenu": "Default menu",
+  "featuresSetDefaultMenu": "Set as default menu",
+  "featuresHintLeanback": "OK toggles a tab. Star sets the default menu. ↑/↓ on arrows reorder. ↓ stays in the same column.",
+  "featuresHint": "Show, hide, and reorder tabs. Drag to reorder. Settings stays visible.",
+  "featuresAlwaysVisible": "Always visible",
+  "packsChoiceOfficialTitle": "Official packs",
+  "packsChoiceOfficialSubtitle": "Choose which ForjaHQ packs to install",
+  "packsChoiceCommunityTitle": "Community Packs",
+  "packsChoiceCommunitySubtitleCompact": "Browse packs on the web",
+  "packsChoiceCommunitySubtitle": "Browse and pick packs on the web",
+  "packsPromptTitleSync": "Sync packs",
+  "packsPromptTitleUninstall": "Uninstall packs",
+  "packsPromptTitleInstall": "Install packs",
+  "packsPromptInstalledCount": "{count, plural, =1{1 pack installed} other{{count} packs installed}}",
+  "@packsPromptInstalledCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "packsPromptRemovedCount": "{count, plural, =1{1 pack removed} other{{count} packs removed}}",
+  "@packsPromptRemovedCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "packsPromptFailedToast": "{count, plural, =1{Pack install failed — see details above} other{{count} packs failed — see details above}}",
+  "@packsPromptFailedToast": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "packsPromptBodyRemote": "These packs changed on your profile from another device. Choose what to apply here. The rest can wait in Forja Packs.",
+  "packsPromptBodyLocal": "Choose which packs to download on this device. You can install the rest later from this page.",
+  "packsPromptWorking": "Working…",
+  "packsPromptApply": "Apply ({install} install · {uninstall} uninstall)",
+  "@packsPromptApply": {
+    "placeholders": {
+      "install": {
+        "type": "int"
+      },
+      "uninstall": {
+        "type": "int"
+      }
+    }
+  },
+  "packsPromptUninstallCount": "Uninstall {count, plural, =1{1 pack} other{{count} packs}}",
+  "@packsPromptUninstallCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "packsPromptInstallCount": "Install {count, plural, =1{1 pack} other{{count} packs}}",
+  "@packsPromptInstallCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "packsPromptSelectAll": "Select all",
+  "packsPromptClear": "Clear",
+  "packsPromptSelected": "{count} selected",
+  "@packsPromptSelected": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "packsPromptLocalFolder": "Local folder",
+  "packsPromptCommunitySource": "{host} · Community source",
+  "@packsPromptCommunitySource": {
+    "placeholders": {
+      "host": {
+        "type": "String"
+      }
+    }
+  },
+  "packsPromptDefaultTitle": "Plugin pack",
+  "packsPromptActionUninstall": "Uninstall",
+  "packsPromptActionInstall": "Install",
+  "packsPromptAlreadyRemoved": "Already removed",
+  "packsPromptAlreadyOnDevice": "Already on device",
+  "packsPromptNotOnDevice": "Not on this device",
+  "packsPromptCommunity": "Community",
+  "packsPromptRecommended": "Recommended",
+  "packsGroupLabel": "Forja packs",
+  "packsEmptyNone": "No packs installed. Paste a manifest URL below, or sign in to sync from your profile.",
+  "packsInstallFailed": "Pack install failed: {error}",
+  "@packsInstallFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "packsRetryInstall": "Retry install",
+  "packsManifestHint": "Each pack is a manifest.json URL. Forja downloads the manifest, then every plugin script, before the pack is fully usable.",
+  "packsAddPackLabel": "Add pack",
+  "packsAddPackHint": "Paste one or more manifest URLs / local paths",
+  "packsDownloadAll": "Download all",
+  "packsReloadingTooltip": "Reloading packs…",
+  "packsReload": "Reload",
+  "packsInstall": "Install",
+  "packsPendingDownloads": "Pending downloads",
+  "packsInstalledPacks": "Installed packs",
+  "packsBadgeRemovedFromProfile": "Removed from profile",
+  "packsActionUninstallNow": "Uninstall now",
+  "packsBadgeInstallLater": "Install later",
+  "packsBadgeInstallFailed": "Install failed",
+  "packsBadgeDownloading": "Downloading",
+  "packsBadgePendingDownload": "Pending download",
+  "packsRetryDownload": "Retry download",
+  "packsToastRefreshed": "Packs refreshed",
+  "packsToastRecommendedInstalled": "Recommended packs already installed",
+  "packsToastFinishPrompt": "Finish the current pack prompt first",
+  "packsToastOfficialInstallFailed": "Official pack install failed: {error}",
+  "@packsToastOfficialInstallFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "packsToastUpdatedTo": "Updated {name} to v{version}",
+  "@packsToastUpdatedTo": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "packsToastRefreshedPack": "Refreshed {name} v{version}",
+  "@packsToastRefreshedPack": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "packsToastRefreshFailed": "Refresh failed: {error}",
+  "@packsToastRefreshFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "packsToastReloadFailed": "{name} reload failed: {error}",
+  "@packsToastReloadFailed": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "packsToastReloaded": "{count, plural, =1{1 pack reloaded} other{{count} packs reloaded}}",
+  "@packsToastReloaded": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "packsToastDownloadFailed": "{name} download failed: {error}",
+  "@packsToastDownloadFailed": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "packsToastDownloaded": "{count, plural, =1{1 pack downloaded} other{{count} packs downloaded}}",
+  "@packsToastDownloaded": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "packsToastUpdateFailed": "{name} update failed: {error}",
+  "@packsToastUpdateFailed": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "packsToastUpdated": "{count, plural, =1{1 pack updated} other{{count} packs updated}}",
+  "@packsToastUpdated": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "packsToastInstallFailedDetails": "Install failed — see details above",
+  "packsToastInstalled": "Installed {name} ({count} plugins)",
+  "@packsToastInstalled": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      },
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "packsToastPackUninstalled": "Pack uninstalled",
+  "packsToastPackRemoved": "Pack removed",
+  "packsOfficialBadge": "Official",
+  "packsActionUpdateTo": "Update to v{version}",
+  "@packsActionUpdateTo": {
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "packsActionRefresh": "Refresh",
+  "packsFailuresTitle": "{count, plural, =1{Pack install failed} other{{count} packs failed to install}}",
+  "@packsFailuresTitle": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "packsDismiss": "Dismiss",
+  "packsPendingReady": "Ready",
+  "packsPendingWaiting": "Waiting",
+  "packsPendingDownload": "Download",
+  "packsPendingYes": "Yes",
+  "packsPendingNo": "No",
+  "packsPendingRemovePack": "Remove pack",
+  "packsInstallUpdateAvailable": "Update available: v{version}",
+  "@packsInstallUpdateAvailable": {
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "packsInstallBannerUpdating": "Updating plugins…",
+  "packsInstallBannerDownloading": "Downloading plugins…",
+  "profileLoadFailed": "Could not load profile. Check your connection and retry.",
+  "profileToastProfileReady": "Profile ready",
+  "profileToastAccountReady": "Account ready",
+  "profileSignInFailed": "Sign-in failed. Check email/password or Supabase config.",
+  "profileWebLoginIncomplete": "Web login did not complete.",
+  "profileWebLoginFailed": "Could not finish web login. Check that the portal is reachable.",
+  "profileSignupOpenFailed": "Could not open the signup page.",
+  "profileCloudNotConfigured": "Cloud account is not configured in this build. Pass SUPABASE_URL and SUPABASE_PUBLISHABLE_KEY via --dart-define.",
+  "profileAccountLabel": "Account",
+  "profileSignedIn": "Signed in",
+  "profileCloudProfileLoading": "Loading cloud profile…",
+  "profileCloudProfileLoadFailed": "Cloud profile could not load. Retry, or sign out to clear this session on the device.",
+  "profileRetryTitle": "Retry",
+  "profileRetrySubtitle": "Reload profiles from the cloud",
+  "profileSignOutTitle": "Sign out",
+  "profileSignOutSubtitle": "Clear the session on this device even if the network is down",
+  "profileSyncNoneYet": "No cloud settings synced yet - changes will upload as you use Forja",
+  "profileSyncSections": "{count, plural, =1{1 setting section synced to this profile} other{{count} setting sections synced to this profile}}",
+  "@profileSyncSections": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "profileCloudSyncLabel": "Cloud sync",
+  "profileSignedInWaitingSync": "Signed in · waiting for sync",
+  "profileSynced": "Synced",
+  "profileAccountActiveHint": "Active Forja cloud account",
+  "profileAccountSwitchHint": "Tap to switch or add accounts",
+  "profileWatchingNow": "Watching now",
+  "@profileWatchingNow": {
+    "description": "Badge on the active profile card. Shown in capitals by the app, so translate it as a short phrase."
+  },
+  "profileActiveHint": "Active profile on this device",
+  "profileSwitchHint": "Tap to switch who’s watching",
+  "profileSignIn": "Sign in",
+  "profileNewHere": "New here?",
+  "profileCreateAccountWeb": "Create an account on the web",
+  "profileOpensPortal": "Opens the Forja portal in your browser",
+  "profileLinkIntroTv": "Link your Forja account with a code or QR on the portal. You can keep using Forja without an account.",
+  "profileLinkWithCodeOrQr": "Link with code or QR",
+  "profileCreateAccountTvHint": "Use a phone or computer - then link this TV",
+  "profileSignInIntro": "Sign in to sync profiles and settings across devices. You can keep using Forja without an account.",
+  "profileSignInQuick": "Sign in with your phone or computer in under a minute.",
+  "profileEmailLabel": "Email",
+  "profilePasswordLabel": "Password",
+  "profileSigningIn": "Signing in…",
+  "profileCancelWebLogin": "Cancel web login",
+  "profileWebLogin": "Web login",
+  "downloadsChooseFolder": "Choose download folder",
+  "downloadsFolderNotWritable": "Can’t write to that folder",
+  "downloadsFolderChanged": "New downloads will save here",
+  "downloadsFolderReset": "Using the default download folder",
+  "downloadsDeleteAllCompletedTitle": "Delete all completed?",
+  "downloadsDeleteAllCompletedBody": "Removes every finished download from this device and frees the disk space.",
+  "downloadsDeleteAll": "Delete all",
+  "downloadsCompletedDeleted": "Completed downloads deleted",
+  "downloadsTabActive": "Active ({count})",
+  "@downloadsTabActive": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "downloadsTabCompleted": "Completed ({count})",
+  "@downloadsTabCompleted": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "downloadsActiveEmptyTitle": "No active downloads",
+  "downloadsActiveEmptyHint": "Start one from details, Sources, or the player.",
+  "downloadsCompletedEmptyTitle": "No offline downloads yet",
+  "downloadsCompletedEmptyHint": "Finished titles show up here — play anytime without a network.",
+  "downloadsStorageTitle": "Storage",
+  "downloadsStorageSubtitle": "Offline library for this profile.",
+  "downloadsRefresh": "Refresh",
+  "downloadsUsedOf": " used of ",
+  "@downloadsUsedOf": {
+    "description": "Sits between two bold sizes, as in '12 GB used of 256 GB'. Keep the leading and trailing space."
+  },
+  "downloadsFreeSuffix": "  ·  {free} free",
+  "@downloadsFreeSuffix": {
+    "description": "Follows the 'used of' line, as in '  ·  100 GB free'. Keep the leading spaces.",
+    "placeholders": {
+      "free": {
+        "type": "String"
+      }
+    }
+  },
+  "downloadsLegendOffline": "Offline",
+  "downloadsLegendOther": "Other",
+  "downloadsLegendAvailable": "Available",
+  "downloadsChange": "Change",
+  "downloadsDefault": "Default",
+  "downloadsStatusQueued": "Queued",
+  "downloadsStatusPaused": "Paused",
+  "downloadsStatusFailed": "Failed",
+  "downloadsEta": "ETA {eta}",
+  "@downloadsEta": {
+    "description": "Estimated time left for a download. ETA = estimated time of arrival.",
+    "placeholders": {
+      "eta": {
+        "type": "String"
+      }
+    }
+  },
+  "downloadsPause": "Pause",
+  "downloadsResume": "Resume",
+  "downloadsRetry": "Retry",
+  "downloadsCancel": "Cancel",
+  "downloadsPlayOffline": "Play offline",
+  "downloadsDelete": "Delete",
+  "downloadsDeleteOneTitle": "Delete download?",
+  "downloadsDeleteOneBody": "Removes “{title}” from this device.",
+  "@downloadsDeleteOneBody": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "settingsUiAuto": "Auto",
+  "settingsUiCancel": "Cancel",
+  "settingsUiClose": "Close",
+  "settingsUiLanP2pPairTitle": "Pair a desktop",
+  "settingsUiLanP2pOfflineTitle": "Desktop offline",
+  "settingsUiLanP2pPairBody": "Torrents and other P2P streams play on a desktop Forja server, not on this TV. Direct HTTP streams still play here. Pair once in Settings → LAN.",
+  "settingsUiLanP2pOfflineBody": "Torrents and other P2P streams need your paired desktop Forja server on the same Wi-Fi. Direct HTTP streams still play on this TV.",
+  "settingsUiLanP2pOpenLan": "Open LAN",
+  "settingsUiP2pAckTitle": "P2P Streaming",
+  "settingsUiP2pAckAware": "I am aware",
+  "settingsUiP2pAckIntro": "This stream uses peer-to-peer (P2P) technology. By continuing, you confirm you are aware that:",
+  "settingsUiP2pAckBulletIp": "Your IP address will be visible to other peers in the network",
+  "settingsUiP2pAckBulletResponsible": "You are solely responsible for the content you access",
+  "settingsUiP2pAckBulletLegalRight": "You confirm you have the legal right to stream this content in your jurisdiction",
+  "settingsUiP2pAckBulletNoHosting": "Forja does not host, distribute, or control any P2P content",
+  "settingsUiP2pAckBulletNoLiability": "Forja bears no liability for any legal consequences arising from your use of P2P streaming",
+  "settingsUiP2pAckOutro": "You use this feature entirely at your own risk. Direct torrent, Stremio, and Nuvio can be turned off anytime in Settings.",
+  "settingsUiP2pAckVpnBanner": "For better privacy, use a VPN. Your IP address is visible to other peers.",
+  "settingsUiMadeWith": "Made with ",
+  "@settingsUiMadeWith": {
+    "description": "Sidebar credit line 'Made with <heart icon> by Schmenka'. Keep the trailing space; the heart icon follows."
+  },
+  "settingsUiMadeWithBy": " by ",
+  "@settingsUiMadeWithBy": {
+    "description": "Sidebar credit line, between the heart icon and the author name. Keep the leading and trailing spaces."
+  },
+  "playerScreenTryingNextStream": "Trying next stream…",
+  "playerScreenFindingAnotherStream": "Finding another stream…",
+  "playerScreenFindingServers": "Finding servers…",
+  "playerScreenFailedToStream": "Failed to stream",
+  "playerScreenExoSeparateAudioUnsupported": "Separate audio track not supported in ExoPlayer - use MediaKit in Settings.",
+  "playerScreenReconnecting": "Reconnecting…",
+  "playerScreenReconnectFailed": "Reconnect failed",
+  "playerScreenEpisodeNumber": "Episode {number}",
+  "@playerScreenEpisodeNumber": {
+    "placeholders": {
+      "number": {
+        "type": "String"
+      }
+    }
+  },
+  "playerScreenPreviousEpisodeButton": "Previous Episode",
+  "playerScreenNextEpisodeButton": "Next Episode",
+  "playerScreenAudio": "Audio",
+  "playerScreenQuality": "Quality",
+  "playerScreenLoadingSources": "Loading sources…",
+  "playerScreenFailedToLoadSources": "Failed to load sources",
+  "playerScreenCheckingSources": "Checking sources",
+  "playerScreenNoStreamsFound": "No streams found",
+  "playerScreenStream": "Stream",
+  "playerScreenStremioStream": "Stremio stream",
+  "playerScreenFailedToResolveStream": "Failed to resolve stream",
+  "playerScreenTorrentStreamFailedToStart": "Torrent stream failed to start",
+  "playerScreenOpeningStream": "Opening stream…",
+  "playerScreenSources": "Sources",
+  "playerScreenSubtitle": "Subtitle",
+  "playerScreenSubtitleFailed": "Subtitle failed",
+  "playerScreenBack10s": "Back 10s",
+  "playerScreenForward10s": "Forward 10s",
+  "playerScreenNoMoreEpisodes": "No more episodes",
+  "playerScreenCouldNotFindStreamForEpisode": "Could not find a stream for this episode",
+  "playerScreenLoadingEpisodeInfo": "Loading episode info…",
+  "playerScreenSeasonEpisode": "Season {season} · Episode {episode}",
+  "@playerScreenSeasonEpisode": {
+    "placeholders": {
+      "season": {
+        "type": "int"
+      },
+      "episode": {
+        "type": "int"
+      }
+    }
+  },
+  "playerScreenCheckingSourcesProgress": "Checking sources…",
+  "playerScreenResolvingTorrent": "Resolving torrent…",
+  "playerScreenCheckingStremio": "Checking Stremio…",
+  "playerScreenAutoSelection": "Auto selection",
+  "playerScreenAutoSelectionSubtitle": "Servers, tracks, skip intro",
+  "playerScreenAutoServer": "Auto server",
+  "playerScreenAutoSource": "Auto source",
+  "playerScreenAutoAudio": "Auto audio",
+  "playerScreenAutoSubtitles": "Auto subtitles",
+  "playerScreenAutoSkipIntro": "Auto skip intro",
+  "playerScreenAutoNextEpisode": "Auto next episode",
+  "playerScreenVideoDecode": "Video decode",
+  "playerScreenHwDecGpuSafe": "Hardware Decoding: ON (GPU, safe)",
+  "playerScreenHwDecCopyBack": "Hardware Decoding: ON (copy-back)",
+  "playerScreenHwDecOffCpu": "Hardware Decoding: OFF (CPU)",
+  "playerScreenSwDecodeSoftDisplay": "Software decode + soft display (CPU)",
+  "playerScreenPlaybackSpeed": "Playback speed",
+  "playerScreenPlaybackSpeedSubtitle": "How fast playback runs",
+  "playerScreenSpeedNormal": "Normal",
+  "playerScreenAspectRatio": "Aspect ratio",
+  "playerScreenAspectRatioSubtitle": "Fit video in the frame",
+  "playerScreenFitFit": "FIT",
+  "playerScreenFitCrop": "CROP",
+  "playerScreenFitFill": "FILL",
+  "playerScreenLoop": "Loop",
+  "playerScreenLoopSubtitle": "Repeat the current title",
+  "playerScreenOn": "On",
+  "playerScreenOff": "Off",
+  "playerScreenTorrentStats": "Torrent stats",
+  "playerScreenTorrentStatsSubtitle": "Show live transfer overlay",
+  "playerScreenSkipRecap": "Skip Recap",
+  "playerScreenSkipIntro": "Skip Intro",
+  "playerScreenSkipCredits": "Skip Credits",
+  "playerScreenSkipPreview": "Skip Preview",
+  "playerScreenPlay": "Play",
+  "playerScreenEpisodes": "Episodes",
+  "playerScreenSubtitles": "Subtitles",
+  "playerScreenFullscreen": "Fullscreen",
+  "playerScreenStreamFailed": "Stream failed",
+  "playerScreenPlaybackFailedOpenSources": "Playback failed. Open Sources and choose another stream.",
+  "playerScreenNoWorkingStream": "Could not find any working stream from any provider.",
+  "playerScreenTorrentStreamFailedToOpen": "Torrent stream failed to open.",
+  "playerScreenDownloadedFileCantPlay": "Downloaded file can’t be played",
+  "playerScreenPlaybackFailed": "Playback failed.",
+  "playerScreenUnlock": "Unlock",
+  "playerScreenCouldNotOpenStream": "Could not open stream",
+  "playerScreenSwitchingToMediaKit": "Switching to MediaKit…",
+  "playerScreenPressEscAgain": "Press Esc again to exit",
+  "playerScreenNextEpisodeTooltip": "Next episode",
+  "playerScreenPlayer": "Player",
+  "playerScreenSourceFailed": "Failed: {title}",
+  "@playerScreenSourceFailed": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "playerControlAirPlayEnded": "AirPlay ended",
+  "playerControlAirPlayOpenFailed": "Couldn't open AirPlay",
+  "playerControlAirPlaySubtitlesUnavailable": "Subtitles can't play on AirPlay for this stream",
+  "playerControlAllProviders": "All",
+  "playerControlAspectRatio": "Aspect ratio",
+  "playerControlAspectRatioSubtitle": "How video fills the frame",
+  "playerControlAudio": "Audio",
+  "playerControlAutoAudio": "Auto audio",
+  "playerControlAutoNext": "AutoNext",
+  "playerControlAutoSelection": "Auto selection",
+  "playerControlAutoSelectionSubtitle": "Servers, tracks, skip intro",
+  "playerControlAutoServer": "Auto server",
+  "playerControlAutoSource": "Auto source",
+  "playerControlAutoSubtitles": "Auto subtitles",
+  "playerControlAvPlayerMacOnly": "AVPlayer is macOS-only",
+  "playerControlBack": "Back",
+  "playerControlBack10s": "Back 10s",
+  "playerControlBuffering": "Buffering",
+  "playerControlBufferingEllipsis": "Buffering…",
+  "playerControlBuiltIn": "Built-in",
+  "playerControlCast": "Cast",
+  "playerControlCastStarting": "Starting {label}…",
+  "@playerControlCastStarting": {
+    "placeholders": {
+      "label": {
+        "type": "String"
+      }
+    }
+  },
+  "playerControlCastTargetUnavailable": "{label} is not available yet",
+  "@playerControlCastTargetUnavailable": {
+    "placeholders": {
+      "label": {
+        "type": "String"
+      }
+    }
+  },
+  "playerControlCastTo": "Cast to",
+  "playerControlCastUnsupported": "Casting is not supported on this device",
+  "playerControlCastingTo": "Casting to {label}",
+  "@playerControlCastingTo": {
+    "placeholders": {
+      "label": {
+        "type": "String"
+      }
+    }
+  },
+  "playerControlChangePlayer": "Change player",
+  "playerControlCheck": "Check",
+  "playerControlCheckingOrdinal": "Checking {ordinal}/{total}…",
+  "@playerControlCheckingOrdinal": {
+    "placeholders": {
+      "ordinal": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "playerControlCheckingServer": "Checking server…",
+  "playerControlCheckingSources": "Checking sources",
+  "playerControlCheckingStream": "Checking stream…",
+  "playerControlChoosePlayer": "Choose player",
+  "playerControlCrop": "Crop",
+  "playerControlDetails": "Details",
+  "playerControlEngineDrmNeedsExo": "DRM needs ExoPlayer",
+  "playerControlEngineSeparateAudioNeedsMediaKit": "Separate audio needs MediaKit",
+  "playerControlEngineTorrentNeedsMediaKit": "Torrent streams need MediaKit",
+  "playerControlEpisodeNumber": "Episode {number}",
+  "@playerControlEpisodeNumber": {
+    "placeholders": {
+      "number": {
+        "type": "int"
+      }
+    }
+  },
+  "playerControlEpisodes": "Episodes",
+  "playerControlExpand": "Expand",
+  "playerControlExternalApp": "External app",
+  "playerControlFailedToStream": "Failed to stream",
+  "playerControlFile": "File",
+  "playerControlFill": "Fill",
+  "playerControlFit": "Fit",
+  "playerControlForward10s": "Forward 10s",
+  "playerControlInAppMiniPlayer": "In-app mini player",
+  "playerControlInStream": "In-stream",
+  "playerControlJackettNotConfigured": "Jackett is not configured",
+  "playerControlKeepsStreamAlive": "Forja keeps the stream alive while you watch externally.",
+  "playerControlLanguages": "Languages",
+  "playerControlLaunchFailed": "Launch failed ({type}). See console for details.",
+  "@playerControlLaunchFailed": {
+    "placeholders": {
+      "type": {
+        "type": "String"
+      }
+    }
+  },
+  "playerControlMinimize": "Minimize",
+  "playerControlMute": "Mute",
+  "playerControlNext": "Next",
+  "playerControlNextEpisode": "Next Episode",
+  "playerControlNoAudioTracks": "No audio tracks found",
+  "playerControlNoEpisodesFound": "No episodes found",
+  "playerControlNoExternalPlayers": "No external players installed",
+  "playerControlNoFilterSources": "No {filter} sources",
+  "@playerControlNoFilterSources": {
+    "placeholders": {
+      "filter": {
+        "type": "String"
+      }
+    }
+  },
+  "playerControlNoForjaPlugins": "No Forja plugins installed",
+  "playerControlNoMatchingEpisodes": "No matching episodes",
+  "playerControlNoMatchingSources": "No matching sources",
+  "playerControlNoMatchingStremioId": "No matching id for this Stremio addon",
+  "playerControlNoNuvioScrapers": "No Nuvio scrapers. Add them in Settings → Addons → Nuvio",
+  "playerControlNoOnlineSubtitles": "No online subtitles yet. Tap Search to type the film or series name.",
+  "playerControlNoSavedFiles": "No saved files",
+  "playerControlNoServers": "No servers",
+  "playerControlNoSourcesAvailable": "No sources available",
+  "playerControlNoStreamToCast": "No stream to cast",
+  "playerControlNoStreamsAvailable": "No streams available",
+  "playerControlNoStreamsForjaPlugins": "No streams found from selected Forja plugins",
+  "playerControlNoStreamsInAddon": "No streams found in {addon}",
+  "@playerControlNoStreamsInAddon": {
+    "placeholders": {
+      "addon": {
+        "type": "String"
+      }
+    }
+  },
+  "playerControlNoStreamsNuvio": "No streams found from selected Nuvio providers",
+  "playerControlNoStremioAddons": "No Stremio stream addons. Add them in Settings → Addons → Stremio",
+  "playerControlNoSubtitles": "No subtitles",
+  "playerControlNoTmdbIdForNuvio": "No TMDB id for Nuvio streams",
+  "playerControlNoTorrentFiles": "No files found in this torrent.",
+  "playerControlNoTorrentsFound": "No torrents found",
+  "playerControlNoTracks": "No tracks",
+  "playerControlNoneAvailable": "None available",
+  "playerControlNormal": "Normal",
+  "playerControlOff": "Off",
+  "playerControlOn": "On",
+  "playerControlOpeningInPlayer": "Opening in {player}…",
+  "@playerControlOpeningInPlayer": {
+    "placeholders": {
+      "player": {
+        "type": "String"
+      }
+    }
+  },
+  "playerControlParentalAlcoholDrugs": "Alcohol/Drugs",
+  "playerControlParentalFrightening": "Frightening",
+  "playerControlParentalNudity": "Nudity",
+  "playerControlParentalProfanity": "Profanity",
+  "playerControlParentalViolence": "Violence",
+  "playerControlPause": "Pause",
+  "playerControlPictureInPicture": "Picture in Picture",
+  "playerControlPlay": "Play",
+  "playerControlPlaybackSpeed": "Playback speed",
+  "playerControlPlayer": "Player",
+  "playerControlPlayerCouldNotLaunch": "{player} could not be launched. Is it installed?",
+  "@playerControlPlayerCouldNotLaunch": {
+    "placeholders": {
+      "player": {
+        "type": "String"
+      }
+    }
+  },
+  "playerControlPlayerNotFound": "{player} not found. Using built-in player.",
+  "@playerControlPlayerNotFound": {
+    "placeholders": {
+      "player": {
+        "type": "String"
+      }
+    }
+  },
+  "playerControlPlayingInPip": "Playing in picture-in-picture",
+  "playerControlPlayingNow": "Playing now",
+  "playerControlPlayingOnAirPlay": "Playing on AirPlay",
+  "playerControlPreparingStream": "Preparing stream…",
+  "playerControlPressBackAgainToExit": "Press Back again to exit",
+  "playerControlPressBackToLeave": "Press Back to leave",
+  "playerControlPressEscAgainToExit": "Press Esc again to exit",
+  "playerControlPrevious": "Previous",
+  "playerControlPreviousEpisode": "Previous Episode",
+  "playerControlProviderUnavailable": "{name} is unavailable",
+  "@playerControlProviderUnavailable": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "playerControlProwlarrNotConfigured": "Prowlarr is not configured",
+  "playerControlQuality": "Quality",
+  "playerControlQualityNotAvailable": "Quality not available yet",
+  "playerControlRelaunchInPlayer": "Re-launch in {player}",
+  "@playerControlRelaunchInPlayer": {
+    "placeholders": {
+      "player": {
+        "type": "String"
+      }
+    }
+  },
+  "playerControlSearch": "Search",
+  "playerControlSearchingHint": "Searching: {hint}",
+  "@playerControlSearchingHint": {
+    "placeholders": {
+      "hint": {
+        "type": "String"
+      }
+    }
+  },
+  "playerControlSearchingSubtitles": "Searching subtitles…",
+  "playerControlSeasonNumber": "Season {number}",
+  "@playerControlSeasonNumber": {
+    "placeholders": {
+      "number": {
+        "type": "int"
+      }
+    }
+  },
+  "playerControlSelectProvider": "Select at least one provider",
+  "playerControlSelectServer": "Select a server",
+  "playerControlServers": "Servers",
+  "playerControlShuffle": "Shuffle",
+  "playerControlSource": "Source",
+  "playerControlSourceTip": "Source: {label}",
+  "@playerControlSourceTip": {
+    "placeholders": {
+      "label": {
+        "type": "String"
+      }
+    }
+  },
+  "playerControlSourceTipWithServer": "Source: {label} · {server}",
+  "@playerControlSourceTipWithServer": {
+    "placeholders": {
+      "label": {
+        "type": "String"
+      },
+      "server": {
+        "type": "String"
+      }
+    }
+  },
+  "playerControlSourcesTip": "Sources: {label}",
+  "@playerControlSourcesTip": {
+    "placeholders": {
+      "label": {
+        "type": "String"
+      }
+    }
+  },
+  "playerControlSourcesTipWithServer": "Sources: {label} · {server}",
+  "@playerControlSourcesTipWithServer": {
+    "placeholders": {
+      "label": {
+        "type": "String"
+      },
+      "server": {
+        "type": "String"
+      }
+    }
+  },
+  "playerControlStatusChecking": "Checking…",
+  "playerControlStatusPlaying": "Playing",
+  "playerControlStatusUnavailable": "Unavailable",
+  "playerControlStream": "Stream",
+  "playerControlStreamActive": "Stream active",
+  "playerControlStreamCount": "{count, plural, =1{1 stream} other{{count} streams}}",
+  "@playerControlStreamCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "playerControlStreamNumber": "Stream {number}",
+  "@playerControlStreamNumber": {
+    "placeholders": {
+      "number": {
+        "type": "int"
+      }
+    }
+  },
+  "playerControlStreams": "Streams",
+  "playerControlStreamsServer": "Streams · {server}",
+  "@playerControlStreamsServer": {
+    "placeholders": {
+      "server": {
+        "type": "String"
+      }
+    }
+  },
+  "playerControlSubBgOpacity": "BG Opacity",
+  "playerControlSubBold": "Bold",
+  "playerControlSubDecreaseDelay": "Decrease delay",
+  "playerControlSubDelay": "Delay",
+  "playerControlSubFont": "Font",
+  "playerControlSubIncreaseDelay": "Increase delay",
+  "playerControlSubPosition": "Position",
+  "playerControlSubSize": "Size",
+  "playerControlSubTextColor": "Text Color",
+  "playerControlSubtitleSettings": "Subtitle settings",
+  "playerControlSubtitleSettingsTitle": "Subtitle Settings",
+  "playerControlSubtitles": "Subtitles",
+  "playerControlSwitchingPlayer": "Switching player…",
+  "playerControlTapServerToCheck": "Tap the server to check",
+  "playerControlTipOffline": "{base} · Offline",
+  "@playerControlTipOffline": {
+    "placeholders": {
+      "base": {
+        "type": "String"
+      }
+    }
+  },
+  "playerControlTorrentEta": "ETA {eta}",
+  "@playerControlTorrentEta": {
+    "placeholders": {
+      "eta": {
+        "type": "String"
+      }
+    }
+  },
+  "playerControlTorrentFiles": "Torrent files",
+  "playerControlTorrentPeers": "{active} live · {total} seen",
+  "@playerControlTorrentPeers": {
+    "placeholders": {
+      "active": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "playerControlTorrentSeeders": "{seeders} seeders",
+  "@playerControlTorrentSeeders": {
+    "placeholders": {
+      "seeders": {
+        "type": "String"
+      }
+    }
+  },
+  "playerControlTracks": "Tracks",
+  "playerControlTracksGroup": "Tracks · {group}",
+  "@playerControlTracksGroup": {
+    "placeholders": {
+      "group": {
+        "type": "String"
+      }
+    }
+  },
+  "playerControlTranslatedFrom": "Translated · {source}",
+  "@playerControlTranslatedFrom": {
+    "placeholders": {
+      "source": {
+        "type": "String"
+      }
+    }
+  },
+  "playerControlUnknownStream": "Unknown Stream",
+  "playerControlUnmute": "Unmute",
+  "playerControlViaPlayer": "via {player}",
+  "@playerControlViaPlayer": {
+    "placeholders": {
+      "player": {
+        "type": "String"
+      }
+    }
+  },
+  "playerControlVlcNotInstalled": "VLC (libVLC) is not installed",
+  "playerControlWatchInForja": "Watch in Forja instead",
+  "playerControlWatchParty": "Watch Party",
+  "playerControlWatchPartySoon": "Watch Party - coming soon",
+  "playerSourcePortalNotFound": "Portal not found",
+  "playerSourceOpenStreamFailed": "Could not open stream",
+  "playerSourceNoEpisodeSelected": "No episode selected",
+  "playerSourceOpenEpisodeFailed": "Could not open episode",
+  "playerSourceVodEpisodeTitle": "Ep {number} · {title}",
+  "@playerSourceVodEpisodeTitle": {
+    "placeholders": {
+      "number": {
+        "type": "int"
+      },
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "playerSourceStreamsTitle": "Streams",
+  "playerSourcePlaybackFailedTitle": "Couldn’t start playback",
+  "playerSourceResolvingLink": "Resolving download link…",
+  "playerSourceResolvingLinkHint": "Fetching the magnet from the torrent page.",
+  "playerSourceMagnetResolveFailed": "Could not resolve a magnet link for this torrent.",
+  "playerSourceTorrentStartFailed": "Torrent stream failed to start.",
+  "playerSourceStreamStartFailed": "Couldn't start this stream. Try again or pick another source.",
+  "playerSourceNoMatches": "No matches",
+  "playerSourceNoChannelsMatch": "No channels match",
+  "playerSourceSearchChannelsHint": "Search channels…",
+  "playerSourcePeers": "peers",
+  "playerSourcePeersOf": "of {seen} peers",
+  "@playerSourcePeersOf": {
+    "placeholders": {
+      "seen": {
+        "type": "int"
+      }
+    }
+  },
+  "playerSourcePeersSeen": "{seen} seen",
+  "@playerSourcePeersSeen": {
+    "placeholders": {
+      "seen": {
+        "type": "int"
+      }
+    }
+  },
+  "playerSourceStatDownload": "Download",
+  "playerSourceStatFileCached": "File cached",
+  "playerSourceFilterAll": "All",
+  "playerSourceFilterAudio": "Audio",
+  "playerSourceAvailableSources": "Available Sources",
+  "playerSourceSortSeedersHigh": "Seeders (High to Low)",
+  "playerSourceSortSeedersLow": "Seeders (Low to High)",
+  "playerSourceSortQualityHigh": "Quality (High to Low)",
+  "playerSourceSortQualityLow": "Quality (Low to High)",
+  "playerSourceSortSizeHigh": "Size (High to Low)",
+  "playerSourceSortSizeLow": "Size (Low to High)",
+  "playerSourceStoppedActiveDownload": "Stopped active download",
+  "playerSourceDownloadsCleared": "Downloads cleared",
+  "playerSourceStopClearFailed": "Could not stop or clear torrent downloads",
+  "playerSourceStopAndClear": "Stop & clear",
+  "playerSourceSearchHint": "Search",
+  "playerSourceFiltersTitle": "Filters",
+  "playerSourceFilterCategory": "Category",
+  "playerSourceFilterSort": "Sort",
+  "playerSourceFilterQuality": "Quality",
+  "playerSourceFilterSize": "Size",
+  "playerSourceFilterLanguage": "Language",
+  "playerSourceFilterTech": "Tech",
+  "playerSourceFilterOnline": "Online",
+  "playerSourcePlaying": "Playing",
+  "playerSourceCheckingSize": "Checking size…",
+  "playerSourceSizeUnknown": "Size unknown",
+  "playerSourceNotEnoughSpace": "Not enough free space",
+  "playerSourceDownloadHeading": "DOWNLOAD",
+  "playerSourceDownloadOfflineHeading": "DOWNLOAD OFFLINE?",
+  "playerSourceDownloadTooltip": "Download",
+  "playerSourcePlayOnline": "Play online",
+  "playerSourceCopyMagnet": "Copy magnet",
+  "playerSourceMagnetCopied": "Magnet copied",
+  "playerSourceSourcesTitle": "Sources",
+  "playerSourceDownloadedChip": "Downloaded",
+  "playerTrailerLoadFailed": "Could not load this trailer",
+  "playerTrailerOpenInYouTube": "Open in YouTube",
+  "playerTrailerBack": "Back",
+  "playerTrailerMute": "Mute",
+  "playerTrailerReplay": "Replay",
+  "playerTrailerPause": "Pause",
+  "playerTrailerPlay": "Play",
+  "playerTrailerBack10": "Back 10s",
+  "playerTrailerForward10": "Forward 10s",
+  "playerTrailerSubtitles": "Subtitles",
+  "playerTrailerQuality": "Quality",
+  "playerTrailerPlaybackSpeed": "Playback speed",
+  "playerTrailerFullscreen": "Fullscreen",
+  "playerTrailerLoading": "Loading…",
+  "playerTrailerNextIn": "Next trailer · {seconds}s",
+  "@playerTrailerNextIn": {
+    "placeholders": {
+      "seconds": {
+        "type": "int"
+      }
+    }
+  },
+  "playerTrailerUpNext": "Up next",
+  "playerTrailerSubtitlesOff": "Off",
+  "playerTrailerNoSubtitles": "No subtitles available for this trailer.",
+  "playerTrailerCaptionAuto": "{name} (auto)",
+  "@playerTrailerCaptionAuto": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "playerTrailerNoQuality": "No quality options for this trailer.",
+  "playerTrailerPlayerMenuTitle": "Player",
+  "playerTrailerBuiltIn": "Built-in",
+  "playerTrailerForjaTrailer": "Forja trailer",
+  "playerTrailerExternalApp": "External app",
+  "playerTrailerOpenYouTubeFailed": "Could not open YouTube",
+  "playerLiveStreamEnded": "Stream ended",
+  "playerLiveReconnecting": "Reconnecting…",
+  "playerLivePreparingPlayback": "Preparing playback…",
+  "playerLiveRefreshingStream": "Refreshing stream…",
+  "playerLiveUnlockingSource": "Unlocking source…",
+  "playerLiveStreamOffline": "Stream offline",
+  "playerLivePlaybackFailed": "Playback failed",
+  "playerLiveSwitchingPlayer": "Switching player…",
+  "playerLiveSwitchingSoftwareDecode": "Switching to software decode…",
+  "playerLiveBuffering": "Buffering…",
+  "playerLiveSwitchingTo": "Switching to {name}…",
+  "@playerLiveSwitchingTo": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "playerLiveTrying": "Trying {name}…",
+  "@playerLiveTrying": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "playerLiveOfflineRetrying": "Stream offline - retrying every {seconds}s…",
+  "@playerLiveOfflineRetrying": {
+    "placeholders": {
+      "seconds": {
+        "type": "int"
+      }
+    }
+  },
+  "playerLiveReconnectingAttempt": "Reconnecting… (attempt {attempt}/{max})",
+  "@playerLiveReconnectingAttempt": {
+    "placeholders": {
+      "attempt": {
+        "type": "int"
+      },
+      "max": {
+        "type": "int"
+      }
+    }
+  },
+  "playerLiveSubtitleFailed": "Subtitle failed",
+  "playerLiveSearchSubtitles": "Search subtitles",
+  "playerLiveFilmOrSeriesName": "Film or series name",
+  "playerLiveYearOptional": "Year (optional)",
+  "playerLiveSeasonLabel": "Season",
+  "playerLiveEpisodeLabel": "Episode",
+  "playerLiveExternalPlayerNotFound": "{player} not found.",
+  "@playerLiveExternalPlayerNotFound": {
+    "placeholders": {
+      "player": {
+        "type": "String"
+      }
+    }
+  },
+  "playerLiveStreamStats": "Stream stats",
+  "playerLiveInAppMiniPlayer": "In-app mini player",
+  "playerLivePictureInPicture": "Picture in Picture",
+  "playerLiveBadge": "LIVE",
+  "playerLiveEpisodeFallback": "Episode {number}",
+  "@playerLiveEpisodeFallback": {
+    "placeholders": {
+      "number": {
+        "type": "int"
+      }
+    }
+  },
+  "playerLiveSeasonTitle": "Season {number}",
+  "@playerLiveSeasonTitle": {
+    "placeholders": {
+      "number": {
+        "type": "int"
+      }
+    }
+  },
+  "playerLiveShowSeasonTitle": "{show} · Season {number}",
+  "@playerLiveShowSeasonTitle": {
+    "placeholders": {
+      "show": {
+        "type": "String"
+      },
+      "number": {
+        "type": "int"
+      }
+    }
+  },
+  "playerLiveSourceTitle": "Source",
+  "playerLiveVlcNotFound": "VLC not found. Install VLC or use MediaKit.",
+  "playerLiveStatsStatus": "Status",
+  "playerLiveStatsBuffering": "Buffering",
+  "playerLiveStatsPaused": "Paused",
+  "playerLiveStatsEngine": "Engine",
+  "playerLiveStatsRecoveries": "Recoveries",
+  "playerLiveStatsResolution": "Resolution",
+  "playerLiveStatsVideo": "Video",
+  "playerLiveStatsVideoBitrate": "Video bitrate",
+  "playerLiveStatsDisplayFps": "Display FPS",
+  "playerLiveStatsAudioTrack": "Audio track",
+  "playerLiveStatsAudioBitrate": "Audio bitrate",
+  "playerLiveStatsSubtitle": "Subtitle",
+  "playerLiveStatsOff": "Off",
+  "playerLiveStatsCache": "Cache",
+  "playerLiveStatsCacheUsed": "Cache used",
+  "playerLiveStatsBufferedAhead": "Buffered ahead",
+  "playerLiveStatsVolume": "Volume",
+  "playerLiveStatsSpeed": "Speed",
+  "playerLiveStatsDroppedFrames": "Dropped frames",
+  "playerLiveStatsDecoderDrops": "Decoder drops",
+  "playerLiveStatsVideoTrack": "Video track",
+  "playerLiveStatsRetries": "Retries",
+  "playerLiveStatsYes": "yes",
+  "playerLiveStatsNo": "no",
+  "playerLivePlayingOnAirPlay": "Playing on AirPlay",
+  "playerLiveCast": "Cast",
+  "engineModelsHubs": "Hubs",
+  "engineModelsLive": "Live",
+  "engineModelsMovie": "Movie",
+  "engineModelsMovieAndTv": "Movie & TV",
+  "engineModelsPlugins": "Plugins",
+  "engineModelsLanguageItalian": "Italian",
+  "engineModelsLanguageGerman": "German",
+  "engineModelsLanguagePortuguese": "Portuguese",
+  "engineModelsLanguageArabic": "Arabic",
+  "engineModelsLanguageHindi": "Hindi",
+  "engineModelsLanguageTurkish": "Turkish",
+  "engineModelsLanguageJapanese": "Japanese",
+  "engineModelsLanguageKorean": "Korean",
+  "engineModelsLanguageChinese": "Chinese",
+  "engineModelsLanguageDutch": "Dutch",
+  "engineModelsLanguagePolish": "Polish",
+  "engineModelsLanguageRussian": "Russian",
+  "engineRuntimeActionFailed": "Action failed",
+  "engineRuntimeAddToMyList": "Add to My List",
+  "engineRuntimeAddedToMyList": "Added to My List",
+  "engineRuntimeAllKind": "All {kind}",
+  "@engineRuntimeAllKind": {
+    "placeholders": {
+      "kind": {
+        "type": "String"
+      }
+    }
+  },
+  "engineRuntimeCast": "Cast",
+  "engineRuntimeClearKind": "Clear {kind}",
+  "@engineRuntimeClearKind": {
+    "placeholders": {
+      "kind": {
+        "type": "String"
+      }
+    }
+  },
+  "engineRuntimeContinueWatching": "Continue Watching",
+  "engineRuntimeCreditsShort": "{credits} cr",
+  "@engineRuntimeCreditsShort": {
+    "placeholders": {
+      "credits": {
+        "type": "int"
+      }
+    }
+  },
+  "engineRuntimeDealDisabled": "Deal is not enabled on this account",
+  "engineRuntimeDealDone": "{count, plural, =1{Dealt 1 portal} other{Dealt {count} portals}}",
+  "@engineRuntimeDealDone": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    },
+    "description": "Toast after the Deal action hands out portals (Deal is a feature name)."
+  },
+  "engineRuntimeDealNone": "No portals dealt — pool may be empty",
+  "engineRuntimeDealRefreshFailed": "{count, plural, =1{Dealt 1 portal but the list could not refresh — reopen Portals} other{Dealt {count} portals but the list could not refresh — reopen Portals}}",
+  "@engineRuntimeDealRefreshFailed": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "engineRuntimeDealSignIn": "Sign in and pick a profile to Deal",
+  "engineRuntimeDealTooltipCredits": "{label} ({credits} credits)",
+  "@engineRuntimeDealTooltipCredits": {
+    "placeholders": {
+      "label": {
+        "type": "String"
+      },
+      "credits": {
+        "type": "int"
+      }
+    }
+  },
+  "engineRuntimeDealTooltipNoCredits": "{label} (no credits)",
+  "@engineRuntimeDealTooltipNoCredits": {
+    "placeholders": {
+      "label": {
+        "type": "String"
+      }
+    }
+  },
+  "engineRuntimeDetails": "Details",
+  "engineRuntimeFetchingCatalog": "Fetching catalog…",
+  "engineRuntimeFilms": "Films",
+  "engineRuntimeFilters": "Filters",
+  "engineRuntimeHome": "Home",
+  "engineRuntimeHubLayoutInvalid": "This hub’s layout is invalid.",
+  "engineRuntimeHubLoadFailed": "Couldn’t load this hub. Try again.",
+  "engineRuntimeHubPluginOff": "This hub plugin is off. Enable it under Settings → Sources → Forja (Hubs).",
+  "engineRuntimeListEmpty": "Your list is empty",
+  "engineRuntimeLoading": "Loading…",
+  "engineRuntimeMyList": "My List",
+  "engineRuntimeNoChannelsInView": "No channels in this view",
+  "engineRuntimeNoFavorites": "No favorites",
+  "engineRuntimeNoFavoritesHint": "Star a live channel to keep it here.",
+  "engineRuntimeNoHubPack": "No hub pack for this tab.",
+  "engineRuntimeNoPlayableStream": "No playable stream",
+  "engineRuntimeNoResults": "No results found",
+  "engineRuntimeNothingHere": "Nothing here",
+  "engineRuntimeNothingHereYet": "Nothing here yet.",
+  "engineRuntimeNothingWatched": "Nothing watched yet",
+  "engineRuntimeNothingWatchedHint": "Channels you play on Live land here (last 30).",
+  "engineRuntimeOpen": "Open",
+  "engineRuntimeOptions": "Options",
+  "engineRuntimePlay": "Play",
+  "engineRuntimePortalNotFound": "Portal not found",
+  "engineRuntimePortalSelectFailed": "Could not select portal",
+  "engineRuntimePortals": "Portals",
+  "engineRuntimePortalsNoPack": "No portals pack installed",
+  "engineRuntimePortalsUnavailable": "Portals unavailable",
+  "engineRuntimeRecommendations": "Recommendations",
+  "engineRuntimeRemoveFromMyList": "Remove from My List",
+  "engineRuntimeRemoved": "Removed",
+  "engineRuntimeRemovedFromMyList": "Removed from My List",
+  "engineRuntimeRemovedLocallySimklFailed": "Removed locally · Simkl failed",
+  "engineRuntimeResumeFailed": "Resume failed: {error}",
+  "@engineRuntimeResumeFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "engineRuntimeSavedLocallySimklFailed": "Saved locally · Simkl failed",
+  "engineRuntimeSchedule": "Schedule",
+  "engineRuntimeScheduleAiring": "Airing",
+  "engineRuntimeScheduleAiringHint": "In-play and 24/7 — including rows without streams yet",
+  "engineRuntimeScheduleAiringUpcoming": "Airing + upcoming",
+  "engineRuntimeScheduleBothHint": "Airing + 24/7, plus upcoming within the horizon",
+  "engineRuntimeScheduleHorizon": "Horizon",
+  "engineRuntimeScheduleHorizonHint": "Upcoming kickoffs in the next {hours}h",
+  "@engineRuntimeScheduleHorizonHint": {
+    "placeholders": {
+      "hours": {
+        "type": "int"
+      }
+    }
+  },
+  "engineRuntimeScheduleIntro": "What to show, and how far ahead to load upcoming:",
+  "engineRuntimeScheduleNext": "Next · {horizon}",
+  "@engineRuntimeScheduleNext": {
+    "placeholders": {
+      "horizon": {
+        "type": "String"
+      }
+    }
+  },
+  "engineRuntimeScheduleStatus": "Status",
+  "engineRuntimeScheduleUpcoming": "Upcoming",
+  "engineRuntimeScheduleUpcomingHint": "Not started yet, within the horizon below",
+  "engineRuntimeSearchFailed": "Search failed",
+  "engineRuntimeSearchHint": "Search…",
+  "engineRuntimeSearchHintEnter": "Press Enter to search",
+  "engineRuntimeSearchHintFilters": "Set filters, then tap Search",
+  "engineRuntimeSearchHintOk": "Press OK to search",
+  "engineRuntimeSearchPrompt": "Search for your favorite content",
+  "engineRuntimeSectionLoadFailed": "Could not load this section.",
+  "engineRuntimeSeries": "Series",
+  "engineRuntimeShareCodeCopied": "Share code copied",
+  "engineRuntimeShareCodeFailed": "Could not create share code",
+  "engineRuntimeSimklSavedAs": "Simkl saved as {saved} (not {requested})",
+  "@engineRuntimeSimklSavedAs": {
+    "placeholders": {
+      "saved": {
+        "type": "String"
+      },
+      "requested": {
+        "type": "String"
+      }
+    }
+  },
+  "engineRuntimeSimklStillAiring": "Still airing on Simkl · kept as {status}",
+  "@engineRuntimeSimklStillAiring": {
+    "placeholders": {
+      "status": {
+        "type": "String"
+      }
+    }
+  },
+  "engineRuntimeSomethingWrong": "Something went wrong",
+  "engineRuntimeSort": "Sort",
+  "engineRuntimeSortCategories": "Categories",
+  "engineRuntimeSortChannels": "Channels",
+  "engineRuntimeSortNameAsc": "Name (A–Z)",
+  "engineRuntimeSortNameDesc": "Name (Z–A)",
+  "engineRuntimeSortPlaylistOrder": "Playlist Order",
+  "engineRuntimeStream": "Stream",
+  "@engineRuntimeStream": {
+    "description": "Fallback title for a stream that has no name."
+  },
+  "engineRuntimeTrailers": "Trailers",
+  "engineRuntimeUpdating": "Updating",
+  "engineRuntimeViewDetails": "View details",
+  "enginePacksUpdatedToast": "{count, plural, =1{1 plugin pack updated} other{{count} plugin packs updated}}",
+  "@enginePacksUpdatedToast": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "enginePacksUpdateTitle": "{count, plural, =1{Update plugin pack?} other{Update {count} plugin packs?}}",
+  "@enginePacksUpdateTitle": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "enginePacksUpdateBody": "{count, plural, =1{Download and install the newer version of this pack.} other{Download and install newer versions of these packs.}}",
+  "@enginePacksUpdateBody": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "enginePacksUpdateButton": "Update",
+  "enginePacksKindProviders": "Providers",
+  "enginePacksKindLive": "Live",
+  "enginePacksKindTorrent": "Torrent",
+  "enginePacksKindHubs": "Hubs",
+  "enginePortalsShareCodeInvalid": "Share code invalid",
+  "enginePortalsShareCodeNotFound": "Share code not found or invalid",
+  "enginePortalsShareUnavailable": "Share service temporarily unavailable. Try again later.",
+  "enginePortalsShareLoadFailed": "Could not load share code",
+  "enginePortalsErrM3uNameRequired": "Portal name required for M3U playlists",
+  "enginePortalsErrUrlRequired": "URL required",
+  "enginePortalsErrXtreamRequired": "URL, username, and password required",
+  "enginePortalsErrMacRequired": "MAC (username) required",
+  "enginePortalsActionFailed": "Action failed",
+  "enginePortalsDefaultName": "Portal",
+  "enginePortalsAdded": "Portal added",
+  "enginePortalsSaving": "Saving…",
+  "enginePortalsAdding": "Adding portal…",
+  "enginePortalsEditTitle": "Edit Portal",
+  "enginePortalsAddTitle": "Add Portal",
+  "enginePortalsNameLabel": "Portal name",
+  "enginePortalsNameHint": "My provider",
+  "enginePortalsNameRandom": "Random name",
+  "enginePortalsAddAction": "Add",
+  "enginePortalsShareCodeTitle": "Share code",
+  "enginePortalsNameRequiredLabel": "Portal name (required)",
+  "enginePortalsPlaylistUrl": "Playlist URL",
+  "enginePortalsChooseFile": "Choose local file",
+  "enginePortalsMacLabel": "MAC address",
+  "enginePortalsUsernameLabel": "Username",
+  "enginePortalsUsernameHint": "username",
+  "enginePortalsGenerateMac": "Generate MAC",
+  "enginePortalsSerialLabel": "Serial (optional)",
+  "enginePortalsSerialHint": "device serial",
+  "enginePortalsPasswordHint": "password",
+  "enginePortalsShowPassword": "Show password",
+  "enginePortalsHidePassword": "Hide password",
+  "enginePortalsUserAgentLabel": "User-Agent (optional)",
+  "enginePortalsHideManual": "Hide manual entry",
+  "enginePortalsEnterUrlManually": "Enter URL manually",
+  "enginePortalsLoadingShareCode": "Loading share code…",
+  "engineDetailsFallbackTitle": "Details",
+  "engineDetailsMatchLive": "Live",
+  "engineDetailsMatchViewers": "{count} viewers",
+  "@engineDetailsMatchViewers": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "engineDetailsMatchingLiveTv": "Matching Live TV…",
+  "engineDetailsFetchingStreams": "Fetching streams…",
+  "engineDetailsPlay": "Play",
+  "engineDetailsLoading": "Loading",
+  "engineDetailsClearTooltip": "Clear progress & stream cache",
+  "engineDetailsTrailer": "Trailer",
+  "engineDetailsMore": "More",
+  "engineDetailsSimklRating": "Simkl rating: {rating}",
+  "@engineDetailsSimklRating": {
+    "placeholders": {
+      "rating": {
+        "type": "int"
+      }
+    }
+  },
+  "engineDetailsRateOnSimkl": "Rate on Simkl",
+  "engineDetailsSimklLoginFirst": "Login to Simkl first in Settings",
+  "engineDetailsRate": "Rate",
+  "engineDetailsLoadFailed": "Couldn’t load details. Try again.",
+  "engineDetailsNoSavedFile": "No saved file",
+  "engineDetailsResumeEpisode": "Resume Ep {episode}",
+  "@engineDetailsResumeEpisode": {
+    "placeholders": {
+      "episode": {
+        "type": "int"
+      }
+    }
+  },
+  "engineDetailsPlayEpisode": "Play Ep {episode}",
+  "@engineDetailsPlayEpisode": {
+    "placeholders": {
+      "episode": {
+        "type": "int"
+      }
+    }
+  },
+  "engineDetailsCast": "Cast",
+  "engineDetailsCharacters": "Characters",
+  "engineDetailsCrew": "Crew",
+  "engineStoreNoSearch": "{hub} has no search",
+  "@engineStoreNoSearch": {
+    "placeholders": {
+      "hub": {
+        "type": "String"
+      }
+    }
+  },
+  "engineStoreTypeToSearch": "Type a title to search",
+  "engineStoreNoMatches": "No matches in {hub}",
+  "@engineStoreNoMatches": {
+    "placeholders": {
+      "hub": {
+        "type": "String"
+      }
+    }
+  },
+  "engineStoreUntitled": "Untitled",
+  "engineStoreHubLabel": "Hub",
+  "engineStoreSearchHub": "Search {name}",
+  "@engineStoreSearchHub": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "engineStoreOpenInHub": "Open in {hub}",
+  "@engineStoreOpenInHub": {
+    "placeholders": {
+      "hub": {
+        "type": "String"
+      }
+    }
+  },
+  "engineStoreSearchTitle": "Search title",
+  "engineStoreSearchTitleTv": "Search title — OK to type",
+  "engineStoreBestMatch": "Best match",
+  "engineStoreRemovedFromList": "Removed from My List",
+  "engineStoreRemovedLocalFailed": "Removed locally · Simkl failed",
+  "engineStoreSavedLocalFailed": "Saved locally · Simkl failed",
+  "engineStoreNoHub": "No hub available to open this title",
+  "engineStoreNoHandoff": "That match has no open handoff",
+  "engineStoreNoHandoffFor": "No open handoff for {name}",
+  "@engineStoreNoHandoffFor": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "accountBack": "Back",
+  "accountChooserLoadFailed": "Could not load saved accounts.",
+  "accountChooserSwitchFailed": "Could not switch account. Sign in again for that user.",
+  "accountChooserMaxAccounts": "Maximum of {count} accounts on this device.",
+  "@accountChooserMaxAccounts": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "accountChooserAddFailed": "Could not add account. Try again.",
+  "accountChooserTitle": "Accounts",
+  "accountChooserHeading": "Who’s signed in?",
+  "accountChooserSubtitle": "Switch accounts on this device, or add another with QR / code.",
+  "accountChooserActiveGroup": "Active",
+  "accountChooserActiveNow": "Active now",
+  "accountChooserOtherGroup": "Other accounts",
+  "accountChooserAdd": "Add account",
+  "accountChooserRemoveQuestion": "Remove this account?",
+  "accountChooserTapToSwitch": "Tap to switch",
+  "accountChooserRemoveTooltip": "Remove from this device",
+  "accountEntryMfaRequired": "Authenticator required. Finish MFA on the web portal, then use Web login.",
+  "accountEntryMfaPrompt": "Enter the 6-digit code from your authenticator app.",
+  "accountEntryMfaShortCode": "Enter the 6-digit authenticator code.",
+  "accountEntryMfaVerifyFailed": "Could not verify the code. Try again.",
+  "accountEntryMissingCredentials": "Enter your email and password.",
+  "accountEntryConfirmEmail": "Check your email and open the confirmation link, then come back to sign in.",
+  "accountEntryConnectFailed": "Could not connect to Forja. Check your connection and retry.",
+  "accountEntryWebOpening": "Opening browser - sign in on the web, then return here. Tap Cancel if the browser does not open.",
+  "accountEntryWebIncomplete": "Web login did not complete. Try again.",
+  "accountEntrySignupOpenFailed": "Could not open the signup page in your browser.",
+  "accountEntryTagline": "CREATIVE PLAYER",
+  "accountEntryHeadline": "One player.\nYour sources.\nEvery ",
+  "@accountEntryHeadline": {
+    "description": "Followed directly by one rotating word (stream / sync / live / play) and a period."
+  },
+  "accountEntryWordStream": "stream",
+  "accountEntryWordSync": "sync",
+  "accountEntryWordLive": "live",
+  "accountEntryWordPlay": "play",
+  "accountEntryIntro": "Sign in to sync settings and profiles across every screen. New accounts live on the web - not in the app.",
+  "accountEntryChipIptvGuides": "IPTV guides",
+  "accountEntryChipProfiles": "Profiles",
+  "accountEntryChipDeskTv": "Desk → TV",
+  "accountEntryWelcome": "Welcome back",
+  "accountEntryMfaSubtitle": "Enter the code from your authenticator app to finish sign-in.",
+  "accountEntrySubtitle": "Use your Forja account, or open the browser to sign in on the web.",
+  "accountEntryAuthCodeLabel": "Authenticator code",
+  "accountEntryShowPassword": "Show password",
+  "accountEntryHidePassword": "Hide password",
+  "accountEntryVerifying": "Verifying…",
+  "accountEntryVerifyCode": "Verify code",
+  "accountEntryConnecting": "Connecting…",
+  "accountEntryCreateOnWeb": "Create an account on the web →",
+  "accountEntryContinueNoAccount": "Continue without an account",
+  "accountEntryGuestNote": "Guest mode keeps everything on this device. You can sign in later from Settings.",
+  "accountLinkExpired": "This code expired. Start again to get a new one.",
+  "accountLinkCancelled": "Linking was cancelled. Start again to get a new code.",
+  "accountLinkSigningIn": "Signing you in",
+  "accountLinkCreatingSession": "Creating a secure session for this device.",
+  "accountLinkThisDevice": "LINK THIS DEVICE",
+  "accountLinkOpen": "Open ",
+  "@accountLinkOpen": {
+    "description": "Followed directly by a web address such as www.example.com/connect."
+  },
+  "accountLinkEnterCode": "Enter the code or scan the QR from your phone.",
+  "accountGetNewCode": "Get a new code",
+  "accountLinkThisTv": "LINK THIS TV",
+  "accountLinkOpenInBrowser": "Open link page in browser",
+  "accountPacksUrlCopied": "URL copied — open on your phone",
+  "accountPacksOpenCommunityFailed": "Could not open Community Packs.",
+  "accountPacksLoadingOfficial": "Loading official packs…",
+  "accountPacksLoadOfficialFailed": "Could not load official packs. Skip and add them later in Settings.",
+  "accountPacksPreparing": "Preparing official packs…",
+  "accountPacksInstalledWithErrors": "Installed with {count} error(s): {details}",
+  "@accountPacksInstalledWithErrors": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "details": {
+        "type": "String"
+      }
+    }
+  },
+  "accountPacksFinishing": "Finishing…",
+  "accountPacksInstallFailed": "Install failed. You can skip and add packs later in Settings.",
+  "accountPacksTitleChoose": "Choose official packs",
+  "accountPacksTitleUnlock": "Unlock the best experience",
+  "accountPacksBodyPicking": "Recommended packs are checked. Add or remove any, then Install.",
+  "accountPacksBodyIntro": "Packs add catalogs, stream sources, live sports, and more. Pick official ForjaHQ packs, or browse Community Packs and choose on the web.",
+  "accountPacksLoading": "Loading…",
+  "accountPacksTvCommunity": "Choose packs on your phone\n{url}",
+  "@accountPacksTvCommunity": {
+    "placeholders": {
+      "url": {
+        "type": "String"
+      }
+    }
+  },
+  "accountPacksSkip": "Skip for now",
+  "accountProfileOpenFailed": "Could not open this profile. Check your connection and retry.",
+  "accountProfileMaxProfiles": "Maximum of 5 profiles per account.",
+  "accountProfileSaveFailed": "Could not save profile.",
+  "accountProfileDeleteFailed": "Could not delete profile.",
+  "accountProfileLoadFailed": "Could not load profiles. Check your connection and retry.",
+  "accountProfileCreateTitle": "Create your profile",
+  "accountProfileAdd": "Add profile",
+  "accountProfileEditTitle": "Edit profile",
+  "accountProfileAccountTag": "ACCOUNT",
+  "accountProfileManage": "Manage profiles",
+  "accountProfileWhosWatching": "Who’s watching?",
+  "accountProfileLoadingProfiles": "Loading profiles…",
+  "accountProfileLoadWhosWatchingFailed": "Could not load who’s watching right now.",
+  "accountProfileCreateHint": "Create a profile to sync settings on this device.",
+  "accountProfileManageHint": "Edit a profile or add a new one.",
+  "accountProfileChooseHint": "Choose the profile whose settings you want on this device.",
+  "accountProfileUseAnotherAccount": "Use another account",
+  "accountProfileDone": "Done",
+  "accountProfileAccountSettings": "Account settings",
+  "accountProfileNewName": "New profile",
+  "accountProfileNameLabel": "Profile name",
+  "accountProfileChooseAvatar": "CHOOSE AN AVATAR",
+  "accountProfileSaving": "Saving…",
+  "accountProfileSave": "Save profile",
+  "accountProfileDelete": "Delete profile",
+  "accountSplashLoadingProfile": "Loading profile…",
+  "accountSplashSavingCurrent": "Saving current profile…",
+  "accountSplashLoadingNamed": "Loading {name}…",
+  "@accountSplashLoadingNamed": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "accountSplashSyncing": "Syncing settings…",
+  "accountSplashPulling": "Pulling your tabs and sources…",
+  "accountSplashApplying": "Applying playback preferences…",
+  "appBootAlmostReady": "Almost ready…",
+  "accountSplashWarmingHome": "Warming up Home…",
+  "accountSplashOpeningSyncing": "Opening while settings finish syncing. IPTV portals load when ready.",
+  "appBootPluginsBackground": "Plugins keep downloading in the background.",
+  "appBootOpeningLiveIptv": "Opening Live & IPTV…",
+  "appBootOpeningNamed": "Opening {label}…",
+  "@appBootOpeningNamed": {
+    "placeholders": {
+      "label": {
+        "type": "String"
+      }
+    }
+  },
+  "appBootWarmingCatalog": "Warming catalog…",
+  "appBootLoadingPlugins": "Loading plugins…",
+  "appBootJustAMoment": "Just a moment…",
+  "appBootStartingProxy": "Starting stream proxy…",
+  "appBootStartingTorrent": "Starting torrent engine…",
+  "accountLinkSomethingWrong": "Something went wrong.",
+  "accountTvContinueGuest": "Continue as guest",
+  "accountTvTitle": "Your cinema.\nOn the big screen.",
+  "accountTvBody": "The couch is ready. So is Forja. Open a film, chase a series, catch the match, or flip through live TV.",
+  "accountLinkCouldNot": "COULD NOT LINK",
+  "syncPortalLimitUnlimited": "Unlimited",
+  "syncPortalLimitReached": "Portal limit reached.",
+  "syncPortalLimitMax": "Maximum of {count} portals per profile",
+  "@syncPortalLimitMax": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "appBootGettingReady": "Getting things ready…",
+  "appBootSlowCatalog": "Loading catalog services is taking longer than expected.",
+  "appBootWarmingShell": "Warming up the shell…",
+  "appBootLoadingProfile": "Loading your profile…",
+  "appBootCheckingConnection": "Checking connection…",
+  "sharedDownloadsNoSavedFile": "No saved file",
+  "sharedDownloadsSaved": "Saved",
+  "sharedDownloadsSeasonNumber": "Season {number}",
+  "@sharedDownloadsSeasonNumber": {
+    "placeholders": {
+      "number": {
+        "type": "int"
+      }
+    }
+  },
+  "sharedDownloadsDownloading": "Downloading",
+  "sharedDownloadsDownloadingCount": "Downloading · {count}",
+  "@sharedDownloadsDownloadingCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "sharedDownloadsSavedCount": "Saved · {count}",
+  "@sharedDownloadsSavedCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "sharedDownloadsPlayOnline": "Play online",
+  "sharedDownloadsView": "View",
+  "sharedDownloadsExternalNoOffline": "External links can’t be saved offline",
+  "sharedDownloadsTorrentsNoOffline": "Torrents aren't available for offline download yet",
+  "sharedDownloadsDashNoOffline": "DASH streams can't be saved offline yet",
+  "sharedDownloadsStreamNoOffline": "This stream can’t be saved offline",
+  "sharedDownloadsFree": "Free {size}",
+  "@sharedDownloadsFree": {
+    "placeholders": {
+      "size": {
+        "type": "String"
+      }
+    }
+  },
+  "sharedDownloadsAlreadySaved": "Already saved offline",
+  "sharedDownloadsAlreadyDownloading": "Already downloading {title}",
+  "@sharedDownloadsAlreadyDownloading": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "sharedDownloadsDownloadingTitle": "Downloading {title}",
+  "@sharedDownloadsDownloadingTitle": {
+    "placeholders": {
+      "title": {
+        "type": "String"
+      }
+    }
+  },
+  "sharedDownloadsFailedToStart": "Download failed to start",
+  "sharedDownloadsLinkExpired": "Stream link expired — open Sources and download again",
+  "sharedDownloadsFileMissing": "Download file is missing",
+  "sharedDownloadsFileUnplayableDelete": "Downloaded file can’t be played — delete it and download again",
+  "sharedDownloadsFileUnplayable": "Downloaded file can’t be played",
+  "sharedDownloadsNoOnlineStream": "No online stream",
+  "sharedDownloadsFindingStream": "Finding a stream…",
+  "sharedDownloadsSizeUnknown": "Size unknown",
+  "sharedDownloadsFileMovedOrDeleted": "File was moved or deleted from disk",
+  "sharedDownloadsEmptyUrl": "Empty download URL",
+  "sharedDownloadsServerHttp": "Server returned HTTP {code}: {phrase}",
+  "@sharedDownloadsServerHttp": {
+    "placeholders": {
+      "code": {
+        "type": "int"
+      },
+      "phrase": {
+        "type": "String"
+      }
+    }
+  },
+  "sharedDownloadsServerPlaylist": "Server returned a playlist/page, not a video file",
+  "sharedDownloadsReconnectingRemaining": "Reconnecting remaining data (attempt {attempt})...",
+  "@sharedDownloadsReconnectingRemaining": {
+    "placeholders": {
+      "attempt": {
+        "type": "int"
+      }
+    }
+  },
+  "sharedDownloadsReconnecting": "Reconnecting (attempt {attempt})...",
+  "@sharedDownloadsReconnecting": {
+    "placeholders": {
+      "attempt": {
+        "type": "int"
+      }
+    }
+  },
+  "sharedDownloadsFileMissingShort": "Download file missing",
+  "sharedDownloadsIncomplete": "Download incomplete — delete and try again",
+  "sharedDownloadsNotPlayableVideo": "Downloaded file is not a playable video",
+  "sharedDownloadsTooSmall": "Download too small to be a video file",
+  "sharedDownloadsSaveFinalFailed": "Failed to save final file: {error}",
+  "@sharedDownloadsSaveFinalFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "sharedServicesUpdateReadyToInstall": "Forja {version} is ready to install.",
+  "@sharedServicesUpdateReadyToInstall": {
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "sharedServicesOpenDownloadUrl": "Open download URL",
+  "sharedServicesUpdateFileGone": "The downloaded update file is no longer available.",
+  "sharedServicesUpdateCheckFailed": "Could not check for updates: {error}",
+  "@sharedServicesUpdateCheckFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "sharedServicesUpdateServerNotConfigured": "Update server is not configured in this build.",
+  "sharedServicesUpdateServerUnreachable": "Could not reach the update server. Check your connection.",
+  "sharedServicesUpdateServerHttp": "Update server returned HTTP {code}.",
+  "@sharedServicesUpdateServerHttp": {
+    "placeholders": {
+      "code": {
+        "type": "int"
+      }
+    }
+  },
+  "sharedServicesUpdateManifestInvalid": "Update manifest was invalid.",
+  "sharedServicesUpdateNoInstaller": "No installer is published for this device architecture yet.",
+  "sharedServicesUpdateNoAsset": "Found {version} but no matching installer asset.",
+  "@sharedServicesUpdateNoAsset": {
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "sharedLanServerUp": "Server up",
+  "sharedLanServerUnreachable": "Server unreachable",
+  "sharedLanWaitingForPair": "waiting for pair",
+  "sharedLanPaired": "paired",
+  "sharedLanIdleLower": "idle",
+  "sharedLanPlayingLower": "playing",
+  "sharedLanIdle": "Idle",
+  "sharedLanActive": "Active",
+  "sharedLanPlaying": "Playing",
+  "sharedLanDesktopOnline": "Desktop online",
+  "sharedLanPairWithDesktop": "Pair with a desktop Forja server in Settings → LAN.",
+  "sharedLanDesktopOffline": "Desktop server is offline. Direct streams still work.",
+  "sharedMiscBack": "Back",
+  "sharedMiscAirPlayCantPlay": "AirPlay can't play this stream",
+  "sharedPlaybackOpeningPlayer": "Opening player…",
+  "sharedPlaybackProbingStreams": "Probing streams…",
+  "sharedPlaybackProbingStreamsProgress": "Probing streams ({done}/{total})…",
+  "@sharedPlaybackProbingStreamsProgress": {
+    "placeholders": {
+      "done": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "sharedPlaybackCheckingServers": "Checking servers…",
+  "sharedPlaybackFindingServers": "Finding servers…",
+  "sharedPlaybackFindingForjaServers": "Finding Forja servers…",
+  "sharedPlaybackStartingStream": "Starting stream…",
+  "sharedPlaybackHintStarting": "Starting playback",
+  "sharedPlaybackHintTesting": "Testing which links play",
+  "sharedPlaybackHintAsking": "Asking servers for streams",
+  "sharedPlaybackHintLookingUp": "Looking up available providers",
+  "sharedPlaybackProbeSummary": "{checked} / {total} checked · {ready} up",
+  "@sharedPlaybackProbeSummary": {
+    "placeholders": {
+      "checked": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      },
+      "ready": {
+        "type": "int"
+      }
+    }
+  },
+  "sharedPlaybackProbeSummarySkipped": "{checked} / {total} checked · {ready} up · {skipped} skipped on TV",
+  "@sharedPlaybackProbeSummarySkipped": {
+    "placeholders": {
+      "checked": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      },
+      "ready": {
+        "type": "int"
+      },
+      "skipped": {
+        "type": "int"
+      }
+    }
+  },
+  "sharedPlaybackSearchAgain": "Search again",
+  "sharedPlaybackSavedLinkBroken": "That saved link is no longer working",
+  "sharedPlaybackProbeWaiting": "Waiting",
+  "sharedPlaybackProbeChecking": "Checking",
+  "sharedPlaybackProbeUp": "Up",
+  "sharedPlaybackProbeDown": "Down",
+  "sharedPlaybackProbeSkipped": "Skipped",
+  "sharedPlaybackHideServers": "Hide servers",
+  "sharedPlaybackShowServers": "Show servers",
+  "sharedPlaybackTapServerFirst": "Tap a server to check it first",
+  "sharedPlaybackPressBackToCancel": "Press Back to cancel",
+  "sharedPlaybackTryAgain": "Try again",
+  "sharedPlaybackCouldNotStart": "Couldn’t start playback",
+  "sharedPlaybackNoPluginsOn": "No Forja plugins are on for this title. Open Sources → Forja and turn on providers.",
+  "sharedPlaybackNoWorkingStream": "None of the Forja plugins returned a working stream right now.",
+  "sharedPlaybackNoProvidersEnabled": "No Forja providers are enabled for green Play",
+  "sharedPlaybackNoProvidersMatchLanguages": "No Forja providers match the selected languages",
+  "sharedPlaybackUnableHandleLink": "Unable to handle this link",
+  "sharedPlaybackFailedLoadVideo": "Failed to load video",
+  "sharedPlaybackErrorWith": "Error: {error}",
+  "@sharedPlaybackErrorWith": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "sharedPlaybackDrmAndroidOnly": "This title is DRM-protected — desktop playback is not available yet.",
+  "sharedPlaybackEpisodeNumber": "Episode {number}",
+  "@sharedPlaybackEpisodeNumber": {
+    "placeholders": {
+      "number": {
+        "type": "int"
+      }
+    }
+  },
+  "sharedPlaybackLabelEpisode": "{label} · Episode {episode}",
+  "@sharedPlaybackLabelEpisode": {
+    "placeholders": {
+      "label": {
+        "type": "String"
+      },
+      "episode": {
+        "type": "int"
+      }
+    }
+  },
+  "sharedPlaybackSeasonEpisode": "Season {season} · Episode {episode}",
+  "@sharedPlaybackSeasonEpisode": {
+    "placeholders": {
+      "season": {
+        "type": "int"
+      },
+      "episode": {
+        "type": "int"
+      }
+    }
+  },
+  "shellNavbarName": "Navbar",
+  "shellReloadingNamed": "Reloading {name}…",
+  "@shellReloadingNamed": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "shellNamedReloaded": "{name} reloaded",
+  "@shellNamedReloaded": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "shellSearchHint": "Search…",
+  "shellSearchHintNamed": "Search {label}…",
+  "@shellSearchHintNamed": {
+    "placeholders": {
+      "label": {
+        "type": "String"
+      }
+    }
+  },
+  "shellUpdateDownloading": "Downloading update…",
+  "shellUpdateDownloadingVersion": "Downloading Forja {version}…",
+  "@shellUpdateDownloadingVersion": {
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "shellUpdateSoftwareUpdate": "Software update",
+  "shellUpdateNewVersionReady": "A new version is ready",
+  "shellUpdateYouAreOn": "You’re on v{version}",
+  "@shellUpdateYouAreOn": {
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "shellUpdateWhatsNew": "What’s new",
+  "shellUpdateHintOkBrowse": "OK to browse",
+  "shellUpdateHintRailNotes": "↑↓ versions  ·  → notes  ·  OK to exit",
+  "shellUpdateHintScrollVersions": "↑↓ scroll  ·  ← versions  ·  OK to exit",
+  "shellUpdateHintScroll": "↑↓ scroll  ·  OK to exit",
+  "shellUpdateNoNotes": "No release notes were published for this update.",
+  "shellUpdateNoNotesVersion": "No release notes were published for v{version}.",
+  "@shellUpdateNoNotesVersion": {
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "shellUpdateContinueInBackground": "Continue in background",
+  "shellUpdateReleasedToday": "released today",
+  "shellUpdateReleasedYesterday": "released yesterday",
+  "shellUpdateReleasedDaysAgo": "released {days} days ago",
+  "@shellUpdateReleasedDaysAgo": {
+    "placeholders": {
+      "days": {
+        "type": "int"
+      }
+    }
+  },
+  "shellUpdateFailed": "Update failed: {error}",
+  "@shellUpdateFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "shellUpdateDownloadFailed": "Download failed: {error}",
+  "@shellUpdateDownloadFailed": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "shellUpdateCouldNotOpen": "Could not open the update: {error}",
+  "@shellUpdateCouldNotOpen": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "shellUpdateInstall": "Install update",
+  "shellUpdateSkipForNow": "Skip for now",
+  "shellUpdateSeeFullChangelog": "See full changelog on the web",
+  "shellUpdateViewFullChangelog": "View full changelog",
+  "shellUpdateDownloadComplete": "Download complete",
+  "shellUpdateDownloadCompleteTitle": "Download\ncomplete",
+  "shellUpdateMustCloseWindows": "Forja must close before you install the update. Choose Install to close Forja and launch the installer, or skip for now.",
+  "shellUpdateMustCloseMac": "Forja must close before you install the update. Choose Install to close Forja and open the disk image, or skip for now.",
+  "shellUpdateMakeExecutable": "Make the file executable, then run it:\nchmod +x \"{fileName}\"\n./{fileName}",
+  "@shellUpdateMakeExecutable": {
+    "placeholders": {
+      "fileName": {
+        "type": "String"
+      }
+    }
+  },
+  "shellUpdateInstallAndClose": "Install and close Forja",
+  "shellUpdateDone": "Done",
+  "shellUpdateOpenDownloads": "Open downloads folder",
+  "shellProfile": "Profile",
+  "shellGuest": "Guest",
+  "shellEmptyPluginsTitle": "Plugins",
+  "shellEmptyPluginsBodyTv": "Install hub and stream packs from a URL or profile.",
+  "shellEmptyPluginsBody": "Install hub and stream packs from a manifest URL, or sync packs from your profile.",
+  "shellEmptyAddonsBodyTv": "IPTV, Live Sports, torrent, Stremio, Nuvio, and more.",
+  "shellEmptyAddonsBody": "Turn on IPTV, Live Sports, torrent, Stremio, Nuvio, and other playback surfaces.",
+  "shellEmptyFeaturesBodyTv": "Choose which tabs appear in the rail.",
+  "shellEmptyFeaturesBody": "Choose which tabs appear: Home, Anime, IPTV, Live Sports, Lists, and more.",
+  "shellEmptyTitle": "Turn on a feature to get started",
+  "shellEmptyHint": "Pick Plugins, Addons, or Features.",
+  "shellPressBackAgainToExit": "Press Back again to exit",
+  "shellPressExitAgainToExit": "Press Exit again to exit",
+  "shellDismissCategories": "Dismiss categories",
+  "shellCategories": "Categories",
+  "shellUpdating": "Updating",
+  "accountAvatarCategoryCharacters": "Characters",
+  "accountAvatarCategoryCreatures": "Creatures",
+  "accountAvatarCategorySpace": "Space",
+  "accountAvatarCategoryRetro": "Retro",
+  "foundationReadMore": "Read More",
+  "foundationReadLess": "Read Less",
+  "foundationRetry": "Retry",
+  "foundationBack": "Back",
+  "foundationNothingHere": "Nothing here",
+  "foundationNoCategories": "No categories",
+  "foundationNoMatches": "No matches",
+  "foundationSearch": "Search",
+  "foundationAll": "All",
+  "foundationFactName": "Name",
+  "foundationFactStatus": "Status",
+  "foundationFactLanguage": "Language",
+  "foundationFactFirstAired": "First Aired",
+  "foundationFactLastAired": "Last Aired",
+  "foundationFactSeasons": "Seasons",
+  "foundationFactEpisodes": "Episodes",
+  "foundationFactNetwork": "Network",
+  "foundationFactReleaseDate": "Release Date",
+  "foundationFactRuntime": "Runtime",
+  "foundationFactProduction": "Production",
+  "foundationFactOrigin": "Origin",
+  "foundationFactCreatedBy": "Created by",
+  "foundationFactBudget": "Budget",
+  "foundationFactRevenue": "Revenue",
+  "foundationStatusReleased": "Released",
+  "foundationStatusEnded": "Ended",
+  "foundationStatusReturningSeries": "Returning Series",
+  "foundationStatusInProduction": "In Production",
+  "foundationStatusCanceled": "Canceled",
+  "foundationStatusPlanned": "Planned",
+  "foundationStatusPostProduction": "Post Production",
+  "foundationStatusRumored": "Rumored",
+  "foundationMonthJan": "Jan",
+  "foundationMonthFeb": "Feb",
+  "foundationMonthMar": "Mar",
+  "foundationMonthApr": "Apr",
+  "foundationMonthMay": "May",
+  "foundationMonthJun": "Jun",
+  "foundationMonthJul": "Jul",
+  "foundationMonthAug": "Aug",
+  "foundationMonthSep": "Sep",
+  "foundationMonthOct": "Oct",
+  "foundationMonthNov": "Nov",
+  "foundationMonthDec": "Dec",
+  "foundationDatePattern": "{month} {day}, {year}",
+  "@foundationDatePattern": {
+    "description": "Layout of a short date in the facts panel. The caller passes the literal placeholders back, so the package can fill them.",
+    "placeholders": {
+      "month": {
+        "type": "String"
+      },
+      "day": {
+        "type": "String"
+      },
+      "year": {
+        "type": "String"
+      }
+    }
+  }
+}

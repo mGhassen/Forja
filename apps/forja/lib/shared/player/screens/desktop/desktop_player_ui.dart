@@ -414,7 +414,7 @@ mixin _DesktopPlayerUi
     final ep = n == n.truncateToDouble() ? n.toInt() : n;
     final season = widget.selectedSeason;
     if (season != null) return 'S$season E$ep';
-    return 'Episode $ep';
+    return context.l10n.playerScreenEpisodeNumber('$ep');
   }
 
   String? get _pausedEpisodeOverview =>
@@ -562,9 +562,9 @@ mixin _DesktopPlayerUi
 
   /// Short label shown on the pill button for the current fit mode.
   String get _videoFitLabel => switch (_s._videoFit) {
-    BoxFit.contain => 'FIT',
-    BoxFit.cover => 'CROP',
-    BoxFit.fill => 'FILL',
-    _ => 'FIT',
+    BoxFit.contain => context.l10n.playerScreenFitFit,
+    BoxFit.cover => context.l10n.playerScreenFitCrop,
+    BoxFit.fill => context.l10n.playerScreenFitFill,
+    _ => context.l10n.playerScreenFitFit,
   };
 }

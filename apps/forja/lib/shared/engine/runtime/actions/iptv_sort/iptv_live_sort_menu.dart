@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:forja/l10n/l10n.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import 'package:forja/shared/engine/portals/models.dart';
@@ -30,14 +31,24 @@ class IptvLiveSortMenu extends StatefulWidget {
 }
 
 class _IptvLiveSortMenuState extends State<IptvLiveSortMenu> {
-  static const _options = <(PortalCatalogSort, String, IconData)>[
+  static List<(PortalCatalogSort, String, IconData)> _optionsFor(
+    AppLocalizations l10n,
+  ) => [
     (
       PortalCatalogSort.playlist,
-      'Playlist Order',
+      l10n.engineRuntimeSortPlaylistOrder,
       Icons.format_list_numbered_rounded,
     ),
-    (PortalCatalogSort.nameAsc, 'Name (A–Z)', Icons.sort_by_alpha_rounded),
-    (PortalCatalogSort.nameDesc, 'Name (Z–A)', Icons.sort_by_alpha_rounded),
+    (
+      PortalCatalogSort.nameAsc,
+      l10n.engineRuntimeSortNameAsc,
+      Icons.sort_by_alpha_rounded,
+    ),
+    (
+      PortalCatalogSort.nameDesc,
+      l10n.engineRuntimeSortNameDesc,
+      Icons.sort_by_alpha_rounded,
+    ),
   ];
 
   late PortalCatalogSort _categorySort = widget.categorySort;
@@ -59,6 +70,8 @@ class _IptvLiveSortMenuState extends State<IptvLiveSortMenu> {
     final tv = ShellPaintScope.usesTvDensityOf(context);
     final pad = ShellTokens.chromeScale(10, tv: tv);
     final bottom = ShellTokens.chromeScale(12, tv: tv);
+    final l10n = context.l10n;
+    final options = _optionsFor(l10n);
     return PlayerPopupListFocusScope(
       child: Padding(
         padding: EdgeInsets.fromLTRB(pad, pad, pad, bottom),
@@ -66,8 +79,8 @@ class _IptvLiveSortMenuState extends State<IptvLiveSortMenu> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            _sectionLabel('Categories'),
-            for (final (sort, label, icon) in _options)
+            _sectionLabel(l10n.engineRuntimeSortCategories),
+            for (final (sort, label, icon) in options)
               _IptvSortRow(
                 icon: icon,
                 label: label,
@@ -83,8 +96,8 @@ class _IptvLiveSortMenuState extends State<IptvLiveSortMenu> {
               ),
               child: Divider(height: 1, color: PlayerPopupTokens.border),
             ),
-            _sectionLabel('Channels'),
-            for (final (sort, label, icon) in _options)
+            _sectionLabel(l10n.engineRuntimeSortChannels),
+            for (final (sort, label, icon) in options)
               _IptvSortRow(
                 icon: icon,
                 label: label,

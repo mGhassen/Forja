@@ -3,6 +3,7 @@ import 'package:forja/shared/engine/details/details_meta.dart';
 import 'package:forja_foundation/utils/cover_urls.dart';
 import 'package:forja_foundation/protocol/protocol.dart';
 import 'package:forja/shared/player/controls/episodes/catalog_episode.dart';
+import 'package:forja/shell/routing/shell_ambient_l10n.dart';
 
 class KitEpisodeCache {
   KitEpisodeCache._();
@@ -54,7 +55,9 @@ PlayerKitEpisode _kitEpisodeRow({
   final air = hubVideoAirDateInfo(video);
   return PlayerKitEpisode(
     number: epNum,
-    title: video.title.isNotEmpty ? video.title : 'Episode $epNum',
+    title: video.title.isNotEmpty
+        ? video.title
+        : shellAmbientL10n.sharedPlaybackEpisodeNumber(epNum),
     thumbnailUrl: thumb,
     airDateLabel: air.label,
     notShippedYet: air.notShippedYet,

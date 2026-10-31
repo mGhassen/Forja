@@ -200,7 +200,10 @@ mixin _DesktopPlayerBuild
               children: [
                 if (showSkip)
                   PlayerFloatingChip(
-                    label: _s._activeSkipLabel!,
+                    label: playerSkipChipText(
+                      context.l10n,
+                      _s._activeSkipLabel!,
+                    ),
                     onPressed: _s._performSkip,
                   ),
                 if (showSkip && _s._showNextEpButton)
@@ -560,7 +563,9 @@ mixin _DesktopPlayerBuild
                                         icon: playing
                                             ? Icons.pause_rounded
                                             : Icons.play_arrow_rounded,
-                                        tooltip: playing ? 'Pause' : 'Play',
+                                        tooltip: playing
+                                            ? context.l10n.downloadsPause
+                                            : context.l10n.playerScreenPlay,
                                         onPressed: () {
                                           unawaited(_s._togglePlayPause());
                                           _s._onMouseMove();
@@ -625,20 +630,20 @@ mixin _DesktopPlayerBuild
                                 if (hasEpisodePicker) ...[
                                   PlayerFlatIconButton(
                                     icon: Icons.video_library_outlined,
-                                    tooltip: 'Episodes',
+                                    tooltip: context.l10n.playerScreenEpisodes,
                                     onPressedWithContext: _s._showEpisodesMenu,
                                   ),
                                   const SizedBox(width: 2),
                                 ],
                                 PlayerFlatIconButton(
                                   icon: Icons.audiotrack_rounded,
-                                  tooltip: 'Audio',
+                                  tooltip: context.l10n.playerScreenAudio,
                                   onPressedWithContext: _s._showAudioMenu,
                                 ),
                                 const SizedBox(width: 2),
                                 PlayerFlatIconButton(
                                   icon: Icons.subtitles_outlined,
-                                  tooltip: 'Subtitles',
+                                  tooltip: context.l10n.playerScreenSubtitles,
                                   onPressedWithContext: _s._showSubtitlesMenu,
                                 ),
                                 const SizedBox(width: 2),
@@ -649,7 +654,8 @@ mixin _DesktopPlayerBuild
                                     children: [
                                       PlayerFlatIconButton(
                                         icon: Icons.hd_outlined,
-                                        tooltip: 'Quality',
+                                        tooltip:
+                                            context.l10n.playerScreenQuality,
                                         onPressedWithContext:
                                             _s._showQualityMenu,
                                       ),
@@ -659,7 +665,7 @@ mixin _DesktopPlayerBuild
                                 ),
                                 PlayerFlatIconButton(
                                   icon: Icons.settings_outlined,
-                                  tooltip: 'Settings',
+                                  tooltip: context.l10n.settingsTitle,
                                   onPressedWithContext: _s._showSettingsMenu,
                                 ),
                                 const SizedBox(width: 2),
@@ -667,7 +673,7 @@ mixin _DesktopPlayerBuild
                                   icon: _s._isFullscreen
                                       ? Icons.fullscreen_exit_rounded
                                       : Icons.fullscreen_rounded,
-                                  tooltip: 'Fullscreen',
+                                  tooltip: context.l10n.playerScreenFullscreen,
                                   onPressed: _s._toggleFullscreen,
                                 ),
                               ],

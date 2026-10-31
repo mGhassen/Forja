@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:forja/l10n/l10n.dart';
 import 'package:forja/shared/player/in_app_mini/in_app_mini_player_controller.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
@@ -200,7 +201,7 @@ class _InAppMiniPlayerChromeState extends State<InAppMiniPlayerChrome> {
                           focusNode: widget.closeFocus,
                           order: 3,
                           icon: Icons.close_rounded,
-                          tooltip: 'Close',
+                          tooltip: context.l10n.settingsUiClose,
                           onTap: widget.onClose,
                         ),
                       ),
@@ -236,7 +237,9 @@ class _InAppMiniPlayerChromeState extends State<InAppMiniPlayerChrome> {
                                   icon: widget.playing
                                       ? Icons.pause_rounded
                                       : Icons.play_arrow_rounded,
-                                  tooltip: widget.playing ? 'Pause' : 'Play',
+                                  tooltip: widget.playing
+                                      ? context.l10n.playerControlPause
+                                      : context.l10n.playerControlPlay,
                                   onTap: widget.onPlayPause,
                                 ),
                                 const Spacer(),
@@ -244,7 +247,7 @@ class _InAppMiniPlayerChromeState extends State<InAppMiniPlayerChrome> {
                                   focusNode: widget.expandFocus,
                                   order: 2,
                                   icon: Icons.open_in_full_rounded,
-                                  tooltip: 'Expand',
+                                  tooltip: context.l10n.playerControlExpand,
                                   onTap: widget.onExpand,
                                 ),
                               ],

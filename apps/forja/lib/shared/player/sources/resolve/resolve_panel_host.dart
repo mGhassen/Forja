@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:forja/l10n/l10n.dart';
 import 'package:forja/shared/player/sources/kit/kit_panel_host.dart';
 import 'package:forja/shared/player/sources/resolve/resolve_streams_hooks.dart';
 import 'package:forja/shared/engine/details/kit_match_details_page.dart';
@@ -176,7 +177,7 @@ class _KitResolveStreamsPanelState extends State<_KitResolveStreamsPanel> {
       key: ValueKey(
         'live-panel-body-${widget.entry.meta.id}-${widget.refreshEpoch}',
       ),
-      title: title.isEmpty ? 'Streams' : title,
+      title: title.isEmpty ? context.l10n.playerSourceStreamsTitle : title,
       subtitle: subtitle.isEmpty ? null : subtitle,
       tabs: [
         for (final t in chrome.tabs)

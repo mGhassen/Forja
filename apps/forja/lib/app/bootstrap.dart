@@ -31,6 +31,8 @@ import 'package:forja/shared/engine/portals/store/portal_vault_inventory.dart';
 import 'package:forja/shared/downloads/download_service.dart';
 import 'package:forja/shared/playback/playable_stream_url.dart';
 import 'package:forja/shared/services/update/app_version.dart';
+import 'package:forja/l10n/l10n.dart';
+import 'package:forja/shared/services/app/app_locale.dart';
 import 'package:forja/shared/services/app/splash_sound.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shared/engine/packs/install/forja_plugin_deeplink.dart';
@@ -71,6 +73,7 @@ import 'package:forja/shell/core/shell_paint_host_install.dart';
 import 'package:forja/shell/desktop/desktop_window_geometry.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 import 'package:forja_foundation/widgets/chrome/forja_scrollbar.dart';
+import 'package:forja_foundation/l10n/foundation_strings.dart';
 
 bool _appShutdownStarted = false;
 
@@ -318,6 +321,7 @@ Future<void> bootstrapForja({String title = 'Forja'}) async {
   // LAN restore waits for post-splash torrent/proxy warm — see ProfileEngineWarm.
 
   await AppTheme.initTheme();
+  await AppLocale.init();
 
   // After Engine.init so crash-reporting opt-in is readable (RFC-043).
   await Telemetry.ensureInitialized();
@@ -506,12 +510,18 @@ class _AppState extends State<App> with WidgetsBindingObserver, WindowListener {
 
   @override
   Widget build(BuildContext context) {
-    return ValueListenableBuilder<AppThemePreset>(
-      valueListenable: AppTheme.themeNotifier,
-      builder: (context, preset, _) {
+    return ListenableBuilder(
+      listenable: Listenable.merge([
+        AppTheme.themeNotifier,
+        AppLocale.notifier,
+      ]),
+      builder: (context, _) {
         Widget app = MaterialApp(
           title: widget.title,
           debugShowCheckedModeBanner: false,
+          locale: AppLocale.notifier.value,
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
           theme: AppTheme.themeData,
           scrollBehavior: const ForjaScrollBehavior(),
           navigatorObservers: [
@@ -557,7 +567,67 @@ class _AppState extends State<App> with WidgetsBindingObserver, WindowListener {
                 child: content,
               );
             }
-            return content;
+            final l10n = context.l10n;
+            return ForjaFoundationStringsScope(
+              strings: ForjaFoundationStrings(
+                readMore: l10n.foundationReadMore,
+                readLess: l10n.foundationReadLess,
+                retry: l10n.foundationRetry,
+                back: l10n.foundationBack,
+                nothingHere: l10n.foundationNothingHere,
+                noCategories: l10n.foundationNoCategories,
+                noMatches: l10n.foundationNoMatches,
+                search: l10n.foundationSearch,
+                all: l10n.foundationAll,
+                factLabels: {
+                  'Name': l10n.foundationFactName,
+                  'Status': l10n.foundationFactStatus,
+                  'Language': l10n.foundationFactLanguage,
+                  'First Aired': l10n.foundationFactFirstAired,
+                  'Last Aired': l10n.foundationFactLastAired,
+                  'Seasons': l10n.foundationFactSeasons,
+                  'Episodes': l10n.foundationFactEpisodes,
+                  'Network': l10n.foundationFactNetwork,
+                  'Release Date': l10n.foundationFactReleaseDate,
+                  'Runtime': l10n.foundationFactRuntime,
+                  'Production': l10n.foundationFactProduction,
+                  'Origin': l10n.foundationFactOrigin,
+                  'Created by': l10n.foundationFactCreatedBy,
+                  'Budget': l10n.foundationFactBudget,
+                  'Revenue': l10n.foundationFactRevenue,
+                },
+                statusLabels: {
+                  'Released': l10n.foundationStatusReleased,
+                  'Ended': l10n.foundationStatusEnded,
+                  'Returning Series': l10n.foundationStatusReturningSeries,
+                  'In Production': l10n.foundationStatusInProduction,
+                  'Canceled': l10n.foundationStatusCanceled,
+                  'Planned': l10n.foundationStatusPlanned,
+                  'Post Production': l10n.foundationStatusPostProduction,
+                  'Rumored': l10n.foundationStatusRumored,
+                },
+                shortMonths: [
+                  l10n.foundationMonthJan,
+                  l10n.foundationMonthFeb,
+                  l10n.foundationMonthMar,
+                  l10n.foundationMonthApr,
+                  l10n.foundationMonthMay,
+                  l10n.foundationMonthJun,
+                  l10n.foundationMonthJul,
+                  l10n.foundationMonthAug,
+                  l10n.foundationMonthSep,
+                  l10n.foundationMonthOct,
+                  l10n.foundationMonthNov,
+                  l10n.foundationMonthDec,
+                ],
+                datePattern: l10n.foundationDatePattern(
+                  '{month}',
+                  '{day}',
+                  '{year}',
+                ),
+              ),
+              child: content,
+            );
           },
         );
         if (_isDesktop) {
@@ -596,10 +666,9 @@ class _SplashScreenState extends State<SplashScreen> {
   /// True while the splash overlay should still be drawn on top.
   bool _showOverlay = true;
 
-  /// Live boot step shown above the version on the splash.
-  final ValueNotifier<String> _bootStatus = ValueNotifier<String>(
-    'Getting things ready…',
-  );
+  /// Live boot step shown above the version on the splash. Null until the
+  /// first step; the overlay then shows the localized "getting ready" line.
+  final ValueNotifier<String?> _bootStatus = ValueNotifier<String?>(null);
 
   final ValueNotifier<bool> _offerContinue = ValueNotifier<bool>(false);
 
@@ -702,7 +771,7 @@ class _SplashScreenState extends State<SplashScreen> {
     }
     _dismissSplash();
     ForjaToast.info(
-      'Plugins keep downloading in the background.',
+      context.l10n.appBootPluginsBackground,
       duration: const Duration(seconds: 3),
     );
   }
@@ -752,7 +821,7 @@ class _SplashScreenState extends State<SplashScreen> {
     _notifySplashDismissed();
     if (showSlowBootToast) {
       ForjaToast.warning(
-        'Loading catalog services is taking longer than expected.',
+        context.l10n.appBootSlowCatalog,
         duration: const Duration(seconds: 4),
       );
     }
@@ -761,11 +830,15 @@ class _SplashScreenState extends State<SplashScreen> {
   /// Rotate hold lines while waiting out the remaining min-splash time.
   Future<void> _awaitMinSplashWithHoldStatus(
     Future<void> minSplashFuture,
+    AppLocalizations l10n,
   ) async {
-    final opening = _bootStatus.value.trim().isEmpty
-        ? 'Just a moment…'
-        : _bootStatus.value;
-    final steps = <String>[opening, 'Warming up the shell…', 'Almost ready…'];
+    final current = _bootStatus.value ?? l10n.appBootGettingReady;
+    final opening = current.trim().isEmpty ? l10n.appBootJustAMoment : current;
+    final steps = <String>[
+      opening,
+      l10n.appBootWarmingShell,
+      l10n.appBootAlmostReady,
+    ];
     var index = 0;
 
     while (mounted && _showOverlay) {
@@ -783,7 +856,10 @@ class _SplashScreenState extends State<SplashScreen> {
 
   /// Dismiss after packs/prefetch finish, honoring the min splash floor.
   /// User can bail early via [\_continueInBackground] if install is slow/stuck.
-  Future<void> _dismissWhenReady(Future<void> bootFuture) async {
+  Future<void> _dismissWhenReady(
+    Future<void> bootFuture,
+    AppLocalizations l10n,
+  ) async {
     final started = DateTime.now();
     final minSplashFuture = Future<void>.delayed(_minSplashDuration);
     final early = Completer<void>();
@@ -825,7 +901,7 @@ class _SplashScreenState extends State<SplashScreen> {
         '[Boot] Step 4: Waiting for minimum splash time so the '
         'pre-built MainScreen finishes its first paints...',
       );
-      await _awaitMinSplashWithHoldStatus(minSplashFuture);
+      await _awaitMinSplashWithHoldStatus(minSplashFuture, l10n);
     }
 
     if (!mounted || !_showOverlay) return;
@@ -840,7 +916,7 @@ class _SplashScreenState extends State<SplashScreen> {
     debugPrint('═══════════════════════════════════════════════════════════');
   }
 
-  Future<void> _initOfflineBoot() async {
+  Future<void> _initOfflineBoot(AppLocalizations l10n) async {
     debugPrint('[Init] offline boot - local packs only');
     await SyncService.instance.ensurePluginDiskScopeForCurrentSession();
     await PluginRegistry.instance.rehydrateLeanStubsFromDisk();
@@ -854,14 +930,15 @@ class _SplashScreenState extends State<SplashScreen> {
       prefetchDefaultHub: false,
       reason: 'intro-splash-offline',
       onStatus: _setBootStatus,
+      l10n: l10n,
     );
     debugPrint('[Init] offline boot complete ($needs)');
-    _setBootStatus(needs.openingStatusLabel);
+    _setBootStatus(needs.openingStatus(l10n));
   }
 
-  Future<void> _initOnlineBoot() async {
+  Future<void> _initOnlineBoot(AppLocalizations l10n) async {
     debugPrint('[Init] resolving profile boot needs...');
-    _setBootStatus('Loading your profile…');
+    _setBootStatus(l10n.appBootLoadingProfile);
     // Packs only after a profile was launched (guest or selectProfile).
     // Rehydrate prefs from this profile's disk before BootNeeds so we do not
     // log scripts missing / pendingPackDisk for lean stubs (issue 259).
@@ -880,24 +957,28 @@ class _SplashScreenState extends State<SplashScreen> {
       prefetchDefaultHub: needs.catalogTab,
       reason: 'intro-splash',
       onStatus: _setBootStatus,
+      l10n: l10n,
     );
 
-    _setBootStatus(needs.openingStatusLabel);
+    _setBootStatus(needs.openingStatus(l10n));
   }
 
   Future<void> _initEngine() async {
+    final l10n = context.l10n;
     debugPrint('═══════════════════════════════════════════════════════════');
     debugPrint('[Boot] Starting engine initialization...');
     debugPrint('═══════════════════════════════════════════════════════════');
 
-    _setBootStatus('Checking connection…');
+    _setBootStatus(l10n.appBootCheckingConnection);
     debugPrint('[Boot] Step 1: Checking network connectivity...');
     final connectivityResult = await Connectivity().checkConnectivity();
     final isOffline = connectivityResult.contains(ConnectivityResult.none);
     debugPrint('[Boot] Network status: ${isOffline ? "OFFLINE" : "ONLINE"}');
 
-    final bootFuture = isOffline ? _initOfflineBoot() : _initOnlineBoot();
-    await _dismissWhenReady(bootFuture);
+    final bootFuture = isOffline
+        ? _initOfflineBoot(l10n)
+        : _initOnlineBoot(l10n);
+    await _dismissWhenReady(bootFuture, l10n);
   }
 
   @override
@@ -938,7 +1019,8 @@ class _SplashScreenState extends State<SplashScreen> {
             builder: (context, _) {
               final pack = PluginInstallCoordinator.instance.progress.value;
               return SplashOverlayContent(
-                statusLabel: _bootStatus.value,
+                statusLabel:
+                    _bootStatus.value ?? context.l10n.appBootGettingReady,
                 statusProgress: pack != null && pack.totalSteps > 0
                     ? pack.fraction
                     : null,

@@ -1,5 +1,6 @@
 import 'dart:io' show Platform;
 
+import 'package:forja/shell/routing/shell_ambient_l10n.dart';
 import 'package:rust/rust.dart';
 
 /// DRM (Widevine / ClearKey) is not playable in MediaKit yet.
@@ -35,5 +36,6 @@ bool streamsArePlatformBlockedDrmOnly(Iterable<Map<String, dynamic>> rows) {
   return any;
 }
 
-const kStreamDrmAndroidOnlyMessage =
-    'This title is DRM-protected — desktop playback is not available yet.';
+// A getter so the text follows the current app language (read at toast time).
+String get kStreamDrmAndroidOnlyMessage =>
+    shellAmbientL10n.sharedPlaybackDrmAndroidOnly;

@@ -227,6 +227,7 @@ class _StreamMenuOverlayState extends State<_StreamMenuOverlay> {
   }) async {
     if (!widget.providersEnabled) return;
     if (_loadingProviders.contains(providerId)) return;
+    final l10n = context.l10n;
 
     final gen = (_loadGens[providerId] ?? 0) + 1;
     _loadGens[providerId] = gen;
@@ -263,7 +264,7 @@ class _StreamMenuOverlayState extends State<_StreamMenuOverlay> {
       if (sources == null || sources.isEmpty) {
         final provider = widget.providers?[providerId];
         ForjaToast.warning(
-          PlayerProviderMenu.unavailableMessage(providerId, provider),
+          PlayerProviderMenu.unavailableMessage(providerId, provider, l10n),
           duration: const Duration(seconds: 2),
         );
         return;
@@ -282,7 +283,7 @@ class _StreamMenuOverlayState extends State<_StreamMenuOverlay> {
       setState(() => _loadingProviders.remove(providerId));
       final provider = widget.providers?[providerId];
       ForjaToast.warning(
-        PlayerProviderMenu.unavailableMessage(providerId, provider),
+        PlayerProviderMenu.unavailableMessage(providerId, provider, l10n),
         duration: const Duration(seconds: 2),
       );
     }
@@ -402,6 +403,7 @@ class _StreamMenuOverlayState extends State<_StreamMenuOverlay> {
       checkingTotal: _sequentialCheckProviderId == providerId
           ? _sequentialCheckTotal
           : null,
+      l10n: context.l10n,
     );
     final canInteract = widget.providersEnabled && !isReloading;
     final scoreScope = PlayerStreamMenu.scoreScope(
@@ -531,14 +533,16 @@ class _StreamMenuOverlayState extends State<_StreamMenuOverlay> {
       if (providerOrder.isEmpty) {
         return const SizedBox.shrink();
       }
-      final filterLabel = _audioFilter?.name.toUpperCase() ?? 'matching';
+      final filterLabel = _audioFilter?.name.toUpperCase();
       return Center(
         child: Padding(
           padding: EdgeInsets.all(
             ShellPaintScope.usesTvDensityOf(context) ? 16 : 24,
           ),
           child: Text(
-            'No $filterLabel sources',
+            filterLabel == null
+                ? context.l10n.playerControlNoMatchingSources
+                : context.l10n.playerControlNoFilterSources(filterLabel),
             style: TextStyle(
               color: Colors.white.withValues(alpha: 0.45),
               fontSize: PlayerPopupTokens.optionFontSizeOf(context),
@@ -686,7 +690,7 @@ class _StreamMenuOverlayState extends State<_StreamMenuOverlay> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         PlayerSidePanelHeader(
-          title: 'Source',
+          title: context.l10n.playerControlSource,
           onClose: widget.onClose,
           closeFocusNode: _closeFocus,
           closeOnKeyEvent: _onCloseKeyEvent,

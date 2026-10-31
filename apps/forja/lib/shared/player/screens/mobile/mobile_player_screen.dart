@@ -81,6 +81,7 @@ import 'package:forja/shared/player/resolvers/episode_switch_resolver.dart';
 import 'package:forja/shell/routing/app_router.dart';
 import 'package:forja/shell/tv/shell_tv_coordinator.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:forja/l10n/l10n.dart';
 import 'package:forja/shared/player/providers/player_prefs_providers.dart';
 import 'package:forja/shared/player/providers/player_resolve_providers.dart';
 import 'package:forja/shared/playback/loading_overlay.dart';

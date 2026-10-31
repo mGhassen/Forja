@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:forja/l10n/l10n.dart';
 import 'package:forja/shared/player/controls/chrome/player_chrome_overlay.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 
@@ -186,7 +187,7 @@ class PlayerVodTvTransportRow extends StatelessWidget {
                   onLeftEdge: () => playFocus.requestFocus(),
                   onRightEdge: () => forwardFocus.requestFocus(),
                   icon: Icons.replay_10_rounded,
-                  tooltip: 'Back 10s',
+                  tooltip: context.l10n.playerControlBack10s,
                   size: btnSize,
                   iconSize: iconSz,
                   onPressed: onRewind10,
@@ -202,7 +203,7 @@ class PlayerVodTvTransportRow extends StatelessWidget {
                   onLeftEdge: () => rewindFocus.requestFocus(),
                   onRightEdge: onFocusRightOfForward,
                   icon: Icons.forward_10_rounded,
-                  tooltip: 'Forward 10s',
+                  tooltip: context.l10n.playerControlForward10s,
                   size: btnSize,
                   iconSize: iconSz,
                   onPressed: onForward10,
@@ -226,7 +227,7 @@ class PlayerVodTvTransportRow extends StatelessWidget {
                       }
                     },
                     icon: Icons.skip_previous_rounded,
-                    tooltip: 'Previous Episode',
+                    tooltip: context.l10n.playerControlPreviousEpisode,
                     size: btnSize,
                     iconSize: iconSz,
                     onPressed: onPreviousEpisode,
@@ -251,7 +252,7 @@ class PlayerVodTvTransportRow extends StatelessWidget {
                     },
                     onRightEdge: onFocusFirstRightTransport,
                     icon: Icons.skip_next_rounded,
-                    tooltip: 'Next Episode',
+                    tooltip: context.l10n.playerControlNextEpisode,
                     size: btnSize,
                     iconSize: iconSz,
                     onPressed: onNextEpisode,
@@ -326,7 +327,7 @@ class PlayerVodTvTransportRow extends StatelessWidget {
                     icon: Icons.video_library_outlined,
                     size: btnSize,
                     iconSize: iconSz,
-                    tooltip: 'Episodes',
+                    tooltip: context.l10n.playerControlEpisodes,
                     onPressedWithContext: onOpenEpisodes,
                   ),
                 ),
@@ -342,7 +343,7 @@ class PlayerVodTvTransportRow extends StatelessWidget {
                   icon: Icons.audiotrack_rounded,
                   size: btnSize,
                   iconSize: iconSz,
-                  tooltip: 'Audio',
+                  tooltip: context.l10n.playerControlAudio,
                   onPressedWithContext: onOpenAudio,
                 ),
               ),
@@ -358,7 +359,7 @@ class PlayerVodTvTransportRow extends StatelessWidget {
                   icon: Icons.subtitles_outlined,
                   size: btnSize,
                   iconSize: iconSz,
-                  tooltip: 'Subtitles',
+                  tooltip: context.l10n.playerControlSubtitles,
                   onPressedWithContext: onOpenSubtitles,
                 ),
               ),
@@ -374,7 +375,7 @@ class PlayerVodTvTransportRow extends StatelessWidget {
                   icon: Icons.hd_outlined,
                   size: btnSize,
                   iconSize: iconSz,
-                  tooltip: 'Quality',
+                  tooltip: context.l10n.playerControlQuality,
                   onPressedWithContext: onOpenQuality,
                 ),
               ),
@@ -389,7 +390,7 @@ class PlayerVodTvTransportRow extends StatelessWidget {
                   icon: Icons.settings_outlined,
                   size: btnSize,
                   iconSize: iconSz,
-                  tooltip: 'Settings',
+                  tooltip: context.l10n.settingsTitle,
                   onPressedWithContext: onOpenSettings,
                 ),
               ),

@@ -2,6 +2,8 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:forja/features/settings/ui/settings_ui.dart';
+import 'package:forja/l10n/app_localizations_en.dart';
+import 'package:forja/l10n/l10n.dart';
 import 'package:forja/shared/engine/models/models.dart';
 import 'package:forja/shared/engine/packs/registry/pack_hub_features.dart';
 import 'package:forja/shared/engine/packs/install/pack_install_failures.dart';
@@ -83,16 +85,22 @@ class SettingsPackPromptDrill {
     close();
   }
 
-  static String titleFor(PluginBatchInstallPrompt prompt) {
+  /// English title for callers that have no [AppLocalizations] to hand.
+  static String titleFor(PluginBatchInstallPrompt prompt) =>
+      titleOf(prompt, AppLocalizationsEn());
+
+  static String titleOf(PluginBatchInstallPrompt prompt, AppLocalizations l) {
     final remote = prompt.hasRemoteProfile;
     final hasInstall =
         prompt.candidates.any((c) => c.kind == PluginPackPromptKind.install);
     final hasUninstall =
         prompt.candidates.any((c) => c.kind == PluginPackPromptKind.uninstall);
-    if (remote && hasInstall && hasUninstall) return 'Sync packs';
-    if (remote && hasUninstall && !hasInstall) return 'Uninstall packs';
-    if (remote) return 'Install packs';
-    return 'Install packs';
+    if (remote && hasInstall && hasUninstall) return l.packsPromptTitleSync;
+    if (remote && hasUninstall && !hasInstall) {
+      return l.packsPromptTitleUninstall;
+    }
+    if (remote) return l.packsPromptTitleInstall;
+    return l.packsPromptTitleInstall;
   }
 }
 
@@ -302,19 +310,16 @@ class _SettingsPackPromptPaneState extends State<SettingsPackPromptPane> {
       }
       if (!mounted) return;
       if (failures.isEmpty) {
+        final l = context.l10n;
         final bits = <String>[
-          if (installed > 0)
-            installed == 1 ? '1 pack installed' : '$installed packs installed',
-          if (removed > 0)
-            removed == 1 ? '1 pack removed' : '$removed packs removed',
+          if (installed > 0) l.packsPromptInstalledCount(installed),
+          if (removed > 0) l.packsPromptRemovedCount(removed),
         ];
         if (bits.isNotEmpty) ForjaToast.success(bits.join(' · '));
       } else {
         // Details live on the Forja Packs list banner — toast is a short cue.
         ForjaToast.error(
-          failures.length == 1
-              ? 'Pack install failed — see details above'
-              : '${failures.length} packs failed — see details above',
+          context.l10n.packsPromptFailedToast(failures.length),
         );
       }
       widget.onDismiss();
@@ -325,25 +330,23 @@ class _SettingsPackPromptPaneState extends State<SettingsPackPromptPane> {
   }
 
   String get _body {
-    if (widget.prompt.hasRemoteProfile) {
-      return 'These packs changed on your profile from another device. '
-          'Choose what to apply here. The rest can wait in Forja Packs.';
-    }
-    return 'Choose which packs to download on this device. '
-        'You can install the rest later from this page.';
+    final l = context.l10n;
+    if (widget.prompt.hasRemoteProfile) return l.packsPromptBodyRemote;
+    return l.packsPromptBodyLocal;
   }
 
   String get _primaryLabel {
-    if (_busy) return 'Working…';
+    final l = context.l10n;
+    if (_busy) return l.packsPromptWorking;
     final i = _selectedInstallCount;
     final u = _selectedUninstallCount;
     if (i > 0 && u > 0) {
-      return 'Apply ($i install · $u uninstall)';
+      return l.packsPromptApply(i, u);
     }
     if (u > 0) {
-      return u == 1 ? 'Uninstall 1 pack' : 'Uninstall $u packs';
+      return l.packsPromptUninstallCount(u);
     }
-    return i == 1 ? 'Install 1 pack' : 'Install $i packs';
+    return l.packsPromptInstallCount(i);
   }
 
   @override
@@ -367,7 +370,7 @@ class _SettingsPackPromptPaneState extends State<SettingsPackPromptPane> {
     Widget toolbar = Row(
       children: [
         SettingsTextAction(
-          label: 'Select all',
+          label: context.l10n.packsPromptSelectAll,
           focusNode: tv && selectAllEnabled ? _selectAllFocus : null,
           tvRowId: tv && selectAllEnabled ? _toolbarRowId : null,
           tvItemIndex: selectAllEnabled ? 0 : null,
@@ -384,7 +387,7 @@ class _SettingsPackPromptPaneState extends State<SettingsPackPromptPane> {
           onPressed: selectAllEnabled ? _selectAllActionable : null,
         ),
         SettingsTextAction(
-          label: 'Clear',
+          label: context.l10n.packsPromptClear,
           focusNode: tv && clearEnabled ? _clearFocus : null,
           tvRowId: tv && clearEnabled ? _toolbarRowId : null,
           tvItemIndex: clearEnabled ? 1 : null,
@@ -500,7 +503,7 @@ class _SettingsPackPromptPaneState extends State<SettingsPackPromptPane> {
         Align(
           alignment: Alignment.centerRight,
           child: Text(
-            '$_selectedCount selected',
+            context.l10n.packsPromptSelected(_selectedCount),
             style: TextStyle(
               color: ForjaShellColors.textSecondary,
               fontSize: SettingsTokens.rowSubtitleSizeOf(context),
@@ -518,18 +521,23 @@ class _SettingsPackPromptPaneState extends State<SettingsPackPromptPane> {
 /// folder marker. Shown under the pack name so a link cannot borrow a known
 /// pack name while pointing somewhere else. Non-official rows add a neutral
 /// "Community source" tag.
-String packPromptSourceLabel(String manifestUrl, {required bool official}) {
+String packPromptSourceLabel(
+  String manifestUrl, {
+  required bool official,
+  AppLocalizations? l,
+}) {
+  final loc = l ?? AppLocalizationsEn();
   final t = manifestUrl.trim();
   final uri = Uri.tryParse(t);
   String host;
   if (uri != null && uri.hasScheme && uri.host.isNotEmpty) {
     host = uri.host.toLowerCase();
   } else if (t.startsWith('/') || t.startsWith('file:')) {
-    host = 'Local folder';
+    host = loc.packsPromptLocalFolder;
   } else {
     host = t;
   }
-  return official ? host : '$host · Community source';
+  return official ? host : loc.packsPromptCommunitySource(host);
 }
 
 /// Flat checkbox row — no card chrome (matches Community Packs list rows).
@@ -565,22 +573,28 @@ class _PackPromptRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l = context.l10n;
     final settled = candidate.alreadyInstalled;
     final uninstall = candidate.kind == PluginPackPromptKind.uninstall;
     final title = candidate.displayName?.trim().isNotEmpty == true
         ? candidate.displayName!.trim()
-        : 'Plugin pack';
-    final actionLabel = uninstall ? 'Uninstall' : 'Install';
-    final settledLabel = uninstall ? 'Already removed' : 'Already on device';
+        : l.packsPromptDefaultTitle;
+    final actionLabel = uninstall
+        ? l.packsPromptActionUninstall
+        : l.packsPromptActionInstall;
+    final settledLabel = uninstall
+        ? l.packsPromptAlreadyRemoved
+        : l.packsPromptAlreadyOnDevice;
     final desc = candidate.description?.trim();
     final tagsLine = [
-      if (candidate.unavailableHere) 'Not on this device',
+      if (candidate.unavailableHere) l.packsPromptNotOnDevice,
       ...candidate.tags.map(_labelize).where((t) => t.isNotEmpty),
     ].join(' · ');
     final version = candidate.version?.trim();
     final source = packPromptSourceLabel(
       candidate.manifestUrl,
       official: candidate.official,
+      l: l,
     );
     final muted = settled
         ? ForjaShellColors.textSecondary
@@ -642,7 +656,7 @@ class _PackPromptRow extends StatelessWidget {
                   children: [
                     Flexible(
                       child: Text(
-                        candidate.official ? 'ForjaHQ' : 'Community',
+                        candidate.official ? 'ForjaHQ' : l.packsPromptCommunity,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
@@ -674,7 +688,7 @@ class _PackPromptRow extends StatelessWidget {
                               ),
                             ),
                             child: Text(
-                              'Official',
+                              l.packsOfficialBadge,
                               style: TextStyle(
                                 color: ForjaShellColors.brandGreen,
                                 fontSize:
@@ -707,7 +721,7 @@ class _PackPromptRow extends StatelessWidget {
                               ),
                             ),
                             child: Text(
-                              'Recommended',
+                              l.packsPromptRecommended,
                               style: TextStyle(
                                 color: const Color(0xFFFF4D1C),
                                 fontSize:

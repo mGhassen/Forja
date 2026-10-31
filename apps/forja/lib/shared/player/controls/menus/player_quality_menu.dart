@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:forja/l10n/l10n.dart';
 import 'package:forja/shared/player/controls/menus/player_popup_panel.dart';
 import 'package:forja/shared/player/screens/utils.dart';
 import 'package:media_kit/media_kit.dart';
@@ -21,7 +22,7 @@ class PlayerQualityMenu {
     if (qualities.isEmpty) {
       PlayerPopupPanel.show(
         context: context,
-        title: 'Quality',
+        title: context.l10n.playerControlQuality,
         leadingIcon: Icons.hd_outlined,
         alignment: alignment,
         margin: margin,
@@ -39,9 +40,9 @@ class PlayerQualityMenu {
                     ),
                   ],
                 )
-              : const Text(
-                  'Quality not available yet',
-                  style: TextStyle(color: PlayerPopupTokens.muted),
+              : Text(
+                  context.l10n.playerControlQualityNotAvailable,
+                  style: const TextStyle(color: PlayerPopupTokens.muted),
                 ),
         ),
       );
@@ -55,7 +56,7 @@ class PlayerQualityMenu {
 
     PlayerPopupPanel.show(
       context: context,
-      title: 'Quality',
+      title: context.l10n.playerControlQuality,
       leadingIcon: Icons.hd_outlined,
       alignment: alignment,
       margin: margin,
@@ -74,7 +75,7 @@ class PlayerQualityMenu {
                         (active.url == q.url || active.label == q.label))
                     : q.url == currentQualityUrl);
             return PlayerPopupOptionChip(
-              label: q.isAuto ? 'Auto' : q.label,
+              label: q.isAuto ? context.l10n.settingsUiAuto : q.label,
               selected: selected,
               expanded: true,
               onTap: () async {

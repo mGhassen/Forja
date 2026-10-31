@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:forja/l10n/l10n.dart';
 import 'package:forja/shared/downloads/download_enqueue.dart';
 import 'package:forja/shared/platform/platform_info.dart';
 import 'package:forja/shared/downloads/download_service.dart';
@@ -2414,7 +2415,10 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
     }
     if (_kindFilter == 'nuvio') {
       return [
-        const SourcesPanelProviderOption(id: 'all_nuvio', label: 'All'),
+        SourcesPanelProviderOption(
+          id: 'all_nuvio',
+          label: context.l10n.playerControlAllProviders,
+        ),
         for (final a in _nuvioAddons)
           for (final s in a.scrapers)
             if (s.enabled)
@@ -2426,7 +2430,10 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
       final pinned = preferred.isNotEmpty;
       return [
         if (!pinned)
-          const SourcesPanelProviderOption(id: 'all_engine', label: 'All'),
+          SourcesPanelProviderOption(
+            id: 'all_engine',
+            label: context.l10n.playerControlAllProviders,
+          ),
         for (final a in _enginePacks)
           for (final s in a.plugins)
             if (_enginePluginChipVisible(s))
@@ -2438,6 +2445,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
         enabledProviders: _enabledTorrentProviders,
         jackettConfigured: _jackettConfigured,
         prowlarrConfigured: _prowlarrConfigured,
+        l: context.l10n,
       );
     }
     return const [];
@@ -2626,6 +2634,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
     bool merge = false,
   }) async {
     if (!mounted || gen != _searchGen) return;
+    final l10n = context.l10n;
     _flushCoalescedPaint();
     setState(() {
       if (merge) {
@@ -2641,7 +2650,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
       _searching = false;
       _torrentInFlightProviderIds.clear();
       if (_results.isEmpty && !_showsStremio && !_showsNuvio) {
-        _error = 'No torrents found';
+        _error = l10n.playerControlNoTorrentsFound;
       }
     });
     CatalogSourcesSessionCache.writeTorrents(
@@ -2798,6 +2807,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
     bool refresh = false,
   }) async {
     if (!_showsStremio) return;
+    final l10n = context.l10n;
 
     final bag = _sourcesCtx.stremioBag;
     // Catalog addon URL on open is /meta handoff. Only fetch that single addon
@@ -2845,7 +2855,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
       setState(() {
         _stremioFetching = false;
         if (!_showsTorrents) {
-          _error = 'No matching id for this Stremio addon';
+          _error = l10n.playerControlNoMatchingStremioId;
         }
       });
       return;
@@ -2934,7 +2944,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
         _stremioFetching = false;
         _syncStremioProviderSelection();
         if (_stremioStreams.isEmpty && !_showsTorrents) {
-          _error = 'No streams found in $addonName';
+          _error = l10n.playerControlNoStreamsInAddon('$addonName');
         }
       });
     }
@@ -2951,6 +2961,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
       return;
     }
 
+    final l10n = context.l10n;
     _stremio.cancelStreamFetches();
     final gen = ++_stremioGen;
     setState(() {
@@ -3024,7 +3035,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
         _stremioFetching = false;
         _syncStremioProviderSelection();
         if (_stremioStreams.isEmpty && !_showsTorrents) {
-          _error = 'No streams found in $addonName';
+          _error = l10n.playerControlNoStreamsInAddon(addonName);
         }
       });
     }
@@ -3183,12 +3194,13 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
     bool refresh = false,
   }) async {
     if (_nuvioAddons.isEmpty) return;
+    final l10n = context.l10n;
     final nuvio = _sourcesCtx.nuvio;
     if (nuvio == null) {
       if (mounted) {
         setState(() {
           _nuvioFetching = false;
-          _error = 'No TMDB id for Nuvio streams';
+          _error = l10n.playerControlNoTmdbIdForNuvio;
         });
       }
       return;
@@ -3228,7 +3240,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
       _nuvioFetching = stillPending;
       if (!stillPending) _nuvioInFlightScraperIds.clear();
       if (!stillPending && _nuvioStreams.isEmpty) {
-        _error = 'No streams found from selected Nuvio providers';
+        _error = l10n.playerControlNoStreamsNuvio;
       }
     });
   }
@@ -3474,6 +3486,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
     bool refresh = false,
   }) async {
     if (_enginePacks.isEmpty || widget.movie.id == 0) return;
+    final l10n = context.l10n;
     final type = _engineResolveType;
     if (_engineFetching && !reset && !refresh) {
       if (_enginePoolTasks.isNotEmpty || _pendingEnginePluginIds.isEmpty) {
@@ -3510,7 +3523,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
       _engineFetching = stillPending;
       if (!stillPending) _engineInFlightPluginIds.clear();
       if (!stillPending && _engineStreams.isEmpty) {
-        _error = 'No streams found from selected Forja plugins';
+        _error = l10n.playerControlNoStreamsForjaPlugins;
       }
     });
   }
@@ -3560,10 +3573,11 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
     required int season,
     required int episode,
   }) async {
+    final l10n = context.l10n;
     final baseUrl = await _settings.getJackettBaseUrl();
     final apiKey = await _settings.getJackettApiKey();
     if (baseUrl == null || apiKey == null) {
-      throw Exception('Jackett is not configured');
+      throw Exception(l10n.playerControlJackettNotConfigured);
     }
     final jackett = JackettService();
     if (isTv) {
@@ -3604,10 +3618,11 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
     required int season,
     required int episode,
   }) async {
+    final l10n = context.l10n;
     final baseUrl = await _settings.getProwlarrBaseUrl();
     final apiKey = await _settings.getProwlarrApiKey();
     if (baseUrl == null || apiKey == null) {
-      throw Exception('Prowlarr is not configured');
+      throw Exception(l10n.playerControlProwlarrNotConfigured);
     }
     final prowlarr = ProwlarrService();
     List<int>? indexerIds;
@@ -4156,9 +4171,9 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
   Future<void> _confirmDeleteOffline(DownloadTask task) async {
     final ok = await showSettingsConfirmDialog(
       context: context,
-      title: 'Delete download?',
-      body: 'Removes “${task.title}” from this device.',
-      confirmLabel: 'Delete',
+      title: context.l10n.downloadsDeleteOneTitle,
+      body: context.l10n.downloadsDeleteOneBody(task.title),
+      confirmLabel: context.l10n.downloadsDelete,
       destructive: true,
     );
     if (!ok) return;
@@ -4442,8 +4457,11 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
     required bool showAddonName,
     required VoidCallback? onUp,
   }) {
-    final title = (stream['title'] ?? stream['name'] ?? 'Unknown Stream')
-        .toString();
+    final title =
+        (stream['title'] ??
+                stream['name'] ??
+                context.l10n.playerControlUnknownStream)
+            .toString();
     final description = (stream['description'] ?? '').toString();
     final presentation = stremioTilePresentation(stream, isResumable: false);
     final isCurrent = listIndex == currentIndex;
@@ -4611,7 +4629,7 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
               SizedBox(height: tv ? ShellTokens.torrentPanelChromeGapTv : 12),
               TextButton(
                 onPressed: () => _reloadKind(_kindFilter),
-                child: const Text('Retry'),
+                child: Text(context.l10n.downloadsRetry),
               ),
             ],
           ),
@@ -4644,20 +4662,20 @@ class _PlayerSourcesBodyState extends ConsumerState<_PlayerSourcesBody> {
           _showsEngine &&
               !_enginePacksLoading &&
               enabledEnginePluginIds(_enginePacks).isEmpty
-          ? 'No Forja plugins installed'
+          ? context.l10n.playerControlNoForjaPlugins
           : _showsStremio && _streamAddons.isEmpty
-          ? 'No Stremio stream addons. Add them in Settings → Addons → Stremio'
+          ? context.l10n.playerControlNoStremioAddons
           : _showsNuvio && enabledNuvioScraperIds(_nuvioAddons).isEmpty
-          ? 'No Nuvio scrapers. Add them in Settings → Addons → Nuvio'
+          ? context.l10n.playerControlNoNuvioScrapers
           : (_showsNuvio && _nuvioSelectedScraperIds.isEmpty) ||
                 (_showsEngine && _engineSelectedPluginIds.isEmpty) ||
                 (_showsStremio && _selectedSourceId.isEmpty) ||
                 (_showsTorrents &&
                     TorrentSearchProviders.isNoneChip(_selectedSourceId))
-          ? 'Select at least one provider'
+          ? context.l10n.playerControlSelectProvider
           : _showsDownloaded
-          ? 'No saved files'
-          : 'No matching sources';
+          ? context.l10n.playerControlNoSavedFiles
+          : context.l10n.playerControlNoMatchingSources;
       final emptyBody = Center(
         child: Text(
           emptyMsg,

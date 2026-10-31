@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:forja/l10n/l10n.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 import 'package:forja/shared/engine/runtime/kit/hosts/iptv_catalog_land.dart';
@@ -109,11 +110,11 @@ class _KitEventListSearchState extends State<KitEventListSearch> {
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx, ''),
-              child: const Text('Clear'),
+              child: Text(ctx.l10n.dataClear),
             ),
             TextButton(
               onPressed: () => Navigator.pop(ctx, local.text),
-              child: const Text('Search'),
+              child: Text(ctx.l10n.addonsPackGreenPlaySearchLabel),
             ),
           ],
         );

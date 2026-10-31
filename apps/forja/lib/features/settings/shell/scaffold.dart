@@ -10,6 +10,7 @@ import 'package:forja/features/settings/shell/visibility.dart';
 import 'package:forja/features/settings/packs/pack_prompt_pane.dart';
 import 'package:forja/features/settings/packs/engine_pack_update.dart';
 import 'package:forja/features/settings/ui/settings_ui.dart';
+import 'package:forja/l10n/l10n.dart';
 import 'package:forja/shell/bus/shell_bus.dart';
 import 'package:forja/shell/nav/pack_update_alert_icon.dart';
 import 'package:forja/shared/engine/packs/install/plugin_install_coordinator.dart';
@@ -402,7 +403,8 @@ class _SettingsHubScaffoldState extends ConsumerState<SettingsHubScaffold> {
                                   policy: ReadingOrderTraversalPolicy(),
                                   child: SettingsAddonsAwareScaffold(
                                     categoryTitle:
-                                        selectedMeta?.title ?? 'Settings',
+                                        selectedMeta?.titleOf(context.l10n) ??
+                                        context.l10n.settingsTitle,
                                     categoryId: widget.selectedId,
                                     categoryAdminOnly:
                                         selectedMeta?.adminOnly ?? false,
@@ -419,7 +421,9 @@ class _SettingsHubScaffoldState extends ConsumerState<SettingsHubScaffold> {
                           ),
                         )
                       : SettingsAddonsAwareScaffold(
-                          categoryTitle: selectedMeta?.title ?? 'Settings',
+                          categoryTitle:
+                              selectedMeta?.titleOf(context.l10n) ??
+                              context.l10n.settingsTitle,
                           categoryId: widget.selectedId,
                           categoryAdminOnly: selectedMeta?.adminOnly ?? false,
                           scrollable: !(selectedMeta?.fillViewport ?? false),
@@ -452,7 +456,7 @@ class _SettingsHubScaffoldState extends ConsumerState<SettingsHubScaffold> {
                   4,
                 ),
                 child: ShellTabHeader(
-                  title: 'Settings',
+                  title: context.l10n.settingsTitle,
                   padding: EdgeInsets.zero,
                   fontSize: SettingsTokens.hubTitleSizeOf(context),
                 ),
@@ -486,8 +490,8 @@ class _SettingsHubScaffoldState extends ConsumerState<SettingsHubScaffold> {
                           trailing: packUpdates > 0
                               ? const PackUpdateMenuBadge()
                               : null,
-                          title: c.title,
-                          subtitle: c.subtitle,
+                          title: c.titleOf(context.l10n),
+                          subtitle: c.subtitleOf(context.l10n),
                           selected: false,
                           adminOnly: c.adminOnly,
                           listIndex: index,
@@ -562,7 +566,7 @@ class _CategorySidebar extends ConsumerWidget {
                 8,
               ),
               child: ShellTabHeader(
-                title: 'Settings',
+                title: context.l10n.settingsTitle,
                 padding: EdgeInsets.zero,
                 fontSize: SettingsTokens.hubTitleSizeOf(context),
               ),
@@ -586,8 +590,8 @@ class _CategorySidebar extends ConsumerWidget {
                     trailing: showPackAlert
                         ? const PackUpdateMenuBadge()
                         : null,
-                    title: c.title,
-                    subtitle: c.subtitle,
+                    title: c.titleOf(context.l10n),
+                    subtitle: c.subtitleOf(context.l10n),
                     selected: c.id == selectedId,
                     adminOnly: c.adminOnly,
                     listIndex: index,

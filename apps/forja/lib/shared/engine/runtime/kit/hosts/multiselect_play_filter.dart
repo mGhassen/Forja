@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:forja/l10n/l10n.dart';
 import 'package:forja/shared/engine/models/models.dart';
 import 'package:forja/shell/core/forja_shell_scope.dart';
 import 'package:forja/shell/focus/forja_interactive.dart';
@@ -476,7 +477,9 @@ class _LanguageMenuPanel extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     _LanguageMenuRow(
-                      label: kindActive ? 'Clear $kindLabel' : 'All $kindLabel',
+                      label: kindActive
+                          ? context.l10n.engineRuntimeClearKind(kindLabel)
+                          : context.l10n.engineRuntimeAllKind(kindLabel),
                       checked: null,
                       tvFocus: tvFocus,
                       tvDensity: tvDensity,
@@ -487,7 +490,7 @@ class _LanguageMenuPanel extends StatelessWidget {
                     Divider(height: ShellTokens.chromeScale(12, tv: tvDensity)),
                     for (final lang in langs)
                       _LanguageMenuRow(
-                        label: lang.label,
+                        label: lang.labelFor(context.l10n),
                         checked: selected.contains(lang.key),
                         tvFocus: tvFocus,
                         tvDensity: tvDensity,

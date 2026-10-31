@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:forja/l10n/app_localizations_en.dart';
+import 'package:forja/l10n/l10n.dart';
 import 'package:forja/shared/player/controls/menus/player_popup_panel.dart';
 import 'package:rust/rust.dart';
 
@@ -18,7 +20,7 @@ class PlayerProviderMenu {
 
     PlayerPopupPanel.show(
       context: context,
-      title: 'Servers',
+      title: context.l10n.playerControlServers,
       leadingIcon: Icons.cloud_outlined,
       alignment: alignment,
       margin: margin,
@@ -68,6 +70,12 @@ class PlayerProviderMenu {
   static const unavailableSubtitle = 'Unavailable';
 
   /// Toast when the user checks or picks a server that returns nothing.
-  static String unavailableMessage(String providerId, [dynamic provider]) =>
-      '${snackbarLabel(providerId, provider)} is unavailable';
+  /// [l10n] defaults to English for callers with no [BuildContext] to hand.
+  static String unavailableMessage(
+    String providerId, [
+    dynamic provider,
+    AppLocalizations? l10n,
+  ]) => (l10n ?? AppLocalizationsEn()).playerControlProviderUnavailable(
+    snackbarLabel(providerId, provider),
+  );
 }

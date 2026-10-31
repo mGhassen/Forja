@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import 'package:forja/l10n/l10n.dart';
 import 'package:forja/shared/engine/runtime/kit/hosts/iptv_catalog_land.dart';
 import 'package:forja/shell/tv/shell_tv_coordinator.dart';
 import 'package:forja/shell/tv/shell_tv_focus.dart';
@@ -211,7 +212,7 @@ Widget liveBackButton(
   required VoidCallback? onTap,
   Color color = Colors.white70,
   double size = 22,
-  String tooltip = 'Back',
+  String? tooltip,
   FocusNode? focusNode,
   String? tvRowId,
   int? tvItemIndex,
@@ -222,6 +223,7 @@ Widget liveBackButton(
   ValueChanged<bool>? onFocusChange,
 }) {
   if (onTap == null) return const SizedBox.shrink();
+  final tooltipText = tooltip ?? context.l10n.playerTrailerBack;
   final tv = ShellPaintScope.usesTvDensityOf(context);
   final iconSize = ShellTokens.chromeScale(size, tv: tv);
   final hitSize = ShellTokens.chromeScale(size + 12, tv: tv);
@@ -233,7 +235,7 @@ Widget liveBackButton(
       size: iconSize,
       hitSize: hitSize,
       borderRadius: hitSize / 2,
-      tooltip: tooltip,
+      tooltip: tooltipText,
       focusNode: focusNode,
       tvRowId: tvRowId,
       tvItemIndex: tvItemIndex,
@@ -251,7 +253,7 @@ Widget liveBackButton(
     onPressed: onTap,
     color: color,
     iconSize: iconSize,
-    tooltip: tooltip,
+    tooltip: tooltipText,
   );
 }
 

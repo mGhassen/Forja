@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:forja/l10n/l10n.dart';
 import 'package:forja/shell/routing/shell_overlay_navigator.dart';
 import 'package:forja/shared/engine/portals/guide/portal_channel_guide_open.dart';
 import 'package:forja/shared/engine/portals/models.dart';
@@ -44,7 +45,9 @@ abstract final class HostPlaybackOpen {
         .trim();
     if (url.isEmpty) return;
     final headers = _headersFromOpen(open);
-    final title = item.name.trim().isEmpty ? 'Stream' : item.name.trim();
+    final title = item.name.trim().isEmpty
+        ? context.l10n.engineRuntimeStream
+        : item.name.trim();
     final logo = item.poster.trim().isEmpty
         ? (item.logo.trim().isEmpty ? null : item.logo.trim())
         : item.poster.trim();
@@ -79,7 +82,7 @@ abstract final class HostPlaybackOpen {
   static Future<bool> openUrl({
     BuildContext? context,
     required String url,
-    String title = 'Stream',
+    String? title,
     String? subtitle,
     String? logoUrl,
     String? streamId,
@@ -97,7 +100,9 @@ abstract final class HostPlaybackOpen {
     if (u.isEmpty) return false;
     final ctx = context ?? shellOverlayNavigatorKey.currentContext;
     if (ctx == null || !ctx.mounted) return false;
-    final t = title.trim().isEmpty ? 'Stream' : title.trim();
+    final t = (title ?? '').trim().isEmpty
+        ? ctx.l10n.engineRuntimeStream
+        : title!.trim();
     try {
       final playUrl = await _resolveStalkerPlayUrl(
         url: u,

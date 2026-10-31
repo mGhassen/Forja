@@ -7,6 +7,7 @@ import 'package:forja/shared/services/update/app_updater_manifest.dart';
 import 'package:forja/shared/services/update/app_updater_release_notes.dart';
 import 'package:forja/shared/services/update/release_storage_urls.dart';
 import 'package:forja/shared/sync/auth/desktop_browser_auth.dart';
+import 'package:forja/shell/routing/shell_ambient_l10n.dart';
 import 'package:http/http.dart' as http;
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -52,7 +53,9 @@ class AppUpdaterService {
       return _checkR2(currentVersion);
     } catch (e) {
       debugPrint('Error checking for updates: $e');
-      return UpdateCheckResult.failed('Could not check for updates: $e');
+      return UpdateCheckResult.failed(
+        shellAmbientL10n.sharedServicesUpdateCheckFailed('$e'),
+      );
     }
   }
 
@@ -66,7 +69,7 @@ class AppUpdaterService {
     if (manifestUrl == null) {
       debugPrint('AppUpdater: RELEASE_CDN_URL is not set');
       return UpdateCheckResult.failed(
-        'Update server is not configured in this build.',
+        shellAmbientL10n.sharedServicesUpdateServerNotConfigured,
       );
     }
 
@@ -79,19 +82,21 @@ class AppUpdaterService {
     } catch (e) {
       debugPrint('AppUpdater: manifest request failed: $e');
       return UpdateCheckResult.failed(
-        'Could not reach the update server. Check your connection.',
+        shellAmbientL10n.sharedServicesUpdateServerUnreachable,
       );
     }
     if (response.statusCode != 200) {
       debugPrint('AppUpdater: manifest HTTP ${response.statusCode}');
       return UpdateCheckResult.failed(
-        'Update server returned HTTP ${response.statusCode}.',
+        shellAmbientL10n.sharedServicesUpdateServerHttp(response.statusCode),
       );
     }
 
     final decoded = json.decode(response.body);
     if (decoded is! Map<String, dynamic>) {
-      return UpdateCheckResult.failed('Update manifest was invalid.');
+      return UpdateCheckResult.failed(
+        shellAmbientL10n.sharedServicesUpdateManifestInvalid,
+      );
     }
 
     final key = AppUpdaterManifest.platformKey(
@@ -112,7 +117,7 @@ class AppUpdaterService {
     );
     if (target == null) {
       return UpdateCheckResult.failed(
-        'No installer is published for this device architecture yet.',
+        shellAmbientL10n.sharedServicesUpdateNoInstaller,
       );
     }
 
@@ -129,7 +134,7 @@ class AppUpdaterService {
     );
     if (downloadUrl.isEmpty) {
       return UpdateCheckResult.failed(
-        'Found ${target.version} but no matching installer asset.',
+        shellAmbientL10n.sharedServicesUpdateNoAsset(target.version),
       );
     }
 

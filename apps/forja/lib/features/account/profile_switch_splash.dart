@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja/app/boot_needs.dart';
 import 'package:forja/app/profile_engine_warm.dart';
 import 'package:forja/features/account/profile_chooser_metrics.dart';
+import 'package:forja/l10n/l10n.dart';
 import 'package:forja/shell/bus/shell_bus.dart';
 import 'package:forja/shell/routing/shell_overlay_navigator.dart';
 
@@ -71,7 +72,8 @@ class _ProfileSwitchSplashState extends ConsumerState<ProfileSwitchSplash>
 
   late final DateTime _startedAt;
   DateTime? _shellMountedAt;
-  String _status = 'Loading profile…';
+  // Null until the first status; build shows the localized "loading" line.
+  String? _status;
   bool _finished = false;
   bool _offerContinue = false;
 
@@ -128,12 +130,13 @@ class _ProfileSwitchSplashState extends ConsumerState<ProfileSwitchSplash>
   }
 
   Future<void> _run() async {
+    final l10n = context.l10n;
     try {
       if (widget.prepareCurrent) {
-        _setStatus('Saving current profile…');
+        _setStatus(l10n.accountSplashSavingCurrent);
         await SyncDomainBridge.instance.prepareProfileSwitch();
       }
-      _setStatus('Loading ${widget.profile.name}…');
+      _setStatus(l10n.accountSplashLoadingNamed(widget.profile.name));
       final selected = await SyncService.instance.selectProfile(
         widget.profile.id,
         skipRemoteCheck: true,
@@ -144,7 +147,7 @@ class _ProfileSwitchSplashState extends ConsumerState<ProfileSwitchSplash>
       // selectProfile bound disk scope — restore pack index from this profile's
       // disk before BootNeeds / listPacks (issue 259).
       await PluginRegistry.instance.rehydrateLeanStubsFromDisk();
-      await _syncProfileSettings();
+      await _syncProfileSettings(l10n);
       if (!mounted) return;
 
       final needs = await BootNeeds.resolve();
@@ -163,8 +166,8 @@ class _ProfileSwitchSplashState extends ConsumerState<ProfileSwitchSplash>
       }
 
       // Same as intro splash: engines under the floor; play sources after dismiss.
-      final bootFuture = _warmLikeIntro(needs);
-      await _dismissWhenReady(bootFuture, needs);
+      final bootFuture = _warmLikeIntro(needs, l10n);
+      await _dismissWhenReady(bootFuture, needs, l10n);
     } catch (_) {
       if (!mounted || _finished) return;
       await _waitOutSplash();
@@ -176,12 +179,12 @@ class _ProfileSwitchSplashState extends ConsumerState<ProfileSwitchSplash>
   /// timeout soft-fails lean settings only. IPTV inventory is wiped at the
   /// start of the pull (issue 217) so a stall cannot show another profile's
   /// portals; background sync still fills this profile's assignments.
-  Future<void> _syncProfileSettings() async {
-    const steps = <String>[
-      'Syncing settings…',
-      'Pulling your tabs and sources…',
-      'Applying playback preferences…',
-      'Almost ready…',
+  Future<void> _syncProfileSettings(AppLocalizations l10n) async {
+    final steps = <String>[
+      l10n.accountSplashSyncing,
+      l10n.accountSplashPulling,
+      l10n.accountSplashApplying,
+      l10n.appBootAlmostReady,
     ];
     _setStatus(steps.first);
 
@@ -246,9 +249,10 @@ class _ProfileSwitchSplashState extends ConsumerState<ProfileSwitchSplash>
   }
 
   /// Intro-equivalent warm: packs + hub prefetch; play-source engines post-dismiss.
-  Future<void> _warmLikeIntro(BootNeeds needs) async {
+  Future<void> _warmLikeIntro(BootNeeds needs, AppLocalizations l10n) async {
     await ProfileEngineWarm.warm(
       needs,
+      l10n: l10n,
       startTorrent: false,
       startPlaySources: false,
       awaitOfficialPacks: true,
@@ -263,6 +267,7 @@ class _ProfileSwitchSplashState extends ConsumerState<ProfileSwitchSplash>
   Future<void> _dismissWhenReady(
     Future<void> bootFuture,
     BootNeeds needs,
+    AppLocalizations l10n,
   ) async {
     final started = _startedAt;
     final minEnd = started.add(_splashDuration);
@@ -304,7 +309,7 @@ class _ProfileSwitchSplashState extends ConsumerState<ProfileSwitchSplash>
     final remaining = holdUntil.difference(DateTime.now());
     if (remaining > Duration.zero) {
       if (shellMounted != null) {
-        _setStatus('Warming up Home…');
+        _setStatus(l10n.accountSplashWarmingHome);
       }
       await Future<void>.delayed(remaining);
     }
@@ -367,6 +372,7 @@ class _ProfileSwitchSplashState extends ConsumerState<ProfileSwitchSplash>
 
   void _continueInBackground() {
     if (!mounted || _finished) return;
+    final l10n = context.l10n;
 
     final earlySync = _earlySyncContinue;
     if (earlySync != null && !earlySync.isCompleted) {
@@ -375,7 +381,7 @@ class _ProfileSwitchSplashState extends ConsumerState<ProfileSwitchSplash>
       _syncContinueTimer = null;
       if (mounted) setState(() => _offerContinue = false);
       ForjaToast.info(
-        'Opening while settings finish syncing. IPTV portals load when ready.',
+        l10n.accountSplashOpeningSyncing,
         duration: const Duration(seconds: 3),
       );
       return;
@@ -388,7 +394,7 @@ class _ProfileSwitchSplashState extends ConsumerState<ProfileSwitchSplash>
     }
     _finish(true);
     ForjaToast.info(
-      'Plugins keep downloading in the background.',
+      l10n.appBootPluginsBackground,
       duration: const Duration(seconds: 3),
     );
   }
@@ -432,7 +438,8 @@ class _ProfileSwitchSplashState extends ConsumerState<ProfileSwitchSplash>
 
   @override
   Widget build(BuildContext context) {
-    final status = _status.trim();
+    final l10n = context.l10n;
+    final status = (_status ?? l10n.accountSplashLoadingProfile).trim();
     final metrics = ProfileChooserMetrics.of(context);
     final packProgress = PluginInstallCoordinator.instance.progress;
     return ColoredBox(

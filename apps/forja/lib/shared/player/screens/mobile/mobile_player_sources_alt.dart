@@ -64,8 +64,9 @@ mixin _MobilePlayerSourcesAlt on ConsumerState<MobilePlayerScreen> {
       return;
     }
 
-    final title = (stream['title'] ?? stream['name'] ?? 'Stremio stream')
-        .toString();
+    final title =
+        (stream['title'] ?? stream['name'] ?? context.l10n.playerScreenStremioStream)
+            .toString();
     // This row is the user's pick. A failure stays here — no other stream.
     _s._sourcePinned = true;
     unawaited(SettingsService().setPlayerAutoSource(false));
@@ -238,6 +239,7 @@ mixin _MobilePlayerSourcesAlt on ConsumerState<MobilePlayerScreen> {
 
   Future<void> _switchStremioMagnetSource(Map<String, dynamic> stream) async {
     if (!mounted) return;
+    final l10n = context.l10n;
     if (!await ensureLanP2pPlayback(context)) {
       return;
     }
@@ -300,7 +302,7 @@ mixin _MobilePlayerSourcesAlt on ConsumerState<MobilePlayerScreen> {
         final msg =
             resolved is StremioResolveFailure && resolved.message.isNotEmpty
             ? resolved.message
-            : 'Failed to resolve stream';
+            : l10n.playerScreenFailedToResolveStream;
         debugPrint(
           '[Player] ${catalogStreamKindLabel(stream)} switch failed: $msg',
         );
@@ -310,7 +312,7 @@ mixin _MobilePlayerSourcesAlt on ConsumerState<MobilePlayerScreen> {
         return;
       }
 
-      session.messageNotifier.value = 'Opening stream…';
+      session.messageNotifier.value = l10n.playerScreenOpeningStream;
       TorrentStreamService().retainForExternalHandoff = true;
 
       final season = widget.selectedSeason;
@@ -359,12 +361,13 @@ mixin _MobilePlayerSourcesAlt on ConsumerState<MobilePlayerScreen> {
       );
       dismissStreamLoading(session);
       finishStreamLoadingSession(session);
-      if (mounted) ForjaToast.info('Failed to resolve stream');
+      if (mounted) ForjaToast.info(l10n.playerScreenFailedToResolveStream);
     }
   }
 
   Future<void> _switchTorrentSource(TorrentResult result) async {
     if (!mounted) return;
+    final l10n = context.l10n;
     if (!await ensureLanP2pPlayback(context)) {
       return;
     }
@@ -422,11 +425,11 @@ mixin _MobilePlayerSourcesAlt on ConsumerState<MobilePlayerScreen> {
       if (playback == null || playback.url.isEmpty) {
         dismissStreamLoading(session);
         finishStreamLoadingSession(session);
-        if (mounted) ForjaToast.info('Torrent stream failed to start');
+        if (mounted) ForjaToast.info(l10n.playerScreenTorrentStreamFailedToStart);
         return;
       }
 
-      session.messageNotifier.value = 'Opening stream…';
+      session.messageNotifier.value = l10n.playerScreenOpeningStream;
       TorrentStreamService().retainForExternalHandoff = true;
 
       final season = widget.selectedSeason;
@@ -470,7 +473,7 @@ mixin _MobilePlayerSourcesAlt on ConsumerState<MobilePlayerScreen> {
       debugPrint('[Player] Torrent switch failed: $e');
       dismissStreamLoading(session);
       finishStreamLoadingSession(session);
-      if (mounted) ForjaToast.info('Torrent stream failed to start');
+      if (mounted) ForjaToast.info(l10n.playerScreenTorrentStreamFailedToStart);
     }
   }
 

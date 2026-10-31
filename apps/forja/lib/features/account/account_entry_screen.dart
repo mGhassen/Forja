@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:forja/l10n/l10n.dart';
 import 'package:forja/shared/sync/sync.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -82,19 +83,19 @@ class _AccountEntryScreenState extends State<AccountEntryScreen>
   bool get _awaitingMfa => _mfaFactorId != null;
 
   Future<void> _finishAuthenticated() async {
+    final l10n = context.l10n;
     if (SyncService.instance.requiresMfaChallenge()) {
       final factors = SyncService.instance.listTotpFactors();
       if (factors.isEmpty) {
         setState(() {
-          _message =
-              'Authenticator required. Finish MFA on the web portal, then use Web login.';
+          _message = l10n.accountEntryMfaRequired;
           _messageIsError = true;
         });
         return;
       }
       setState(() {
         _mfaFactorId = factors.first.id;
-        _message = 'Enter the 6-digit code from your authenticator app.';
+        _message = l10n.accountEntryMfaPrompt;
         _messageIsError = false;
       });
       return;
@@ -103,11 +104,12 @@ class _AccountEntryScreenState extends State<AccountEntryScreen>
   }
 
   Future<void> _submitMfa() async {
+    final l10n = context.l10n;
     final factorId = _mfaFactorId;
     final code = _mfaController.text.trim();
     if (factorId == null || code.length < 6) {
       setState(() {
-        _message = 'Enter the 6-digit authenticator code.';
+        _message = l10n.accountEntryMfaShortCode;
         _messageIsError = true;
       });
       return;
@@ -133,7 +135,7 @@ class _AccountEntryScreenState extends State<AccountEntryScreen>
     } catch (_) {
       if (!mounted) return;
       setState(() {
-        _message = 'Could not verify the code. Try again.';
+        _message = l10n.accountEntryMfaVerifyFailed;
         _messageIsError = true;
       });
     } finally {
@@ -142,11 +144,12 @@ class _AccountEntryScreenState extends State<AccountEntryScreen>
   }
 
   Future<void> _submit() async {
+    final l10n = context.l10n;
     final email = _emailController.text.trim();
     final password = _passwordController.text;
     if (email.isEmpty || password.isEmpty) {
       setState(() {
-        _message = 'Enter your email and password.';
+        _message = l10n.accountEntryMissingCredentials;
         _messageIsError = true;
       });
       return;
@@ -164,8 +167,7 @@ class _AccountEntryScreenState extends State<AccountEntryScreen>
       if (!mounted) return;
       if (response.session == null) {
         setState(() {
-          _message =
-              'Check your email and open the confirmation link, then come back to sign in.';
+          _message = l10n.accountEntryConfirmEmail;
           _messageIsError = false;
         });
         return;
@@ -180,8 +182,7 @@ class _AccountEntryScreenState extends State<AccountEntryScreen>
     } catch (_) {
       if (!mounted) return;
       setState(() {
-        _message =
-            'Could not connect to Forja. Check your connection and retry.';
+        _message = l10n.accountEntryConnectFailed;
         _messageIsError = true;
       });
     } finally {
@@ -190,13 +191,12 @@ class _AccountEntryScreenState extends State<AccountEntryScreen>
   }
 
   Future<void> _webLogin() async {
+    final l10n = context.l10n;
     final cancel = Completer<void>();
     _webCancel = cancel;
     setState(() {
       _webBusy = true;
-      _message =
-          'Opening browser - sign in on the web, then return here. '
-          'Tap Cancel if the browser does not open.';
+      _message = l10n.accountEntryWebOpening;
       _messageIsError = false;
     });
     try {
@@ -206,7 +206,7 @@ class _AccountEntryScreenState extends State<AccountEntryScreen>
       if (!mounted) return;
       if (response.session == null) {
         setState(() {
-          _message = 'Web login did not complete. Try again.';
+          _message = l10n.accountEntryWebIncomplete;
           _messageIsError = true;
         });
         return;
@@ -224,8 +224,7 @@ class _AccountEntryScreenState extends State<AccountEntryScreen>
     } catch (_) {
       if (!mounted) return;
       setState(() {
-        _message =
-            'Could not finish web login. Check that the portal is reachable.';
+        _message = l10n.profileWebLoginFailed;
         _messageIsError = true;
       });
     } finally {
@@ -246,11 +245,12 @@ class _AccountEntryScreenState extends State<AccountEntryScreen>
   }
 
   Future<void> _openSignup() async {
+    final l10n = context.l10n;
     final uri = DesktopBrowserAuth.signupUri();
     final ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
     if (!ok && mounted) {
       setState(() {
-        _message = 'Could not open the signup page in your browser.';
+        _message = l10n.accountEntrySignupOpenFailed;
         _messageIsError = true;
       });
     }
@@ -321,7 +321,13 @@ class _AccountEntryScreenState extends State<AccountEntryScreen>
   }
 
   Widget _buildStory({bool compact = false}) {
-    final word = _words[_wordIndex];
+    final l10n = context.l10n;
+    final word = switch (_words[_wordIndex]) {
+      'stream' => l10n.accountEntryWordStream,
+      'sync' => l10n.accountEntryWordSync,
+      'live' => l10n.accountEntryWordLive,
+      _ => l10n.accountEntryWordPlay,
+    };
     return Padding(
       padding: EdgeInsets.fromLTRB(
         compact ? 8 : 56,
@@ -346,7 +352,7 @@ class _AccountEntryScreenState extends State<AccountEntryScreen>
               ),
               SizedBox(height: compact ? 28 : 40),
               Text(
-                'CREATIVE PLAYER',
+                l10n.accountEntryTagline,
                 textAlign: compact ? TextAlign.center : TextAlign.start,
                 style: GoogleFonts.spaceMono(
                   color: ForjaShellColors.brandGreen.withValues(alpha: 0.85),
@@ -366,7 +372,7 @@ class _AccountEntryScreenState extends State<AccountEntryScreen>
                     letterSpacing: 0.4,
                   ),
                   children: [
-                    const TextSpan(text: 'One player.\nYour sources.\nEvery '),
+                    TextSpan(text: l10n.accountEntryHeadline),
                     TextSpan(
                       text: word,
                       style: TextStyle(color: ForjaShellColors.brandGreen),
@@ -378,8 +384,7 @@ class _AccountEntryScreenState extends State<AccountEntryScreen>
               ),
               SizedBox(height: compact ? 16 : 22),
               Text(
-                'Sign in to sync settings and profiles across every screen. '
-                'New accounts live on the web - not in the app.',
+                l10n.accountEntryIntro,
                 textAlign: compact ? TextAlign.center : TextAlign.start,
                 style: GoogleFonts.plusJakartaSans(
                   color: ForjaShellColors.textSecondary.withValues(alpha: 0.95),
@@ -392,11 +397,11 @@ class _AccountEntryScreenState extends State<AccountEntryScreen>
                 Wrap(
                   spacing: 10,
                   runSpacing: 10,
-                  children: const [
-                    _StoryChip('Playback'),
-                    _StoryChip('IPTV guides'),
-                    _StoryChip('Profiles'),
-                    _StoryChip('Desk → TV'),
+                  children: [
+                    _StoryChip(l10n.addonsPlaybackTitle),
+                    _StoryChip(l10n.accountEntryChipIptvGuides),
+                    _StoryChip(l10n.accountEntryChipProfiles),
+                    _StoryChip(l10n.accountEntryChipDeskTv),
                   ],
                 ),
               ],
@@ -408,6 +413,7 @@ class _AccountEntryScreenState extends State<AccountEntryScreen>
   }
 
   Widget _buildForm({required double maxWidth}) {
+    final l10n = context.l10n;
     return Center(
       child: SingleChildScrollView(
         padding: const EdgeInsets.symmetric(horizontal: 36, vertical: 40),
@@ -418,7 +424,7 @@ class _AccountEntryScreenState extends State<AccountEntryScreen>
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 Text(
-                  'Welcome back',
+                  l10n.accountEntryWelcome,
                   style: GoogleFonts.oswald(
                     color: ForjaShellColors.textPrimary,
                     fontSize: 34,
@@ -429,8 +435,8 @@ class _AccountEntryScreenState extends State<AccountEntryScreen>
                 const SizedBox(height: 8),
                 Text(
                   _awaitingMfa
-                      ? 'Enter the code from your authenticator app to finish sign-in.'
-                      : 'Use your Forja account, or open the browser to sign in on the web.',
+                      ? l10n.accountEntryMfaSubtitle
+                      : l10n.accountEntrySubtitle,
                   style: GoogleFonts.plusJakartaSans(
                     color: ForjaShellColors.textSecondary,
                     fontSize: 14,
@@ -442,7 +448,7 @@ class _AccountEntryScreenState extends State<AccountEntryScreen>
                   _HairlineField(
                     controller: _mfaController,
                     enabled: !_mfaBusy,
-                    label: 'Authenticator code',
+                    label: l10n.accountEntryAuthCodeLabel,
                     keyboardType: TextInputType.number,
                     textInputAction: TextInputAction.done,
                     autofillHints: const [AutofillHints.oneTimeCode],
@@ -453,7 +459,7 @@ class _AccountEntryScreenState extends State<AccountEntryScreen>
                   _HairlineField(
                     controller: _emailController,
                     enabled: !_formLocked,
-                    label: 'Email',
+                    label: l10n.profileEmailLabel,
                     keyboardType: TextInputType.emailAddress,
                     textInputAction: TextInputAction.next,
                     autofillHints: const [AutofillHints.email],
@@ -463,7 +469,7 @@ class _AccountEntryScreenState extends State<AccountEntryScreen>
                   _HairlineField(
                     controller: _passwordController,
                     enabled: !_formLocked,
-                    label: 'Password',
+                    label: l10n.profilePasswordLabel,
                     obscureText: _obscurePassword,
                     textInputAction: TextInputAction.done,
                     autofillHints: const [AutofillHints.password],
@@ -471,8 +477,8 @@ class _AccountEntryScreenState extends State<AccountEntryScreen>
                     onSubmitted: (_) => _submit(),
                     suffix: IconButton(
                       tooltip: _obscurePassword
-                          ? 'Show password'
-                          : 'Hide password',
+                          ? l10n.accountEntryShowPassword
+                          : l10n.accountEntryHidePassword,
                       onPressed: _formLocked
                           ? null
                           : () => setState(
@@ -526,7 +532,9 @@ class _AccountEntryScreenState extends State<AccountEntryScreen>
                         elevation: 0,
                       ),
                       child: Text(
-                        _mfaBusy ? 'Verifying…' : 'Verify code',
+                        _mfaBusy
+                            ? l10n.accountEntryVerifying
+                            : l10n.accountEntryVerifyCode,
                         style: GoogleFonts.plusJakartaSans(
                           fontWeight: FontWeight.w700,
                           fontSize: 15,
@@ -566,7 +574,9 @@ class _AccountEntryScreenState extends State<AccountEntryScreen>
                               elevation: 0,
                             ),
                             child: Text(
-                              _busy ? 'Connecting…' : 'Sign in',
+                              _busy
+                                  ? l10n.accountEntryConnecting
+                                  : l10n.profileSignIn,
                               style: GoogleFonts.plusJakartaSans(
                                 fontWeight: FontWeight.w700,
                                 fontSize: 15,
@@ -578,8 +588,8 @@ class _AccountEntryScreenState extends State<AccountEntryScreen>
                         const SizedBox(width: 8),
                         _AuthIconButton(
                           tooltip: _webBusy
-                              ? 'Cancel web login'
-                              : 'Web login',
+                              ? l10n.profileCancelWebLogin
+                              : l10n.profileWebLogin,
                           icon: _webBusy
                               ? Icons.close_rounded
                               : Icons.language_rounded,
@@ -602,7 +612,7 @@ class _AccountEntryScreenState extends State<AccountEntryScreen>
                       tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                     ),
                     child: Text(
-                      'Create an account on the web →',
+                      l10n.accountEntryCreateOnWeb,
                       style: GoogleFonts.plusJakartaSans(
                         fontSize: 13,
                         fontWeight: FontWeight.w600,
@@ -626,7 +636,7 @@ class _AccountEntryScreenState extends State<AccountEntryScreen>
                     ),
                   ),
                   label: Text(
-                    'Continue without an account',
+                    l10n.accountEntryContinueNoAccount,
                     style: GoogleFonts.plusJakartaSans(
                       color: ForjaShellColors.textSecondary,
                       fontWeight: FontWeight.w600,
@@ -636,7 +646,7 @@ class _AccountEntryScreenState extends State<AccountEntryScreen>
                 ),
                 const SizedBox(height: 6),
                 Text(
-                  'Guest mode keeps everything on this device. You can sign in later from Settings.',
+                  l10n.accountEntryGuestNote,
                   style: GoogleFonts.plusJakartaSans(
                     color: ForjaShellColors.textSecondary.withValues(
                       alpha: 0.85,

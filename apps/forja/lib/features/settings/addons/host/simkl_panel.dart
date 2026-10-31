@@ -7,6 +7,7 @@ import 'package:forja/shared/engine/store/external_list_providers.dart';
 import 'package:forja/shared/engine/store/list_providers.dart';
 import 'package:forja/features/settings/providers/settings_panel_providers.dart';
 import 'package:forja/features/settings/ui/settings_ui.dart';
+import 'package:forja/l10n/l10n.dart';
 import 'package:forja/shell/feedback/forja_toast.dart';
 import 'package:forja/shared/services/tracker/simkl_service.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -64,14 +65,14 @@ class _SettingsSimklPanelState extends ConsumerState<SettingsSimklPanel> {
   void _startLogin() async {
     if (!SimklService.isConfigured) {
       if (mounted) {
-        ForjaToast.error('Simkl login isn’t available in this build');
+        ForjaToast.error(context.l10n.addonsHostSimklLoginUnavailableError);
       }
       return;
     }
     final data = await _service.requestPin();
     if (data == null) {
       if (mounted) {
-        ForjaToast.error('Failed to start Simkl login');
+        ForjaToast.error(context.l10n.addonsHostSimklLoginStartFailedError);
       }
       return;
     }
@@ -96,7 +97,9 @@ class _SettingsSimklPanelState extends ConsumerState<SettingsSimklPanel> {
     }
 
     if (mounted) {
-      ForjaToast.success('Code $userCode copied. Opening $verifyUrl…');
+      ForjaToast.success(
+        context.l10n.addonsHostSimklCodeCopiedToast(userCode, verifyUrl),
+      );
     }
 
     _pollTimer?.cancel();
@@ -113,7 +116,9 @@ class _SettingsSimklPanelState extends ConsumerState<SettingsSimklPanel> {
           });
           ref.invalidate(simklStatusProvider);
           ForjaToast.success(
-            'Logged in to Simkl${username != null ? " as $username" : ""}!',
+            username != null
+                ? context.l10n.addonsHostSimklLoggedInAsToast(username)
+                : context.l10n.addonsHostSimklLoggedInToast,
           );
         }
         // Prefer saved dropdown mode — no chooser dialog.
@@ -142,7 +147,7 @@ class _SettingsSimklPanelState extends ConsumerState<SettingsSimklPanel> {
     ref.invalidate(externalListsGateProvider);
     ref.invalidate(simklWatchlistProvider);
     if (mounted) {
-      ForjaToast.success('Logged out of Simkl');
+      ForjaToast.success(context.l10n.addonsHostSimklLoggedOutToast);
     }
   }
 
@@ -172,7 +177,7 @@ class _SettingsSimklPanelState extends ConsumerState<SettingsSimklPanel> {
     final mode = _listSyncMode ?? await _service.getListSyncMode();
     if (!mounted) return;
     if (mode == null) {
-      ForjaToast.error('Pick how lists sync first');
+      ForjaToast.error(context.l10n.addonsHostSimklPickSyncModeError);
       return;
     }
 
@@ -193,7 +198,7 @@ class _SettingsSimklPanelState extends ConsumerState<SettingsSimklPanel> {
       }
     } catch (e) {
       if (mounted) {
-        ForjaToast.error('Simkl sync error: $e');
+        ForjaToast.error(context.l10n.addonsHostSimklSyncError('$e'));
       }
     } finally {
       if (mounted) setState(() => _isSyncing = false);
@@ -205,7 +210,7 @@ class _SettingsSimklPanelState extends ConsumerState<SettingsSimklPanel> {
       final mode = _listSyncMode ?? await _service.getListSyncMode();
       if (mode == null) {
         if (mounted) {
-          ForjaToast.error('Pick how lists sync first');
+          ForjaToast.error(context.l10n.addonsHostSimklPickSyncModeError);
         }
         return;
       }
@@ -226,18 +231,26 @@ class _SettingsSimklPanelState extends ConsumerState<SettingsSimklPanel> {
   };
 
   String _syncToast(SimklSyncResult r) {
+    final l = context.l10n;
     final modeLabel = switch (r.mode) {
-      SimklListSyncMode.keepLocal => 'Kept local',
-      SimklListSyncMode.useSimkl => 'Used Simkl',
-      SimklListSyncMode.merge => 'Merged',
-      SimklListSyncMode.mergeWithDeletion => 'Merged + deleted',
-      null => 'Synced',
+      SimklListSyncMode.keepLocal => l.addonsHostSimklSyncedKeptLocal,
+      SimklListSyncMode.useSimkl => l.addonsHostSimklSyncedUsedSimkl,
+      SimklListSyncMode.merge => l.addonsHostSimklSyncedMerged,
+      SimklListSyncMode.mergeWithDeletion =>
+        l.addonsHostSimklSyncedMergedDeleted,
+      null => l.addonsHostSimklSyncedGeneric,
     };
     final removed = r.watchlistRemoved > 0 ? ' −${r.watchlistRemoved}' : '';
-    return '$modeLabel · list ↑${r.watchlistExported} ↓${r.watchlistImported}'
-        '$removed, '
-        'progress ${r.watchingImported}, movies ${r.moviesImported}, '
-        'eps ↑${r.episodesExported} ↓${r.episodesImported}';
+    return l.addonsHostSimklSyncSummaryToast(
+      modeLabel,
+      r.watchlistExported,
+      r.watchlistImported,
+      removed,
+      r.watchingImported,
+      r.moviesImported,
+      r.episodesExported,
+      r.episodesImported,
+    );
   }
 
   @override
@@ -252,7 +265,7 @@ class _SettingsSimklPanelState extends ConsumerState<SettingsSimklPanel> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Text(
-            'Sync your watchlist and watch history with Simkl',
+            context.l10n.addonsHostSimklIntro,
             style: TextStyle(
               fontSize: SettingsTokens.typeSizeOf(context, 13),
               color: ForjaShellColors.textSecondary,
@@ -262,16 +275,18 @@ class _SettingsSimklPanelState extends ConsumerState<SettingsSimklPanel> {
 
           if (isLoggedIn) ...[
             SettingsStatusRow(
-              title: 'Connected${username != null ? " as $username" : ""}',
+              title: username != null
+                  ? context.l10n.addonsHostSimklConnectedAsStatus(username)
+                  : context.l10n.addonsHostSimklConnectedStatus,
               subtitle: 'Simkl',
             ),
             const SizedBox(height: 12),
             if (_prefsLoaded) ...[
               SettingsSelectRow(
-                title: 'How should lists sync?',
+                title: context.l10n.addonsHostSimklSyncModeTitle,
                 subtitle: SimklService.listAutoSyncFeatureEnabled
-                    ? 'Saved for Sync Now and Auto sync on My List'
-                    : 'Saved for Sync Now',
+                    ? context.l10n.addonsHostSimklSyncModeSubtitleAuto
+                    : context.l10n.addonsHostSimklSyncModeSubtitle,
                 value: _modeLabel(_listSyncMode),
                 options: [..._kModeLabels.keys, _kNoSync],
                 onChanged: _isSyncing ? (_) {} : _onModePicked,
@@ -279,10 +294,10 @@ class _SettingsSimklPanelState extends ConsumerState<SettingsSimklPanel> {
               if (SimklService.listAutoSyncFeatureEnabled) ...[
                 const SizedBox(height: 8),
                 SettingsToggleRow(
-                  title: 'Auto sync lists on My List',
-                  subtitle:
-                      'When you open My List, sync with ${_modeLabel(_listSyncMode)} '
-                      'and refresh the cached library',
+                  title: context.l10n.addonsHostSimklAutoSyncTitle,
+                  subtitle: context.l10n.addonsHostSimklAutoSyncSubtitle(
+                    _modeLabel(_listSyncMode),
+                  ),
                   value: _autoSyncLists,
                   onChanged: _isSyncing ? (_) {} : _onAutoSyncChanged,
                   enabled: !_isSyncing && _listSyncMode != null,
@@ -291,14 +306,16 @@ class _SettingsSimklPanelState extends ConsumerState<SettingsSimklPanel> {
               const SizedBox(height: 12),
             ],
             SettingsFilledButton(
-              label: _isSyncing ? 'Syncing...' : 'Sync Now',
+              label: _isSyncing
+                  ? context.l10n.addonsHostSimklSyncingButton
+                  : context.l10n.addonsHostSimklSyncNowButton,
               icon: Icons.sync,
               busy: _isSyncing,
               onPressed: _isSyncing ? null : _sync,
             ),
             const SizedBox(height: 10),
             SettingsFilledButton(
-              label: 'Logout from Simkl',
+              label: context.l10n.addonsHostSimklLogoutButton,
               icon: Icons.logout,
               secondary: true,
               onPressed: _logout,
@@ -308,8 +325,8 @@ class _SettingsSimklPanelState extends ConsumerState<SettingsSimklPanel> {
               padding: const EdgeInsets.symmetric(vertical: 12),
               child: Column(
                 children: [
-                  const Text(
-                    'Go to the URL below and enter this code:',
+                  Text(
+                    context.l10n.addonsHostSimklEnterCodePrompt,
                     textAlign: TextAlign.center,
                     style: TextStyle(color: ForjaShellColors.textSecondary),
                   ),
@@ -339,7 +356,7 @@ class _SettingsSimklPanelState extends ConsumerState<SettingsSimklPanel> {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'Waiting for authorization...',
+                    context.l10n.addonsHostSimklWaitingAuth,
                     style: TextStyle(
                       color: ForjaShellColors.textSecondary,
                       fontSize: SettingsTokens.typeSizeOf(context, 11),
@@ -350,7 +367,7 @@ class _SettingsSimklPanelState extends ConsumerState<SettingsSimklPanel> {
             ),
           ] else ...[
             SettingsFilledButton(
-              label: 'Login with Simkl',
+              label: context.l10n.addonsHostSimklLoginButton,
               icon: Icons.login,
               secondary: true,
               onPressed: _startLogin,

@@ -5,6 +5,7 @@ import 'package:forja/features/settings/addons/pack/pack_addon_settings_section.
 import 'package:forja/features/settings/addons/pack/pack_green_play_section.dart';
 import 'package:forja/features/settings/packs/engine_pack_update.dart';
 import 'package:forja/features/settings/ui/settings_ui.dart';
+import 'package:forja/l10n/l10n.dart';
 import 'package:forja/shared/engine/runtime/nav/plugin_nav.dart';
 
 import 'package:forja/shared/engine/engine.dart';
@@ -84,7 +85,7 @@ class SettingsEnginePackExpansion extends StatelessWidget {
     required this.groupKey,
     required this.groupLabel,
     required this.groupOrder,
-    this.miniLabel = 'Forja plugins',
+    this.miniLabel,
     this.tabRowId,
     this.trailing,
     this.onHeaderActivate,
@@ -99,7 +100,7 @@ class SettingsEnginePackExpansion extends StatelessWidget {
   final String Function(EnginePlugin) groupKey;
   final String Function(String) groupLabel;
   final List<String> groupOrder;
-  final String miniLabel;
+  final String? miniLabel;
   /// Unique per pack so TV chip strips do not share one focus-graph row.
   final String? tabRowId;
   final Widget? trailing;
@@ -125,7 +126,9 @@ class SettingsEnginePackExpansion extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         if (showMiniLabel) ...[
-          SettingsEngineMiniLabel(miniLabel),
+          SettingsEngineMiniLabel(
+            miniLabel ?? context.l10n.packsPluginsMiniLabel,
+          ),
           const SizedBox(height: 4),
         ],
         settingsExpandableWithSideActions(
@@ -163,10 +166,11 @@ class SettingsEnginePackExpansion extends StatelessWidget {
                 ),
               ),
               SettingsEnginePackVersionLine(
-                meta:
-                    '${PluginRegistry.packKindInfo(pack)} · '
-                    '${plugins.length} plugin${plugins.length == 1 ? '' : 's'} · '
-                    'v${pack.version}',
+                meta: context.l10n.packsPackMeta(
+                  PluginRegistry.packKindInfo(pack, context.l10n),
+                  plugins.length,
+                  pack.version,
+                ),
               ),
               SettingsEnginePackInstallStatus(
                 sourceUrl: pack.sourceUrl,
@@ -279,9 +283,6 @@ class SettingsEnginePluginToggleList extends StatelessWidget {
   /// Owning pack — device gate for each row. Null → all available.
   final EnginePack? pack;
 
-  /// Row copy for a plugin the manifest gates off this device.
-  static const String unavailableHereLabel = 'Not available on this device';
-
   @override
   Widget build(BuildContext context) {
     return Column(
@@ -292,7 +293,9 @@ class SettingsEnginePluginToggleList extends StatelessWidget {
             key: ValueKey('engine-plugin-${sourceUrl.hashCode}-${p.id}'),
             title: p.name,
             subtitle: [
-              if (!(pack?.isPluginAvailable(p) ?? true)) unavailableHereLabel,
+              if (!(pack?.isPluginAvailable(p) ?? true))
+                // Row copy for a plugin the manifest gates off this device.
+                context.l10n.packsPluginUnavailableHere,
               if (p.description != null && p.description!.isNotEmpty)
                 p.description!,
               if (p.types.isNotEmpty) p.types.join(', '),
@@ -396,10 +399,11 @@ class SettingsLiveSportPackExpansion extends StatelessWidget {
             ),
           ),
           SettingsEnginePackVersionLine(
-            meta:
-                '${PluginRegistry.packKindInfo(pack)} · '
-                '${plugins.length} plugin${plugins.length == 1 ? '' : 's'} · '
-                'v${pack.version}',
+            meta: context.l10n.packsPackMeta(
+              PluginRegistry.packKindInfo(pack, context.l10n),
+              plugins.length,
+              pack.version,
+            ),
           ),
           SettingsEnginePackInstallStatus(
             sourceUrl: pack.sourceUrl,
@@ -553,8 +557,8 @@ class _SettingsLiveSportCapabilityTabsState
               groups: tabs,
               selected: _tab,
               groupLabel: (key) => switch (key) {
-                _tabCatalog => 'Catalog',
-                _tabProvider => 'Provider',
+                _tabCatalog => context.l10n.packsLiveTabCatalog,
+                _tabProvider => context.l10n.packsLiveTabProvider,
                 _ => key,
               },
               tabRowId: widget.tabRowId,
@@ -565,14 +569,14 @@ class _SettingsLiveSportCapabilityTabsState
           ..._capabilityRows(
             catalogPlugins,
             capability: LiveSportCapabilities.catalog,
-            subtitle: 'Schedule feed for Live Sports',
+            subtitle: context.l10n.packsLiveCatalogSubtitle,
             valueFor: (id) => _caps[id]?.catalog ?? false,
           )
         else
           ..._capabilityRows(
             providerPlugins,
             capability: LiveSportCapabilities.resolve,
-            subtitle: 'Stream resolve for Forja Live',
+            subtitle: context.l10n.packsLiveProviderSubtitle,
             valueFor: (id) => _caps[id]?.resolve ?? false,
           ),
       ],

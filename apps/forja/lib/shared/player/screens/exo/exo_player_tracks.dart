@@ -14,8 +14,12 @@ mixin _ExoPlayerTracks on ConsumerState<ExoPlayerScreen> {
   }) async {
     final url = (s['url'] ?? '').toString();
     if (url.isEmpty) return;
-    final label = (s['display'] ?? s['language'] ?? s['lang'] ?? 'Subtitle')
-        .toString();
+    final label =
+        (s['display'] ??
+                s['language'] ??
+                s['lang'] ??
+                context.l10n.playerScreenSubtitle)
+            .toString();
     if (!manual &&
         _s._subtitlePickManual &&
         (_s._subtitlePickInFlight || _s._selectedExternalSubUrl != null)) {
@@ -48,6 +52,7 @@ mixin _ExoPlayerTracks on ConsumerState<ExoPlayerScreen> {
     required bool manual,
     required int gen,
   }) async {
+    final l10n = context.l10n;
     if (manual) {
       _s._statusController.upsert(
         'subtitle',
@@ -98,7 +103,7 @@ mixin _ExoPlayerTracks on ConsumerState<ExoPlayerScreen> {
       if (manual) {
         _s._statusController.upsert(
           'subtitle',
-          'Subtitle failed',
+          l10n.playerScreenSubtitleFailed,
           kind: StatusRouletteKind.failed,
           dismissAfter: const Duration(seconds: 2),
         );
@@ -148,7 +153,7 @@ mixin _ExoPlayerTracks on ConsumerState<ExoPlayerScreen> {
       if (manual) {
         _s._statusController.upsert(
           'subtitle',
-          'Subtitle failed',
+          l10n.playerScreenSubtitleFailed,
           kind: StatusRouletteKind.failed,
           dismissAfter: const Duration(seconds: 2),
         );
@@ -580,7 +585,7 @@ mixin _ExoPlayerTracks on ConsumerState<ExoPlayerScreen> {
           _s._selectedExternalSubUrl = null;
           _s._statusController.upsert(
             'subtitle',
-            'Subtitle failed',
+            context.l10n.playerScreenSubtitleFailed,
             kind: StatusRouletteKind.failed,
             dismissAfter: const Duration(seconds: 2),
           );

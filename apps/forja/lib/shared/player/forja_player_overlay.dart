@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:forja_foundation/widgets/catalog/server_grid.dart';
+import 'package:forja/l10n/l10n.dart';
 import 'package:forja/shell/feedback/forja_toast.dart';
 import 'package:forja_foundation/tokens/forja_theme.dart';
 import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
@@ -47,11 +48,11 @@ class ForjaPlayerOverlayPanel extends StatelessWidget {
           Row(
             children: [
               Expanded(
-                child: _NavBtn(label: 'Previous', icon: Icons.skip_previous, onTap: onPrevious),
+                child: _NavBtn(label: context.l10n.playerControlPrevious, icon: Icons.skip_previous, onTap: onPrevious),
               ),
               const SizedBox(width: 12),
               Expanded(
-                child: _NavBtn(label: 'Next', icon: Icons.skip_next, onTap: onNext),
+                child: _NavBtn(label: context.l10n.playerControlNext, icon: Icons.skip_next, onTap: onNext),
               ),
             ],
           ),
@@ -62,30 +63,30 @@ class ForjaPlayerOverlayPanel extends StatelessWidget {
             alignment: WrapAlignment.center,
             children: [
               _ChipBtn(
-                label: 'AutoNext',
+                label: context.l10n.playerControlAutoNext,
                 active: autoNext,
                 onTap: () => onAutoNextToggle?.call(!autoNext),
               ),
-              _ChipBtn(label: 'Details', onTap: onDetails),
+              _ChipBtn(label: context.l10n.playerControlDetails, onTap: onDetails),
               _ChipBtn(
-                label: 'Watch Party',
+                label: context.l10n.playerControlWatchParty,
                 enabled: false,
                 onTap: () {
-                  ForjaToast.warning('Watch Party - coming soon');
+                  ForjaToast.warning(context.l10n.playerControlWatchPartySoon);
                 },
               ),
-              _ChipBtn(label: 'Shuffle', primary: true, onTap: onShuffle),
+              _ChipBtn(label: context.l10n.playerControlShuffle, primary: true, onTap: onShuffle),
               if (onPip != null)
                 _ChipBtn(label: 'PiP', icon: Icons.picture_in_picture_alt, onTap: onPip),
             ],
           ),
           if (showServerGrid && providers.isNotEmpty) ...[
             const SizedBox(height: 16),
-            const Align(
+            Align(
               alignment: Alignment.centerLeft,
               child: Text(
-                'Servers',
-                style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+                context.l10n.playerControlServers,
+                style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
               ),
             ),
             const SizedBox(height: 8),

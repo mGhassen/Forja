@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja/features/settings/providers/settings_panel_providers.dart';
 import 'package:forja/features/settings/ui/focus_controls.dart';
 import 'package:forja/features/settings/ui/settings_ui.dart';
+import 'package:forja/l10n/l10n.dart';
 import 'package:forja/shared/sync/sync.dart';
 import 'package:rust/rust.dart';
 
@@ -23,7 +24,7 @@ class SettingsPortalPlayerPrefs extends ConsumerWidget {
     final playback = ref.read(settingsPlaybackProvider.notifier);
 
     return SettingsGroup(
-      label: 'Player',
+      label: context.l10n.addonsHostPlayerGroupLabel,
       children: [
         if (!kIsWeb &&
             (Platform.isAndroid ||
@@ -32,10 +33,10 @@ class SettingsPortalPlayerPrefs extends ConsumerWidget {
                 Platform.isLinux))
           settingsFocusableDropdown(
             context,
-            'IPTV engine',
+            context.l10n.addonsHostPortalEngineTitle,
             Platform.isAndroid
-                ? 'Live channels only. Does not change Movies & series or Live Sports.'
-                : 'Live channels only. HLS prefers AVPlayer (Mac) or VLC (Windows) when available; MPEG-TS uses MediaKit.',
+                ? context.l10n.addonsHostPortalEngineAndroidSubtitle
+                : context.l10n.addonsHostPortalEngineDesktopSubtitle,
             snap.builtInEngineIptv.displayName,
             builtInPlayerEngineOptionsForUi.map((e) => e.displayName).toList(),
             (val) async {
@@ -55,8 +56,8 @@ class SettingsPortalPlayerPrefs extends ConsumerWidget {
           ),
         settingsFocusableToggle(
           context,
-          'IPTV programme guide (EPG)',
-          'Show NOW and NEXT programme info in the player and channel browser.',
+          context.l10n.addonsHostPortalEpgTitle,
+          context.l10n.addonsHostPortalEpgSubtitle,
           snap.iptvEpgEnabled,
           (val) async {
             await settings.setIptvEpgEnabled(val);
@@ -66,8 +67,8 @@ class SettingsPortalPlayerPrefs extends ConsumerWidget {
         ),
         settingsFocusableDropdown(
           context,
-          'IPTV live max quality',
-          'ExoPlayer only. Auto uses the portal’s full quality. Cap at 1080p, 720p, or 480p only on weak devices.',
+          context.l10n.addonsHostPortalMaxQualityTitle,
+          context.l10n.addonsHostPortalMaxQualitySubtitle,
           snap.iptvLiveMaxHeightLabel,
           SettingsService.iptvLiveMaxHeightOptions.keys.toList(),
           (val) async {
@@ -87,8 +88,8 @@ class SettingsPortalPlayerPrefs extends ConsumerWidget {
             snap.builtInEngineIptv == BuiltInPlayerEngine.exoPlayer) ...[
           settingsFocusableDropdown(
             context,
-            'IPTV live recovery',
-            'ExoPlayer only. How live channels reconnect after a stall. Auto picks per source. Stable forces one policy. Classic uses freeze timers. MediaKit ignores this (ffmpeg reconnect). Applies the next time you open the player.',
+            context.l10n.addonsHostPortalRecoveryTitle,
+            context.l10n.addonsHostPortalRecoverySubtitle,
             snap.iptvLiveRecoveryModeLabel,
             SettingsService.iptvLiveRecoveryModeOptions.keys.toList(),
             (val) async {
@@ -118,8 +119,8 @@ class SettingsPortalPlayerPrefs extends ConsumerWidget {
               SettingsService.iptvLiveRecoveryStableLabel)
             settingsFocusableToggle(
               context,
-              'Reopen on buffer stall',
-              'ExoPlayer Stable mode only. Reconnect when the picture freezes even if cache still reports data. Leave off unless you need it. Applies the next time you open the player.',
+              context.l10n.addonsHostPortalReopenStallTitle,
+              context.l10n.addonsHostPortalReopenStallSubtitle,
               snap.iptvLiveRecoveryStallReopen,
               (val) async {
                 await settings.setIptvLiveRecoveryMode(
@@ -138,8 +139,8 @@ class SettingsPortalPlayerPrefs extends ConsumerWidget {
             SettingsService.platformProfile == PlatformProfile.androidTv) ...[
           settingsFocusableToggle(
             context,
-            'IPTV match display refresh',
-            'MediaKit only. Match the TV refresh rate to the channel (for example 50 Hz for 50 fps). Helps 4K stutter. May briefly blink HDMI after the first frame. Applies the next time you open the player.',
+            context.l10n.addonsHostPortalMatchRefreshTitle,
+            context.l10n.addonsHostPortalMatchRefreshSubtitle,
             snap.iptvMatchDisplayRefresh,
             (val) async {
               await settings.setIptvMatchDisplayRefresh(val);
@@ -152,8 +153,8 @@ class SettingsPortalPlayerPrefs extends ConsumerWidget {
           ),
           settingsFocusableDropdown(
             context,
-            'IPTV live buffer',
-            'MediaKit only. Live buffer ahead of playback. Auto uses 30s (same as desktop). Manual 15–30s. Helps underruns, not frame judder. Applies the next time you open the player.',
+            context.l10n.addonsHostPortalLiveBufferTitle,
+            context.l10n.addonsHostPortalLiveBufferSubtitle,
             snap.iptvLiveBufferSecsLabel,
             SettingsService.iptvLiveBufferSecsOptions.keys.toList(),
             (val) async {

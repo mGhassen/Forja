@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:forja/l10n/l10n.dart';
 import 'package:http/http.dart' as http;
 import 'package:path_provider/path_provider.dart';
 import 'package:forja_foundation/widgets/guide/guide_chrome_style.dart';
@@ -1492,6 +1493,7 @@ class _PtPlayerScreenState extends ConsumerState<PtPlayerScreen>
   }) async {
     if (kIsWeb) return;
     if (!engine.isAvailableOnCurrentPlatform) return;
+    final l10n = context.l10n;
     final url = _sources.isNotEmpty ? _sources[_sourceIdx].url : '';
     final unfit = builtInPlayerEngineUnsuitableReason(
       engine,
@@ -1499,6 +1501,7 @@ class _PtPlayerScreenState extends ConsumerState<PtPlayerScreen>
           ? BuiltInPlayerMenuSurface.iptvVod
           : BuiltInPlayerMenuSurface.iptvLive,
       streamUrl: url,
+      l10n: l10n,
     );
     if (unfit != null) {
       if (mounted) ForjaToast.info(unfit);
@@ -1507,7 +1510,7 @@ class _PtPlayerScreenState extends ConsumerState<PtPlayerScreen>
     if (engine == BuiltInPlayerEngine.vlc &&
         !await VlcPlayerBridge.isAvailable()) {
       if (mounted) {
-        ForjaToast.warning('VLC not found. Install VLC or use MediaKit.');
+        ForjaToast.warning(l10n.playerLiveVlcNotFound);
       }
       return;
     }

@@ -1,4 +1,6 @@
 import 'package:flutter/foundation.dart';
+import 'package:forja/l10n/app_localizations.dart';
+import 'package:forja/l10n/app_localizations_en.dart';
 import 'package:forja/shared/platform/platform_info.dart';
 import 'package:forja/shared/utils/torrent_meta_parser.dart';
 
@@ -17,8 +19,11 @@ class PluginLanguage {
   /// Stable selection key stored in Settings (`sub:fr`).
   String get key => '$kind:$code';
 
+  /// English label for callers with no [AppLocalizations] to hand.
+  String get label => labelFor(AppLocalizationsEn());
+
   /// User-facing label for chips / dropdown.
-  String get label {
+  String labelFor(AppLocalizations l10n) {
     if (kind == 'sub') {
       if (code == 'en') return 'VOST';
       return 'VOST${code.toUpperCase()}';
@@ -27,21 +32,21 @@ class PluginLanguage {
     return switch (code) {
       'en' => 'VO',
       'fr' => 'VF',
-      'it' => 'Italian',
+      'it' => l10n.engineModelsLanguageItalian,
       'es' => 'Castellano',
       'lat' => 'Latino',
       'ca' => 'Catalán',
-      'de' => 'German',
-      'pt' => 'Portuguese',
-      'ar' => 'Arabic',
-      'hi' => 'Hindi',
-      'tr' => 'Turkish',
-      'ja' => 'Japanese',
-      'ko' => 'Korean',
-      'zh' => 'Chinese',
-      'nl' => 'Dutch',
-      'pl' => 'Polish',
-      'ru' => 'Russian',
+      'de' => l10n.engineModelsLanguageGerman,
+      'pt' => l10n.engineModelsLanguagePortuguese,
+      'ar' => l10n.engineModelsLanguageArabic,
+      'hi' => l10n.engineModelsLanguageHindi,
+      'tr' => l10n.engineModelsLanguageTurkish,
+      'ja' => l10n.engineModelsLanguageJapanese,
+      'ko' => l10n.engineModelsLanguageKorean,
+      'zh' => l10n.engineModelsLanguageChinese,
+      'nl' => l10n.engineModelsLanguageDutch,
+      'pl' => l10n.engineModelsLanguagePolish,
+      'ru' => l10n.engineModelsLanguageRussian,
       _ => code.toUpperCase(),
     };
   }

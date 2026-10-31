@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:forja/l10n/l10n.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
@@ -95,13 +96,14 @@ class _StatsCard extends StatelessWidget {
     final peers = status.activePeers;
     final seen = status.totalPeers;
     final peerValue = peers != null ? '$peers' : '—';
+    final l10n = context.l10n;
     final peerLabel = seen != null && seen > 0
         ? peers != null && peers > 0 && seen > peers
-            ? 'of $seen peers'
+            ? l10n.playerSourcePeersOf(seen)
             : seen > 0 && (peers ?? 0) == 0
-                ? '$seen seen'
-                : 'peers'
-        : 'peers';
+                ? l10n.playerSourcePeersSeen(seen)
+                : l10n.playerSourcePeers
+        : l10n.playerSourcePeers;
 
     return ConstrainedBox(
       constraints: BoxConstraints(maxWidth: maxW),
@@ -127,7 +129,7 @@ class _StatsCard extends StatelessWidget {
                 child: _StatTile(
                   icon: Icons.download_rounded,
                   value: status.speedLabel ?? '—',
-                  label: 'Download',
+                  label: l10n.playerSourceStatDownload,
                   accent: status.speedLabel != null,
                 ),
               ),
@@ -136,7 +138,7 @@ class _StatsCard extends StatelessWidget {
                 child: _StatTile(
                   icon: Icons.storage_rounded,
                   value: status.bufferLabel ?? '…',
-                  label: 'File cached',
+                  label: l10n.playerSourceStatFileCached,
                   accent: status.bufferLabel != null,
                 ),
               ),

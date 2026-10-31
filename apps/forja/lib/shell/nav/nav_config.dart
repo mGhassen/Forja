@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:forja/l10n/l10n.dart';
 import 'package:forja/features/settings/shell/screen.dart';
 import 'package:forja/shared/engine/runtime/nav/plugin_nav.dart';
 import 'package:forja/shell/nav/nav_destination.dart';
@@ -35,6 +36,11 @@ const Map<String, NavDestination> coreNavDestinations = {
     label: 'Settings',
   ),
 };
+
+/// Display label: the built-in Settings tab is localized, hub labels come from
+/// their pack `nav` spec as-is.
+String navDestinationLabel(NavDestination d, AppLocalizations l10n) =>
+    d.id == 'settings' ? l10n.settingsTitle : d.label;
 
 /// Core + hub destinations from [PluginNavRegistry] (plugin `nav` specs).
 Map<String, NavDestination> get navDestinations => {

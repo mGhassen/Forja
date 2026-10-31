@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:forja/l10n/l10n.dart';
 import 'package:forja/shared/sync/sync.dart';
 import 'package:forja_foundation/brand/forja_profile_avatar.dart';
 
@@ -78,7 +79,9 @@ class _ForjaActiveProfileAvatarState extends State<ForjaActiveProfileAvatar> {
     if (profile == null) {
       return ForjaProfileAvatar(
         avatarKey: 'forge',
-        name: SyncService.instance.isSignedIn ? 'Profile' : 'Guest',
+        name: SyncService.instance.isSignedIn
+            ? context.l10n.shellProfile
+            : context.l10n.shellGuest,
         size: widget.size,
         selected: widget.selected,
         showBorder: widget.showBorder,

@@ -11,6 +11,7 @@ import 'package:forja/features/settings/shell/catalog.dart';
 import 'package:forja/features/settings/shell/visibility.dart';
 import 'package:forja/features/settings/packs/pack_prompt_pane.dart';
 import 'package:forja/features/settings/ui/settings_ui.dart';
+import 'package:forja/l10n/l10n.dart';
 
 import 'package:forja/shared/engine/engine.dart';
 import 'package:forja/shared/lan/lan_prefs.dart';
@@ -91,8 +92,8 @@ class SettingsAddonsAwareScaffold extends StatelessWidget {
                 packPrompt != null &&
                 categoryId == SettingsCategoryId.forjaPacks;
             final title = packOpen
-                ? SettingsPackPromptDrill.titleFor(packPrompt)
-                : (addon?.title ?? categoryTitle);
+                ? SettingsPackPromptDrill.titleOf(packPrompt, context.l10n)
+                : (addon?.titleFor(context.l10n) ?? categoryTitle);
             return SettingsPageScaffold(
               title: title,
               adminOnly: packOpen
@@ -307,18 +308,17 @@ class _AddonListPaneState extends ConsumerState<_AddonListPane> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         SettingsGroup(
-          label: 'Built-in addons',
+          label: context.l10n.addonsBuiltInGroupLabel,
           children: [for (var i = 0; i < builtIn.length; i++) rowAt(i)],
         ),
         SettingsGroup(
-          label: 'Pack settings',
+          label: context.l10n.addonsPackSettingsGroupLabel,
           children: packs.isEmpty
               ? [
                   Padding(
                     padding: SettingsTokens.addonListRowPaddingOf(context),
                     child: Text(
-                      'No pack settings yet. Enable packs with Addon settings '
-                      'under Forja Packs.',
+                      context.l10n.addonsNoPackSettings,
                       style: TextStyle(
                         color: ForjaShellColors.textSecondary,
                         fontSize: SettingsTokens.rowSubtitleSizeOf(context),
@@ -481,7 +481,7 @@ class _AddonRowState extends ConsumerState<_AddonRow> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         settingsTitleText(
-          meta.title,
+          meta.titleFor(context.l10n),
           TextStyle(
             color: ForjaShellColors.textPrimary,
             fontSize: SettingsTokens.rowTitleSizeOf(context),
@@ -492,7 +492,7 @@ class _AddonRowState extends ConsumerState<_AddonRow> {
         ),
         SizedBox(height: SettingsTokens.rowTitleSubtitleGapOf(context)),
         Text(
-          meta.subtitle,
+          meta.subtitleFor(context.l10n),
           style: TextStyle(
             color: ForjaShellColors.textSecondary,
             fontSize: SettingsTokens.rowSubtitleSizeOf(context),

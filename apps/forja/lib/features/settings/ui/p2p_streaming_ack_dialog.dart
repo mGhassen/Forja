@@ -2,18 +2,19 @@ import 'package:flutter/material.dart';
 
 import 'package:rust/rust.dart';
 import 'package:forja/features/settings/ui/settings_ui.dart';
+import 'package:forja/l10n/l10n.dart';
 import 'package:forja/shell/core/forja_shell_profile.dart';
 import 'package:forja/shell/core/forja_shell_scope.dart';
 import 'package:forja/shell/tv/tv_focus_graph.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/tokens/forja_settings_tokens.dart';
 
-const _kP2pBullets = [
-  'Your IP address will be visible to other peers in the network',
-  'You are solely responsible for the content you access',
-  'You confirm you have the legal right to stream this content in your jurisdiction',
-  'Forja does not host, distribute, or control any P2P content',
-  'Forja bears no liability for any legal consequences arising from your use of P2P streaming',
+List<String> _p2pBullets(AppLocalizations l10n) => [
+  l10n.settingsUiP2pAckBulletIp,
+  l10n.settingsUiP2pAckBulletResponsible,
+  l10n.settingsUiP2pAckBulletLegalRight,
+  l10n.settingsUiP2pAckBulletNoHosting,
+  l10n.settingsUiP2pAckBulletNoLiability,
 ];
 
 /// Returns true if already acknowledged, or the user accepted the dialog.
@@ -102,7 +103,7 @@ class _P2pStreamingAckDialogState extends State<_P2pStreamingAckDialog> {
     final actions = <Widget>[
       if (!widget.reviewOnly)
         SettingsFilledButton(
-          label: 'Cancel',
+          label: context.l10n.settingsUiCancel,
           secondary: true,
           focusNode: _cancelFocus,
           onPressed: () => Navigator.pop(context, false),
@@ -111,7 +112,9 @@ class _P2pStreamingAckDialogState extends State<_P2pStreamingAckDialog> {
           },
         ),
       SettingsFilledButton(
-        label: widget.reviewOnly ? 'Close' : 'I am aware',
+        label: widget.reviewOnly
+            ? context.l10n.settingsUiClose
+            : context.l10n.settingsUiP2pAckAware,
         destructive: !widget.reviewOnly,
         focusNode: _confirmFocus,
         onPressed: () => Navigator.pop(context, true),
@@ -146,7 +149,7 @@ class _P2pStreamingAckDialogState extends State<_P2pStreamingAckDialog> {
         side: const BorderSide(color: ForjaShellColors.borderSubtle),
       ),
       title: Text(
-        'P2P Streaming',
+        context.l10n.settingsUiP2pAckTitle,
         style: TextStyle(
           color: ForjaShellColors.textPrimary,
           fontWeight: FontWeight.w700,
@@ -162,12 +165,9 @@ class _P2pStreamingAckDialogState extends State<_P2pStreamingAckDialog> {
             children: [
               const _VpnRecommendBanner(),
               const SizedBox(height: 14),
-              Text(
-                'This stream uses peer-to-peer (P2P) technology. By continuing, you confirm you are aware that:',
-                style: bodyStyle,
-              ),
+              Text(context.l10n.settingsUiP2pAckIntro, style: bodyStyle),
               const SizedBox(height: 12),
-              for (final line in _kP2pBullets) ...[
+              for (final line in _p2pBullets(context.l10n)) ...[
                 Padding(
                   padding: const EdgeInsets.only(bottom: 8),
                   child: Row(
@@ -180,10 +180,7 @@ class _P2pStreamingAckDialogState extends State<_P2pStreamingAckDialog> {
                 ),
               ],
               const SizedBox(height: 4),
-              Text(
-                'You use this feature entirely at your own risk. Direct torrent, Stremio, and Nuvio can be turned off anytime in Settings.',
-                style: bodyStyle,
-              ),
+              Text(context.l10n.settingsUiP2pAckOutro, style: bodyStyle),
             ],
           ),
         ),
@@ -230,7 +227,7 @@ class _VpnRecommendBanner extends StatelessWidget {
             SizedBox(width: 10),
             Expanded(
               child: Text(
-                'For better privacy, use a VPN. Your IP address is visible to other peers.',
+                context.l10n.settingsUiP2pAckVpnBanner,
                 style: TextStyle(
                   color: ForjaShellColors.textPrimary,
                   height: 1.35,
