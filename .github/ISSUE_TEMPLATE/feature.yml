@@ -1,0 +1,54 @@
+name: Feature request
+description: Suggest an improvement or new feature.
+title: "[Feature]: "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        One idea per issue. Say what you want and why — not how to build it.
+        Plugin-specific questions → use the **Plugin** issue.
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Player
+        - Sources panel
+        - Offline Downloads
+        - Settings
+        - Account / sign-in
+        - Shell / navigation
+        - TV / remote
+        - Addons
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What is awkward or missing today?
+      placeholder: e.g. On Android TV I can’t jump to a specific episode without scrolling the whole season.
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposal
+      description: What should Forja do instead?
+      placeholder: e.g. Let me type an episode number on the remote.
+    validations:
+      required: true
+
+  - type: textarea
+    id: extras
+    attributes:
+      label: Extra context
+      description: Mockups, links — optional.
+      placeholder: Optional
+    validations:
+      required: false

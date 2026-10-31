@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Downloads / Releases
+    url: https://www.forjahq.xyz/download
+    about: Grab the latest release here.
+  - name: Documentation
+    url: https://github.com/mGhassen/Forja/blob/main/docs/features/README.md
+    about: Read the user guide for setup and usage details.
+  - name: Packs repo (forja-packs)
+    url: https://github.com/mGhassen/forja-packs
+    about: Plugin / pack source lives here; still file user issues on Forja unless you are a pack author.

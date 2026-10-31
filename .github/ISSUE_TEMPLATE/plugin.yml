@@ -1,0 +1,114 @@
+name: Plugin
+description: Bug or request about a Forja pack / provider / live source.
+title: "[Plugin]: "
+labels: ["plugin"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this for anything pack-side: VOD providers, live sports, IPTV, torrent/debrid, hubs.
+        Name the plugin as it appears in Forja.
+
+        **Forja only fixes Forja packs** (the ones we ship / maintain). Third-party or community packs are out of scope here — report those to their author.
+
+  - type: dropdown
+    id: kind
+    attributes:
+      label: Kind of request
+      options:
+        - Broken / no streams
+        - Wrong metadata or schedule
+        - Improve existing plugin
+        - Add a new plugin
+        - Other
+    validations:
+      required: true
+
+  - type: dropdown
+    id: pack-type
+    attributes:
+      label: Pack type
+      options:
+        - VOD provider
+        - Live sports
+        - IPTV
+        - Hub
+        - Torrent indexer
+        - Debrid
+        - Not sure
+    validations:
+      required: true
+
+  - type: input
+    id: plugin-name
+    attributes:
+      label: Plugin name
+      description: Exact name from Sources / Settings / Live Sports (or the site you want added).
+      placeholder: e.g. TimStreams, HiAnime, Torrentio
+    validations:
+      required: true
+
+  - type: input
+    id: plugin-url
+    attributes:
+      label: Site / repo (if new or unknown)
+      description: Optional. Upstream site or addon URL.
+      placeholder: https://…
+    validations:
+      required: false
+
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Platform
+      multiple: true
+      options:
+        - Android phone
+        - Android TV
+        - iOS
+        - macOS
+        - Windows
+        - Linux
+        - All
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: App version
+      placeholder: e.g. 2.0.232
+    validations:
+      required: true
+
+  - type: textarea
+    id: details
+    attributes:
+      label: Details
+      description: What’s wrong, or what the new plugin should cover (language, movies/series/live, etc.).
+      placeholder: |
+        e.g. TimStreams resolve returns nothing for Premier League tonight.
+        Or: Add provider X for French anime with softsubs.
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps (bugs only)
+      description: Skip if this is a new-plugin request.
+      placeholder: |
+        1. Open Live Sports → …
+        2. Pick …
+        3. …
+    validations:
+      required: false
+
+  - type: textarea
+    id: extras
+    attributes:
+      label: Extra context
+      description: Title / match name, screenshots, logs — optional.
+      placeholder: Optional
+    validations:
+      required: false

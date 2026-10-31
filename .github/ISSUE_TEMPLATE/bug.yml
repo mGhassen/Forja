@@ -1,0 +1,78 @@
+name: Bug report
+description: Report a reproducible bug (one per issue).
+title: "[Bug]: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        One bug per issue.
+        Plugin-specific questions → use the **Plugin** issue.
+
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Platform
+      multiple: true
+      options:
+        - Android TV
+        - macOS
+        - Windows
+        - Linux
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: App version
+      description: Settings → About, or the build you installed.
+      placeholder: e.g. 2.0.232
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Player
+        - Sources panel
+        - Offline Downloads
+        - Settings
+        - Account / sign-in
+        - Shell / navigation
+        - TV / remote
+        - Addons
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: What you saw. Expected vs actual if useful.
+      placeholder: e.g. Player freezes when switching audio tracks on Android TV.
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Open …
+        2. Tap …
+        3. …
+    validations:
+      required: true
+
+  - type: textarea
+    id: extras
+    attributes:
+      label: Extra context
+      description: Logs, screenshots, device model — optional.
+      placeholder: Optional
+    validations:
+      required: false
