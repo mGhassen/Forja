@@ -8949,6 +8949,66 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{month} {day}, {year}'**
   String foundationDatePattern(String month, String day, String year);
+
+  /// No description provided for @foundationWordSeeAll.
+  ///
+  /// In en, this message translates to:
+  /// **'See all'**
+  String get foundationWordSeeAll;
+
+  /// No description provided for @foundationWordBecauseYouWatched.
+  ///
+  /// In en, this message translates to:
+  /// **'Because you watched'**
+  String get foundationWordBecauseYouWatched;
+
+  /// No description provided for @foundationWordPlanToWatch.
+  ///
+  /// In en, this message translates to:
+  /// **'Plan to Watch'**
+  String get foundationWordPlanToWatch;
+
+  /// No description provided for @foundationWordWatching.
+  ///
+  /// In en, this message translates to:
+  /// **'Watching'**
+  String get foundationWordWatching;
+
+  /// No description provided for @foundationWordOnHold.
+  ///
+  /// In en, this message translates to:
+  /// **'On Hold'**
+  String get foundationWordOnHold;
+
+  /// No description provided for @foundationWordCompleted.
+  ///
+  /// In en, this message translates to:
+  /// **'Completed'**
+  String get foundationWordCompleted;
+
+  /// No description provided for @foundationWordDropped.
+  ///
+  /// In en, this message translates to:
+  /// **'Dropped'**
+  String get foundationWordDropped;
+
+  /// No description provided for @foundationWordEpisodes.
+  ///
+  /// In en, this message translates to:
+  /// **'Episodes'**
+  String get foundationWordEpisodes;
+
+  /// No description provided for @foundationWordReload.
+  ///
+  /// In en, this message translates to:
+  /// **'Reload'**
+  String get foundationWordReload;
+
+  /// No description provided for @foundationWordClose.
+  ///
+  /// In en, this message translates to:
+  /// **'Close'**
+  String get foundationWordClose;
 }
 
 class _AppLocalizationsDelegate

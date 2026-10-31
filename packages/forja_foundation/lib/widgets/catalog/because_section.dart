@@ -101,7 +101,9 @@ class BecauseSection extends StatelessWidget {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
-                      ForjaFoundationStrings.of(context).t('Because you watched'),
+                      ForjaFoundationStrings.of(
+                        context,
+                      ).t('Because you watched'),
                       style: TextStyle(
                         color: Colors.white.withValues(alpha: 0.5),
                         fontSize: kickerFontSize,
@@ -150,10 +152,8 @@ class BecauseSection extends StatelessWidget {
         else
           PosterRail(
             items: children == null ? items : null,
-            itemWidth:
-                cardWidth ?? InteractivePosterCard.cardWidth(context),
-            itemHeight:
-                cardHeight ?? InteractivePosterCard.cardHeight(context),
+            itemWidth: cardWidth ?? InteractivePosterCard.cardWidth(context),
+            itemHeight: cardHeight ?? InteractivePosterCard.cardHeight(context),
             gap: gap,
             children: children,
           ),
@@ -176,10 +176,7 @@ class _BecauseSeedPoster extends StatelessWidget {
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(6),
         color: ForjaShellColors.surfaceElevated,
-        border: Border.all(
-          color: ForjaShellColors.borderSubtle,
-          width: 1.2,
-        ),
+        border: Border.all(color: ForjaShellColors.borderSubtle, width: 1.2),
       ),
       child: url.isEmpty
           ? Icon(
@@ -238,8 +235,7 @@ class _BecauseShuffleButtonState extends State<BecauseShuffleButton> {
   }
 
   bool _lit(BuildContext context, bool hovered) {
-    return hovered ||
-        ShellPaintScope.focusStyledOf(context, focused: _focused);
+    return hovered || ShellPaintScope.focusStyledOf(context, focused: _focused);
   }
 
   Widget _icon(bool lit) {

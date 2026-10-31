@@ -129,7 +129,9 @@ void main() {
   });
 
   group('words and the current strings', () {
-    tearDown(() => ForjaFoundationStrings.current = ForjaFoundationStrings.english);
+    tearDown(
+      () => ForjaFoundationStrings.current = ForjaFoundationStrings.english,
+    );
 
     test('t() translates known words and keeps the English for the rest', () {
       const fr = ForjaFoundationStrings(words: {'See all': 'Voir tout'});
@@ -138,18 +140,31 @@ void main() {
       expect(ForjaFoundationStrings.english.t('See all'), 'See all');
     });
 
-    test('episode dates stay "Oct 31, 2026" in English and follow the app language', () {
-      expect(formatEpisodeDisplayDate('2026-10-31'), 'Oct 31, 2026');
-      ForjaFoundationStrings.current = const ForjaFoundationStrings(
-        shortMonths: [
-          'janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin',
-          'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.',
-        ],
-        datePattern: '{day} {month} {year}',
-      );
-      expect(formatEpisodeDisplayDate('2026-10-31'), '31 oct. 2026');
-      expect(formatEpisodeDisplayDate('nonsense'), 'nonsense');
-    });
+    test(
+      'episode dates stay "Oct 31, 2026" in English and follow the app language',
+      () {
+        expect(formatEpisodeDisplayDate('2026-10-31'), 'Oct 31, 2026');
+        ForjaFoundationStrings.current = const ForjaFoundationStrings(
+          shortMonths: [
+            'janv.',
+            'févr.',
+            'mars',
+            'avr.',
+            'mai',
+            'juin',
+            'juil.',
+            'août',
+            'sept.',
+            'oct.',
+            'nov.',
+            'déc.',
+          ],
+          datePattern: '{day} {month} {year}',
+        );
+        expect(formatEpisodeDisplayDate('2026-10-31'), '31 oct. 2026');
+        expect(formatEpisodeDisplayDate('nonsense'), 'nonsense');
+      },
+    );
 
     test('list status labels follow the current strings', () {
       expect(listStatusLabel('plantowatch'), 'Plan to Watch');

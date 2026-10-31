@@ -5301,4 +5301,34 @@ class AppLocalizationsFr extends AppLocalizations {
   String foundationDatePattern(String month, String day, String year) {
     return '$day $month $year';
   }
+
+  @override
+  String get foundationWordSeeAll => 'Voir tout';
+
+  @override
+  String get foundationWordBecauseYouWatched => 'Parce que vous avez regardé';
+
+  @override
+  String get foundationWordPlanToWatch => 'À regarder';
+
+  @override
+  String get foundationWordWatching => 'En cours';
+
+  @override
+  String get foundationWordOnHold => 'En pause';
+
+  @override
+  String get foundationWordCompleted => 'Terminé';
+
+  @override
+  String get foundationWordDropped => 'Abandonné';
+
+  @override
+  String get foundationWordEpisodes => 'Épisodes';
+
+  @override
+  String get foundationWordReload => 'Recharger';
+
+  @override
+  String get foundationWordClose => 'Fermer';
 }

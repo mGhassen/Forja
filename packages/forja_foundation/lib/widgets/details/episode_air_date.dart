@@ -27,8 +27,7 @@ const _monthLabels = <String>[
 
 /// Reads [air_date] / [release_date] and optional [aired] from a season episode map.
 EpisodeAirDateInfo episodeAirDateInfo(Map<String, dynamic> ep) {
-  final raw =
-      (ep['air_date'] ?? ep['release_date'] ?? '').toString().trim();
+  final raw = (ep['air_date'] ?? ep['release_date'] ?? '').toString().trim();
   final aired = ep['aired'];
   if (aired == false) {
     return EpisodeAirDateInfo(
@@ -81,9 +80,6 @@ DateTime? _parseIsoDate(String iso) {
   return DateTime(year, month, day);
 }
 
-Color episodeDateColor({
-  required bool notShippedYet,
-  required Color normal,
-}) {
+Color episodeDateColor({required bool notShippedYet, required Color normal}) {
   return notShippedYet ? ForjaShellColors.upcomingMuted : normal;
 }

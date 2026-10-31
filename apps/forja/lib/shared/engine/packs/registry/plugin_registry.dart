@@ -42,6 +42,7 @@ class PluginRegistry {
     _packsMemScopeGen = -1;
     notifyChanged();
   }
+
   static final PluginRegistry instance = PluginRegistry._();
 
   /// Pack `prelude` may list one path or comma-separated paths (`_kit.js,_search.js`).
