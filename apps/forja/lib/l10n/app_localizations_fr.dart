@@ -5164,4 +5164,141 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get accountAvatarCategoryRetro => 'Rétro';
+
+  @override
+  String get foundationReadMore => 'Lire la suite';
+
+  @override
+  String get foundationReadLess => 'Voir moins';
+
+  @override
+  String get foundationRetry => 'Réessayer';
+
+  @override
+  String get foundationBack => 'Retour';
+
+  @override
+  String get foundationNothingHere => 'Rien ici';
+
+  @override
+  String get foundationNoCategories => 'Aucune catégorie';
+
+  @override
+  String get foundationNoMatches => 'Aucun résultat';
+
+  @override
+  String get foundationSearch => 'Rechercher';
+
+  @override
+  String get foundationAll => 'Tous';
+
+  @override
+  String get foundationFactName => 'Nom';
+
+  @override
+  String get foundationFactStatus => 'Statut';
+
+  @override
+  String get foundationFactLanguage => 'Langue';
+
+  @override
+  String get foundationFactFirstAired => 'Première diffusion';
+
+  @override
+  String get foundationFactLastAired => 'Dernière diffusion';
+
+  @override
+  String get foundationFactSeasons => 'Saisons';
+
+  @override
+  String get foundationFactEpisodes => 'Épisodes';
+
+  @override
+  String get foundationFactNetwork => 'Chaîne';
+
+  @override
+  String get foundationFactReleaseDate => 'Date de sortie';
+
+  @override
+  String get foundationFactRuntime => 'Durée';
+
+  @override
+  String get foundationFactProduction => 'Production';
+
+  @override
+  String get foundationFactOrigin => 'Origine';
+
+  @override
+  String get foundationFactCreatedBy => 'Créé par';
+
+  @override
+  String get foundationFactBudget => 'Budget';
+
+  @override
+  String get foundationFactRevenue => 'Recettes';
+
+  @override
+  String get foundationStatusReleased => 'Sorti';
+
+  @override
+  String get foundationStatusEnded => 'Terminé';
+
+  @override
+  String get foundationStatusReturningSeries => 'Série en cours';
+
+  @override
+  String get foundationStatusInProduction => 'En production';
+
+  @override
+  String get foundationStatusCanceled => 'Annulé';
+
+  @override
+  String get foundationStatusPlanned => 'Prévu';
+
+  @override
+  String get foundationStatusPostProduction => 'Post-production';
+
+  @override
+  String get foundationStatusRumored => 'Rumeur';
+
+  @override
+  String get foundationMonthJan => 'janv.';
+
+  @override
+  String get foundationMonthFeb => 'févr.';
+
+  @override
+  String get foundationMonthMar => 'mars';
+
+  @override
+  String get foundationMonthApr => 'avr.';
+
+  @override
+  String get foundationMonthMay => 'mai';
+
+  @override
+  String get foundationMonthJun => 'juin';
+
+  @override
+  String get foundationMonthJul => 'juil.';
+
+  @override
+  String get foundationMonthAug => 'août';
+
+  @override
+  String get foundationMonthSep => 'sept.';
+
+  @override
+  String get foundationMonthOct => 'oct.';
+
+  @override
+  String get foundationMonthNov => 'nov.';
+
+  @override
+  String get foundationMonthDec => 'déc.';
+
+  @override
+  String foundationDatePattern(String month, String day, String year) {
+    return '$day $month $year';
+  }
 }

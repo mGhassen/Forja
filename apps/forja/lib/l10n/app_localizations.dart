@@ -8679,6 +8679,276 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Retro'**
   String get accountAvatarCategoryRetro;
+
+  /// No description provided for @foundationReadMore.
+  ///
+  /// In en, this message translates to:
+  /// **'Read More'**
+  String get foundationReadMore;
+
+  /// No description provided for @foundationReadLess.
+  ///
+  /// In en, this message translates to:
+  /// **'Read Less'**
+  String get foundationReadLess;
+
+  /// No description provided for @foundationRetry.
+  ///
+  /// In en, this message translates to:
+  /// **'Retry'**
+  String get foundationRetry;
+
+  /// No description provided for @foundationBack.
+  ///
+  /// In en, this message translates to:
+  /// **'Back'**
+  String get foundationBack;
+
+  /// No description provided for @foundationNothingHere.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing here'**
+  String get foundationNothingHere;
+
+  /// No description provided for @foundationNoCategories.
+  ///
+  /// In en, this message translates to:
+  /// **'No categories'**
+  String get foundationNoCategories;
+
+  /// No description provided for @foundationNoMatches.
+  ///
+  /// In en, this message translates to:
+  /// **'No matches'**
+  String get foundationNoMatches;
+
+  /// No description provided for @foundationSearch.
+  ///
+  /// In en, this message translates to:
+  /// **'Search'**
+  String get foundationSearch;
+
+  /// No description provided for @foundationAll.
+  ///
+  /// In en, this message translates to:
+  /// **'All'**
+  String get foundationAll;
+
+  /// No description provided for @foundationFactName.
+  ///
+  /// In en, this message translates to:
+  /// **'Name'**
+  String get foundationFactName;
+
+  /// No description provided for @foundationFactStatus.
+  ///
+  /// In en, this message translates to:
+  /// **'Status'**
+  String get foundationFactStatus;
+
+  /// No description provided for @foundationFactLanguage.
+  ///
+  /// In en, this message translates to:
+  /// **'Language'**
+  String get foundationFactLanguage;
+
+  /// No description provided for @foundationFactFirstAired.
+  ///
+  /// In en, this message translates to:
+  /// **'First Aired'**
+  String get foundationFactFirstAired;
+
+  /// No description provided for @foundationFactLastAired.
+  ///
+  /// In en, this message translates to:
+  /// **'Last Aired'**
+  String get foundationFactLastAired;
+
+  /// No description provided for @foundationFactSeasons.
+  ///
+  /// In en, this message translates to:
+  /// **'Seasons'**
+  String get foundationFactSeasons;
+
+  /// No description provided for @foundationFactEpisodes.
+  ///
+  /// In en, this message translates to:
+  /// **'Episodes'**
+  String get foundationFactEpisodes;
+
+  /// No description provided for @foundationFactNetwork.
+  ///
+  /// In en, this message translates to:
+  /// **'Network'**
+  String get foundationFactNetwork;
+
+  /// No description provided for @foundationFactReleaseDate.
+  ///
+  /// In en, this message translates to:
+  /// **'Release Date'**
+  String get foundationFactReleaseDate;
+
+  /// No description provided for @foundationFactRuntime.
+  ///
+  /// In en, this message translates to:
+  /// **'Runtime'**
+  String get foundationFactRuntime;
+
+  /// No description provided for @foundationFactProduction.
+  ///
+  /// In en, this message translates to:
+  /// **'Production'**
+  String get foundationFactProduction;
+
+  /// No description provided for @foundationFactOrigin.
+  ///
+  /// In en, this message translates to:
+  /// **'Origin'**
+  String get foundationFactOrigin;
+
+  /// No description provided for @foundationFactCreatedBy.
+  ///
+  /// In en, this message translates to:
+  /// **'Created by'**
+  String get foundationFactCreatedBy;
+
+  /// No description provided for @foundationFactBudget.
+  ///
+  /// In en, this message translates to:
+  /// **'Budget'**
+  String get foundationFactBudget;
+
+  /// No description provided for @foundationFactRevenue.
+  ///
+  /// In en, this message translates to:
+  /// **'Revenue'**
+  String get foundationFactRevenue;
+
+  /// No description provided for @foundationStatusReleased.
+  ///
+  /// In en, this message translates to:
+  /// **'Released'**
+  String get foundationStatusReleased;
+
+  /// No description provided for @foundationStatusEnded.
+  ///
+  /// In en, this message translates to:
+  /// **'Ended'**
+  String get foundationStatusEnded;
+
+  /// No description provided for @foundationStatusReturningSeries.
+  ///
+  /// In en, this message translates to:
+  /// **'Returning Series'**
+  String get foundationStatusReturningSeries;
+
+  /// No description provided for @foundationStatusInProduction.
+  ///
+  /// In en, this message translates to:
+  /// **'In Production'**
+  String get foundationStatusInProduction;
+
+  /// No description provided for @foundationStatusCanceled.
+  ///
+  /// In en, this message translates to:
+  /// **'Canceled'**
+  String get foundationStatusCanceled;
+
+  /// No description provided for @foundationStatusPlanned.
+  ///
+  /// In en, this message translates to:
+  /// **'Planned'**
+  String get foundationStatusPlanned;
+
+  /// No description provided for @foundationStatusPostProduction.
+  ///
+  /// In en, this message translates to:
+  /// **'Post Production'**
+  String get foundationStatusPostProduction;
+
+  /// No description provided for @foundationStatusRumored.
+  ///
+  /// In en, this message translates to:
+  /// **'Rumored'**
+  String get foundationStatusRumored;
+
+  /// No description provided for @foundationMonthJan.
+  ///
+  /// In en, this message translates to:
+  /// **'Jan'**
+  String get foundationMonthJan;
+
+  /// No description provided for @foundationMonthFeb.
+  ///
+  /// In en, this message translates to:
+  /// **'Feb'**
+  String get foundationMonthFeb;
+
+  /// No description provided for @foundationMonthMar.
+  ///
+  /// In en, this message translates to:
+  /// **'Mar'**
+  String get foundationMonthMar;
+
+  /// No description provided for @foundationMonthApr.
+  ///
+  /// In en, this message translates to:
+  /// **'Apr'**
+  String get foundationMonthApr;
+
+  /// No description provided for @foundationMonthMay.
+  ///
+  /// In en, this message translates to:
+  /// **'May'**
+  String get foundationMonthMay;
+
+  /// No description provided for @foundationMonthJun.
+  ///
+  /// In en, this message translates to:
+  /// **'Jun'**
+  String get foundationMonthJun;
+
+  /// No description provided for @foundationMonthJul.
+  ///
+  /// In en, this message translates to:
+  /// **'Jul'**
+  String get foundationMonthJul;
+
+  /// No description provided for @foundationMonthAug.
+  ///
+  /// In en, this message translates to:
+  /// **'Aug'**
+  String get foundationMonthAug;
+
+  /// No description provided for @foundationMonthSep.
+  ///
+  /// In en, this message translates to:
+  /// **'Sep'**
+  String get foundationMonthSep;
+
+  /// No description provided for @foundationMonthOct.
+  ///
+  /// In en, this message translates to:
+  /// **'Oct'**
+  String get foundationMonthOct;
+
+  /// No description provided for @foundationMonthNov.
+  ///
+  /// In en, this message translates to:
+  /// **'Nov'**
+  String get foundationMonthNov;
+
+  /// No description provided for @foundationMonthDec.
+  ///
+  /// In en, this message translates to:
+  /// **'Dec'**
+  String get foundationMonthDec;
+
+  /// Layout of a short date in the facts panel. The caller passes the literal placeholders back, so the package can fill them.
+  ///
+  /// In en, this message translates to:
+  /// **'{month} {day}, {year}'**
+  String foundationDatePattern(String month, String day, String year);
 }
 
 class _AppLocalizationsDelegate
