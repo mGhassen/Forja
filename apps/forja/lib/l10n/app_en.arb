@@ -2931,5 +2931,15 @@
         "type": "String"
       }
     }
-  }
+  },
+  "foundationWordSeeAll": "See all",
+  "foundationWordBecauseYouWatched": "Because you watched",
+  "foundationWordPlanToWatch": "Plan to Watch",
+  "foundationWordWatching": "Watching",
+  "foundationWordOnHold": "On Hold",
+  "foundationWordCompleted": "Completed",
+  "foundationWordDropped": "Dropped",
+  "foundationWordEpisodes": "Episodes",
+  "foundationWordReload": "Reload",
+  "foundationWordClose": "Close"
 }

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:forja_foundation/l10n/foundation_strings.dart';
 import 'package:forja_foundation/components/settled_network_image.dart';
 import 'package:forja_foundation/tokens/forja_details_tokens.dart';
 import 'package:forja_foundation/tokens/forja_motion_theme.dart';
@@ -784,7 +785,10 @@ class _TvSeasonEpisodePickerState extends State<TvSeasonEpisodePicker> {
           padding: DetailsBody.contentPadding(context),
           child: Row(
             children: [
-              Text('Episodes', style: ShellSectionTitle.titleStyleFor(context)),
+              Text(
+                ForjaFoundationStrings.of(context).t('Episodes'),
+                style: ShellSectionTitle.titleStyleFor(context),
+              ),
               if (episodeCount > 0) ...[
                 const SizedBox(width: 8),
                 Text(

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:forja_foundation/l10n/foundation_strings.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 
 /// Parsed air-date metadata for an episode list row.
@@ -58,7 +59,14 @@ String formatEpisodeDisplayDate(String iso) {
   if (parsed == null) {
     return iso.length >= 10 ? iso.substring(0, 10) : iso;
   }
-  return '${_monthLabels[parsed.month - 1]} ${parsed.day}, ${parsed.year}';
+  final strings = ForjaFoundationStrings.current;
+  final months = strings.shortMonths.length == _monthLabels.length
+      ? strings.shortMonths
+      : _monthLabels;
+  return strings.datePattern
+      .replaceAll('{month}', months[parsed.month - 1])
+      .replaceAll('{day}', '${parsed.day}')
+      .replaceAll('{year}', '${parsed.year}');
 }
 
 DateTime? _parseIsoDate(String iso) {

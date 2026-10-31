@@ -568,8 +568,7 @@ class _AppState extends State<App> with WidgetsBindingObserver, WindowListener {
               );
             }
             final l10n = context.l10n;
-            return ForjaFoundationStringsScope(
-              strings: ForjaFoundationStrings(
+            final foundation = ForjaFoundationStrings(
                 readMore: l10n.foundationReadMore,
                 readLess: l10n.foundationReadLess,
                 retry: l10n.foundationRetry,
@@ -625,7 +624,23 @@ class _AppState extends State<App> with WidgetsBindingObserver, WindowListener {
                   '{day}',
                   '{year}',
                 ),
-              ),
+                words: {
+                  'See all': l10n.foundationWordSeeAll,
+                  'Because you watched': l10n.foundationWordBecauseYouWatched,
+                  'Plan to Watch': l10n.foundationWordPlanToWatch,
+                  'Watching': l10n.foundationWordWatching,
+                  'On Hold': l10n.foundationWordOnHold,
+                  'Completed': l10n.foundationWordCompleted,
+                  'Dropped': l10n.foundationWordDropped,
+                  'Episodes': l10n.foundationWordEpisodes,
+                  'Reload': l10n.foundationWordReload,
+                  'Close': l10n.foundationWordClose,
+                },
+              );
+            // Code with no BuildContext (date helpers, const option lists) reads this.
+            ForjaFoundationStrings.current = foundation;
+            return ForjaFoundationStringsScope(
+              strings: foundation,
               child: content,
             );
           },

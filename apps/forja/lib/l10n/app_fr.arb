@@ -1472,5 +1472,15 @@
   "foundationMonthOct": "oct.",
   "foundationMonthNov": "nov.",
   "foundationMonthDec": "déc.",
-  "foundationDatePattern": "{day} {month} {year}"
+  "foundationDatePattern": "{day} {month} {year}",
+  "foundationWordSeeAll": "Voir tout",
+  "foundationWordBecauseYouWatched": "Parce que vous avez regardé",
+  "foundationWordPlanToWatch": "À regarder",
+  "foundationWordWatching": "En cours",
+  "foundationWordOnHold": "En pause",
+  "foundationWordCompleted": "Terminé",
+  "foundationWordDropped": "Abandonné",
+  "foundationWordEpisodes": "Épisodes",
+  "foundationWordReload": "Recharger",
+  "foundationWordClose": "Fermer"
 }

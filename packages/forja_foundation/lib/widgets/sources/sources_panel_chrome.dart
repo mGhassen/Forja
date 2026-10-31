@@ -433,7 +433,7 @@ class _SourcesPanelChromeState extends State<SourcesPanelChrome> {
           else ...[
             if (!loading)
               IconButton(
-                tooltip: 'Reload',
+                tooltip: ForjaFoundationStrings.of(context).t('Reload'),
                 onPressed: () => unawaited(_ensureLoaded(_tabId, force: true)),
                 icon: Icon(
                   Icons.refresh_rounded,
@@ -443,7 +443,7 @@ class _SourcesPanelChromeState extends State<SourcesPanelChrome> {
               ),
             if (widget.onClosed != null)
               IconButton(
-                tooltip: 'Close',
+                tooltip: ForjaFoundationStrings.of(context).t('Close'),
                 onPressed: widget.onClosed,
                 icon: Icon(
                   Icons.close_rounded,

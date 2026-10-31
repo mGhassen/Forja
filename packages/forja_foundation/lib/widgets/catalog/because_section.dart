@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:forja_foundation/l10n/foundation_strings.dart';
 import 'package:forja_foundation/components/crossfade_swap.dart';
 import 'package:forja_foundation/components/network_image.dart';
 import 'package:forja_foundation/tokens/forja_motion_theme.dart';
@@ -100,7 +101,7 @@ class BecauseSection extends StatelessWidget {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
-                      'Because you watched',
+                      ForjaFoundationStrings.of(context).t('Because you watched'),
                       style: TextStyle(
                         color: Colors.white.withValues(alpha: 0.5),
                         fontSize: kickerFontSize,
@@ -133,7 +134,7 @@ class BecauseSection extends StatelessWidget {
                 GestureDetector(
                   onTap: onSeeAll,
                   child: Text(
-                    'See all',
+                    ForjaFoundationStrings.of(context).t('See all'),
                     style: TextStyle(
                       color: ForjaShellColors.textSecondary,
                       fontSize: seeAllFontSize,

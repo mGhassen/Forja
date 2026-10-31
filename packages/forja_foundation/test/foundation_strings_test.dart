@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:forja_foundation/l10n/foundation_strings.dart';
+import 'package:forja_foundation/widgets/details/episode_air_date.dart';
 import 'package:forja_foundation/widgets/details/facts_panel.dart';
+import 'package:forja_foundation/widgets/details/list_status_pin.dart';
 import 'package:forja_foundation/widgets/details/hero_overview_text.dart';
 
 const _long =
@@ -124,5 +126,38 @@ void main() {
     );
     expect(find.text('Plus'), findsOneWidget);
     expect(find.text('Lire la suite'), findsNothing);
+  });
+
+  group('words and the current strings', () {
+    tearDown(() => ForjaFoundationStrings.current = ForjaFoundationStrings.english);
+
+    test('t() translates known words and keeps the English for the rest', () {
+      const fr = ForjaFoundationStrings(words: {'See all': 'Voir tout'});
+      expect(fr.t('See all'), 'Voir tout');
+      expect(fr.t('Reload'), 'Reload');
+      expect(ForjaFoundationStrings.english.t('See all'), 'See all');
+    });
+
+    test('episode dates stay "Oct 31, 2026" in English and follow the app language', () {
+      expect(formatEpisodeDisplayDate('2026-10-31'), 'Oct 31, 2026');
+      ForjaFoundationStrings.current = const ForjaFoundationStrings(
+        shortMonths: [
+          'janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin',
+          'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.',
+        ],
+        datePattern: '{day} {month} {year}',
+      );
+      expect(formatEpisodeDisplayDate('2026-10-31'), '31 oct. 2026');
+      expect(formatEpisodeDisplayDate('nonsense'), 'nonsense');
+    });
+
+    test('list status labels follow the current strings', () {
+      expect(listStatusLabel('plantowatch'), 'Plan to Watch');
+      ForjaFoundationStrings.current = const ForjaFoundationStrings(
+        words: {'Plan to Watch': 'À regarder'},
+      );
+      expect(listStatusLabel('plantowatch'), 'À regarder');
+      expect(listStatusLabel('hold'), 'On Hold');
+    });
   });
 }

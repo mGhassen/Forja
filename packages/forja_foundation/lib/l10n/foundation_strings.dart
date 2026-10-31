@@ -20,6 +20,7 @@ class ForjaFoundationStrings {
     this.statusLabels = const {},
     this.shortMonths = const [],
     this.datePattern = '{month} {day}, {year}',
+    this.words = const {},
   });
 
   final String readMore;
@@ -43,6 +44,16 @@ class ForjaFoundationStrings {
 
   /// Date layout with `{day}`, `{month}` and `{year}` placeholders.
   final String datePattern;
+
+  /// Other short phrases, keyed by their English text ("See all").
+  final Map<String, String> words;
+
+  /// [english] translated by [words]; the English text when there is no entry.
+  String t(String english) => words[english] ?? english;
+
+  /// The strings the app is showing now. Code with no [BuildContext] (date
+  /// helpers, const option lists) reads this; the app sets it with the scope.
+  static ForjaFoundationStrings current = english;
 
   static const ForjaFoundationStrings english = ForjaFoundationStrings();
 
@@ -68,7 +79,8 @@ class ForjaFoundationStrings {
       mapEquals(other.factLabels, factLabels) &&
       mapEquals(other.statusLabels, statusLabels) &&
       listEquals(other.shortMonths, shortMonths) &&
-      other.datePattern == datePattern;
+      other.datePattern == datePattern &&
+      mapEquals(other.words, words);
 
   @override
   int get hashCode => Object.hash(
@@ -87,6 +99,7 @@ class ForjaFoundationStrings {
     ),
     Object.hashAll(shortMonths),
     datePattern,
+    Object.hashAll(words.entries.map((e) => Object.hash(e.key, e.value))),
   );
 }
 
