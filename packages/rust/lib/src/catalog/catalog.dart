@@ -7,6 +7,7 @@ export 'subtitlecat_service.dart';
 export 'stremio_addon_features.dart';
 export 'stremio_service.dart';
 export 'tmdb_api.dart';
+export 'tmdb_language.dart';
 export 'tmdb_watch_provider_family.dart';
 export 'tmdb_watch_region.dart';
 export 'tmdb_service.dart';
