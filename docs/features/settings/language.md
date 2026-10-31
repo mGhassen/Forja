@@ -6,7 +6,7 @@
 
 Forja shows its screens in English or French. By default it follows the language of your device and uses English when your device language is not available. Your choice is remembered the next time you open Forja.
 
-Movie and series titles, descriptions, genres and posters are loaded in the same language when the source has them. Names that come from packs, stream providers, IPTV portals and other sources appear as the source provides them.
+Movie and series titles, descriptions, genres and posters are loaded in the same language when the source has them. The headings and labels that packs show (Home, anime, IPTV and the other hubs) follow the language too. Names that come from stream providers, IPTV portals and other sources appear as the source provides them.
 
 ## How to open it
 
