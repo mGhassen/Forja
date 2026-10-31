@@ -449,4 +449,23 @@ mod tests {
         assert_eq!(en, "one piece|1999|tv");
         assert_ne!(en, match_cache_key("One Piece", Some(1999), "tv", "fr-FR"));
     }
+
+    #[test]
+    fn match_json_live_language() {
+        let base = BASE_URL.trim_end_matches('/');
+        if base_needs_client_api_key(base) && API_KEY.is_empty() {
+            eprintln!("skip match_json_live_language: TMDB_API_KEY not set");
+            return;
+        }
+        let name_of = |raw: String| -> String {
+            let v: serde_json::Value = serde_json::from_str(&raw).unwrap();
+            v.get("name").and_then(|x| x.as_str()).unwrap_or("").to_string()
+        };
+        let english = name_of(match_json(r#"{"title":"The Lion King","year":1994,"type":"movie"}"#));
+        let french = name_of(match_json(
+            r#"{"title":"The Lion King","year":1994,"type":"movie","language":"fr-FR"}"#,
+        ));
+        assert_eq!(english, "The Lion King");
+        assert_eq!(french, "Le Roi lion");
+    }
 }
