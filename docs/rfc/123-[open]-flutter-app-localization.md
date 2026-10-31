@@ -10,7 +10,7 @@
 | | |
 |--|--|
 | **Progress** | **5 / 9** components · **4 / 6** acceptance |
-| **Current slice** | Tooling, language setting and picker are in. About 1,400 messages cover Settings, the shell, player, details, account and download screens; the welcome screen, Settings and Home were run in a Linux debug build. TMDB titles, overviews, genres and posters follow the app language after a restart. Hub text written by packs follows the app language too (checked on Home). Manifest labels, option lists whose text is also a stored value and text from services with no BuildContext are still English. Remaining Settings pages, shell, player, details, packs and TMDB metadata language are not started. |
+| **Current slice** | Tooling, language setting and picker are in. About 1,400 messages cover Settings, the shell, player, details, account and download screens; the welcome screen, Settings and Home were run in a Linux debug build. TMDB titles, overviews, genres and posters follow the app language after a restart. Hub text written by packs follows the app language too (checked on Home). Pack manifest text and file sizes follow the app language in code, but have not been run in the app yet. Option lists whose text is also a stored value and text from services with no BuildContext are still English. Remaining Settings pages, shell, player, details, packs and TMDB metadata language are not started. |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -27,7 +27,7 @@
 | 5 | R123-C05 | Catalog guard tests: key parity, placeholder parity, generated Dart not stale | ✅ |
 | 6 | R123-C06 | Remaining Settings pages (Addons, Packs, Features, Downloads, Data, About, Profile panel) | 🔄 |
 | 7 | R123-C07 | Shell, player, details, account and download host strings | 🔄 |
-| 8 | R123-C08 | Pack contract: host passes the app locale to packs (`config.uiLocale`); hub scripts translate their own text through a `HUB_I18N` table in each kit (done); manifest labels (the rail's "Home", setting names) need host support (not started) | 🔄 |
+| 8 | R123-C08 | Pack contract: host passes the app locale to packs (`config.uiLocale`); hub scripts translate their own text through a `HUB_I18N` table in each kit (done); manifests carry an `i18n.fr` table (English text as key) that `EnginePlugin` applies to name, description, nav and settings text (written, not yet run in the app) | 🔄 |
 | 9 | R123-C09 | TMDB metadata language and image languages follow the app language: Dart client and the home, anime, IPTV and Asian drama hubs. Home checked in the app; the other hubs by script only | 🔄 |
 
 ---
@@ -60,9 +60,11 @@ The Flutter app has no localization today: strings are inline literals, and `Mat
 7. **Call sites use `context.l10n`.** Data that used to be `const` strings (the Settings category list) now holds resolver functions instead.
 8. **Text from an API is requested in the app language, not translated.** TMDB takes a `language` parameter (checked against the project gateway: French titles, overviews, taglines, genres and poster artwork). The host puts the language in `config.uiLocale` for every hub call, because the engine forwards `config` unchanged but drops unknown top-level context fields. Packs that call TMDB read it. English requests stay byte-identical, and matching a provider title to TMDB keeps using English.
 9. **Screens switch at once, API content after a restart.** Hubs already loaded keep the previous language until they reload.
-10. **Packs translate their own text with a table, English as the key.** Each hub's `_kit.js` carries `HUB_I18N` plus `hubText(cfg, en)`; a missing locale or entry shows the original English, so existing behaviour cannot change. Manifest `label` and `name` fields are read by the host, so they need a host-side lookup before they can follow the language.
+10. **Packs translate their own text with a table, English as the key.** Each hub's `_kit.js` carries `HUB_I18N` plus `hubText(cfg, en)`; a missing locale or entry shows the original English, so existing behaviour cannot change. Manifest text is read by the host, so a manifest carries its own `i18n: { "fr": { "<English>": "<French>" } }` table and `EnginePlugin.fromJson` applies it when it parses. The saved copy keeps the manifest's own text, so a later language change still applies.
 11. **The design-system package gets its words from the app** through `ForjaFoundationStringsScope` (read more, retry, back, search, empty states, the facts panel's labels, statuses and dates). Callers that pass their own text still win; with no scope everything stays English.
 12. **AniList has no language option** (its schema has no locale argument and descriptions are English), so French anime text comes from the TMDB enrichment the anime hub already does.
+13. **File sizes are display-only.** `ByteUnits` writes `1,5 Go` in French. Sizes that are parsed back (torrent source labels, the offline stream size handed to the sources panel) stay English.
+14. **TMDB matches ask for the app language.** `host.tmdb.match` takes an optional `language`; every hub kit passes `cfg.uiLocale`. English or none leaves the request and cache key as they were.
 
 ## Out of scope
 
@@ -71,7 +73,6 @@ The Flutter app has no localization today: strings are inline literals, and `Mat
 - Audio and subtitle language preferences (separate setting, unchanged).
 - Translating provider names and stream titles that come from sources.
 - Localizing the language names in the audio and subtitle pickers, file sizes (KB, MB) and money formats.
-- Manifest labels until the host can look them up per language.
 
 ## Related
 
