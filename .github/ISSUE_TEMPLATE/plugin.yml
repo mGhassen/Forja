@@ -49,6 +49,15 @@ body:
       required: true
 
   - type: input
+    id: plugin-version
+    attributes:
+      label: Plugin version
+      description: Pack / plugin version shown in Settings → Plugins (or Addons). Skip if requesting a new plugin.
+      placeholder: e.g. 1.2.0
+    validations:
+      required: false
+
+  - type: input
     id: plugin-url
     attributes:
       label: Site / repo (if new or unknown)
