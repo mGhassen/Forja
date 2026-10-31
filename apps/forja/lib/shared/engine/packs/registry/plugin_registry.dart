@@ -19,6 +19,7 @@ import 'package:forja/shared/engine/packs/registry/plugin_script_disk_store.dart
 import 'package:forja/shared/engine/packs/install/remote_pack_intent_store.dart';
 import 'package:forja/shared/playback/cache/catalog_sources_session_cache.dart';
 import 'package:forja/shared/playback/cache/player_stream_extract_cache.dart';
+import 'package:forja/shared/services/app/app_locale.dart';
 import 'package:forja/shared/utils/bounded_parallel.dart';
 import 'package:http/http.dart' as http;
 import 'package:rust/rust.dart';
@@ -30,7 +31,17 @@ import 'package:shared_preferences/shared_preferences.dart';
 /// Remote JS bodies live on disk ([PluginScriptDiskStore]); pack metadata in
 /// prefs scoped per launched profile ([LocalDataScope]).
 class PluginRegistry {
-  PluginRegistry._();
+  PluginRegistry._() {
+    AppLocale.notifier.addListener(_onAppLanguageChanged);
+  }
+
+  /// Pack text (names, nav and settings labels) is read in the app language when
+  /// a pack is parsed, so a change of language needs the packs read again.
+  void _onAppLanguageChanged() {
+    _packsMem = null;
+    _packsMemScopeGen = -1;
+    notifyChanged();
+  }
   static final PluginRegistry instance = PluginRegistry._();
 
   /// Pack `prelude` may list one path or comma-separated paths (`_kit.js,_search.js`).
