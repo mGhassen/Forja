@@ -48,3 +48,4 @@
 
 - [Simkl add-to-list silent rewrites](https://api.simkl.org/api-reference/simkl/add-to-list)
 - [497](497-[fixed]-simkl-merge-with-deletion.md)
+- Follow-on film wipe: [520](520-[fixed]-simkl-movie-list-status-wiped-by-history-remove.md)

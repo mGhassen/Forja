@@ -34,6 +34,22 @@ void main() {
     });
   });
 
+  group('shouldMirrorMovieHistoryAfterListWrite', () {
+    test('only completed mirrors history — never wipe after plantowatch', () {
+      expect(
+        SimklService.shouldMirrorMovieHistoryAfterListWrite('completed'),
+        isTrue,
+      );
+      for (final status in ['plantowatch', 'watching', 'hold', 'dropped', '']) {
+        expect(
+          SimklService.shouldMirrorMovieHistoryAfterListWrite(status),
+          isFalse,
+          reason: status,
+        );
+      }
+    });
+  });
+
   group('ListFollow.hideKeysFor', () {
     test('anime includes open:anime and anilist keys', () {
       final t = ListFollowTarget(

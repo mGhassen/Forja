@@ -761,8 +761,11 @@ class SimklService {
   }
 
   /// Move a title into a Simkl list bucket (`plantowatch`, `watching`, `hold`,
-  /// `completed`, `dropped`). Movies also get history add/remove so Completed
-  /// matches watched state.
+  /// `completed`, `dropped`). Movies marked `completed` also get
+  /// `/sync/history` so Completed matches watched state.
+  ///
+  /// Never call title-level `/sync/history/remove` after a successful list
+  /// write — that API deletes the whole library row (including Plan to Watch).
   ///
   /// Check [SimklListWriteResult.rewrittenAgainst] — Simkl may store a different
   /// `to` (airing show marked completed → watching) with HTTP 201.
@@ -806,12 +809,8 @@ class SimklService {
     if (!result.ok) return result;
 
     final stored = result.resolvedTo ?? to;
-    if (type == 'movies') {
-      if (stored == 'completed') {
-        await addToHistory(movies: [hist]);
-      } else {
-        await removeFromHistory(movies: [hist]);
-      }
+    if (type == 'movies' && shouldMirrorMovieHistoryAfterListWrite(stored)) {
+      await addToHistory(movies: [hist]);
     }
     return SimklListWriteResult(
       ok: true,
@@ -819,6 +818,14 @@ class SimklService {
       notFound: result.notFound,
     );
   }
+
+  /// After movie `/sync/add-to-list`, mirror watched history only for Completed.
+  ///
+  /// Title-level `/sync/history/remove` wipes the library row — never pair it
+  /// with a successful list write (plantowatch / watching / hold / dropped).
+  @visibleForTesting
+  static bool shouldMirrorMovieHistoryAfterListWrite(String storedStatus) =>
+      storedStatus.trim() == 'completed';
 
   /// Current Simkl list status for a TMDB title, or null if not in the library.
   Future<String?> getListStatus({

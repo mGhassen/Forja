@@ -556,6 +556,7 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [517-[fixed]-…](fixed/517-[fixed]-exo-introdb-seekbar-zones.md) | Exo seek bar missing IntroDB colored zones | P2 | Medium | fixed | Complete · 2/2 · A 0/1 | [032](032-[draft]-exoplayer-parity-gaps.md) |
 | [518-[fixed]-…](fixed/518-[fixed]-android-tv-power-kills-xiaomi-bounce.md) | ATV power kills process → Xiaomi standby bounce | P0 | High | fixed | Complete · 1/1 · A 0/1 | [119](119-[open]-android-tv-double-back-exit.md) · [RFC-028](../rfc/028-[draft]-adaptive-shell-profiles.md) |
 | [519-[open]-…](519-[open]-tmdb-gateway-cloudflare-workers.md) | Move TMDB gateway to Cloudflare Workers (kill Vercel FDT) | P1 | High | open | 6/6 · A 2/3 | [302](302-[open]-tmdb-proxy-base-url.md) |
+| [520-[fixed]-…](fixed/520-[fixed]-simkl-movie-list-status-wiped-by-history-remove.md) | Simkl film Plan to Watch wiped by history/remove after add | P1 | High | fixed | Complete · 3/3 · A 0/2 | [500](fixed/500-[fixed]-simkl-list-status-rewrite-and-mediatype.md) |
 
 **Migration parity (draft):** [018](018-[draft]-migration-playback-parity-unverified.md) → [019](019-[draft]-webstreamr-enginejobs-e2e-test-gap.md)–[022](022-[draft]-playback-widget-integration-tests.md).
 
