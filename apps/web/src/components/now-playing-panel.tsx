@@ -61,54 +61,53 @@ export function NowPlayingPanel({ className }: { className?: string }) {
   const prev = REEL[(index - 1 + REEL.length) % REEL.length]!
   const next = REEL[(index + 1) % REEL.length]!
 
+  useEffect(() => {
+    const img = new Image()
+    img.src = next.backdrop
+    const poster = new Image()
+    poster.src = next.poster
+  }, [next.backdrop, next.poster])
+
   return (
     <div className={cn('w-full', className)}>
       <div className="relative overflow-hidden rounded-2xl border border-[rgba(237,230,218,0.14)] bg-[#121110]">
-        {/* Backdrop glow */}
         <div className="pointer-events-none absolute inset-0">
-          {REEL.map((item, i) => (
-            <img
-              key={item.id}
-              src={item.backdrop}
-              alt=""
-              aria-hidden
-              className={cn(
-                'absolute inset-0 h-full w-full object-cover transition-opacity duration-700',
-                i === index ? 'opacity-40' : 'opacity-0',
-              )}
-            />
-          ))}
+          <img
+            key={current.id}
+            src={current.backdrop}
+            alt=""
+            aria-hidden
+            decoding="async"
+            className="absolute inset-0 h-full w-full object-cover opacity-40"
+          />
           <div className="absolute inset-0 bg-gradient-to-t from-forja-bg via-forja-bg/85 to-forja-bg/40" />
         </div>
 
         <div className="relative flex flex-col gap-5 p-5 sm:flex-row sm:gap-7 sm:p-8 lg:gap-8 lg:p-10">
-          {/* Poster stack */}
           <div className="relative mx-auto h-[220px] w-[128px] shrink-0 sm:mx-0 sm:h-[320px] sm:w-[188px] lg:h-[360px] lg:w-[210px]">
             <img
               src={prev.poster}
               alt=""
               aria-hidden
+              loading="lazy"
+              decoding="async"
               className="absolute top-4 left-0 hidden h-[85%] w-[85%] -rotate-6 rounded-xl object-cover opacity-35 shadow-lg sm:block"
             />
             <img
               src={next.poster}
               alt=""
               aria-hidden
+              loading="lazy"
+              decoding="async"
               className="absolute top-4 right-0 hidden h-[85%] w-[85%] rotate-6 rounded-xl object-cover opacity-35 shadow-lg sm:block"
             />
-            {REEL.map((item, i) => (
-              <img
-                key={item.id}
-                src={item.poster}
-                alt={item.title}
-                className={cn(
-                  'absolute inset-0 h-full w-full rounded-xl object-cover shadow-2xl ring-1 ring-white/10 transition-all duration-500',
-                  i === index
-                    ? 'z-10 scale-100 opacity-100'
-                    : 'z-0 scale-95 opacity-0',
-                )}
-              />
-            ))}
+            <img
+              key={current.id}
+              src={current.poster}
+              alt={current.title}
+              decoding="async"
+              className="absolute inset-0 z-10 h-full w-full rounded-xl object-cover shadow-2xl ring-1 ring-white/10"
+            />
             <div
               className="pointer-events-none absolute inset-0 z-20 flex items-center justify-center"
               aria-hidden

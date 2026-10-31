@@ -4,28 +4,28 @@ import { cn } from '@/lib/utils'
 /** Freely licensed Blender Foundation open movies (CC BY). See /brand/open-films/ATTRIBUTION.txt */
 const OPEN_FILMS = [
   {
-    backdrop: '/brand/open-films/big-buck-bunny-backdrop.jpg',
-    hero: '/brand/open-films/heroes/big-buck-bunny-hero.jpg',
+    image: '/brand/open-films/big-buck-bunny-backdrop.jpg',
+    thumb: '/brand/open-films/thumbs/big-buck-bunny.jpg',
     label: 'Big Buck Bunny',
   },
   {
-    backdrop: '/brand/open-films/sintel-backdrop.jpg',
-    hero: '/brand/open-films/heroes/sintel-hero.jpg',
+    image: '/brand/open-films/sintel-backdrop.jpg',
+    thumb: '/brand/open-films/thumbs/sintel.jpg',
     label: 'Sintel',
   },
   {
-    backdrop: '/brand/open-films/tears-of-steel-backdrop.jpg',
-    hero: '/brand/open-films/heroes/tears-of-steel-hero.jpg',
+    image: '/brand/open-films/tears-of-steel-backdrop.jpg',
+    thumb: '/brand/open-films/thumbs/tears-of-steel.jpg',
     label: 'Tears of Steel',
   },
   {
-    backdrop: '/brand/open-films/spring-backdrop.jpg',
-    hero: '/brand/open-films/heroes/spring-hero.jpg',
+    image: '/brand/open-films/spring-backdrop.jpg',
+    thumb: '/brand/open-films/thumbs/spring.jpg',
     label: 'Spring',
   },
   {
-    backdrop: '/brand/open-films/elephants-dream-backdrop.jpg',
-    hero: '/brand/open-films/heroes/elephants-dream-hero.jpg',
+    image: '/brand/open-films/elephants-dream-backdrop.jpg',
+    thumb: '/brand/open-films/thumbs/elephants-dream.jpg',
     label: 'Elephants Dream',
   },
 ] as const
@@ -94,6 +94,13 @@ function ShellScreen() {
     return () => window.clearInterval(id)
   }, [reduced])
 
+  // Prefetch the next full image only (carousel no longer mounts all 5).
+  useEffect(() => {
+    const next = OPEN_FILMS[(activeIndex + 1) % OPEN_FILMS.length]!
+    const img = new Image()
+    img.src = next.image
+  }, [activeIndex])
+
   const hero = OPEN_FILMS[activeIndex]!
 
   return (
@@ -134,22 +141,17 @@ function ShellScreen() {
 
       <div className="relative min-w-0 flex-1 overflow-hidden">
         <div className="absolute inset-0 overflow-hidden">
-          <div
+          <img
+            key={hero.image}
+            src={hero.image}
+            alt=""
+            fetchPriority="high"
+            decoding="async"
             className={cn(
-              'flex h-full',
-              reduced ? '' : 'transition-transform duration-700 ease-[cubic-bezier(0.4,0,0.2,1)]',
+              'absolute inset-0 h-full w-full object-cover object-center',
+              !reduced && 'animate-[forja-hero-in_0.7s_cubic-bezier(0.4,0,0.2,1)_both]',
             )}
-            style={{ transform: `translateX(-${activeIndex * 100}%)` }}
-          >
-            {OPEN_FILMS.map((film) => (
-              <img
-                key={film.hero}
-                src={film.hero}
-                alt=""
-                className="h-full min-w-full shrink-0 object-cover object-center"
-              />
-            ))}
-          </div>
+          />
         </div>
         <div
           aria-hidden
@@ -177,7 +179,7 @@ function ShellScreen() {
 
         <div className="relative z-[2] flex h-full max-w-[58%] flex-col justify-end px-2.5 pb-[5rem] pt-10 sm:max-w-[55%] sm:px-3.5 sm:pb-[5.75rem]">
           <h3
-            key={hero.hero}
+            key={hero.image}
             className={cn(
               'font-disp text-[clamp(14px,2.4vw,22px)] uppercase leading-[0.95] tracking-tight',
               !reduced && 'animate-now-title',
@@ -210,7 +212,7 @@ function ShellScreen() {
               const selected = i === activeIndex
               return (
                 <button
-                  key={item.backdrop}
+                  key={item.thumb}
                   type="button"
                   aria-label={`Show ${item.label}`}
                   aria-current={selected ? 'true' : undefined}
@@ -223,8 +225,12 @@ function ShellScreen() {
                   )}
                 >
                   <img
-                    src={item.backdrop}
+                    src={item.thumb}
                     alt=""
+                    width={240}
+                    height={135}
+                    loading="lazy"
+                    decoding="async"
                     className="absolute inset-0 h-full w-full object-cover"
                   />
                   <span className="absolute inset-x-0 bottom-0 bg-black/55 px-0.5 py-0.5 text-center text-[5px] font-semibold uppercase leading-tight tracking-wide text-white/85 sm:text-[6px]">
