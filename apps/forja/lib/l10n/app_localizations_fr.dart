@@ -143,11 +143,11 @@ class AppLocalizationsFr extends AppLocalizations {
   String get addonsHostMdblistEnterKeyWarning => 'Veuillez saisir une clé API';
 
   @override
-  String get addonsHostMdblistConnectedToast => 'MDBlist connecté !';
+  String get addonsHostMdblistConnectedToast => 'MDBlist connecté !';
 
   @override
   String addonsHostMdblistConnectedAsToast(String username) {
-    return 'MDBlist connecté en tant que $username !';
+    return 'MDBlist connecté en tant que $username !';
   }
 
   @override
@@ -287,7 +287,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get addonsHostPortalEngineDesktopSubtitle =>
-      'Chaînes en direct uniquement. HLS préfère AVPlayer (Mac) ou VLC (Windows) quand disponible ; MPEG-TS utilise MediaKit.';
+      'Chaînes en direct uniquement. HLS préfère AVPlayer (Mac) ou VLC (Windows) quand disponible ; MPEG-TS utilise MediaKit.';
 
   @override
   String get addonsHostPortalEpgTitle => 'Guide des programmes IPTV (EPG)';
@@ -356,7 +356,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String addonsHostTorrentDiskCacheTitle(int gb) {
-    return 'Cache disque : $gb Go';
+    return 'Cache disque : $gb Go';
   }
 
   @override
@@ -370,7 +370,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String addonsHostTorrentConnectionsTitle(int count) {
-    return 'Connexions par torrent : $count';
+    return 'Connexions par torrent : $count';
   }
 
   @override
@@ -391,11 +391,11 @@ class AppLocalizationsFr extends AppLocalizations {
   }
 
   @override
-  String get addonsHostSimklLoggedInToast => 'Connecté à Simkl !';
+  String get addonsHostSimklLoggedInToast => 'Connecté à Simkl !';
 
   @override
   String addonsHostSimklLoggedInAsToast(String username) {
-    return 'Connecté à Simkl en tant que $username !';
+    return 'Connecté à Simkl en tant que $username !';
   }
 
   @override
@@ -407,7 +407,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String addonsHostSimklSyncError(String error) {
-    return 'Erreur de synchronisation Simkl : $error';
+    return 'Erreur de synchronisation Simkl : $error';
   }
 
   @override
@@ -453,7 +453,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get addonsHostSimklSyncModeTitle =>
-      'Comment synchroniser les listes ?';
+      'Comment synchroniser les listes ?';
 
   @override
   String get addonsHostSimklSyncModeSubtitleAuto =>
@@ -483,7 +483,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get addonsHostSimklEnterCodePrompt =>
-      'Allez à l\'adresse ci-dessous et saisissez ce code :';
+      'Allez à l\'adresse ci-dessous et saisissez ce code :';
 
   @override
   String get addonsHostSimklWaitingAuth => 'En attente d\'autorisation...';
@@ -515,7 +515,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String addonsHostLanServerStartFailedDetailError(String detail) {
-    return 'Échec du démarrage du serveur LAN : $detail';
+    return 'Échec du démarrage du serveur LAN : $detail';
   }
 
   @override
@@ -552,7 +552,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get addonsHostLanIntroDesktop =>
-      'Transformez ce PC en serveur LAN Forja. Associez vos TV et téléphones une fois. Ils choisissent les torrents ; cet ordinateur télécharge et diffuse.';
+      'Transformez ce PC en serveur LAN Forja. Associez vos TV et téléphones une fois. Ils choisissent les torrents ; cet ordinateur télécharge et diffuse.';
 
   @override
   String get addonsHostLanIntroClient =>
@@ -575,7 +575,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get addonsHostLanDesktopAddressHint =>
-      'Sur la TV : Paramètres → LAN → saisissez cette IP et ce port si Découvrir ne trouve pas ce PC.';
+      'Sur la TV : Paramètres → LAN → saisissez cette IP et ce port si Découvrir ne trouve pas ce PC.';
 
   @override
   String addonsHostLanNoIpDetected(int port) {
@@ -587,7 +587,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get addonsHostLanPairingCodeHint =>
-      'Sur la TV : Paramètres → LAN → saisissez ce code (valable ~5 minutes, usage unique).';
+      'Sur la TV : Paramètres → LAN → saisissez ce code (valable ~5 minutes, usage unique).';
 
   @override
   String get addonsHostLanCopyTooltip => 'Copier';
@@ -632,7 +632,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String addonsHostLanCacheOnDisk(String size) {
-    return 'Cache sur disque : $size';
+    return 'Cache sur disque : $size';
   }
 
   @override
@@ -746,7 +746,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String addonsHostProvGenericError(String error) {
-    return 'Erreur : $error';
+    return 'Erreur : $error';
   }
 
   @override
@@ -777,7 +777,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String addonsHostProvInstallFailedDetailError(String error) {
-    return 'Échec de l\'installation : $error';
+    return 'Échec de l\'installation : $error';
   }
 
   @override
@@ -826,7 +826,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String addonsHostProvTestErrorResult(String error) {
-    return '❌ Erreur : $error';
+    return '❌ Erreur : $error';
   }
 
   @override
@@ -873,7 +873,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get addonsHostProvRetryButton => 'Réessayer';
 
   @override
-  String get addonsHostProvRemoveConfirmTitle => 'Supprimer cet addon ?';
+  String get addonsHostProvRemoveConfirmTitle => 'Supprimer cet addon ?';
 
   @override
   String get addonsHostProvYesTooltip => 'Oui';
@@ -942,7 +942,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String aboutCheckForUpdatesError(String error) {
-    return 'Échec de la recherche de mises à jour : $error';
+    return 'Échec de la recherche de mises à jour : $error';
   }
 
   @override
@@ -1009,7 +1009,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get aboutKeychainRowSubtitle =>
-      'Désactivé par défaut (fichier local de l\'app). Activez pour utiliser le Trousseau macOS. Forja explique d\'abord ; le système peut demander votre mot de passe une fois.';
+      'Désactivé par défaut (fichier local de l\'app). Activez pour utiliser le Trousseau macOS. Forja explique d\'abord ; le système peut demander votre mot de passe une fois.';
 
   @override
   String get aboutKeychainEnabled => 'Trousseau activé pour les secrets';
@@ -1018,7 +1018,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get aboutKeychainLocalStorage => 'Stockage dans un fichier local';
 
   @override
-  String get aboutKeychainConsentTitle => 'Utiliser le Trousseau macOS ?';
+  String get aboutKeychainConsentTitle => 'Utiliser le Trousseau macOS ?';
 
   @override
   String get aboutKeychainConsentBodyStore =>
@@ -1060,7 +1060,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get addonsConnectedServicesTitle => 'Services connectés';
 
   @override
-  String get addonsConnectedServicesSubtitle => 'Simkl ; MDBlist (admin)';
+  String get addonsConnectedServicesSubtitle => 'Simkl ; MDBlist (admin)';
 
   @override
   String get addonsLanSubtitle => 'Serveur de bureau, jumelage, relais torrent';
@@ -1129,7 +1129,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get addonsPackAuthBrowserStep2 =>
-      '2. Dans cet onglet Shahid : ouvrez la Console (⌘⌥J / Ctrl+Maj+J), collez, Entrée.';
+      '2. Dans cet onglet Shahid : ouvrez la Console (⌘⌥J / Ctrl+Maj+J), collez, Entrée.';
 
   @override
   String get addonsPackAuthBrowserStep3Waiting =>
@@ -1212,7 +1212,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get addonsPackGreenPlayIntro =>
-      'Fournisseurs Forja préférés pour le bouton Play vert. Ils sont essayés en premier ; une liste vide met en concurrence tous les fournisseurs Forja activés.';
+      'Fournisseurs Forja préférés pour le bouton Play vert. Ils sont essayés en premier ; une liste vide met en concurrence tous les fournisseurs Forja activés.';
 
   @override
   String get addonsPackGreenPlayEmpty =>
@@ -1263,7 +1263,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get dataStreamCacheTitle => 'Cache des flux';
 
   @override
-  String get dataStreamClearTitle => 'Effacer le cache des flux ?';
+  String get dataStreamClearTitle => 'Effacer le cache des flux ?';
 
   @override
   String get dataClear => 'Effacer';
@@ -1276,10 +1276,10 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get dataImagesSubtitle =>
-      'Vignettes d\'affiches et caches WebView des extracteurs. Libère de l\'espace disque ; les images se retéléchargent au besoin.';
+      'Vignettes d\'affiches et caches WebView des extracteurs. Libère de l\'espace disque ; les images se retéléchargent au besoin.';
 
   @override
-  String get dataImagesClearTitle => 'Effacer les images et WebView ?';
+  String get dataImagesClearTitle => 'Effacer les images et WebView ?';
 
   @override
   String get dataImagesClearBody =>
@@ -1296,7 +1296,7 @@ class AppLocalizationsFr extends AppLocalizations {
       'Catalogues, vérifications de disponibilité et analyses de chaînes. Les portails et favoris restent. Rechargé à la prochaine ouverture.';
 
   @override
-  String get dataPortalClearTitle => 'Effacer le cache des portails IPTV ?';
+  String get dataPortalClearTitle => 'Effacer le cache des portails IPTV ?';
 
   @override
   String get dataPortalClearBody =>
@@ -1313,7 +1313,7 @@ class AppLocalizationsFr extends AppLocalizations {
       'Fichiers d\'installation issus de la mise à jour dans l\'app (.dmg, .exe, AppImage). Sans risque à supprimer après l\'installation.';
 
   @override
-  String get dataUpdatesClearTitle => 'Effacer les mises à jour téléchargées ?';
+  String get dataUpdatesClearTitle => 'Effacer les mises à jour téléchargées ?';
 
   @override
   String get dataUpdatesClearBody =>
@@ -1331,11 +1331,11 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get dataScoresSubtitle =>
-      'Totaux de fiabilité pour le score dans les réglages et l\'ordre Auto. L\'ordre par glisser-déposer est conservé ; les scores repartent de zéro.';
+      'Totaux de fiabilité pour le score dans les réglages et l\'ordre Auto. L\'ordre par glisser-déposer est conservé ; les scores repartent de zéro.';
 
   @override
   String get dataScoresResetTitle =>
-      'Réinitialiser les scores des fournisseurs ?';
+      'Réinitialiser les scores des fournisseurs ?';
 
   @override
   String get dataScoresResetBody =>
@@ -1358,7 +1358,7 @@ class AppLocalizationsFr extends AppLocalizations {
       'Rangées de reprise sur Accueil, Anime et Drames asiatiques. Irréversible pour ce profil.';
 
   @override
-  String get dataContinueClearTitle => 'Effacer la reprise de lecture ?';
+  String get dataContinueClearTitle => 'Effacer la reprise de lecture ?';
 
   @override
   String get dataContinueClearBody =>
@@ -1378,7 +1378,7 @@ class AppLocalizationsFr extends AppLocalizations {
       'Coches « vu » locales dans les listes d\'épisodes. L\'historique en ligne Trakt / Simkl reste.';
 
   @override
-  String get dataWatchedClearTitle => 'Effacer les marques « vu » ?';
+  String get dataWatchedClearTitle => 'Effacer les marques « vu » ?';
 
   @override
   String get dataWatchedClearBody =>
@@ -1392,7 +1392,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String dataFailed(String error) {
-    return 'Échec : $error';
+    return 'Échec : $error';
   }
 
   @override
@@ -1403,7 +1403,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String dataExportFailed(String error) {
-    return 'Échec de l\'export : $error';
+    return 'Échec de l\'export : $error';
   }
 
   @override
@@ -1414,7 +1414,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get dataImportConfirmBody =>
-      'Cela écrase vos réglages actuels, y compris les addons, les clés API et les préférences. Continuer ?';
+      'Cela écrase vos réglages actuels, y compris les addons, les clés API et les préférences. Continuer ?';
 
   @override
   String get dataImport => 'Importer';
@@ -1424,7 +1424,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String dataImportFailed(String error) {
-    return 'Échec de l\'import : $error';
+    return 'Échec de l\'import : $error';
   }
 
   @override
@@ -1668,7 +1668,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String packsInstallFailed(String error) {
-    return 'Échec de l\'installation du pack : $error';
+    return 'Échec de l\'installation du pack : $error';
   }
 
   @override
@@ -1737,7 +1737,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String packsToastOfficialInstallFailed(String error) {
-    return 'Échec de l\'installation du pack officiel : $error';
+    return 'Échec de l\'installation du pack officiel : $error';
   }
 
   @override
@@ -1752,12 +1752,12 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String packsToastRefreshFailed(String error) {
-    return 'Échec de l\'actualisation : $error';
+    return 'Échec de l\'actualisation : $error';
   }
 
   @override
   String packsToastReloadFailed(String name, String error) {
-    return 'Échec du rechargement de $name : $error';
+    return 'Échec du rechargement de $name : $error';
   }
 
   @override
@@ -1773,7 +1773,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String packsToastDownloadFailed(String name, String error) {
-    return 'Échec du téléchargement de $name : $error';
+    return 'Échec du téléchargement de $name : $error';
   }
 
   @override
@@ -1789,7 +1789,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String packsToastUpdateFailed(String name, String error) {
-    return 'Échec de la mise à jour de $name : $error';
+    return 'Échec de la mise à jour de $name : $error';
   }
 
   @override
@@ -1863,7 +1863,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String packsInstallUpdateAvailable(String version) {
-    return 'Mise à jour disponible : v$version';
+    return 'Mise à jour disponible : v$version';
   }
 
   @override
@@ -1972,7 +1972,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get profileSignIn => 'Se connecter';
 
   @override
-  String get profileNewHere => 'Nouveau ici ?';
+  String get profileNewHere => 'Nouveau ici ?';
 
   @override
   String get profileCreateAccountWeb => 'Créer un compte sur le web';
@@ -2032,7 +2032,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get downloadsDeleteAllCompletedTitle =>
-      'Supprimer tous les téléchargements terminés ?';
+      'Supprimer tous les téléchargements terminés ?';
 
   @override
   String get downloadsDeleteAllCompletedBody =>
@@ -2134,7 +2134,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get downloadsDelete => 'Supprimer';
 
   @override
-  String get downloadsDeleteOneTitle => 'Supprimer le téléchargement ?';
+  String get downloadsDeleteOneTitle => 'Supprimer le téléchargement ?';
 
   @override
   String downloadsDeleteOneBody(String title) {
@@ -2175,7 +2175,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get settingsUiP2pAckIntro =>
-      'Ce flux utilise la technologie pair-à-pair (P2P). En continuant, vous confirmez être conscient que :';
+      'Ce flux utilise la technologie pair-à-pair (P2P). En continuant, vous confirmez être conscient que :';
 
   @override
   String get settingsUiP2pAckBulletIp =>
@@ -2350,13 +2350,13 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get playerScreenHwDecGpuSafe =>
-      'Décodage matériel : activé (GPU, sûr)';
+      'Décodage matériel : activé (GPU, sûr)';
 
   @override
-  String get playerScreenHwDecCopyBack => 'Décodage matériel : activé (copie)';
+  String get playerScreenHwDecCopyBack => 'Décodage matériel : activé (copie)';
 
   @override
-  String get playerScreenHwDecOffCpu => 'Décodage matériel : désactivé (CPU)';
+  String get playerScreenHwDecOffCpu => 'Décodage matériel : désactivé (CPU)';
 
   @override
   String get playerScreenSwDecodeSoftDisplay =>
@@ -2473,7 +2473,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String playerScreenSourceFailed(String title) {
-    return 'Échec : $title';
+    return 'Échec : $title';
   }
 
   @override
@@ -2800,7 +2800,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String playerControlPlayerCouldNotLaunch(String player) {
-    return '$player n\'a pas pu être lancé. Est-il installé ?';
+    return '$player n\'a pas pu être lancé. Est-il installé ?';
   }
 
   @override
@@ -2863,7 +2863,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String playerControlSearchingHint(String hint) {
-    return 'Recherche : $hint';
+    return 'Recherche : $hint';
   }
 
   @override
@@ -2892,22 +2892,22 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String playerControlSourceTip(String label) {
-    return 'Source : $label';
+    return 'Source : $label';
   }
 
   @override
   String playerControlSourceTipWithServer(String label, String server) {
-    return 'Source : $label · $server';
+    return 'Source : $label · $server';
   }
 
   @override
   String playerControlSourcesTip(String label) {
-    return 'Sources : $label';
+    return 'Sources : $label';
   }
 
   @override
   String playerControlSourcesTipWithServer(String label, String server) {
-    return 'Sources : $label · $server';
+    return 'Sources : $label · $server';
   }
 
   @override
@@ -3206,7 +3206,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get playerSourceDownloadHeading => 'TÉLÉCHARGER';
 
   @override
-  String get playerSourceDownloadOfflineHeading => 'TÉLÉCHARGER HORS LIGNE ?';
+  String get playerSourceDownloadOfflineHeading => 'TÉLÉCHARGER HORS LIGNE ?';
 
   @override
   String get playerSourceDownloadTooltip => 'Télécharger';
@@ -3732,7 +3732,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String engineRuntimeResumeFailed(String error) {
-    return 'Échec de la reprise : $error';
+    return 'Échec de la reprise : $error';
   }
 
   @override
@@ -3766,7 +3766,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get engineRuntimeScheduleIntro =>
-      'Quoi afficher, et jusqu\'où charger les événements à venir :';
+      'Quoi afficher, et jusqu\'où charger les événements à venir :';
 
   @override
   String engineRuntimeScheduleNext(String horizon) {
@@ -3876,8 +3876,8 @@ class AppLocalizationsFr extends AppLocalizations {
     String _temp0 = intl.Intl.pluralLogic(
       count,
       locale: localeName,
-      other: 'Mettre à jour $count packs de plugins ?',
-      one: 'Mettre à jour le pack de plugins ?',
+      other: 'Mettre à jour $count packs de plugins ?',
+      one: 'Mettre à jour le pack de plugins ?',
     );
     return '$_temp0';
   }
@@ -4064,7 +4064,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String engineDetailsSimklRating(int rating) {
-    return 'Note Simkl : $rating';
+    return 'Note Simkl : $rating';
   }
 
   @override
@@ -4186,7 +4186,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get accountChooserTitle => 'Comptes';
 
   @override
-  String get accountChooserHeading => 'Qui est connecté ?';
+  String get accountChooserHeading => 'Qui est connecté ?';
 
   @override
   String get accountChooserSubtitle =>
@@ -4205,7 +4205,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get accountChooserAdd => 'Ajouter un compte';
 
   @override
-  String get accountChooserRemoveQuestion => 'Retirer ce compte ?';
+  String get accountChooserRemoveQuestion => 'Retirer ce compte ?';
 
   @override
   String get accountChooserTapToSwitch => 'Appuyez pour changer';
@@ -4378,7 +4378,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String accountPacksInstalledWithErrors(int count, String details) {
-    return 'Installé avec $count erreur(s) : $details';
+    return 'Installé avec $count erreur(s) : $details';
   }
 
   @override
@@ -4446,7 +4446,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get accountProfileManage => 'Gérer les profils';
 
   @override
-  String get accountProfileWhosWatching => 'Qui regarde ?';
+  String get accountProfileWhosWatching => 'Qui regarde ?';
 
   @override
   String get accountProfileLoadingProfiles => 'Chargement des profils…';
@@ -4696,7 +4696,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String sharedDownloadsServerHttp(int code, String phrase) {
-    return 'Le serveur a renvoyé HTTP $code : $phrase';
+    return 'Le serveur a renvoyé HTTP $code : $phrase';
   }
 
   @override
@@ -4731,7 +4731,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String sharedDownloadsSaveFinalFailed(String error) {
-    return 'Échec de l\'enregistrement du fichier final : $error';
+    return 'Échec de l\'enregistrement du fichier final : $error';
   }
 
   @override
@@ -4748,7 +4748,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String sharedServicesUpdateCheckFailed(String error) {
-    return 'Impossible de rechercher les mises à jour : $error';
+    return 'Impossible de rechercher les mises à jour : $error';
   }
 
   @override
@@ -4939,7 +4939,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String sharedPlaybackErrorWith(String error) {
-    return 'Erreur : $error';
+    return 'Erreur : $error';
   }
 
   @override
@@ -5043,17 +5043,17 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String shellUpdateFailed(String error) {
-    return 'Échec de la mise à jour : $error';
+    return 'Échec de la mise à jour : $error';
   }
 
   @override
   String shellUpdateDownloadFailed(String error) {
-    return 'Échec du téléchargement : $error';
+    return 'Échec du téléchargement : $error';
   }
 
   @override
   String shellUpdateCouldNotOpen(String error) {
-    return 'Impossible d\'ouvrir la mise à jour : $error';
+    return 'Impossible d\'ouvrir la mise à jour : $error';
   }
 
   @override
@@ -5085,7 +5085,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String shellUpdateMakeExecutable(String fileName) {
-    return 'Rendez le fichier exécutable, puis lancez-le :\nchmod +x \"$fileName\"\n./$fileName';
+    return 'Rendez le fichier exécutable, puis lancez-le :\nchmod +x \"$fileName\"\n./$fileName';
   }
 
   @override
@@ -5128,7 +5128,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get shellEmptyFeaturesBody =>
-      'Choisissez les onglets affichés : Accueil, Anime, IPTV, Live Sports, Listes, et plus.';
+      'Choisissez les onglets affichés : Accueil, Anime, IPTV, Live Sports, Listes, et plus.';
 
   @override
   String get shellEmptyTitle => 'Activez une fonctionnalité pour commencer';
