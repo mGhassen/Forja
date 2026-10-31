@@ -1,6 +1,6 @@
 name: Plugin
 description: Bug or request about a Forja pack / provider / live source.
-title: "[Plugin]: "
+title: "[PLUGIN]: "
 labels: ["plugin"]
 body:
   - type: markdown
