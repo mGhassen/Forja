@@ -7,6 +7,7 @@ import 'package:forja/l10n/l10n.dart';
 import 'package:forja/shared/downloads/download_enqueue.dart';
 import 'package:forja/shared/downloads/download_source_match.dart';
 import 'package:forja/shared/engine/details/sources_panel_tv.dart';
+import 'package:forja/shared/utils/byte_units.dart';
 import 'package:forja/shared/utils/torrent_meta_parser.dart';
 import 'package:rust/rust.dart';
 import 'package:forja/shell/feedback/forja_toast.dart';
@@ -264,14 +265,12 @@ class TorrentFileSourceTile extends StatelessWidget {
   final VoidCallback? onDownEdge;
 
   String _formatSize(int bytes) {
-    if (bytes < 1024) return '$bytes B';
-    if (bytes < 1024 * 1024) {
-      return '${(bytes / 1024).toStringAsFixed(1)} KB';
-    }
+    if (bytes < 1024) return ByteUnits.format(bytes.toDouble(), 0, 0);
+    if (bytes < 1024 * 1024) return ByteUnits.format(bytes / 1024, 1, 1);
     if (bytes < 1024 * 1024 * 1024) {
-      return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
+      return ByteUnits.format(bytes / (1024 * 1024), 2, 1);
     }
-    return '${(bytes / (1024 * 1024 * 1024)).toStringAsFixed(2)} GB';
+    return ByteUnits.format(bytes / (1024 * 1024 * 1024), 3, 2);
   }
 
   @override

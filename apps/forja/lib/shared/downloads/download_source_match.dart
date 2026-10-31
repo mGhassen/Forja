@@ -278,7 +278,7 @@ Map<String, dynamic>? offlinePinnedStream(DownloadTask task) {
     '_addonName': name,
     '_downloadTaskId': task.id,
     kOfflinePinnedStreamKey: true,
-    if (task.totalBytes > 0) 'size': DownloadTask.formatBytes(task.totalBytes),
+    if (task.totalBytes > 0) 'size': DownloadTask.formatBytes(task.totalBytes, localized: false),
   };
 }
 

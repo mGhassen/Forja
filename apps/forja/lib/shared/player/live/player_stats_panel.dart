@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:forja/l10n/l10n.dart';
+import 'package:forja/shared/utils/byte_units.dart';
 import 'package:media_kit/media_kit.dart';
 
 import 'package:forja/shared/player/controls/menus/player_popup_panel.dart';
@@ -143,9 +144,9 @@ class _IptvMediaKitStatsBodyState extends State<_IptvMediaKitStatsBody> {
     if (raw == '-') return raw;
     final n = double.tryParse(raw);
     if (n == null || n <= 0) return raw;
-    if (n < 1024) return '${n.round()} B';
-    if (n < 1024 * 1024) return '${(n / 1024).toStringAsFixed(1)} KB';
-    return '${(n / (1024 * 1024)).toStringAsFixed(1)} MB';
+    if (n < 1024) return ByteUnits.format(n.roundToDouble(), 0, 0);
+    if (n < 1024 * 1024) return ByteUnits.format(n / 1024, 1, 1);
+    return ByteUnits.format(n / (1024 * 1024), 2, 1);
   }
 
   /// demuxer-cache-duration in seconds — hide PTS discontinuity spikes.

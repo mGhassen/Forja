@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
+import 'package:forja/shared/utils/byte_units.dart';
 
 class StorageSpaceInfo {
   final int freeBytes;
@@ -15,15 +16,14 @@ class StorageSpaceInfo {
   String get totalFormatted => _formatBytes(totalBytes);
 
   static String _formatBytes(int bytes) {
-    if (bytes <= 0) return '0 B';
-    const suffixes = ['B', 'KB', 'MB', 'GB', 'TB'];
+    if (bytes <= 0) return ByteUnits.format(0, 0, 0);
     var i = 0;
     var count = bytes.toDouble();
-    while (count >= 1024 && i < suffixes.length - 1) {
+    while (count >= 1024 && i < ByteUnits.suffixes.length - 1) {
       count /= 1024;
       i++;
     }
-    return '${count.toStringAsFixed(i == 0 ? 0 : 2)} ${suffixes[i]}';
+    return ByteUnits.format(count, i, i == 0 ? 0 : 2);
   }
 }
 
