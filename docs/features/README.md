@@ -103,6 +103,7 @@ How Forja finds torrents, streams, and subtitles from the web.
 
 - [Overview](settings/overview.md)
 - [Appearance](settings/appearance.md)
+- [App language](settings/language.md) — device default, English or Français
 - [Playback settings](settings/playback-settings.md)
 - [LAN](settings/lan.md) — desktop server, pairing, torrent relay to phone/TV
 - [Cache & data](settings/cache-data.md)
