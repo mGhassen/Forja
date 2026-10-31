@@ -11,6 +11,7 @@ import 'package:forja_foundation/widgets/chrome/forja_scrollbar.dart';
 import 'package:forja_foundation/widgets/sources/panel_tabs.dart' show kitPanelTabIcon;
 import 'package:forja_foundation/widgets/sources/live_tv_browse.dart';
 import 'package:forja_foundation/widgets/sources/sources_types.dart';
+import 'package:forja_foundation/l10n/foundation_strings.dart';
 
 export 'package:forja_foundation/widgets/sources/sources_types.dart';
 
@@ -49,7 +50,7 @@ class SourcesPanelChrome extends StatefulWidget {
     this.tabsBuilder,
     this.headerActionsBuilder,
     this.onScrollIntoViewChanged,
-    this.emptyQueryMessage = 'No matches',
+    this.emptyQueryMessage,
   });
 
   final String title;
@@ -144,7 +145,7 @@ class SourcesPanelChrome extends StatefulWidget {
   })? headerActionsBuilder;
 
   /// Empty-state copy when channel query matches nothing (host owns product wording).
-  final String emptyQueryMessage;
+  final String? emptyQueryMessage;
 
   /// Host wires TV focus — Zone A has no TV graph.
   static void claimProvidersFocus({int maxTries = 24}) {}
@@ -597,7 +598,7 @@ class _SourcesPanelChromeState extends State<SourcesPanelChrome> {
             ),
             const SizedBox(height: 12),
             Text(
-              '${widget.emptyQueryMessage} “${_effectiveQuery.trim()}”',
+              '${widget.emptyQueryMessage ?? ForjaFoundationStrings.of(context).noMatches} “${_effectiveQuery.trim()}”',
               textAlign: TextAlign.center,
               style: TextStyle(
                 color: ForjaShellColors.textSecondary,
@@ -674,7 +675,7 @@ class _SourcesPanelChromeState extends State<SourcesPanelChrome> {
   }) {
     final rows = <({String key, String label, int count})>[
       if (showAll)
-        (key: kSourcesCategoryAll, label: 'All', count: allCount),
+        (key: kSourcesCategoryAll, label: ForjaFoundationStrings.of(context).all, count: allCount),
       for (final c in cats) (key: c.key, label: c.label, count: c.count),
     ];
 

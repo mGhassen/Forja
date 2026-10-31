@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:forja_foundation/l10n/foundation_strings.dart';
 
 /// Truncated hero synopsis with ellipsis and a separate [readMoreLabel] row below.
 class HeroOverviewText extends StatefulWidget {
@@ -8,8 +9,8 @@ class HeroOverviewText extends StatefulWidget {
     required this.style,
     this.maxLines = 3,
     this.onReadMore,
-    this.readMoreLabel = 'Read More',
-    this.readLessLabel = 'Read Less',
+    this.readMoreLabel,
+    this.readLessLabel,
     this.shrinkWrap = true,
   });
 
@@ -18,8 +19,8 @@ class HeroOverviewText extends StatefulWidget {
   final int maxLines;
   /// When set, tapping read more calls this (e.g. open details). Otherwise expands inline.
   final VoidCallback? onReadMore;
-  final String readMoreLabel;
-  final String readLessLabel;
+  final String? readMoreLabel;
+  final String? readLessLabel;
   /// When false, expands to fill a bounded parent height (fixed overview slots).
   final bool shrinkWrap;
 
@@ -42,7 +43,10 @@ class _HeroOverviewTextState extends State<HeroOverviewText> {
 
   double _readMoreRowHeight(double maxWidth) {
     final painter = TextPainter(
-      text: TextSpan(text: widget.readMoreLabel, style: _readMoreStyle),
+      text: TextSpan(
+        text: widget.readMoreLabel ?? ForjaFoundationStrings.of(context).readMore,
+        style: _readMoreStyle,
+      ),
       textDirection: _textDirection,
       textScaler: _textScaler,
       maxLines: 1,
@@ -125,7 +129,10 @@ class _HeroOverviewTextState extends State<HeroOverviewText> {
             const SizedBox(height: _readMoreGap),
             GestureDetector(
               onTap: () => setState(() => _expanded = false),
-              child: Text(widget.readLessLabel, style: _readMoreStyle),
+              child: Text(
+                widget.readLessLabel ?? ForjaFoundationStrings.of(context).readLess,
+                style: _readMoreStyle,
+              ),
             ),
           ],
         ],
@@ -145,7 +152,10 @@ class _HeroOverviewTextState extends State<HeroOverviewText> {
         const SizedBox(height: _readMoreGap),
         GestureDetector(
           onTap: _handleReadMore,
-          child: Text(widget.readMoreLabel, style: _readMoreStyle),
+          child: Text(
+            widget.readMoreLabel ?? ForjaFoundationStrings.of(context).readMore,
+            style: _readMoreStyle,
+          ),
         ),
       ],
     );

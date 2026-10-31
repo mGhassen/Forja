@@ -36,7 +36,7 @@ class CatalogSearchPage extends StatelessWidget {
     this.focusNode,
     this.onChanged,
     this.onSubmitted,
-    this.hintText = 'Search',
+    this.hintText,
     this.header,
     this.filters,
     this.field,
@@ -66,7 +66,7 @@ class CatalogSearchPage extends StatelessWidget {
       focusNode: focusNode,
       onChanged: onChanged,
       onSubmitted: onSubmitted,
-      hintText: propsStringOr(props, 'hintText', 'Search'),
+      hintText: propsString(props, 'hintText'),
       header: header,
       filters: filters,
       field: field,
@@ -84,7 +84,7 @@ class CatalogSearchPage extends StatelessWidget {
   final FocusNode? focusNode;
   final ValueChanged<String>? onChanged;
   final ValueChanged<String>? onSubmitted;
-  final String hintText;
+  final String? hintText;
   final Widget? header;
   final Widget? filters;
   final Widget? field;

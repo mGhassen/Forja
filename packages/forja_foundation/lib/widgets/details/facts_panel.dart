@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:forja_foundation/l10n/foundation_strings.dart';
 import 'package:forja_foundation/tokens/forja_details_tokens.dart';
 import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 import 'package:forja_foundation/widgets/details/meta_line.dart';
@@ -68,8 +69,15 @@ class FactsPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final strings = ForjaFoundationStrings.of(context);
     final visible = rows
         .where((r) => r.label.trim().isNotEmpty && r.value.trim().isNotEmpty)
+        .map(
+          (r) => (
+            label: strings.factLabels[r.label] ?? r.label,
+            value: _localizedValue(strings, r.label, r.value),
+          ),
+        )
         .toList(growable: false);
     if (visible.isEmpty) return const SizedBox.shrink();
 
@@ -117,6 +125,28 @@ class FactsPanel extends StatelessWidget {
       ),
     );
   }
+}
+
+final RegExp _englishDate = RegExp(
+  r'^(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec) (\d{1,2}), (\d{4})$',
+);
+const List<String> _englishMonths = [
+  'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+  'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+];
+
+/// Rows are built with English words; the app's strings translate them here.
+String _localizedValue(ForjaFoundationStrings s, String label, String value) {
+  if (label == 'Status') return s.statusLabels[value] ?? value;
+  final m = _englishDate.firstMatch(value);
+  if (m != null && s.shortMonths.length == 12) {
+    final month = s.shortMonths[_englishMonths.indexOf(m.group(1)!)];
+    return s.datePattern
+        .replaceAll('{day}', m.group(2)!)
+        .replaceAll('{month}', month)
+        .replaceAll('{year}', m.group(3)!);
+  }
+  return value;
 }
 
 List<({String label, String value})> factsRowsFromFields({
