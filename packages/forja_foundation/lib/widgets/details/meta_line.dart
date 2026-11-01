@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:forja_foundation/l10n/foundation_strings.dart';
 import 'package:forja_foundation/tokens/forja_details_tokens.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
@@ -34,9 +35,12 @@ class MetaLine extends StatelessWidget {
     if (minutes <= 0) return '';
     final h = minutes ~/ 60;
     final m = minutes % 60;
-    if (h > 0 && m > 0) return '${h}h ${m}m';
-    if (h > 0) return '${h}h';
-    return '${m}m';
+    final s = ForjaFoundationStrings.current;
+    final hours = '$h${s.tOr('runtime hours', 'h')}';
+    final mins = '$m${s.tOr('runtime minutes', 'm')}';
+    if (h > 0 && m > 0) return '$hours $mins';
+    if (h > 0) return hours;
+    return mins;
   }
 
   @override

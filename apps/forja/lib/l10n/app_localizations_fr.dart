@@ -5535,4 +5535,19 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get foundationWordDub => 'VF';
+
+  @override
+  String get foundationWordRuntimeHours => ' h';
+
+  @override
+  String get foundationWordRuntimeMinutes => ' min';
+
+  @override
+  String get foundationWordThousandsSeparator => 'space';
+
+  @override
+  String get foundationWordMoneySymbol => ' \$';
+
+  @override
+  String get foundationWordMoneySymbolPlace => 'after';
 }

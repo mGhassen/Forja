@@ -3009,5 +3009,10 @@
   "foundationWordNorwegian": "Norwegian",
   "foundationWordDanish": "Danish",
   "foundationWordSub": "SUB",
-  "foundationWordDub": "DUB"
+  "foundationWordDub": "DUB",
+  "foundationWordRuntimeHours": "h",
+  "foundationWordRuntimeMinutes": "m",
+  "foundationWordThousandsSeparator": "comma",
+  "foundationWordMoneySymbol": "$",
+  "foundationWordMoneySymbolPlace": "before"
 }

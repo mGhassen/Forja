@@ -1550,5 +1550,10 @@
   "foundationWordNorwegian": "Norvégien",
   "foundationWordDanish": "Danois",
   "foundationWordSub": "VOSTFR",
-  "foundationWordDub": "VF"
+  "foundationWordDub": "VF",
+  "foundationWordRuntimeHours": " h",
+  "foundationWordRuntimeMinutes": " min",
+  "foundationWordThousandsSeparator": "space",
+  "foundationWordMoneySymbol": " $",
+  "foundationWordMoneySymbolPlace": "after"
 }

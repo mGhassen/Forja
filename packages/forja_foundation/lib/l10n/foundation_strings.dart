@@ -51,6 +51,9 @@ class ForjaFoundationStrings {
   /// [english] translated by [words]; the English text when there is no entry.
   String t(String english) => words[english] ?? english;
 
+  /// [words] entry for a formatting [key] ("money suffix"), or [fallback].
+  String tOr(String key, String fallback) => words[key] ?? fallback;
+
   /// The strings the app is showing now. Code with no [BuildContext] (date
   /// helpers, const option lists) reads this; the app sets it with the scope.
   static ForjaFoundationStrings current = english;

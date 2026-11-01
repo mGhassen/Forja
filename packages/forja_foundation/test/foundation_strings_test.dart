@@ -174,5 +174,30 @@ void main() {
       expect(listStatusLabel('plantowatch'), 'À regarder');
       expect(listStatusLabel('hold'), 'On Hold');
     });
+
+    test('money and runtime follow the current strings', () {
+      Map<String, String> value(String label) => {
+        for (final r in factsRowsFromFields(
+          title: 'T',
+          mediaType: 'movie',
+          runtimeMinutes: 97,
+          budget: 60000000,
+        ))
+          r.label: r.value,
+      };
+      expect(value('x')['Budget'], r'$60,000,000');
+      expect(value('x')['Runtime'], '1h 37m');
+      ForjaFoundationStrings.current = const ForjaFoundationStrings(
+        words: {
+          'runtime hours': '\u00a0h',
+          'runtime minutes': '\u00a0min',
+          'thousands separator': 'space',
+          'money symbol': '\u00a0\$',
+          'money symbol place': 'after',
+        },
+      );
+      expect(value('x')['Budget'], '60\u00a0000\u00a0000\u00a0\$');
+      expect(value('x')['Runtime'], '1\u00a0h 37\u00a0min');
+    });
   });
 }

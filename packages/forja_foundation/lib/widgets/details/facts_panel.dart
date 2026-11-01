@@ -262,13 +262,19 @@ String _formatReleaseDate(String iso) {
 
 String _formatMoney(int? amount) {
   if (amount == null || amount <= 0) return '';
+  final strings = ForjaFoundationStrings.current;
+  final sep =
+      strings.tOr('thousands separator', 'comma') == 'space' ? '\u00a0' : ',';
   final s = amount.toString();
   final buf = StringBuffer();
   for (var i = 0; i < s.length; i++) {
-    if (i > 0 && (s.length - i) % 3 == 0) buf.write(',');
+    if (i > 0 && (s.length - i) % 3 == 0) buf.write(sep);
     buf.write(s[i]);
   }
-  return '\$${buf.toString()}';
+  final symbol = strings.tOr('money symbol', '\$');
+  return strings.tOr('money symbol place', 'before') == 'after'
+      ? '$buf$symbol'
+      : '$symbol$buf';
 }
 
 class _FactRow extends StatelessWidget {

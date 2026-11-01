@@ -703,6 +703,11 @@ class _AppState extends State<App> with WidgetsBindingObserver, WindowListener {
                 'Danish': l10n.foundationWordDanish,
                 'SUB': l10n.foundationWordSub,
                 'DUB': l10n.foundationWordDub,
+                'runtime hours': l10n.foundationWordRuntimeHours,
+                'runtime minutes': l10n.foundationWordRuntimeMinutes,
+                'thousands separator': l10n.foundationWordThousandsSeparator,
+                'money symbol': l10n.foundationWordMoneySymbol,
+                'money symbol place': l10n.foundationWordMoneySymbolPlace,
               },
             );
             // Code with no BuildContext (date helpers, const option lists) reads this.

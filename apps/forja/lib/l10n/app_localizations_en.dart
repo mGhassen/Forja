@@ -5426,4 +5426,19 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get foundationWordDub => 'DUB';
+
+  @override
+  String get foundationWordRuntimeHours => 'h';
+
+  @override
+  String get foundationWordRuntimeMinutes => 'm';
+
+  @override
+  String get foundationWordThousandsSeparator => 'comma';
+
+  @override
+  String get foundationWordMoneySymbol => '\$';
+
+  @override
+  String get foundationWordMoneySymbolPlace => 'before';
 }
