@@ -1555,5 +1555,11 @@
   "foundationWordRuntimeMinutes": " min",
   "foundationWordThousandsSeparator": "space",
   "foundationWordMoneySymbol": " $",
-  "foundationWordMoneySymbolPlace": "after"
+  "foundationWordMoneySymbolPlace": "after",
+  "foundationWordTrailers": "Bandes-annonces",
+  "foundationWordOfficial": "Officielle",
+  "foundationWordGeoblocked": "Géobloquée",
+  "foundationWordEnds": "Fin à",
+  "foundationWordClock": "24h",
+  "foundationWordLanguageNames": "on"
 }

@@ -5441,4 +5441,22 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get foundationWordMoneySymbolPlace => 'before';
+
+  @override
+  String get foundationWordTrailers => 'Trailers';
+
+  @override
+  String get foundationWordOfficial => 'Official';
+
+  @override
+  String get foundationWordGeoblocked => 'Geoblocked';
+
+  @override
+  String get foundationWordEnds => 'Ends';
+
+  @override
+  String get foundationWordClock => '12h';
+
+  @override
+  String get foundationWordLanguageNames => 'off';
 }

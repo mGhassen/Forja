@@ -199,5 +199,26 @@ void main() {
       expect(value('x')['Budget'], '60\u00a0000\u00a0000\u00a0\$');
       expect(value('x')['Runtime'], '1\u00a0h 37\u00a0min');
     });
+
+    test('language name and the end time follow the current strings', () {
+      Map<String, String> rows() => {
+        for (final r in factsRowsFromFields(
+          title: 'T',
+          mediaType: 'movie',
+          runtimeMinutes: 97,
+          languageCode: 'fr',
+          positionMs: 0,
+          durationMs: 97 * 60000,
+        ))
+          r.label: r.value,
+      };
+      expect(rows()['Language'], 'FR');
+      expect(rows()['Runtime'], matches(RegExp(r'Ends \d{1,2}:\d\d [AP]M$')));
+      ForjaFoundationStrings.current = const ForjaFoundationStrings(
+        words: {'language names': 'on', 'French': 'Français', 'clock': '24h', 'Ends': 'Fin à'},
+      );
+      expect(rows()['Language'], 'Français');
+      expect(rows()['Runtime'], matches(RegExp(r'Fin à \d\d:\d\d$')));
+    });
   });
 }

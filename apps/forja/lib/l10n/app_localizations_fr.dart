@@ -5550,4 +5550,22 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get foundationWordMoneySymbolPlace => 'after';
+
+  @override
+  String get foundationWordTrailers => 'Bandes-annonces';
+
+  @override
+  String get foundationWordOfficial => 'Officielle';
+
+  @override
+  String get foundationWordGeoblocked => 'Géobloquée';
+
+  @override
+  String get foundationWordEnds => 'Fin à';
+
+  @override
+  String get foundationWordClock => '24h';
+
+  @override
+  String get foundationWordLanguageNames => 'on';
 }

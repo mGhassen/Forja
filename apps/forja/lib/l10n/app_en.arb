@@ -3014,5 +3014,11 @@
   "foundationWordRuntimeMinutes": "m",
   "foundationWordThousandsSeparator": "comma",
   "foundationWordMoneySymbol": "$",
-  "foundationWordMoneySymbolPlace": "before"
+  "foundationWordMoneySymbolPlace": "before",
+  "foundationWordTrailers": "Trailers",
+  "foundationWordOfficial": "Official",
+  "foundationWordGeoblocked": "Geoblocked",
+  "foundationWordEnds": "Ends",
+  "foundationWordClock": "12h",
+  "foundationWordLanguageNames": "off"
 }

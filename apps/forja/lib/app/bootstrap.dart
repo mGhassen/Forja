@@ -708,6 +708,12 @@ class _AppState extends State<App> with WidgetsBindingObserver, WindowListener {
                 'thousands separator': l10n.foundationWordThousandsSeparator,
                 'money symbol': l10n.foundationWordMoneySymbol,
                 'money symbol place': l10n.foundationWordMoneySymbolPlace,
+                'Trailers': l10n.foundationWordTrailers,
+                'Official': l10n.foundationWordOfficial,
+                'Geoblocked': l10n.foundationWordGeoblocked,
+                'Ends': l10n.foundationWordEnds,
+                'clock': l10n.foundationWordClock,
+                'language names': l10n.foundationWordLanguageNames,
               },
             );
             // Code with no BuildContext (date helpers, const option lists) reads this.

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:forja_foundation/l10n/foundation_strings.dart';
 import 'package:forja_foundation/tokens/forja_details_tokens.dart';
+import 'package:forja_foundation/widgets/catalog/catalog_search_filters.dart';
 import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 import 'package:forja_foundation/widgets/details/meta_line.dart';
 
@@ -175,7 +176,7 @@ List<({String label, String value})> factsRowsFromFields({
   final statusLabel = status?.trim() ?? '';
   final languageLabel = () {
     final code = languageCode?.trim();
-    if (code != null && code.isNotEmpty) return code.toUpperCase();
+    if (code != null && code.isNotEmpty) return _languageName(code);
     if (spokenLanguages.isNotEmpty) {
       return spokenLanguages.first.length <= 3
           ? spokenLanguages.first.toUpperCase()
@@ -237,13 +238,27 @@ String _runtimeWithEnds(
       : null;
   if (remainingMs != null && remainingMs > 0) {
     final ends = DateTime.now().add(Duration(milliseconds: remainingMs));
-    final hour =
-        ends.hour > 12 ? ends.hour - 12 : (ends.hour == 0 ? 12 : ends.hour);
+    final strings = ForjaFoundationStrings.current;
     final minute = ends.minute.toString().padLeft(2, '0');
-    final period = ends.hour >= 12 ? 'PM' : 'AM';
-    return '$runtime • Ends $hour:$minute $period';
+    final ends24 = strings.tOr('clock', '12h') == '24h';
+    final hour = ends24
+        ? ends.hour.toString().padLeft(2, '0')
+        : '${ends.hour > 12 ? ends.hour - 12 : (ends.hour == 0 ? 12 : ends.hour)}';
+    final period = ends24 ? '' : (ends.hour >= 12 ? ' PM' : ' AM');
+    return '$runtime • ${strings.t('Ends')} $hour:$minute$period';
   }
   return runtime;
+}
+
+/// The code ("fr") as a language name when the app asks for names, else "FR".
+String _languageName(String code) {
+  final strings = ForjaFoundationStrings.current;
+  if (strings.tOr('language names', 'off') == 'on') {
+    for (final (label, token) in kSearchFilterLanguages) {
+      if (token == 'lang:${code.toLowerCase()}') return strings.t(label);
+    }
+  }
+  return code.toUpperCase();
 }
 
 String _formatReleaseDate(String iso) {

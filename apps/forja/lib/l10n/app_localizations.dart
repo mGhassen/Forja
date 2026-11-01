@@ -9447,6 +9447,42 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'before'**
   String get foundationWordMoneySymbolPlace;
+
+  /// No description provided for @foundationWordTrailers.
+  ///
+  /// In en, this message translates to:
+  /// **'Trailers'**
+  String get foundationWordTrailers;
+
+  /// No description provided for @foundationWordOfficial.
+  ///
+  /// In en, this message translates to:
+  /// **'Official'**
+  String get foundationWordOfficial;
+
+  /// No description provided for @foundationWordGeoblocked.
+  ///
+  /// In en, this message translates to:
+  /// **'Geoblocked'**
+  String get foundationWordGeoblocked;
+
+  /// No description provided for @foundationWordEnds.
+  ///
+  /// In en, this message translates to:
+  /// **'Ends'**
+  String get foundationWordEnds;
+
+  /// No description provided for @foundationWordClock.
+  ///
+  /// In en, this message translates to:
+  /// **'12h'**
+  String get foundationWordClock;
+
+  /// No description provided for @foundationWordLanguageNames.
+  ///
+  /// In en, this message translates to:
+  /// **'off'**
+  String get foundationWordLanguageNames;
 }
 
 class _AppLocalizationsDelegate
