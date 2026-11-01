@@ -1,3 +1,4 @@
+import 'package:forja_foundation/l10n/foundation_strings.dart';
 import 'package:flutter/material.dart';
 import 'package:forja/l10n/l10n.dart';
 import 'package:forja/shared/engine/models/models.dart';
@@ -78,12 +79,17 @@ class KitMultiselectPlayFilter extends StatelessWidget {
           if (subs.isNotEmpty)
             (
               kind: 'sub',
-              label: 'SUB',
+              label: ForjaFoundationStrings.of(context).t('SUB'),
               icon: Icons.subtitles_rounded,
               langs: subs,
             ),
           if (dubs.isNotEmpty)
-            (kind: 'dub', label: 'DUB', icon: Icons.mic_rounded, langs: dubs),
+            (
+              kind: 'dub',
+              label: ForjaFoundationStrings.of(context).t('DUB'),
+              icon: Icons.mic_rounded,
+              langs: dubs,
+            ),
         ];
 
     return HeroPillGlassShell(

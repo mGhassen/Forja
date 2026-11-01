@@ -200,10 +200,10 @@ abstract class AppLocalizations {
   /// **'App language'**
   String get settingsLanguageRowTitle;
 
-  /// Subtitle under the app language picker. The app's own screens switch at once; titles and descriptions loaded from TMDB follow after a restart.
+  /// Subtitle under the app language picker. The app's own screens switch at once; titles, descriptions and text written by packs finish updating after a restart.
   ///
   /// In en, this message translates to:
-  /// **'Menus and screens change right away. Restart Forja to update titles and descriptions.'**
+  /// **'Menus and screens change right away. Titles, descriptions and pack text catch up fully after a restart.'**
   String get settingsLanguageRowSubtitle;
 
   /// Picker option that follows the device language.
@@ -6794,7 +6794,7 @@ abstract class AppLocalizations {
   /// No description provided for @engineDetailsMatchViewers.
   ///
   /// In en, this message translates to:
-  /// **'{count} viewers'**
+  /// **'{count, plural, =1{1 viewer} other{{count} viewers}}'**
   String engineDetailsMatchViewers(int count);
 
   /// No description provided for @engineDetailsMatchingLiveTv.
@@ -9009,6 +9009,414 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Close'**
   String get foundationWordClose;
+
+  /// No description provided for @foundationWordComingSoon.
+  ///
+  /// In en, this message translates to:
+  /// **'Coming soon'**
+  String get foundationWordComingSoon;
+
+  /// No description provided for @foundationWordScore.
+  ///
+  /// In en, this message translates to:
+  /// **'Score'**
+  String get foundationWordScore;
+
+  /// No description provided for @foundationWordAnyScore.
+  ///
+  /// In en, this message translates to:
+  /// **'Any score'**
+  String get foundationWordAnyScore;
+
+  /// No description provided for @foundationWordYear.
+  ///
+  /// In en, this message translates to:
+  /// **'Year'**
+  String get foundationWordYear;
+
+  /// No description provided for @foundationWordAnyYear.
+  ///
+  /// In en, this message translates to:
+  /// **'Any year'**
+  String get foundationWordAnyYear;
+
+  /// No description provided for @foundationWordGenre.
+  ///
+  /// In en, this message translates to:
+  /// **'Genre'**
+  String get foundationWordGenre;
+
+  /// No description provided for @foundationWordCountry.
+  ///
+  /// In en, this message translates to:
+  /// **'Country'**
+  String get foundationWordCountry;
+
+  /// No description provided for @foundationWordLanguage.
+  ///
+  /// In en, this message translates to:
+  /// **'Language'**
+  String get foundationWordLanguage;
+
+  /// No description provided for @foundationWordFilms.
+  ///
+  /// In en, this message translates to:
+  /// **'Films'**
+  String get foundationWordFilms;
+
+  /// No description provided for @foundationWordSeries.
+  ///
+  /// In en, this message translates to:
+  /// **'Series'**
+  String get foundationWordSeries;
+
+  /// No description provided for @foundationWordAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Action'**
+  String get foundationWordAction;
+
+  /// No description provided for @foundationWordAdventure.
+  ///
+  /// In en, this message translates to:
+  /// **'Adventure'**
+  String get foundationWordAdventure;
+
+  /// No description provided for @foundationWordAnimation.
+  ///
+  /// In en, this message translates to:
+  /// **'Animation'**
+  String get foundationWordAnimation;
+
+  /// No description provided for @foundationWordComedy.
+  ///
+  /// In en, this message translates to:
+  /// **'Comedy'**
+  String get foundationWordComedy;
+
+  /// No description provided for @foundationWordCrime.
+  ///
+  /// In en, this message translates to:
+  /// **'Crime'**
+  String get foundationWordCrime;
+
+  /// No description provided for @foundationWordDocumentary.
+  ///
+  /// In en, this message translates to:
+  /// **'Documentary'**
+  String get foundationWordDocumentary;
+
+  /// No description provided for @foundationWordDrama.
+  ///
+  /// In en, this message translates to:
+  /// **'Drama'**
+  String get foundationWordDrama;
+
+  /// No description provided for @foundationWordFamily.
+  ///
+  /// In en, this message translates to:
+  /// **'Family'**
+  String get foundationWordFamily;
+
+  /// No description provided for @foundationWordFantasy.
+  ///
+  /// In en, this message translates to:
+  /// **'Fantasy'**
+  String get foundationWordFantasy;
+
+  /// No description provided for @foundationWordHistory.
+  ///
+  /// In en, this message translates to:
+  /// **'History'**
+  String get foundationWordHistory;
+
+  /// No description provided for @foundationWordHorror.
+  ///
+  /// In en, this message translates to:
+  /// **'Horror'**
+  String get foundationWordHorror;
+
+  /// No description provided for @foundationWordMusic.
+  ///
+  /// In en, this message translates to:
+  /// **'Music'**
+  String get foundationWordMusic;
+
+  /// No description provided for @foundationWordMystery.
+  ///
+  /// In en, this message translates to:
+  /// **'Mystery'**
+  String get foundationWordMystery;
+
+  /// No description provided for @foundationWordRomance.
+  ///
+  /// In en, this message translates to:
+  /// **'Romance'**
+  String get foundationWordRomance;
+
+  /// No description provided for @foundationWordSciFi.
+  ///
+  /// In en, this message translates to:
+  /// **'Sci-Fi'**
+  String get foundationWordSciFi;
+
+  /// No description provided for @foundationWordThriller.
+  ///
+  /// In en, this message translates to:
+  /// **'Thriller'**
+  String get foundationWordThriller;
+
+  /// No description provided for @foundationWordWar.
+  ///
+  /// In en, this message translates to:
+  /// **'War'**
+  String get foundationWordWar;
+
+  /// No description provided for @foundationWordWestern.
+  ///
+  /// In en, this message translates to:
+  /// **'Western'**
+  String get foundationWordWestern;
+
+  /// No description provided for @foundationWordKids.
+  ///
+  /// In en, this message translates to:
+  /// **'Kids'**
+  String get foundationWordKids;
+
+  /// No description provided for @foundationWordUsa.
+  ///
+  /// In en, this message translates to:
+  /// **'USA'**
+  String get foundationWordUsa;
+
+  /// No description provided for @foundationWordUk.
+  ///
+  /// In en, this message translates to:
+  /// **'UK'**
+  String get foundationWordUk;
+
+  /// No description provided for @foundationWordFrance.
+  ///
+  /// In en, this message translates to:
+  /// **'France'**
+  String get foundationWordFrance;
+
+  /// No description provided for @foundationWordGermany.
+  ///
+  /// In en, this message translates to:
+  /// **'Germany'**
+  String get foundationWordGermany;
+
+  /// No description provided for @foundationWordJapan.
+  ///
+  /// In en, this message translates to:
+  /// **'Japan'**
+  String get foundationWordJapan;
+
+  /// No description provided for @foundationWordKorea.
+  ///
+  /// In en, this message translates to:
+  /// **'Korea'**
+  String get foundationWordKorea;
+
+  /// No description provided for @foundationWordIndia.
+  ///
+  /// In en, this message translates to:
+  /// **'India'**
+  String get foundationWordIndia;
+
+  /// No description provided for @foundationWordItaly.
+  ///
+  /// In en, this message translates to:
+  /// **'Italy'**
+  String get foundationWordItaly;
+
+  /// No description provided for @foundationWordSpain.
+  ///
+  /// In en, this message translates to:
+  /// **'Spain'**
+  String get foundationWordSpain;
+
+  /// No description provided for @foundationWordCanada.
+  ///
+  /// In en, this message translates to:
+  /// **'Canada'**
+  String get foundationWordCanada;
+
+  /// No description provided for @foundationWordAustralia.
+  ///
+  /// In en, this message translates to:
+  /// **'Australia'**
+  String get foundationWordAustralia;
+
+  /// No description provided for @foundationWordChina.
+  ///
+  /// In en, this message translates to:
+  /// **'China'**
+  String get foundationWordChina;
+
+  /// No description provided for @foundationWordBrazil.
+  ///
+  /// In en, this message translates to:
+  /// **'Brazil'**
+  String get foundationWordBrazil;
+
+  /// No description provided for @foundationWordMexico.
+  ///
+  /// In en, this message translates to:
+  /// **'Mexico'**
+  String get foundationWordMexico;
+
+  /// No description provided for @foundationWordSweden.
+  ///
+  /// In en, this message translates to:
+  /// **'Sweden'**
+  String get foundationWordSweden;
+
+  /// No description provided for @foundationWordNorway.
+  ///
+  /// In en, this message translates to:
+  /// **'Norway'**
+  String get foundationWordNorway;
+
+  /// No description provided for @foundationWordDenmark.
+  ///
+  /// In en, this message translates to:
+  /// **'Denmark'**
+  String get foundationWordDenmark;
+
+  /// No description provided for @foundationWordTurkey.
+  ///
+  /// In en, this message translates to:
+  /// **'Turkey'**
+  String get foundationWordTurkey;
+
+  /// No description provided for @foundationWordHongKong.
+  ///
+  /// In en, this message translates to:
+  /// **'Hong Kong'**
+  String get foundationWordHongKong;
+
+  /// No description provided for @foundationWordTaiwan.
+  ///
+  /// In en, this message translates to:
+  /// **'Taiwan'**
+  String get foundationWordTaiwan;
+
+  /// No description provided for @foundationWordThailand.
+  ///
+  /// In en, this message translates to:
+  /// **'Thailand'**
+  String get foundationWordThailand;
+
+  /// No description provided for @foundationWordEnglish.
+  ///
+  /// In en, this message translates to:
+  /// **'English'**
+  String get foundationWordEnglish;
+
+  /// No description provided for @foundationWordJapanese.
+  ///
+  /// In en, this message translates to:
+  /// **'Japanese'**
+  String get foundationWordJapanese;
+
+  /// No description provided for @foundationWordKorean.
+  ///
+  /// In en, this message translates to:
+  /// **'Korean'**
+  String get foundationWordKorean;
+
+  /// No description provided for @foundationWordFrench.
+  ///
+  /// In en, this message translates to:
+  /// **'French'**
+  String get foundationWordFrench;
+
+  /// No description provided for @foundationWordSpanish.
+  ///
+  /// In en, this message translates to:
+  /// **'Spanish'**
+  String get foundationWordSpanish;
+
+  /// No description provided for @foundationWordGerman.
+  ///
+  /// In en, this message translates to:
+  /// **'German'**
+  String get foundationWordGerman;
+
+  /// No description provided for @foundationWordItalian.
+  ///
+  /// In en, this message translates to:
+  /// **'Italian'**
+  String get foundationWordItalian;
+
+  /// No description provided for @foundationWordPortuguese.
+  ///
+  /// In en, this message translates to:
+  /// **'Portuguese'**
+  String get foundationWordPortuguese;
+
+  /// No description provided for @foundationWordChinese.
+  ///
+  /// In en, this message translates to:
+  /// **'Chinese'**
+  String get foundationWordChinese;
+
+  /// No description provided for @foundationWordHindi.
+  ///
+  /// In en, this message translates to:
+  /// **'Hindi'**
+  String get foundationWordHindi;
+
+  /// No description provided for @foundationWordArabic.
+  ///
+  /// In en, this message translates to:
+  /// **'Arabic'**
+  String get foundationWordArabic;
+
+  /// No description provided for @foundationWordTurkish.
+  ///
+  /// In en, this message translates to:
+  /// **'Turkish'**
+  String get foundationWordTurkish;
+
+  /// No description provided for @foundationWordThai.
+  ///
+  /// In en, this message translates to:
+  /// **'Thai'**
+  String get foundationWordThai;
+
+  /// No description provided for @foundationWordSwedish.
+  ///
+  /// In en, this message translates to:
+  /// **'Swedish'**
+  String get foundationWordSwedish;
+
+  /// No description provided for @foundationWordNorwegian.
+  ///
+  /// In en, this message translates to:
+  /// **'Norwegian'**
+  String get foundationWordNorwegian;
+
+  /// No description provided for @foundationWordDanish.
+  ///
+  /// In en, this message translates to:
+  /// **'Danish'**
+  String get foundationWordDanish;
+
+  /// No description provided for @foundationWordSub.
+  ///
+  /// In en, this message translates to:
+  /// **'SUB'**
+  String get foundationWordSub;
+
+  /// No description provided for @foundationWordDub.
+  ///
+  /// In en, this message translates to:
+  /// **'DUB'**
+  String get foundationWordDub;
 }
 
 class _AppLocalizationsDelegate

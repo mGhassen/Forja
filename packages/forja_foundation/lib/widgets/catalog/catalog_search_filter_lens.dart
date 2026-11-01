@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:forja_foundation/l10n/foundation_strings.dart';
 import 'package:forja_foundation/tokens/forja_motion_theme.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
@@ -250,7 +251,7 @@ class _CatalogSearchScoreArcState extends State<CatalogSearchScoreArc> {
     final density = ShellPaintScope.usesTvDensityOf(context);
     final t = _tFromValue(widget.value);
     final label = widget.value == null
-        ? 'Any score'
+        ? ForjaFoundationStrings.of(context).t('Any score')
         : '≥ ${widget.value == widget.value!.roundToDouble() ? widget.value!.toInt() : widget.value!.toStringAsFixed(1)}';
     final warm = widget.value != null && widget.value! >= 8;
     final focused = _focus.hasFocus;
@@ -265,7 +266,7 @@ class _CatalogSearchScoreArcState extends State<CatalogSearchScoreArc> {
         Row(
           children: [
             Text(
-              'Score',
+              ForjaFoundationStrings.of(context).t('Score'),
               style: TextStyle(
                 color: ForjaShellColors.textSecondary,
                 fontSize: ShellTokens.searchFilterSectionLabelFontSizeOf(density),
@@ -530,7 +531,7 @@ class _CatalogSearchYearTimelineState extends State<CatalogSearchYearTimeline> {
     final density = ShellPaintScope.usesTvDensityOf(context);
     final active = widget.start != null && widget.end != null;
     final label = !active
-        ? 'Any year'
+        ? ForjaFoundationStrings.of(context).t('Any year')
         : widget.start == widget.end
         ? '${widget.start}'
         : '${widget.start}–${widget.end}';
@@ -551,7 +552,7 @@ class _CatalogSearchYearTimelineState extends State<CatalogSearchYearTimeline> {
         Row(
           children: [
             Text(
-              'Year',
+              ForjaFoundationStrings.of(context).t('Year'),
               style: TextStyle(
                 color: ForjaShellColors.textSecondary,
                 fontSize: ShellTokens.searchFilterSectionLabelFontSizeOf(density),
@@ -794,7 +795,7 @@ class CatalogSearchFilterChipSection extends StatelessWidget {
           children: [
             for (var i = 0; i < options.length; i++)
               CatalogSearchFilterGhostChip(
-                label: options[i].$1,
+                label: ForjaFoundationStrings.of(context).t(options[i].$1),
                 selected: selectedToken == options[i].$2,
                 listIndex: i,
                 onTap: () => onSelected(options[i].$2),
@@ -1041,7 +1042,7 @@ class CatalogSearchFilterLens extends StatelessWidget {
                             rowId: _genreRowId,
                             itemCount: kSearchFilterGenres.length,
                             child: CatalogSearchFilterChipSection(
-                              title: 'Genre',
+                              title: ForjaFoundationStrings.of(context).t('Genre'),
                               options: kSearchFilterGenres,
                               selectedToken: filters.genreToken,
                               interactiveBuilder: interactiveBuilder,
@@ -1061,7 +1062,7 @@ class CatalogSearchFilterLens extends StatelessWidget {
                             rowId: _countryRowId,
                             itemCount: kSearchFilterCountries.length,
                             child: CatalogSearchFilterChipSection(
-                              title: 'Country',
+                              title: ForjaFoundationStrings.of(context).t('Country'),
                               options: kSearchFilterCountries,
                               selectedToken: filters.countryToken,
                               interactiveBuilder: interactiveBuilder,
@@ -1081,7 +1082,7 @@ class CatalogSearchFilterLens extends StatelessWidget {
                             rowId: _languageRowId,
                             itemCount: kSearchFilterLanguages.length,
                             child: CatalogSearchFilterChipSection(
-                              title: 'Language',
+                              title: ForjaFoundationStrings.of(context).t('Language'),
                               options: kSearchFilterLanguages,
                               selectedToken: filters.languageToken,
                               interactiveBuilder: interactiveBuilder,

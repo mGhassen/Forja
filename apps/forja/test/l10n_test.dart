@@ -182,4 +182,19 @@ void main() {
       );
     });
   });
+
+  group('plurals', () {
+    test('French treats 0 and 1 as singular', () {
+      final fr = lookupAppLocalizations(const Locale('fr'));
+      expect(fr.packsPromptInstalledCount(0), '0 pack installé');
+      expect(fr.packsPromptInstalledCount(1), '1 pack installé');
+      expect(fr.packsPromptInstalledCount(2), '2 packs installés');
+    });
+
+    test('English says "1 viewer"', () {
+      final en = lookupAppLocalizations(const Locale('en'));
+      expect(en.engineDetailsMatchViewers(1), '1 viewer');
+      expect(en.engineDetailsMatchViewers(5), '5 viewers');
+    });
+  });
 }

@@ -1,3 +1,4 @@
+import 'package:forja_foundation/l10n/foundation_strings.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:forja/shared/engine/details/details_meta.dart';
 import 'package:forja_foundation/protocol/protocol.dart';
@@ -70,6 +71,34 @@ void main() {
         premiereLabel: 'Jun 14, 2026',
       );
       expect(hubMetaPremiereDateLabel(meta), 'Jun 14, 2026');
+    });
+
+    test('shows the pack English date in the app language', () {
+      final saved = ForjaFoundationStrings.current;
+      addTearDown(() => ForjaFoundationStrings.current = saved);
+      ForjaFoundationStrings.current = const ForjaFoundationStrings(
+        shortMonths: [
+          'janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin',
+          'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.',
+        ],
+        datePattern: '{day} {month} {year}',
+      );
+      const same = MetaItem(
+        id: 't:1',
+        type: 'movie',
+        name: 'M',
+        premiereDate: '2026-06-14',
+        premiereLabel: 'Jun 14, 2026',
+      );
+      const other = MetaItem(
+        id: 't:2',
+        type: 'movie',
+        name: 'M',
+        premiereDate: '2026-06-14',
+        premiereLabel: 'Upcoming',
+      );
+      expect(hubMetaPremiereDateLabel(same), '14 juin 2026');
+      expect(hubMetaPremiereDateLabel(other), 'Upcoming');
     });
   });
 

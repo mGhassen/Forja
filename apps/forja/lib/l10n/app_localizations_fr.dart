@@ -68,7 +68,7 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get settingsLanguageRowSubtitle =>
-      'Les menus et les écrans changent tout de suite. Redémarrez Forja pour mettre à jour les titres et les descriptions.';
+      'Les menus et les écrans changent tout de suite. Les titres, les descriptions et les textes des packs se mettent complètement à jour après un redémarrage.';
 
   @override
   String get settingsLanguageSystemDefault => 'Langue du système';
@@ -851,7 +851,7 @@ class AppLocalizationsFr extends AppLocalizations {
       count,
       locale: localeName,
       other: '$count scrapers · v$version',
-      one: '1 scraper · v$version',
+      one: '$count scraper · v$version',
     );
     return '$_temp0';
   }
@@ -1443,7 +1443,7 @@ class AppLocalizationsFr extends AppLocalizations {
       count,
       locale: localeName,
       other: '$count mises à jour disponibles',
-      one: '1 mise à jour disponible',
+      one: '$count mise à jour disponible',
     );
     return '$_temp0';
   }
@@ -1481,7 +1481,7 @@ class AppLocalizationsFr extends AppLocalizations {
       count,
       locale: localeName,
       other: '$count plugins',
-      one: '1 plugin',
+      one: '$count plugin',
     );
     return '$kind · $_temp0 · v$version';
   }
@@ -1551,7 +1551,7 @@ class AppLocalizationsFr extends AppLocalizations {
       count,
       locale: localeName,
       other: '$count packs installés',
-      one: '1 pack installé',
+      one: '$count pack installé',
     );
     return '$_temp0';
   }
@@ -1562,7 +1562,7 @@ class AppLocalizationsFr extends AppLocalizations {
       count,
       locale: localeName,
       other: '$count packs supprimés',
-      one: '1 pack supprimé',
+      one: '$count pack supprimé',
     );
     return '$_temp0';
   }
@@ -1600,7 +1600,7 @@ class AppLocalizationsFr extends AppLocalizations {
       count,
       locale: localeName,
       other: '$count packs',
-      one: '1 pack',
+      one: '$count pack',
     );
     return 'Désinstaller $_temp0';
   }
@@ -1611,7 +1611,7 @@ class AppLocalizationsFr extends AppLocalizations {
       count,
       locale: localeName,
       other: '$count packs',
-      one: '1 pack',
+      one: '$count pack',
     );
     return 'Installer $_temp0';
   }
@@ -1766,7 +1766,7 @@ class AppLocalizationsFr extends AppLocalizations {
       count,
       locale: localeName,
       other: '$count packs rechargés',
-      one: '1 pack rechargé',
+      one: '$count pack rechargé',
     );
     return '$_temp0';
   }
@@ -1782,7 +1782,7 @@ class AppLocalizationsFr extends AppLocalizations {
       count,
       locale: localeName,
       other: '$count packs téléchargés',
-      one: '1 pack téléchargé',
+      one: '$count pack téléchargé',
     );
     return '$_temp0';
   }
@@ -1798,7 +1798,7 @@ class AppLocalizationsFr extends AppLocalizations {
       count,
       locale: localeName,
       other: '$count packs mis à jour',
-      one: '1 pack mis à jour',
+      one: '$count pack mis à jour',
     );
     return '$_temp0';
   }
@@ -1937,7 +1937,7 @@ class AppLocalizationsFr extends AppLocalizations {
       count,
       locale: localeName,
       other: '$count sections de réglages synchronisées avec ce profil',
-      one: '1 section de réglages synchronisée avec ce profil',
+      one: '$count section de réglages synchronisée avec ce profil',
     );
     return '$_temp0';
   }
@@ -2931,7 +2931,7 @@ class AppLocalizationsFr extends AppLocalizations {
       count,
       locale: localeName,
       other: '$count flux',
-      one: '1 flux',
+      one: '$count flux',
     );
     return '$_temp0';
   }
@@ -3585,7 +3585,7 @@ class AppLocalizationsFr extends AppLocalizations {
       count,
       locale: localeName,
       other: '$count portails distribués',
-      one: '1 portail distribué',
+      one: '$count portail distribué',
     );
     return '$_temp0';
   }
@@ -3602,7 +3602,7 @@ class AppLocalizationsFr extends AppLocalizations {
       other:
           '$count portails distribués, mais la liste n\'a pas pu s\'actualiser — rouvrez Portails',
       one:
-          '1 portail distribué, mais la liste n\'a pas pu s\'actualiser — rouvrez Portails',
+          '$count portail distribué, mais la liste n\'a pas pu s\'actualiser — rouvrez Portails',
     );
     return '$_temp0';
   }
@@ -3866,7 +3866,7 @@ class AppLocalizationsFr extends AppLocalizations {
       count,
       locale: localeName,
       other: '$count packs de plugins mis à jour',
-      one: '1 pack de plugins mis à jour',
+      one: '$count pack de plugins mis à jour',
     );
     return '$_temp0';
   }
@@ -4035,7 +4035,7 @@ class AppLocalizationsFr extends AppLocalizations {
       count,
       locale: localeName,
       other: '$count spectateurs',
-      one: '1 spectateur',
+      one: '$count spectateur',
     );
     return '$_temp0';
   }
@@ -5331,4 +5331,208 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get foundationWordClose => 'Fermer';
+
+  @override
+  String get foundationWordComingSoon => 'Bientôt disponible';
+
+  @override
+  String get foundationWordScore => 'Note';
+
+  @override
+  String get foundationWordAnyScore => 'Toutes les notes';
+
+  @override
+  String get foundationWordYear => 'Année';
+
+  @override
+  String get foundationWordAnyYear => 'Toutes les années';
+
+  @override
+  String get foundationWordGenre => 'Genre';
+
+  @override
+  String get foundationWordCountry => 'Pays';
+
+  @override
+  String get foundationWordLanguage => 'Langue';
+
+  @override
+  String get foundationWordFilms => 'Films';
+
+  @override
+  String get foundationWordSeries => 'Séries';
+
+  @override
+  String get foundationWordAction => 'Action';
+
+  @override
+  String get foundationWordAdventure => 'Aventure';
+
+  @override
+  String get foundationWordAnimation => 'Animation';
+
+  @override
+  String get foundationWordComedy => 'Comédie';
+
+  @override
+  String get foundationWordCrime => 'Crime';
+
+  @override
+  String get foundationWordDocumentary => 'Documentaire';
+
+  @override
+  String get foundationWordDrama => 'Drame';
+
+  @override
+  String get foundationWordFamily => 'Famille';
+
+  @override
+  String get foundationWordFantasy => 'Fantastique';
+
+  @override
+  String get foundationWordHistory => 'Histoire';
+
+  @override
+  String get foundationWordHorror => 'Horreur';
+
+  @override
+  String get foundationWordMusic => 'Musique';
+
+  @override
+  String get foundationWordMystery => 'Mystère';
+
+  @override
+  String get foundationWordRomance => 'Romance';
+
+  @override
+  String get foundationWordSciFi => 'Science-fiction';
+
+  @override
+  String get foundationWordThriller => 'Thriller';
+
+  @override
+  String get foundationWordWar => 'Guerre';
+
+  @override
+  String get foundationWordWestern => 'Western';
+
+  @override
+  String get foundationWordKids => 'Enfants';
+
+  @override
+  String get foundationWordUsa => 'États-Unis';
+
+  @override
+  String get foundationWordUk => 'Royaume-Uni';
+
+  @override
+  String get foundationWordFrance => 'France';
+
+  @override
+  String get foundationWordGermany => 'Allemagne';
+
+  @override
+  String get foundationWordJapan => 'Japon';
+
+  @override
+  String get foundationWordKorea => 'Corée';
+
+  @override
+  String get foundationWordIndia => 'Inde';
+
+  @override
+  String get foundationWordItaly => 'Italie';
+
+  @override
+  String get foundationWordSpain => 'Espagne';
+
+  @override
+  String get foundationWordCanada => 'Canada';
+
+  @override
+  String get foundationWordAustralia => 'Australie';
+
+  @override
+  String get foundationWordChina => 'Chine';
+
+  @override
+  String get foundationWordBrazil => 'Brésil';
+
+  @override
+  String get foundationWordMexico => 'Mexique';
+
+  @override
+  String get foundationWordSweden => 'Suède';
+
+  @override
+  String get foundationWordNorway => 'Norvège';
+
+  @override
+  String get foundationWordDenmark => 'Danemark';
+
+  @override
+  String get foundationWordTurkey => 'Turquie';
+
+  @override
+  String get foundationWordHongKong => 'Hong Kong';
+
+  @override
+  String get foundationWordTaiwan => 'Taïwan';
+
+  @override
+  String get foundationWordThailand => 'Thaïlande';
+
+  @override
+  String get foundationWordEnglish => 'Anglais';
+
+  @override
+  String get foundationWordJapanese => 'Japonais';
+
+  @override
+  String get foundationWordKorean => 'Coréen';
+
+  @override
+  String get foundationWordFrench => 'Français';
+
+  @override
+  String get foundationWordSpanish => 'Espagnol';
+
+  @override
+  String get foundationWordGerman => 'Allemand';
+
+  @override
+  String get foundationWordItalian => 'Italien';
+
+  @override
+  String get foundationWordPortuguese => 'Portugais';
+
+  @override
+  String get foundationWordChinese => 'Chinois';
+
+  @override
+  String get foundationWordHindi => 'Hindi';
+
+  @override
+  String get foundationWordArabic => 'Arabe';
+
+  @override
+  String get foundationWordTurkish => 'Turc';
+
+  @override
+  String get foundationWordThai => 'Thaï';
+
+  @override
+  String get foundationWordSwedish => 'Suédois';
+
+  @override
+  String get foundationWordNorwegian => 'Norvégien';
+
+  @override
+  String get foundationWordDanish => 'Danois';
+
+  @override
+  String get foundationWordSub => 'VOSTFR';
+
+  @override
+  String get foundationWordDub => 'VF';
 }

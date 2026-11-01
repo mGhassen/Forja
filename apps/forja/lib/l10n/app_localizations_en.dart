@@ -63,7 +63,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settingsLanguageRowSubtitle =>
-      'Menus and screens change right away. Restart Forja to update titles and descriptions.';
+      'Menus and screens change right away. Titles, descriptions and pack text catch up fully after a restart.';
 
   @override
   String get settingsLanguageSystemDefault => 'System default';
@@ -3944,7 +3944,13 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String engineDetailsMatchViewers(int count) {
-    return '$count viewers';
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count viewers',
+      one: '1 viewer',
+    );
+    return '$_temp0';
   }
 
   @override
@@ -5216,4 +5222,208 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get foundationWordClose => 'Close';
+
+  @override
+  String get foundationWordComingSoon => 'Coming soon';
+
+  @override
+  String get foundationWordScore => 'Score';
+
+  @override
+  String get foundationWordAnyScore => 'Any score';
+
+  @override
+  String get foundationWordYear => 'Year';
+
+  @override
+  String get foundationWordAnyYear => 'Any year';
+
+  @override
+  String get foundationWordGenre => 'Genre';
+
+  @override
+  String get foundationWordCountry => 'Country';
+
+  @override
+  String get foundationWordLanguage => 'Language';
+
+  @override
+  String get foundationWordFilms => 'Films';
+
+  @override
+  String get foundationWordSeries => 'Series';
+
+  @override
+  String get foundationWordAction => 'Action';
+
+  @override
+  String get foundationWordAdventure => 'Adventure';
+
+  @override
+  String get foundationWordAnimation => 'Animation';
+
+  @override
+  String get foundationWordComedy => 'Comedy';
+
+  @override
+  String get foundationWordCrime => 'Crime';
+
+  @override
+  String get foundationWordDocumentary => 'Documentary';
+
+  @override
+  String get foundationWordDrama => 'Drama';
+
+  @override
+  String get foundationWordFamily => 'Family';
+
+  @override
+  String get foundationWordFantasy => 'Fantasy';
+
+  @override
+  String get foundationWordHistory => 'History';
+
+  @override
+  String get foundationWordHorror => 'Horror';
+
+  @override
+  String get foundationWordMusic => 'Music';
+
+  @override
+  String get foundationWordMystery => 'Mystery';
+
+  @override
+  String get foundationWordRomance => 'Romance';
+
+  @override
+  String get foundationWordSciFi => 'Sci-Fi';
+
+  @override
+  String get foundationWordThriller => 'Thriller';
+
+  @override
+  String get foundationWordWar => 'War';
+
+  @override
+  String get foundationWordWestern => 'Western';
+
+  @override
+  String get foundationWordKids => 'Kids';
+
+  @override
+  String get foundationWordUsa => 'USA';
+
+  @override
+  String get foundationWordUk => 'UK';
+
+  @override
+  String get foundationWordFrance => 'France';
+
+  @override
+  String get foundationWordGermany => 'Germany';
+
+  @override
+  String get foundationWordJapan => 'Japan';
+
+  @override
+  String get foundationWordKorea => 'Korea';
+
+  @override
+  String get foundationWordIndia => 'India';
+
+  @override
+  String get foundationWordItaly => 'Italy';
+
+  @override
+  String get foundationWordSpain => 'Spain';
+
+  @override
+  String get foundationWordCanada => 'Canada';
+
+  @override
+  String get foundationWordAustralia => 'Australia';
+
+  @override
+  String get foundationWordChina => 'China';
+
+  @override
+  String get foundationWordBrazil => 'Brazil';
+
+  @override
+  String get foundationWordMexico => 'Mexico';
+
+  @override
+  String get foundationWordSweden => 'Sweden';
+
+  @override
+  String get foundationWordNorway => 'Norway';
+
+  @override
+  String get foundationWordDenmark => 'Denmark';
+
+  @override
+  String get foundationWordTurkey => 'Turkey';
+
+  @override
+  String get foundationWordHongKong => 'Hong Kong';
+
+  @override
+  String get foundationWordTaiwan => 'Taiwan';
+
+  @override
+  String get foundationWordThailand => 'Thailand';
+
+  @override
+  String get foundationWordEnglish => 'English';
+
+  @override
+  String get foundationWordJapanese => 'Japanese';
+
+  @override
+  String get foundationWordKorean => 'Korean';
+
+  @override
+  String get foundationWordFrench => 'French';
+
+  @override
+  String get foundationWordSpanish => 'Spanish';
+
+  @override
+  String get foundationWordGerman => 'German';
+
+  @override
+  String get foundationWordItalian => 'Italian';
+
+  @override
+  String get foundationWordPortuguese => 'Portuguese';
+
+  @override
+  String get foundationWordChinese => 'Chinese';
+
+  @override
+  String get foundationWordHindi => 'Hindi';
+
+  @override
+  String get foundationWordArabic => 'Arabic';
+
+  @override
+  String get foundationWordTurkish => 'Turkish';
+
+  @override
+  String get foundationWordThai => 'Thai';
+
+  @override
+  String get foundationWordSwedish => 'Swedish';
+
+  @override
+  String get foundationWordNorwegian => 'Norwegian';
+
+  @override
+  String get foundationWordDanish => 'Danish';
+
+  @override
+  String get foundationWordSub => 'SUB';
+
+  @override
+  String get foundationWordDub => 'DUB';
 }

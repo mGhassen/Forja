@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:forja_foundation/l10n/foundation_strings.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 
 export 'package:forja_foundation/widgets/catalog/catalog_search_filter_lens.dart';
@@ -182,12 +183,12 @@ class SearchFilters {
     final out = <(String, VoidCallback)>[];
     if (media == SearchMediaFilter.movie) {
       out.add((
-        'Films',
+        ForjaFoundationStrings.current.t('Films'),
         () => apply(copyWith(media: SearchMediaFilter.all)),
       ));
     } else if (media == SearchMediaFilter.tv) {
       out.add((
-        'Series',
+        ForjaFoundationStrings.current.t('Series'),
         () => apply(copyWith(media: SearchMediaFilter.all)),
       ));
     }
@@ -197,7 +198,7 @@ class SearchFilters {
           .map((e) => e.$1)
           .firstOrNull;
       out.add((
-        label ?? genreToken!,
+        ForjaFoundationStrings.current.t(label ?? genreToken!),
         () => apply(copyWith(clearGenre: true)),
       ));
     }
@@ -207,7 +208,7 @@ class SearchFilters {
           .map((e) => e.$1)
           .firstOrNull;
       out.add((
-        label ?? countryToken!,
+        ForjaFoundationStrings.current.t(label ?? countryToken!),
         () => apply(copyWith(clearCountry: true)),
       ));
     }
@@ -217,7 +218,7 @@ class SearchFilters {
           .map((e) => e.$1)
           .firstOrNull;
       out.add((
-        label ?? languageToken!,
+        ForjaFoundationStrings.current.t(label ?? languageToken!),
         () => apply(copyWith(clearLanguage: true)),
       ));
     }

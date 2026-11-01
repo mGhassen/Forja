@@ -52,13 +52,16 @@ bool isFutureIsoDate(String iso) {
   return airDay.isAfter(todayDay);
 }
 
-/// Formats `YYYY-MM-DD` (or longer ISO) as `Mon D, YYYY`.
-String formatEpisodeDisplayDate(String iso) {
+/// Formats `YYYY-MM-DD` (or longer ISO) as `Mon D, YYYY`, or in the app
+/// language unless [english] is set.
+String formatEpisodeDisplayDate(String iso, {bool english = false}) {
   final parsed = _parseIsoDate(iso);
   if (parsed == null) {
     return iso.length >= 10 ? iso.substring(0, 10) : iso;
   }
-  final strings = ForjaFoundationStrings.current;
+  final strings = english
+      ? ForjaFoundationStrings.english
+      : ForjaFoundationStrings.current;
   final months = strings.shortMonths.length == _monthLabels.length
       ? strings.shortMonths
       : _monthLabels;
