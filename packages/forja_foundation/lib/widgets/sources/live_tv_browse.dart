@@ -1,3 +1,4 @@
+import 'package:forja_foundation/l10n/foundation_strings.dart';
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -315,7 +316,7 @@ class _SourcesExpandingSearchState extends State<SourcesExpandingSearch>
   }) {
     // No scale — hover/focus paint fill only (matches hero pill chrome).
     return Tooltip(
-      message: 'Search channels',
+      message: ForjaFoundationStrings.current.t('Search channels'),
       child: Material(
         color: Colors.transparent,
         child: InkWell(
@@ -367,7 +368,7 @@ class _SourcesExpandingSearchState extends State<SourcesExpandingSearch>
           decoration: InputDecoration(
             isDense: true,
             border: InputBorder.none,
-            hintText: 'Search channels…',
+            hintText: ForjaFoundationStrings.current.t('Search channels…'),
             hintStyle: TextStyle(
               color: Colors.white.withValues(alpha: 0.38),
               fontSize: fontSize,

@@ -1,3 +1,4 @@
+import 'package:forja_foundation/l10n/foundation_strings.dart';
 import 'dart:async';
 import 'dart:math' as math;
 
@@ -456,7 +457,10 @@ class _CatalogCategoryRailState extends State<CatalogCategoryRail> {
   Widget build(BuildContext context) {
     final railW = widget.width ?? catalogSideRailWidth(context);
     if (widget.items.isEmpty) {
-      final empty = const Empty(title: 'No categories', size: EmptySize.sm);
+      final empty = Empty(
+        title: ForjaFoundationStrings.of(context).noCategories,
+        size: EmptySize.sm,
+      );
       if (widget.header == null) {
         return SizedBox(width: railW, child: empty);
       }

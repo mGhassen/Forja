@@ -1,3 +1,4 @@
+import 'package:forja/shared/services/app/app_locale.dart';
 import 'dart:async';
 import 'dart:convert';
 
@@ -156,11 +157,11 @@ abstract final class PortalsHost {
       await PortalVaultInventory.ensureMigratedFromStore();
       final raw = await EngineVault.get(PortalVaultKeys.portals);
       if (raw == null || raw.trim().isEmpty || raw.trim() == '[]') {
-        return const PortalsChipSummary(label: 'Portals', hasPortal: false);
+        return PortalsChipSummary(label: AppLocale.strings.portalsChipLabel, hasPortal: false);
       }
       final parsed = jsonDecode(raw);
       if (parsed is! List || parsed.isEmpty) {
-        return const PortalsChipSummary(label: 'Portals', hasPortal: false);
+        return PortalsChipSummary(label: AppLocale.strings.portalsChipLabel, hasPortal: false);
       }
 
       final activeRaw = await EngineVault.get(PortalVaultKeys.active);
@@ -177,7 +178,7 @@ abstract final class PortalsHost {
         }
       }
       if (hit == null) {
-        return PortalsChipSummary(label: 'Portals', hasPortal: true);
+        return PortalsChipSummary(label: AppLocale.strings.portalsChipLabel, hasPortal: true);
       }
       final key = vaultPortalKey(hit);
       final label = portalRowDisplayName(hit, key: key);
@@ -191,7 +192,7 @@ abstract final class PortalsHost {
         seatsMax: max.isEmpty ? null : max,
       );
     } catch (_) {
-      return const PortalsChipSummary(label: 'Portals', hasPortal: false);
+      return PortalsChipSummary(label: AppLocale.strings.portalsChipLabel, hasPortal: false);
     }
   }
 

@@ -113,16 +113,16 @@ class _TvSeasonEpisodePickerState extends State<TvSeasonEpisodePicker> {
   static const _episodeRowId = 'episodes';
   static const _chromeRowId = 'episode-chrome';
 
-  static const _viewItems = [
+  static List<ViewButtonItem> get _viewItems => [
     ViewButtonItem(
       id: kEpisodeViewCards,
       icon: Icons.view_agenda_rounded,
-      label: 'Cards',
+      label: ForjaFoundationStrings.current.t('Cards'),
     ),
     ViewButtonItem(
       id: kEpisodeViewChips,
       icon: Icons.grid_view_rounded,
-      label: 'Number chips',
+      label: ForjaFoundationStrings.current.t('Number chips'),
     ),
   ];
 

@@ -1,3 +1,4 @@
+import 'package:forja/shared/services/app/app_locale.dart';
 import 'dart:async';
 
 import 'package:flutter/material.dart' hide Switch;
@@ -311,7 +312,7 @@ class _SettingsForjaAddonsSectionState
                             ),
                           ),
                           _AddonFeatureChip(
-                            label: 'Live Sports',
+                            label: AppLocale.strings.settingsLiveSportsChip,
                             selected: features.contains(
                               StremioAddonFeatures.live,
                             ),

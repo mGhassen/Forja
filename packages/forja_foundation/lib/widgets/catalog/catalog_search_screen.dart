@@ -1,3 +1,4 @@
+import 'package:forja_foundation/l10n/foundation_strings.dart';
 import 'package:flutter/material.dart';
 import 'package:forja_foundation/blocks/search/catalog_search_page.dart';
 
@@ -51,7 +52,7 @@ class CatalogSearchScreen extends StatelessWidget {
     }
     return CatalogSearchPage(
       hintText: hintText,
-      results: const Center(child: Text('Search')),
+      results: Center(child: Text(ForjaFoundationStrings.of(context).search)),
     );
   }
 }

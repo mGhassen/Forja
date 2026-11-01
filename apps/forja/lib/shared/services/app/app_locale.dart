@@ -28,6 +28,10 @@ abstract final class AppLocale {
     return null;
   }
 
+  /// Messages in the app language, for code with no [BuildContext].
+  static AppLocalizations get strings =>
+      lookupAppLocalizations(Locale(activeCode));
+
   /// TMDB tag for each app language, used for titles, overviews and genres.
   static const Map<String, String> tmdbTags = {'en': 'en-US', 'fr': 'fr-FR'};
 

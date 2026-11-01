@@ -9483,6 +9483,210 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'off'**
   String get foundationWordLanguageNames;
+
+  /// No description provided for @authSupabaseNotConfigured.
+  ///
+  /// In en, this message translates to:
+  /// **'Supabase is not configured for this build.'**
+  String get authSupabaseNotConfigured;
+
+  /// No description provided for @authWebLoginNoTokens.
+  ///
+  /// In en, this message translates to:
+  /// **'Web login did not return usable tokens.'**
+  String get authWebLoginNoTokens;
+
+  /// No description provided for @authWebLoginNoSession.
+  ///
+  /// In en, this message translates to:
+  /// **'Web login did not return a usable session.'**
+  String get authWebLoginNoSession;
+
+  /// No description provided for @authSignInToCreateProfile.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in to create a profile.'**
+  String get authSignInToCreateProfile;
+
+  /// No description provided for @authEnterProfileName.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter a profile name.'**
+  String get authEnterProfileName;
+
+  /// No description provided for @authMaxProfiles.
+  ///
+  /// In en, this message translates to:
+  /// **'Maximum of 5 profiles per account.'**
+  String get authMaxProfiles;
+
+  /// No description provided for @authCouldNotCreateProfile.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not create profile.'**
+  String get authCouldNotCreateProfile;
+
+  /// No description provided for @authSignInToEditProfile.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in to edit a profile.'**
+  String get authSignInToEditProfile;
+
+  /// No description provided for @authCouldNotSaveProfile.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not save profile.'**
+  String get authCouldNotSaveProfile;
+
+  /// No description provided for @authSignInToDeleteProfile.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in to delete a profile.'**
+  String get authSignInToDeleteProfile;
+
+  /// No description provided for @authEveryAccountNeedsProfile.
+  ///
+  /// In en, this message translates to:
+  /// **'Every account needs one profile.'**
+  String get authEveryAccountNeedsProfile;
+
+  /// No description provided for @authCouldNotDeleteProfile.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not delete profile.'**
+  String get authCouldNotDeleteProfile;
+
+  /// No description provided for @authTvLinkNoCode.
+  ///
+  /// In en, this message translates to:
+  /// **'TV linking did not return a usable code.'**
+  String get authTvLinkNoCode;
+
+  /// No description provided for @packsInstallNothing.
+  ///
+  /// In en, this message translates to:
+  /// **'Nothing to install'**
+  String get packsInstallNothing;
+
+  /// No description provided for @packsInstallInstalling.
+  ///
+  /// In en, this message translates to:
+  /// **'Installing {label} ({index}/{total})…'**
+  String packsInstallInstalling(String label, int index, int total);
+
+  /// No description provided for @packsInstallActivating.
+  ///
+  /// In en, this message translates to:
+  /// **'Activating Features…'**
+  String get packsInstallActivating;
+
+  /// No description provided for @portalsChipLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Portals'**
+  String get portalsChipLabel;
+
+  /// No description provided for @settingsLiveSportsChip.
+  ///
+  /// In en, this message translates to:
+  /// **'Live Sports'**
+  String get settingsLiveSportsChip;
+
+  /// No description provided for @engineScheduleLoading.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading…'**
+  String get engineScheduleLoading;
+
+  /// No description provided for @engineScheduleLoadingNamed.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading {name}… {index}/{total}'**
+  String engineScheduleLoadingNamed(String name, int index, int total);
+
+  /// No description provided for @pluginSyncProgressLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Syncing plugins…'**
+  String get pluginSyncProgressLabel;
+
+  /// No description provided for @foundationWordSearchChannels.
+  ///
+  /// In en, this message translates to:
+  /// **'Search channels'**
+  String get foundationWordSearchChannels;
+
+  /// No description provided for @foundationWordSearchChannelsHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Search channels…'**
+  String get foundationWordSearchChannelsHint;
+
+  /// No description provided for @foundationWordSearchChannelsOrCategoriesHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Search channels or categories…'**
+  String get foundationWordSearchChannelsOrCategoriesHint;
+
+  /// No description provided for @foundationWordEpisodeRange.
+  ///
+  /// In en, this message translates to:
+  /// **'Episode range'**
+  String get foundationWordEpisodeRange;
+
+  /// No description provided for @foundationWordYes.
+  ///
+  /// In en, this message translates to:
+  /// **'Yes'**
+  String get foundationWordYes;
+
+  /// No description provided for @foundationWordNo.
+  ///
+  /// In en, this message translates to:
+  /// **'No'**
+  String get foundationWordNo;
+
+  /// No description provided for @foundationWordCopyShareCode.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy share code'**
+  String get foundationWordCopyShareCode;
+
+  /// No description provided for @foundationWordEdit.
+  ///
+  /// In en, this message translates to:
+  /// **'Edit'**
+  String get foundationWordEdit;
+
+  /// No description provided for @foundationWordDelete.
+  ///
+  /// In en, this message translates to:
+  /// **'Delete'**
+  String get foundationWordDelete;
+
+  /// No description provided for @foundationWordCards.
+  ///
+  /// In en, this message translates to:
+  /// **'Cards'**
+  String get foundationWordCards;
+
+  /// No description provided for @foundationWordNumberChips.
+  ///
+  /// In en, this message translates to:
+  /// **'Number chips'**
+  String get foundationWordNumberChips;
+
+  /// No description provided for @foundationWordMovies.
+  ///
+  /// In en, this message translates to:
+  /// **'Movies'**
+  String get foundationWordMovies;
+
+  /// No description provided for @foundationWordTv.
+  ///
+  /// In en, this message translates to:
+  /// **'TV'**
+  String get foundationWordTv;
 }
 
 class _AppLocalizationsDelegate

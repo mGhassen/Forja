@@ -1,3 +1,4 @@
+import 'package:forja/shared/services/app/app_locale.dart';
 import 'package:flutter/foundation.dart';
 import 'package:forja/shared/engine/models/models.dart';
 import 'package:forja/shared/engine/packs/catalog/official_forjahq_packs.dart';
@@ -201,7 +202,7 @@ Future<List<String>> installSelectedOfficialPacks(
           c.manifestUrl.trim().isNotEmpty)
       .toList(growable: false);
   if (todo.isEmpty) {
-    onProgress?.call(done: 0, total: 0, status: 'Nothing to install');
+    onProgress?.call(done: 0, total: 0, status: AppLocale.strings.packsInstallNothing);
     return const [];
   }
 
@@ -215,7 +216,11 @@ Future<List<String>> installSelectedOfficialPacks(
     onProgress?.call(
       done: i,
       total: todo.length,
-      status: 'Installing $label (${i + 1}/${todo.length})…',
+      status: AppLocale.strings.packsInstallInstalling(
+        label,
+        i + 1,
+        todo.length,
+      ),
     );
     try {
       final enginePack = await PluginInstallCoordinator.instance
@@ -231,7 +236,7 @@ Future<List<String>> installSelectedOfficialPacks(
     onProgress?.call(
       done: todo.length,
       total: todo.length,
-      status: 'Activating Features…',
+      status: AppLocale.strings.packsInstallActivating,
     );
     await PackHubFeatures.refreshAndActivateInstalled(installed);
   }

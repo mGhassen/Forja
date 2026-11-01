@@ -1,3 +1,4 @@
+import 'package:forja_foundation/l10n/foundation_strings.dart';
 import 'dart:async';
 import 'dart:math' as math;
 
@@ -640,7 +641,7 @@ class _ChannelSearchOverlayState extends State<ChannelSearchOverlay> {
                       ? ShellTokens.formInputIconSizeTv
                       : ShellTokens.formInputIconSize,
                 ),
-                hintText: 'Search channels or categories…',
+                hintText: ForjaFoundationStrings.current.t('Search channels or categories…'),
                 hintStyle: GoogleFonts.plusJakartaSans(
                   color: Colors.white30,
                   fontSize: widget.isTv

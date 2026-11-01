@@ -301,21 +301,21 @@ class CatalogSearchFilters extends StatelessWidget {
       child: Row(
         children: [
           chip(
-            label: 'All',
+            label: ForjaFoundationStrings.current.all,
             selected: filters.media == SearchMediaFilter.all,
             onTap: () => onChanged(
               filters.copyWith(media: SearchMediaFilter.all),
             ),
           ),
           chip(
-            label: 'Movies',
+            label: ForjaFoundationStrings.current.t('Movies'),
             selected: filters.media == SearchMediaFilter.movie,
             onTap: () => onChanged(
               filters.copyWith(media: SearchMediaFilter.movie),
             ),
           ),
           chip(
-            label: 'TV',
+            label: ForjaFoundationStrings.current.t('TV'),
             selected: filters.media == SearchMediaFilter.tv,
             onTap: () => onChanged(
               filters.copyWith(media: SearchMediaFilter.tv),

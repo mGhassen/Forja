@@ -5459,4 +5459,113 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get foundationWordLanguageNames => 'off';
+
+  @override
+  String get authSupabaseNotConfigured =>
+      'Supabase is not configured for this build.';
+
+  @override
+  String get authWebLoginNoTokens => 'Web login did not return usable tokens.';
+
+  @override
+  String get authWebLoginNoSession =>
+      'Web login did not return a usable session.';
+
+  @override
+  String get authSignInToCreateProfile => 'Sign in to create a profile.';
+
+  @override
+  String get authEnterProfileName => 'Enter a profile name.';
+
+  @override
+  String get authMaxProfiles => 'Maximum of 5 profiles per account.';
+
+  @override
+  String get authCouldNotCreateProfile => 'Could not create profile.';
+
+  @override
+  String get authSignInToEditProfile => 'Sign in to edit a profile.';
+
+  @override
+  String get authCouldNotSaveProfile => 'Could not save profile.';
+
+  @override
+  String get authSignInToDeleteProfile => 'Sign in to delete a profile.';
+
+  @override
+  String get authEveryAccountNeedsProfile => 'Every account needs one profile.';
+
+  @override
+  String get authCouldNotDeleteProfile => 'Could not delete profile.';
+
+  @override
+  String get authTvLinkNoCode => 'TV linking did not return a usable code.';
+
+  @override
+  String get packsInstallNothing => 'Nothing to install';
+
+  @override
+  String packsInstallInstalling(String label, int index, int total) {
+    return 'Installing $label ($index/$total)…';
+  }
+
+  @override
+  String get packsInstallActivating => 'Activating Features…';
+
+  @override
+  String get portalsChipLabel => 'Portals';
+
+  @override
+  String get settingsLiveSportsChip => 'Live Sports';
+
+  @override
+  String get engineScheduleLoading => 'Loading…';
+
+  @override
+  String engineScheduleLoadingNamed(String name, int index, int total) {
+    return 'Loading $name… $index/$total';
+  }
+
+  @override
+  String get pluginSyncProgressLabel => 'Syncing plugins…';
+
+  @override
+  String get foundationWordSearchChannels => 'Search channels';
+
+  @override
+  String get foundationWordSearchChannelsHint => 'Search channels…';
+
+  @override
+  String get foundationWordSearchChannelsOrCategoriesHint =>
+      'Search channels or categories…';
+
+  @override
+  String get foundationWordEpisodeRange => 'Episode range';
+
+  @override
+  String get foundationWordYes => 'Yes';
+
+  @override
+  String get foundationWordNo => 'No';
+
+  @override
+  String get foundationWordCopyShareCode => 'Copy share code';
+
+  @override
+  String get foundationWordEdit => 'Edit';
+
+  @override
+  String get foundationWordDelete => 'Delete';
+
+  @override
+  String get foundationWordCards => 'Cards';
+
+  @override
+  String get foundationWordNumberChips => 'Number chips';
+
+  @override
+  String get foundationWordMovies => 'Movies';
+
+  @override
+  String get foundationWordTv => 'TV';
 }

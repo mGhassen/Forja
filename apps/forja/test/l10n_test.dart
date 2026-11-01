@@ -183,6 +183,30 @@ void main() {
     });
   });
 
+  test('code with no BuildContext reads the app language', () {
+    addTearDown(() => AppLocale.notifier.value = null);
+    AppLocale.notifier.value = const Locale('fr');
+    expect(AppLocale.strings.authEnterProfileName, 'Saisissez un nom de profil.');
+    AppLocale.notifier.value = const Locale('en');
+    expect(AppLocale.strings.authEnterProfileName, 'Enter a profile name.');
+  });
+
+  test('every literal the design system looks up has a translation entry', () {
+    final bootstrap = File('lib/app/bootstrap.dart').readAsStringSync();
+    final lookup = RegExp(r"\.t\('([^'\\]+)'\)");
+    final missing = <String>{};
+    for (final f in Directory('../../packages/forja_foundation/lib')
+        .listSync(recursive: true)
+        .whereType<File>()
+        .where((f) => f.path.endsWith('.dart'))) {
+      for (final m in lookup.allMatches(f.readAsStringSync())) {
+        final word = m.group(1)!;
+        if (!bootstrap.contains("'$word':")) missing.add(word);
+      }
+    }
+    expect(missing, isEmpty, reason: 'add to the words map in bootstrap.dart');
+  });
+
   group('plurals', () {
     test('French treats 0 and 1 as singular', () {
       final fr = lookupAppLocalizations(const Locale('fr'));

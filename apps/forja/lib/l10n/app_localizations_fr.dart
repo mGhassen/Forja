@@ -5568,4 +5568,119 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get foundationWordLanguageNames => 'on';
+
+  @override
+  String get authSupabaseNotConfigured =>
+      'Supabase n\'est pas configuré pour cette version.';
+
+  @override
+  String get authWebLoginNoTokens =>
+      'La connexion web n\'a pas renvoyé de jetons utilisables.';
+
+  @override
+  String get authWebLoginNoSession =>
+      'La connexion web n\'a pas renvoyé de session utilisable.';
+
+  @override
+  String get authSignInToCreateProfile =>
+      'Connectez-vous pour créer un profil.';
+
+  @override
+  String get authEnterProfileName => 'Saisissez un nom de profil.';
+
+  @override
+  String get authMaxProfiles => '5 profils maximum par compte.';
+
+  @override
+  String get authCouldNotCreateProfile => 'Impossible de créer le profil.';
+
+  @override
+  String get authSignInToEditProfile =>
+      'Connectez-vous pour modifier un profil.';
+
+  @override
+  String get authCouldNotSaveProfile => 'Impossible d\'enregistrer le profil.';
+
+  @override
+  String get authSignInToDeleteProfile =>
+      'Connectez-vous pour supprimer un profil.';
+
+  @override
+  String get authEveryAccountNeedsProfile =>
+      'Chaque compte doit avoir au moins un profil.';
+
+  @override
+  String get authCouldNotDeleteProfile => 'Impossible de supprimer le profil.';
+
+  @override
+  String get authTvLinkNoCode =>
+      'La liaison de la TV n\'a pas renvoyé de code utilisable.';
+
+  @override
+  String get packsInstallNothing => 'Rien à installer';
+
+  @override
+  String packsInstallInstalling(String label, int index, int total) {
+    return 'Installation de $label ($index/$total)…';
+  }
+
+  @override
+  String get packsInstallActivating => 'Activation des fonctionnalités…';
+
+  @override
+  String get portalsChipLabel => 'Portails';
+
+  @override
+  String get settingsLiveSportsChip => 'Sport en direct';
+
+  @override
+  String get engineScheduleLoading => 'Chargement…';
+
+  @override
+  String engineScheduleLoadingNamed(String name, int index, int total) {
+    return 'Chargement de $name… $index/$total';
+  }
+
+  @override
+  String get pluginSyncProgressLabel => 'Synchronisation des plugins…';
+
+  @override
+  String get foundationWordSearchChannels => 'Rechercher des chaînes';
+
+  @override
+  String get foundationWordSearchChannelsHint => 'Rechercher des chaînes…';
+
+  @override
+  String get foundationWordSearchChannelsOrCategoriesHint =>
+      'Rechercher des chaînes ou des catégories…';
+
+  @override
+  String get foundationWordEpisodeRange => 'Plage d\'épisodes';
+
+  @override
+  String get foundationWordYes => 'Oui';
+
+  @override
+  String get foundationWordNo => 'Non';
+
+  @override
+  String get foundationWordCopyShareCode => 'Copier le code de partage';
+
+  @override
+  String get foundationWordEdit => 'Modifier';
+
+  @override
+  String get foundationWordDelete => 'Supprimer';
+
+  @override
+  String get foundationWordCards => 'Cartes';
+
+  @override
+  String get foundationWordNumberChips => 'Numéros';
+
+  @override
+  String get foundationWordMovies => 'Films';
+
+  @override
+  String get foundationWordTv => 'Séries';
 }
