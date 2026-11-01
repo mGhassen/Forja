@@ -4,6 +4,7 @@ import 'dart:convert';
 import 'package:crypto/crypto.dart';
 import 'package:flutter/foundation.dart';
 import 'package:forja/shared/engine/models/models.dart';
+import 'package:forja/shared/services/app/app_locale.dart';
 import 'package:forja_foundation/protocol/protocol.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -153,7 +154,10 @@ class EngineCache {
 
   // --- Catalog response cache ---
 
-  /// `pluginId|packHash|action|paramsHash|authSubject`
+  /// `pluginId|packHash|action|paramsHash|authSubject|language`
+  ///
+  /// The app language ends the key, so titles saved on disk in one language
+  /// are not shown after the language changes.
   static String keyFor({
     required String pluginId,
     required String action,
@@ -165,7 +169,8 @@ class EngineCache {
         (packSourceUrl == null || packSourceUrl.trim().isEmpty)
             ? ''
             : EnginePack.urlHash(packSourceUrl);
-    return '$pluginId|$pack|$action|${paramsHash(params)}|${authSubject ?? ''}';
+    return '$pluginId|$pack|$action|${paramsHash(params)}|${authSubject ?? ''}'
+        '|${AppLocale.activeCode}';
   }
 
   /// Stable short hash of [params] — key order must not change the key.
@@ -275,7 +280,7 @@ class EngineCache {
   }
 
   /// Drop catalog entries for one action (`feed`, `rail`, …).
-  /// Key shape: `pluginId|pack|action|paramsHash|authSubject`.
+  /// Key shape: `pluginId|pack|action|paramsHash|authSubject|language`.
   void wipeAction(String action) {
     final want = action.trim();
     if (want.isEmpty) return;

@@ -6,6 +6,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:forja/features/settings/shell/catalog.dart';
 import 'package:forja/features/settings/shell/visibility.dart';
 import 'package:forja/l10n/app_localizations.dart';
+import 'package:forja/shared/engine/cache/engine_cache.dart';
 import 'package:forja/shared/services/app/app_locale.dart';
 
 Map<String, String> _messages(File arb) {
@@ -205,6 +206,16 @@ void main() {
       }
     }
     expect(missing, isEmpty, reason: 'add to the words map in bootstrap.dart');
+  });
+
+  test('saved catalog responses are kept per app language', () {
+    addTearDown(() => AppLocale.notifier.value = null);
+    String key() => EngineCache.keyFor(pluginId: 'p', action: 'details');
+    AppLocale.notifier.value = const Locale('en');
+    final en = key();
+    expect(key(), en);
+    AppLocale.notifier.value = const Locale('fr');
+    expect(key(), isNot(en));
   });
 
   group('plurals', () {
