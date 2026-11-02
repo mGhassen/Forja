@@ -153,10 +153,13 @@ class _PlayerNextEpisodeChipState extends State<PlayerNextEpisodeChip>
     if (_onVertical(event) == KeyEventResult.handled) {
       return KeyEventResult.handled;
     }
-    if (event.logicalKey == LogicalKeyboardKey.arrowRight && _showCancel) {
-      _cancelNode.requestFocus();
+    final key = event.logicalKey;
+    if (key == LogicalKeyboardKey.arrowRight) {
+      if (_showCancel) _cancelNode.requestFocus();
+      // Trap ←/→ so spatial focus cannot jump to Play while chrome is up.
       return KeyEventResult.handled;
     }
+    if (key == LogicalKeyboardKey.arrowLeft) return KeyEventResult.handled;
     return KeyEventResult.ignored;
   }
 
@@ -171,7 +174,7 @@ class _PlayerNextEpisodeChipState extends State<PlayerNextEpisodeChip>
       _mainNode.requestFocus();
       return KeyEventResult.handled;
     }
-    // Last stop on the right — never wander into hidden chrome.
+    // Last stop on the right — never wander into Play / chrome.
     if (key == LogicalKeyboardKey.arrowRight) return KeyEventResult.handled;
     return KeyEventResult.ignored;
   }

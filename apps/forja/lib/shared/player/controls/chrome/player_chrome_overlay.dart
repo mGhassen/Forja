@@ -35,8 +35,8 @@ double playerChromeScale(BuildContext context, double desktop) =>
 /// Desktop type → leanback ladder (never × [playerChromeScale]).
 double playerChromeTypeSize(BuildContext context, double desktop) =>
     ShellPaintScope.usesTvDensityOf(context)
-        ? ShellTokens.tvTypeSize(desktop)
-        : desktop;
+    ? ShellTokens.tvTypeSize(desktop)
+    : desktop;
 
 /// Focus label of the floating Skip / Next Episode chips — the TV key scope
 /// treats them like chrome and lets them hold D-pad while chrome is hidden.
@@ -52,6 +52,7 @@ abstract final class PlayerFloatingChipMetrics {
   static const double ringSize = 26;
   static const double ringFontSize = 12;
   static const double radius = 10;
+
   /// Vertical gap when Skip sits above Next Episode.
   static const double stackGap = 12;
 }
@@ -187,12 +188,11 @@ class _PlayerFlatIconButtonState extends State<PlayerFlatIconButton> {
     focused: _focused,
   );
 
-  bool get _tvFocused =>
-      playerChromeTvFocused(
-        context,
-        tvFocusable: widget.tvFocusable,
-        focused: _focused,
-      );
+  bool get _tvFocused => playerChromeTvFocused(
+    context,
+    tvFocusable: widget.tvFocusable,
+    focused: _focused,
+  );
 
   Widget _buildChild(bool hovered) {
     final highlight = _highlightFor(hovered);
@@ -208,7 +208,9 @@ class _PlayerFlatIconButtonState extends State<PlayerFlatIconButton> {
     final padH = playerChromeScale(context, 8);
     final maxW = playerChromeScale(context, 148);
     final labelMaxW = playerChromeScale(context, 110);
-    final radius = widget.label == null ? size / 2 : playerChromeScale(context, 8);
+    final radius = widget.label == null
+        ? size / 2
+        : playerChromeScale(context, 8);
     final shape = playerChromeButtonShape(
       isCircle: widget.label == null,
       tvFocused: _tvFocused,
@@ -243,11 +245,7 @@ class _PlayerFlatIconButtonState extends State<PlayerFlatIconButton> {
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(
-                          widget.icon,
-                          color: iconColor,
-                          size: iconSize - 2,
-                        ),
+                        Icon(widget.icon, color: iconColor, size: iconSize - 2),
                         SizedBox(width: playerChromeScale(context, 5)),
                         ConstrainedBox(
                           constraints: BoxConstraints(maxWidth: labelMaxW),
@@ -337,8 +335,10 @@ class PlayerStreamPickerButton extends StatefulWidget {
   });
 
   final String label;
+
   /// Active mirror / server under [label] (e.g. Videasy → Yoru).
   final String? server;
+
   /// Saved file on this device is what is playing.
   final bool offline;
   final ValueChanged<BuildContext>? onPressedWithContext;
@@ -379,12 +379,11 @@ class _PlayerStreamPickerButtonState extends State<PlayerStreamPickerButton> {
     focused: _focused,
   );
 
-  bool get _tvFocused =>
-      playerChromeTvFocused(
-        context,
-        tvFocusable: widget.tvFocusable,
-        focused: _focused,
-      );
+  bool get _tvFocused => playerChromeTvFocused(
+    context,
+    tvFocusable: widget.tvFocusable,
+    focused: _focused,
+  );
 
   Widget _buildChild(bool hovered) {
     final highlight = _highlightFor(hovered);
@@ -532,8 +531,10 @@ class PlayerSourcesPanelButton extends StatefulWidget {
   }) : assert(onPressed != null || onPressedWithContext != null);
 
   final String label;
+
   /// Active mirror / server under [label] (e.g. Videasy → Yoru).
   final String? server;
+
   /// Saved file on this device is what is playing.
   final bool offline;
   final VoidCallback? onPressed;
@@ -574,12 +575,11 @@ class _PlayerSourcesPanelButtonState extends State<PlayerSourcesPanelButton> {
     focused: _focused,
   );
 
-  bool get _tvFocused =>
-      playerChromeTvFocused(
-        context,
-        tvFocusable: widget.tvFocusable,
-        focused: _focused,
-      );
+  bool get _tvFocused => playerChromeTvFocused(
+    context,
+    tvFocusable: widget.tvFocusable,
+    focused: _focused,
+  );
 
   Widget _buildChild(bool hovered) {
     final highlight = _highlightFor(hovered);
@@ -728,10 +728,7 @@ class _PlayerSourceButtonText extends StatelessWidget {
             overflow: TextOverflow.ellipsis,
             style: TextStyle(
               color: color,
-              fontSize: playerChromeTypeSize(
-                context,
-                hasServer ? 11.0 : 12.0,
-              ),
+              fontSize: playerChromeTypeSize(context, hasServer ? 11.0 : 12.0),
               height: 1.1,
               fontWeight: tvFocused ? FontWeight.w600 : FontWeight.w500,
             ),
@@ -774,6 +771,7 @@ class PlayerFloatingChip extends StatefulWidget {
   final IconData trailingIcon;
   final FocusNode? focusNode;
   final bool tvFocusable;
+
   /// D-pad ↑ / ↓ from the chip. Return true when focus moved.
   final bool Function()? onArrowUp;
   final bool Function()? onArrowDown;
@@ -803,18 +801,22 @@ class _PlayerFloatingChipState extends State<PlayerFloatingChip> {
     final move = key == LogicalKeyboardKey.arrowUp
         ? widget.onArrowUp
         : key == LogicalKeyboardKey.arrowDown
-            ? widget.onArrowDown
-            : null;
+        ? widget.onArrowDown
+        : null;
     if (move != null && move()) return KeyEventResult.handled;
+    // Trap ←/→ so spatial focus cannot jump to Play / reveal chrome.
+    if (key == LogicalKeyboardKey.arrowLeft ||
+        key == LogicalKeyboardKey.arrowRight) {
+      return KeyEventResult.handled;
+    }
     return KeyEventResult.ignored;
   }
 
-  bool get _tvFocused =>
-      playerChromeTvFocused(
-        context,
-        tvFocusable: widget.tvFocusable,
-        focused: _focused,
-      );
+  bool get _tvFocused => playerChromeTvFocused(
+    context,
+    tvFocusable: widget.tvFocusable,
+    focused: _focused,
+  );
 
   bool _highlightFor(bool hovered) => playerChromeFocusActive(
     context,
@@ -952,8 +954,10 @@ class PlayerTopBar extends StatelessWidget {
   final Widget? trailing;
   final bool tvFocusable;
   final FocusNode? backFocusNode;
+
   /// TV: D-pad → from Back (e.g. to Retry when stream failure actions show).
   final VoidCallback? backOnRightEdge;
+
   /// TV: D-pad ↓ from Back (seek bar or transport — geometry often fails).
   final VoidCallback? backOnDownEdge;
 
@@ -976,8 +980,10 @@ class PlayerTopBar extends StatelessWidget {
     bool hasStatusMessage = false,
     bool hasStatusActions = false,
   }) {
-    final topBtn =
-        playerChromeScale(context, ShellTokens.playerChromeTopBtnSize);
+    final topBtn = playerChromeScale(
+      context,
+      ShellTokens.playerChromeTopBtnSize,
+    );
     var height = topPadding(context) + topBtn + playerChromeScale(context, 6);
     if (hasStatusMessage) height += playerChromeScale(context, 20);
     if (hasStatusActions) height += playerChromeScale(context, 30);
@@ -1010,98 +1016,99 @@ class PlayerTopBar extends StatelessWidget {
         // blocks [DragToMoveArea] / overlay drag strip underneath.
         return DesktopWindowChrome.wrapDragMove(
           MouseRegion(
-          opaque: false,
-          onEnter: (_) => playerChromeCancelSeekScrubs(),
-          child: Padding(
-            padding: EdgeInsets.fromLTRB(
-              padH,
-              topPadding(context),
-              padH,
-              padBottom,
-            ),
-            child: SizedBox(
-              width: double.infinity,
-              child: ConstrainedBox(
-                constraints: BoxConstraints(minHeight: topBtn),
-                child: Stack(
-                  alignment: Alignment.topCenter,
-                  children: [
-                    Padding(
-                      padding: EdgeInsets.symmetric(horizontal: titleInset),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            title,
-                            textAlign: TextAlign.center,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: titleFs,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                          if (_episodeLine != null) ...[
-                            SizedBox(height: playerChromeScale(context, 2)),
+            opaque: false,
+            onEnter: (_) => playerChromeCancelSeekScrubs(),
+            child: Padding(
+              padding: EdgeInsets.fromLTRB(
+                padH,
+                topPadding(context),
+                padH,
+                padBottom,
+              ),
+              child: SizedBox(
+                width: double.infinity,
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(minHeight: topBtn),
+                  child: Stack(
+                    alignment: Alignment.topCenter,
+                    children: [
+                      Padding(
+                        padding: EdgeInsets.symmetric(horizontal: titleInset),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
                             Text(
-                              _episodeLine!,
+                              title,
                               textAlign: TextAlign.center,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: TextStyle(
-                                color: ForjaShellColors.cinematic.textSecondary,
-                                fontSize: metaFs,
+                                color: Colors.white,
+                                fontSize: titleFs,
+                                fontWeight: FontWeight.w600,
                               ),
                             ),
-                          ],
-                          if (_hasStatusMessage) ...[
-                            SizedBox(height: playerChromeScale(context, 6)),
-                            Text(
-                              statusMessage!,
-                              textAlign: TextAlign.center,
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                color: Colors.white.withValues(alpha: 0.72),
-                                fontSize: metaFs,
-                                fontWeight: FontWeight.w500,
+                            if (_episodeLine != null) ...[
+                              SizedBox(height: playerChromeScale(context, 2)),
+                              Text(
+                                _episodeLine!,
+                                textAlign: TextAlign.center,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  color:
+                                      ForjaShellColors.cinematic.textSecondary,
+                                  fontSize: metaFs,
+                                ),
                               ),
-                            ),
+                            ],
+                            if (_hasStatusMessage) ...[
+                              SizedBox(height: playerChromeScale(context, 6)),
+                              Text(
+                                statusMessage!,
+                                textAlign: TextAlign.center,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  color: Colors.white.withValues(alpha: 0.72),
+                                  fontSize: metaFs,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ],
+                            if (statusActions != null) ...[
+                              SizedBox(height: playerChromeScale(context, 8)),
+                              statusActions!,
+                            ],
                           ],
-                          if (statusActions != null) ...[
-                            SizedBox(height: playerChromeScale(context, 8)),
-                            statusActions!,
-                          ],
-                        ],
+                        ),
                       ),
-                    ),
-                    Positioned(
-                      top: 0,
-                      left: 0,
-                      child: PlayerFlatIconButton(
-                        icon: Icons.arrow_back_rounded,
-                        onPressed: onBack,
-                        size: topBtnDesktop,
-                        iconSize: ShellTokens.playerChromeRoundIconSize,
-                        tvFocusable: tvFocusable,
-                        focusNode: backFocusNode,
-                        onRightEdge: backOnRightEdge,
-                        onDownEdge: backOnDownEdge,
+                      Positioned(
+                        top: 0,
+                        left: 0,
+                        child: PlayerFlatIconButton(
+                          icon: Icons.arrow_back_rounded,
+                          onPressed: onBack,
+                          size: topBtnDesktop,
+                          iconSize: ShellTokens.playerChromeRoundIconSize,
+                          tvFocusable: tvFocusable,
+                          focusNode: backFocusNode,
+                          onRightEdge: backOnRightEdge,
+                          onDownEdge: backOnDownEdge,
+                        ),
                       ),
-                    ),
-                    Positioned(
-                      top: 0,
-                      right: 0,
-                      child: trailing ??
-                          SizedBox(width: topBtn, height: topBtn),
-                    ),
-                  ],
+                      Positioned(
+                        top: 0,
+                        right: 0,
+                        child:
+                            trailing ?? SizedBox(width: topBtn, height: topBtn),
+                      ),
+                    ],
+                  ),
                 ),
               ),
             ),
           ),
-        ),
         );
       },
     );
@@ -1230,6 +1237,7 @@ class PlayerTopBarActions extends StatelessWidget {
   final bool tvFocusable;
   final FocusNode? playerFocusNode;
   final VoidCallback? playerOnLeftEdge;
+
   /// TV: D-pad ↓ from Player (seek / transport — spatial fails across title gap).
   final VoidCallback? playerOnDownEdge;
 
@@ -1257,9 +1265,7 @@ class PlayerTopBarActions extends StatelessWidget {
           ValueListenableBuilder<bool>(
             valueListenable: CastingService.instance.airPlayActive,
             builder: (context, casting, _) => PlayerFlatIconButton(
-              icon: casting
-                  ? Icons.cast_connected_rounded
-                  : Icons.cast_rounded,
+              icon: casting ? Icons.cast_connected_rounded : Icons.cast_rounded,
               tooltip: casting ? 'Playing on AirPlay' : 'Cast',
               active: casting,
               onPressed: onCast!,

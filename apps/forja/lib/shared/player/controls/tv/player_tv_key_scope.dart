@@ -132,13 +132,14 @@ class _PlayerTvKeyScopeState extends State<PlayerTvKeyScope> {
     });
   }
 
-  /// Chrome visible + empty / video-key focus → Play (reclaim only — do not
-  /// go through [onFocusPlay], which restarts idle hide). Chrome hidden +
-  /// floating chip → chip. Chrome hidden + empty → video key node.
+  /// Chrome visible + empty / video-key focus → floating chip when one is up,
+  /// else Play (reclaim only — do not go through [onFocusPlay], which restarts
+  /// idle hide). Chrome hidden + floating chip → chip. Chrome hidden + empty
+  /// → video key node.
   ///
-  /// Chip *appearance* focus (chrome up or hidden) is owned by the host
-  /// (`_scheduleClaimFloatingChipFocus`) so we do not steal mid-chrome nav
-  /// every time focus flickers while a chip is already on screen.
+  /// Chip *appearance* while focus is already on chrome (Play / Back / …) is
+  /// still owned by the host (`_scheduleClaimFloatingChipFocus`) so we do not
+  /// steal mid-chrome nav every time focus flickers with a chip on screen.
   void _ensureFocus() {
     if (!mounted || !widget.enabled) return;
     // Menus own D-pad — never steal Play; if a refresh dropped focus out of
@@ -151,7 +152,12 @@ class _PlayerTvKeyScopeState extends State<PlayerTvKeyScope> {
     final lost = primary == null || !primary.hasFocus;
     if (widget.showControls) {
       if (lost || identical(primary, widget.focusNode)) {
-        widget.onClaimPlayFocus();
+        if (widget.floatingChipVisible &&
+            widget.onClaimFloatingChipFocus != null) {
+          widget.onClaimFloatingChipFocus!();
+        } else {
+          widget.onClaimPlayFocus();
+        }
       }
       return;
     }
@@ -220,12 +226,20 @@ class _PlayerTvKeyScopeState extends State<PlayerTvKeyScope> {
         return KeyEventResult.handled;
       }
     }
-    // Chrome hidden + chip focused: keys the chip did not use (↑/↓, Back,
-    // play/pause) act like on the video node.
+    // Chrome hidden + chip focused: chip owns D-pad. Arrows the chip ignored
+    // must not reveal chrome (←/→ → Play, ↑ → Back). Back / OK / play-pause /
+    // media keys still use the video-node handler.
     if (!widget.showControls &&
         shellTvIsNavigationKey(event) &&
         playerTvFloatingChipHasFocus()) {
       if (event is KeyUpEvent) return KeyEventResult.handled;
+      final key = event.logicalKey;
+      if (key == LogicalKeyboardKey.arrowLeft ||
+          key == LogicalKeyboardKey.arrowRight ||
+          key == LogicalKeyboardKey.arrowUp ||
+          key == LogicalKeyboardKey.arrowDown) {
+        return KeyEventResult.handled;
+      }
       _handler.handle(event, showControls: false);
       return KeyEventResult.handled;
     }
