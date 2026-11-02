@@ -49,5 +49,6 @@ Desktop PiP no longer shrinks the single Forja window. A secondary float host pl
 ## Related
 
 - [RFC-121](../rfc/121-[open]-desktop-pip-float-window.md)
+- [527](fixed/527-[fixed]-windows-pip-expand-black-loading.md) — Windows Expand black/loading (float teardown race)
 - [Picture-in-picture](../features/playback/picture-in-picture.md)
 - [In-app mini](../features/playback/in-app-mini-player.md) (distinct)

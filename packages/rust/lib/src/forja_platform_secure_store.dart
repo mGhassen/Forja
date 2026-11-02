@@ -27,9 +27,14 @@ enum ForjaKeychainConsent {
 /// - **Non-sandboxed** (ad-hoc Release) + accepted: prefs vault for writes;
 ///   one-shot login-Keychain migrate may show a system Allow dialog.
 ///
-/// **Android / Android TV:** always dual-write EncryptedSharedPreferences + a
+/// **Android / Android TV:** dual-write EncryptedSharedPreferences + a
 /// SharedPreferences vault. Encrypted prefs have been empty after TV emulator
 /// restarts; the vault keeps Supabase sessions across cold starts.
+///
+/// **Windows / Linux:** prefs vault is primary (same cold-start reason —
+/// Credential Manager / libsecret alone has dropped the session after quit).
+/// Still reads platform secure storage once to migrate older installs into the
+/// vault. Does not wipe the vault after a DP write.
 ///
 /// Never writes the legacy login Keychain (`useDataProtectionKeyChain: false`).
 /// Reads may one-shot migrate leftovers out of that store after opt-in.
@@ -54,6 +59,9 @@ abstract final class ForjaPlatformSecureStore {
 
   static bool get _isAndroid => !kIsWeb && Platform.isAndroid;
 
+  static bool get _isWindowsOrLinux =>
+      !kIsWeb && (Platform.isWindows || Platform.isLinux);
+
   /// Sandboxed macOS sets this; ad-hoc Release does not.
   static bool get usesDataProtectionKeychain {
     if (!_isMacOS) return true;
@@ -72,7 +80,7 @@ abstract final class ForjaPlatformSecureStore {
 
   /// Prefer SharedPreferences vault as the durable store.
   static bool get _usePrefsVaultPrimary {
-    if (_isAndroid) return true;
+    if (_isAndroid || _isWindowsOrLinux) return true;
     if (!_isMacOS) return false;
     if (!usesKeychain) return true;
     return !usesDataProtectionKeychain;
@@ -140,7 +148,7 @@ abstract final class ForjaPlatformSecureStore {
       return _migrateFromLegacyLogin(key);
     }
 
-    if (_isAndroid) {
+    if (_usePrefsVaultPrimary) {
       final vault = await _readPrefsVault(key);
       if (vault != null && vault.isNotEmpty) return vault;
     }
@@ -148,8 +156,8 @@ abstract final class ForjaPlatformSecureStore {
     try {
       final v = await _dp.read(key: key);
       if (v != null && v.isNotEmpty) {
-        if (_isAndroid) {
-          // Backfill vault if EncryptedSharedPreferences still has the value.
+        if (_usePrefsVaultPrimary) {
+          // Migrate Credential Manager / EncryptedSharedPreferences → vault.
           await _writePrefsVault(key, v);
         }
         return v;
@@ -178,6 +186,7 @@ abstract final class ForjaPlatformSecureStore {
     if (_usePrefsVaultPrimary) {
       await _writePrefsVault(key, value);
       // Android dual-writes EncryptedSharedPreferences below.
+      // Windows/Linux stay vault-only — DP write used to wipe the vault.
       if (!_isAndroid) return;
     }
 
@@ -195,8 +204,9 @@ abstract final class ForjaPlatformSecureStore {
       rethrow;
     }
 
-    // Desktop sandboxed: drop prefs vault copies so Keychain is sole source.
-    if (!_isAndroid) {
+    // Sandboxed macOS Keychain path: Keychain is sole source — drop vault copy.
+    // Never wipe vault on Android / Windows / Linux (cold-start durability).
+    if (!_isAndroid && !_isWindowsOrLinux) {
       try {
         final prefs = await SharedPreferences.getInstance();
         await prefs.remove(prefsKey(key));

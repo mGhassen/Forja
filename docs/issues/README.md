@@ -561,6 +561,9 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [522-[fixed]-…](fixed/522-[fixed]-connect-code-stolen-as-pkce.md) | Device-link `/connect?code=` stolen as PKCE auth redirect | P0 | High | fixed | Complete · 2/2 · A 1/2 | [RFC-046](../rfc/046-[open]-android-tv-device-link.md) |
 | [523-[fixed]-…](fixed/523-[fixed]-device-link-cloud-packs-not-applied.md) | Device-link: cloud packs full, app Forja Packs empty | P0 | High | fixed | Complete · 3/3 · A 0/2 | [259](259-[open]-cloud-pack-auto-install-before-profile-splash.md) · [522](fixed/522-[fixed]-connect-code-stolen-as-pkce.md) |
 | [524-[fixed]-…](fixed/524-[fixed]-hub-enter-lands-on-mood-chips.md) | Catalog hub OK lands on mood chips / mid-page not hero | P1 | High | fixed | Complete · 3/3 · A 0/1 | [493](fixed/493-[fixed]-android-tv-hub-nav-enter-stuck-on-rail.md) |
+| [525-[fixed]-…](fixed/525-[fixed]-windows-quit-loses-session.md) | Windows quit loses Supabase session | P0 | High | fixed | Complete · 2/2 · A 0/1 | [085](085-[open]-desktop-involuntary-signout-dumps-login.md) |
+| [526-[fixed]-…](fixed/526-[fixed]-hub-mouse-wheel-steals-horizontal-rail.md) | Hub mouse wheel steals horizontal rail | P2 | Medium | fixed | Complete · 2/2 · A 0/2 | — |
+| [527-[fixed]-…](fixed/527-[fixed]-windows-pip-expand-black-loading.md) | Windows PiP expand: black player + loading | P1 | High | fixed | Complete · 3/3 · A 0/2 | [430](430-[open]-desktop-pip-placeholder-separate-float.md) · [RFC-121](../rfc/121-[open]-desktop-pip-float-window.md) |
 
 **Migration parity (draft):** [018](018-[draft]-migration-playback-parity-unverified.md) → [019](019-[draft]-webstreamr-enginejobs-e2e-test-gap.md)–[022](022-[draft]-playback-widget-integration-tests.md).
 
