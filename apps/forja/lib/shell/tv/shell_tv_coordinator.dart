@@ -519,6 +519,9 @@ abstract final class ShellTvFocusCoordinator {
   /// Catalog hubs that omit pack `focus.enter` (hero owns land) also try
   /// [_restoreDefault] each frame — otherwise empty enter retries burn the
   /// budget while spotlight/rails are still painting, and focus stays on nav.
+  ///
+  /// [focusFirstContentRow] skips mood chips so early vibe registration cannot
+  /// steal land and stop hero retries (issue 524).
   static void enterTabFromNav(String tabId) {
     _clearFocusBeforeNav();
     void attempt({required int remaining}) {
@@ -528,9 +531,25 @@ abstract final class ShellTvFocusCoordinator {
         }
         // No pack enter → hero / first content / chrome each frame (slow feeds).
         if (!_tabEnterFocus.containsKey(tabId)) {
+          // When the CTA just bound after miss frames, drop sticky nav so
+          // requestFocus can win (same class as late nav enter land).
+          if (_tabDefaultFocus.containsKey(tabId)) {
+            unfocusShellNav();
+          }
           _restoreDefault(tabId);
           FocusManager.instance.applyFocusChangesIfNeeded();
-          if (_pageHasContentFocus(tabId)) return;
+          if (_pageHasContentFocus(tabId)) {
+            // Prefer hero CTA when it bound this frame — upgrade off an early
+            // rail land so View details still wins once spotlight mounts.
+            if (remaining > 0 && _tabDefaultFocus.containsKey(tabId)) {
+              final def = _tabDefaultFocus[tabId]?.call();
+              if (def != null && !def.hasFocus && def.canRequestFocus) {
+                focusHero(revealFull: false, tabId: tabId);
+                FocusManager.instance.applyFocusChangesIfNeeded();
+              }
+            }
+            return;
+          }
         }
         if (remaining > 0) {
           attempt(remaining: remaining - 1);
@@ -1625,13 +1644,18 @@ abstract final class ShellTvFocusCoordinator {
     return best;
   }
 
-  /// First catalog/chip row under the hero (skips chrome with sortOrder < 0).
+  /// First catalog row under the hero (skips chrome with sortOrder < 0).
+  ///
+  /// Skips mood chip/result rows — they mount with a fixed option count before
+  /// spotlight/rails, so treating them as first content stole hub enter land
+  /// onto "Pick your vibe" while View details was still binding.
   static bool focusFirstContentRow(String tabId) {
     final list = _rowsByTab[tabId];
     if (list == null || list.isEmpty) return false;
     for (final row in list) {
       if (row.sortOrder < 0) continue;
       if (row.itemCount <= 0) continue;
+      if (row.rowId == 'mood-chips' || row.rowId == 'mood-results') continue;
       final idx = row.lastFocusedIndex.clamp(0, row.itemCount - 1);
       if (focusRowItem(tabId, row.rowId, idx)) return true;
     }

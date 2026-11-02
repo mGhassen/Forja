@@ -559,6 +559,8 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [520-[fixed]-…](fixed/520-[fixed]-simkl-movie-list-status-wiped-by-history-remove.md) | Simkl film Plan to Watch wiped by history/remove after add | P1 | High | fixed | Complete · 3/3 · A 0/2 | [500](fixed/500-[fixed]-simkl-list-status-rewrite-and-mediatype.md) |
 | [521-[fixed]-…](fixed/521-[fixed]-android-tv-player-chip-arrows-reveal-chrome.md) | ATV Skip/Next chips: arrows reveal chrome; → jumps to Play | P1 | Medium | fixed | Complete · 3/3 · A 0/2 | [506](fixed/506-[fixed]-android-tv-player-skip-next-ep-chip-autofocus.md) |
 | [522-[fixed]-…](fixed/522-[fixed]-connect-code-stolen-as-pkce.md) | Device-link `/connect?code=` stolen as PKCE auth redirect | P0 | High | fixed | Complete · 2/2 · A 1/2 | [RFC-046](../rfc/046-[open]-android-tv-device-link.md) |
+| [523-[fixed]-…](fixed/523-[fixed]-device-link-cloud-packs-not-applied.md) | Device-link: cloud packs full, app Forja Packs empty | P0 | High | fixed | Complete · 3/3 · A 0/2 | [259](259-[open]-cloud-pack-auto-install-before-profile-splash.md) · [522](fixed/522-[fixed]-connect-code-stolen-as-pkce.md) |
+| [524-[fixed]-…](fixed/524-[fixed]-hub-enter-lands-on-mood-chips.md) | Catalog hub OK lands on mood chips / mid-page not hero | P1 | High | fixed | Complete · 3/3 · A 0/1 | [493](fixed/493-[fixed]-android-tv-hub-nav-enter-stuck-on-rail.md) |
 
 **Migration parity (draft):** [018](018-[draft]-migration-playback-parity-unverified.md) → [019](019-[draft]-webstreamr-enginejobs-e2e-test-gap.md)–[022](022-[draft]-playback-widget-integration-tests.md).
 

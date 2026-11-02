@@ -14,9 +14,9 @@ import 'package:rust/rust.dart';
 /// Intro / profile splash should pass [startPlaySources]: false and
 /// [startTorrent]: false so LocalServer / Nuvio / torrent stay
 /// off the animation floor. ForjaHQ packs (+ hub layout/rails prefetch) await
-/// only when [BootNeeds.needsForjaPluginWarm]. Splash silently downloads
-/// profile pack membership (toast after dismiss). IPTV/Live-only with no
-/// pending packs skips.
+/// when [BootNeeds.needsForjaPluginWarm], or when signed-in with
+/// [awaitCloudLean] (membership may still be empty after a raced splash pull).
+/// Splash silently downloads profile pack membership (toast after dismiss).
 class ProfileEngineWarm {
   ProfileEngineWarm._();
 
@@ -25,6 +25,7 @@ class ProfileEngineWarm {
     bool startTorrent = true,
     bool startPlaySources = true,
     bool awaitOfficialPacks = true,
+
     /// Pull cloud pack membership before hydrate. Offline boot passes false.
     bool awaitCloudLean = true,
     bool prefetchDefaultHub = false,
@@ -35,9 +36,19 @@ class ProfileEngineWarm {
 
     await SyncService.instance.ensurePluginDiskScopeForCurrentSession();
 
-    if (awaitOfficialPacks && needs.needsForjaPluginWarm) {
+    // Signed-in + cloud lean: always hydrate membership even when BootNeeds
+    // still sees an empty index. Skipping left device-link sessions with full
+    // cloud packs and empty Forja Packs.
+    final forceCloudLean = awaitCloudLean && SyncService.instance.isSignedIn;
+    final shouldWarmPacks =
+        awaitOfficialPacks && (needs.needsForjaPluginWarm || forceCloudLean);
+
+    if (shouldWarmPacks) {
       onStatus?.call('Loading plugins…');
-      debugPrint('[Init] PluginInstallCoordinator (await)');
+      debugPrint(
+        '[Init] PluginInstallCoordinator (await)'
+        '${forceCloudLean && !needs.needsForjaPluginWarm ? ' forceCloudLean' : ''}',
+      );
       final coordinator = PluginInstallCoordinator.instance;
       // Splash / profile warm already own the bottom status line — drive that
       // instead of the in-shell progress card.
@@ -124,9 +135,7 @@ class ProfileEngineWarm {
               debugPrint('[Init] Stack trace: $st');
               return false;
             });
-        debugPrint(
-          '[Init] TorrentStream ${ok ? "ready" : "failed"}',
-        );
+        debugPrint('[Init] TorrentStream ${ok ? "ready" : "failed"}');
       } else if (!startTorrent) {
         debugPrint('[Init] TorrentStream skip (deferred to post-splash)');
       } else {
