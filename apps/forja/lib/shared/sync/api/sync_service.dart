@@ -42,6 +42,18 @@ class SyncProfileFetchException implements Exception {
   String toString() => 'SyncProfileFetchException: $message';
 }
 
+/// Host auth posture for chrome / cloud RPCs (not raw GoTrue session presence).
+enum SyncAuthStatus {
+  /// No local session.
+  signedOut,
+
+  /// Usable access token; cloud RPCs allowed.
+  authenticated,
+
+  /// Local session kept, last refresh hit network/timeout — cloud may be stale.
+  offlineWithCache,
+}
+
 class SyncService {
   SyncService._();
   static final SyncService instance = SyncService._();
@@ -53,6 +65,10 @@ class SyncService {
   final ValueNotifier<bool> accountSwitchInProgress = ValueNotifier<bool>(
     false,
   );
+
+  /// Last refresh failed on a transient network path (timeout / DNS / offline).
+  /// Cleared on a successful refresh or local sign-out.
+  bool _cloudOffline = false;
 
   /// Max GoTrue accounts kept on this device (matches vault default).
   static const maxDeviceAccounts = 5;
@@ -66,6 +82,19 @@ class SyncService {
   String? get userEmail => session?.user.email;
   String? get userId => session?.user.id;
   Session? get session => ForjaSupabase.clientOrNull?.auth.currentSession;
+
+  /// True after a transient refresh failure — keep local session, do not claim Synced.
+  bool get isCloudOffline => _cloudOffline;
+
+  /// Auth posture for Settings / gates. Terminal refresh failures clear the session
+  /// ([signedOut]); they never linger as a zombie signed-in state.
+  SyncAuthStatus get authStatus {
+    final s = session;
+    if (s == null) return SyncAuthStatus.signedOut;
+    if (_cloudOffline || s.isExpired) return SyncAuthStatus.offlineWithCache;
+    return SyncAuthStatus.authenticated;
+  }
+
   static const _activeProfileKeyPrefix = 'forja_sync_active_profile_';
 
   /// Name/avatar/color of the last resolved active profile, per user. Lets
@@ -114,7 +143,11 @@ class SyncService {
   /// Renews tokens so Auth's inactivity timeout (30d) stays reset while in use.
   ///
   /// Debounced unless [force] is true. Returns false when unsigned or refresh
-  /// fails (GoTrue may then emit involuntary `signedOut`).
+  /// fails.
+  ///
+  /// **Transient** failure (timeout / DNS / offline) → keep local session, set
+  /// [isCloudOffline]. **Terminal** Auth failure (revoked RT, invalid_grant…) →
+  /// local [signOut] so chrome cannot linger as a zombie signed-in session.
   ///
   /// Success means [auth.currentSession] is present and not expired - not merely
   /// that gotrue returned tokens. Concurrent `recoverSession` can bump the
@@ -130,7 +163,10 @@ class SyncService {
       final current = client.auth.currentSession;
       // Only short-circuit when the AT is still usable; an expired session
       // inside the debounce window must still refresh.
-      if (current != null && !current.isExpired) return true;
+      if (current != null && !current.isExpired) {
+        _cloudOffline = false;
+        return true;
+      }
     }
     final inflight = _refreshInFlight;
     if (inflight != null) return inflight;
@@ -142,17 +178,61 @@ class SyncService {
         final response = await client.auth.refreshSession().timeout(
           _refreshTimeout,
         );
-        final ok = await _ensureCurrentSessionApplied(client, response.session);
-        if (ok) unawaited(persistActiveSessionToVault());
-        return ok;
+        final returned = response.session;
+        final ok = await _ensureCurrentSessionApplied(client, returned);
+        if (ok) {
+          _cloudOffline = false;
+          unawaited(persistActiveSessionToVault());
+          return true;
+        }
+        final current = client.auth.currentSession;
+        if (current != null && !current.isExpired) {
+          _cloudOffline = false;
+          return true;
+        }
+        final rt = returned?.refreshToken;
+        if (rt != null && rt.isNotEmpty) {
+          // /token minted tokens but apply lost a race / setSession blipped —
+          // keep local session; do not false-kick on a valid RT.
+          _cloudOffline = true;
+          debugPrint(
+            '[Sync] refresh apply failed with tokens present (cloud offline)',
+          );
+          return false;
+        }
+        await _endSessionAfterTerminalRefreshFailure(
+          'refresh returned no session',
+        );
+        return false;
       } on TimeoutException catch (e) {
-        debugPrint('[Sync] refreshSession timed out: $e');
+        _cloudOffline = true;
+        debugPrint('[Sync] refreshSession timed out (cloud offline): $e');
         return false;
       } on AuthException catch (e) {
-        debugPrint('[Sync] refreshSession failed: ${e.message}');
+        if (isTransientAuthRefreshError(e)) {
+          _cloudOffline = true;
+          debugPrint(
+            '[Sync] refreshSession transient: ${e.message} (cloud offline)',
+          );
+          return false;
+        }
+        debugPrint('[Sync] refreshSession terminal: ${e.message}');
+        await _endSessionAfterTerminalRefreshFailure(e.message);
         return false;
       } catch (e) {
-        debugPrint('[Sync] refreshSession failed: $e');
+        if (isTransientAuthRefreshError(e)) {
+          _cloudOffline = true;
+          debugPrint('[Sync] refreshSession transient: $e (cloud offline)');
+          return false;
+        }
+        if (isTerminalAuthRefreshError(e)) {
+          debugPrint('[Sync] refreshSession terminal: $e');
+          await _endSessionAfterTerminalRefreshFailure('$e');
+          return false;
+        }
+        // Unknown non-auth — keep local session; do not false-kick.
+        _cloudOffline = true;
+        debugPrint('[Sync] refreshSession unknown (cloud offline): $e');
         return false;
       } finally {
         if (identical(_refreshInFlight, run)) {
@@ -162,6 +242,20 @@ class SyncService {
     }();
     _refreshInFlight = run;
     return run;
+  }
+
+  /// Clear local session after a non-retryable refresh failure (zombie guard).
+  Future<void> _endSessionAfterTerminalRefreshFailure(String reason) async {
+    if (accountSwitchInProgress.value) return;
+    if (session == null) {
+      _cloudOffline = false;
+      return;
+    }
+    debugPrint('[Sync] ending session after terminal refresh: $reason');
+    _cloudOffline = false;
+    // Drop single-flight before [signOut] — vault switch may refresh again.
+    _refreshInFlight = null;
+    await signOut(all: false);
   }
 
   /// Write the live GoTrue session into the multi-account vault.
@@ -449,6 +543,24 @@ class SyncService {
         s.contains('timed out');
   }
 
+  /// Refresh failures that must keep the local session ([SyncAuthStatus.offlineWithCache]).
+  static bool isTransientAuthRefreshError(Object? error) {
+    if (error == null) return false;
+    if (error is TimeoutException) return true;
+    return isRetryableAuthNetworkError(error);
+  }
+
+  /// Refresh failures that must end the local session (revoked RT, invalid grant).
+  static bool isTerminalAuthRefreshError(Object? error) {
+    if (error == null) return false;
+    if (isTransientAuthRefreshError(error)) return false;
+    if (error is AuthException) return true;
+    if (error is SyncProfileFetchException) {
+      return isTerminalAuthRefreshError(error.cause);
+    }
+    return false;
+  }
+
   /// One retry of [run] after Auth/API `iat` skew. Does not mint a new JWT.
   static Future<T> retryAfterJwtIatSkew<T>(Future<T> Function() run) async {
     try {
@@ -639,6 +751,7 @@ class SyncService {
   Future<void> signOut({bool all = false}) async {
     final client = ForjaSupabase.clientOrNull;
     if (client == null) return;
+    _cloudOffline = false;
 
     if (all) {
       await accountVault.clearAll();
@@ -815,12 +928,21 @@ class SyncService {
         await ensureFreshAccessToken();
       }
       // Expired AT + failed refresh: PostgREST will block on another gotrue
-      // refresh — fail here so Settings can show Sign out instead of spinning.
+      // refresh — fail here with an honest posture (offline vs signed out).
       final session = client.auth.currentSession;
-      if (session == null || session.isExpired) {
-        throw SyncProfileFetchException(
-          'Session expired and could not refresh. Sign out and sign in again.',
+      if (session == null) {
+        throw SyncProfileFetchException('Signed out. Sign in again.');
+      }
+      if (session.isExpired) {
+        if (_cloudOffline) {
+          throw SyncProfileFetchException(
+            'Cloud unreachable. Retry when online, or sign out on this device.',
+          );
+        }
+        await _endSessionAfterTerminalRefreshFailure(
+          'access token still expired after refresh',
         );
+        throw SyncProfileFetchException('Session ended. Sign in again.');
       }
       final rows = await retryAfterJwtIatSkew(
         () => client

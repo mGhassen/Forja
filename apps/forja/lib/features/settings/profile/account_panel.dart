@@ -89,13 +89,30 @@ class _SettingsForjaAccountPanelState extends State<SettingsForjaAccountPanel> {
       setState(_clearProfileUi);
       return;
     }
+    // Clear prior error so Retry shows loading instead of looking dead.
+    setState(() {
+      _profileLoadError = null;
+      _profileReady = false;
+      _profiles = const [];
+      _activeProfileId = null;
+      _domains = 0;
+    });
     try {
       final profiles = await SyncService.instance.listProfiles();
+      if (!mounted || gen != _refreshGen) return;
+      if (!SyncService.instance.isSignedIn) {
+        setState(_clearProfileUi);
+        return;
+      }
       final activeProfile = await SyncService.instance.activeProfile(
         profiles: profiles,
       );
       final remote = await SyncService.instance.pullProfileSettings();
       if (!mounted || gen != _refreshGen) return;
+      if (!SyncService.instance.isSignedIn) {
+        setState(_clearProfileUi);
+        return;
+      }
       setState(() {
         _profiles = profiles;
         _activeProfileId = activeProfile?.id;
@@ -105,6 +122,10 @@ class _SettingsForjaAccountPanelState extends State<SettingsForjaAccountPanel> {
       });
     } catch (e) {
       if (!mounted || gen != _refreshGen) return;
+      if (!SyncService.instance.isSignedIn) {
+        setState(_clearProfileUi);
+        return;
+      }
       final message = e is SyncProfileFetchException
           ? e.message
           : 'Could not load profile. Check your connection and retry.';
@@ -331,6 +352,10 @@ class _SettingsForjaAccountPanelState extends State<SettingsForjaAccountPanel> {
                     title: email ?? 'Signed in',
                     subtitle: loading
                         ? 'Loading cloud profile…'
+                        : SyncService.instance.authStatus ==
+                              SyncAuthStatus.offlineWithCache
+                        ? 'Working offline — cloud profile unavailable. Retry '
+                              'when online, or sign out on this device.'
                         : 'Cloud profile could not load. Retry, or sign out to '
                               'clear this session on the device.',
                     icon: loading

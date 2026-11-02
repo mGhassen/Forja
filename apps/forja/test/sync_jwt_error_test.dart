@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:forja/shared/sync/api/sync_service.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -54,5 +56,34 @@ void main() {
     );
     expect(SyncService.isRetryableAuthNetworkError(expired), isFalse);
     expect(SyncService.isRetryableAuthNetworkError(null), isFalse);
+  });
+
+  test('refresh error classify: transient vs terminal', () {
+    expect(
+      SyncService.isTransientAuthRefreshError(
+        AuthRetryableFetchException(message: 'Failed host lookup'),
+      ),
+      isTrue,
+    );
+    expect(
+      SyncService.isTransientAuthRefreshError(TimeoutException('refresh')),
+      isTrue,
+    );
+    expect(
+      SyncService.isTerminalAuthRefreshError(
+        AuthException('Invalid Refresh Token: Refresh Token Not Found'),
+      ),
+      isTrue,
+    );
+    expect(
+      SyncService.isTerminalAuthRefreshError(
+        AuthRetryableFetchException(message: 'Failed host lookup'),
+      ),
+      isFalse,
+    );
+    expect(
+      SyncService.isTerminalAuthRefreshError(TimeoutException('refresh')),
+      isFalse,
+    );
   });
 }
