@@ -817,7 +817,9 @@ class _PortalListRowState extends State<PortalListRow>
                         ),
                       )
                     : IconButton(
-                        tooltip: isFav ? 'Unfavorite' : 'Favorite',
+                        tooltip: ForjaFoundationStrings.current.t(
+                          isFav ? 'Unfavorite' : 'Favorite',
+                        ),
                         padding: const EdgeInsets.all(4),
                         constraints: const BoxConstraints(
                           minWidth: 28,

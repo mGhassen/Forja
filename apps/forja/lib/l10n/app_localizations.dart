@@ -9687,6 +9687,156 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'TV'**
   String get foundationWordTv;
+
+  /// No description provided for @foundationWordFavorite.
+  ///
+  /// In en, this message translates to:
+  /// **'Favorite'**
+  String get foundationWordFavorite;
+
+  /// No description provided for @foundationWordUnfavorite.
+  ///
+  /// In en, this message translates to:
+  /// **'Unfavorite'**
+  String get foundationWordUnfavorite;
+
+  /// No description provided for @foundationWordJobDirector.
+  ///
+  /// In en, this message translates to:
+  /// **'Director'**
+  String get foundationWordJobDirector;
+
+  /// No description provided for @foundationWordJobWriter.
+  ///
+  /// In en, this message translates to:
+  /// **'Writer'**
+  String get foundationWordJobWriter;
+
+  /// No description provided for @foundationWordJobScreenplay.
+  ///
+  /// In en, this message translates to:
+  /// **'Screenplay'**
+  String get foundationWordJobScreenplay;
+
+  /// No description provided for @foundationWordJobStory.
+  ///
+  /// In en, this message translates to:
+  /// **'Story'**
+  String get foundationWordJobStory;
+
+  /// No description provided for @foundationWordJobNovel.
+  ///
+  /// In en, this message translates to:
+  /// **'Novel'**
+  String get foundationWordJobNovel;
+
+  /// No description provided for @foundationWordJobCharacters.
+  ///
+  /// In en, this message translates to:
+  /// **'Characters'**
+  String get foundationWordJobCharacters;
+
+  /// No description provided for @foundationWordJobProducer.
+  ///
+  /// In en, this message translates to:
+  /// **'Producer'**
+  String get foundationWordJobProducer;
+
+  /// No description provided for @foundationWordJobExecutiveProducer.
+  ///
+  /// In en, this message translates to:
+  /// **'Executive Producer'**
+  String get foundationWordJobExecutiveProducer;
+
+  /// No description provided for @foundationWordJobCoProducer.
+  ///
+  /// In en, this message translates to:
+  /// **'Co-Producer'**
+  String get foundationWordJobCoProducer;
+
+  /// No description provided for @foundationWordJobDirectorOfPhotography.
+  ///
+  /// In en, this message translates to:
+  /// **'Director of Photography'**
+  String get foundationWordJobDirectorOfPhotography;
+
+  /// No description provided for @foundationWordJobOriginalMusicComposer.
+  ///
+  /// In en, this message translates to:
+  /// **'Original Music Composer'**
+  String get foundationWordJobOriginalMusicComposer;
+
+  /// No description provided for @foundationWordJobEditor.
+  ///
+  /// In en, this message translates to:
+  /// **'Editor'**
+  String get foundationWordJobEditor;
+
+  /// No description provided for @foundationWordJobCasting.
+  ///
+  /// In en, this message translates to:
+  /// **'Casting'**
+  String get foundationWordJobCasting;
+
+  /// No description provided for @foundationWordJobCostumeDesign.
+  ///
+  /// In en, this message translates to:
+  /// **'Costume Design'**
+  String get foundationWordJobCostumeDesign;
+
+  /// No description provided for @foundationWordJobProductionDesign.
+  ///
+  /// In en, this message translates to:
+  /// **'Production Design'**
+  String get foundationWordJobProductionDesign;
+
+  /// No description provided for @foundationWordJobArtDirection.
+  ///
+  /// In en, this message translates to:
+  /// **'Art Direction'**
+  String get foundationWordJobArtDirection;
+
+  /// No description provided for @foundationWordJobSoundDesigner.
+  ///
+  /// In en, this message translates to:
+  /// **'Sound Designer'**
+  String get foundationWordJobSoundDesigner;
+
+  /// No description provided for @foundationWordJobVisualEffectsSupervisor.
+  ///
+  /// In en, this message translates to:
+  /// **'Visual Effects Supervisor'**
+  String get foundationWordJobVisualEffectsSupervisor;
+
+  /// No description provided for @foundationWordJobAnimationSupervisor.
+  ///
+  /// In en, this message translates to:
+  /// **'Animation Supervisor'**
+  String get foundationWordJobAnimationSupervisor;
+
+  /// No description provided for @foundationWordCreditVoice.
+  ///
+  /// In en, this message translates to:
+  /// **'voice'**
+  String get foundationWordCreditVoice;
+
+  /// No description provided for @foundationWordCreditUncredited.
+  ///
+  /// In en, this message translates to:
+  /// **'uncredited'**
+  String get foundationWordCreditUncredited;
+
+  /// No description provided for @foundationWordCreditArchiveFootage.
+  ///
+  /// In en, this message translates to:
+  /// **'archive footage'**
+  String get foundationWordCreditArchiveFootage;
+
+  /// No description provided for @foundationWordCreditCreditOnly.
+  ///
+  /// In en, this message translates to:
+  /// **'credit only'**
+  String get foundationWordCreditCreditOnly;
 }
 
 class _AppLocalizationsDelegate

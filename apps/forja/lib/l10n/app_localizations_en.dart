@@ -5568,4 +5568,82 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get foundationWordTv => 'TV';
+
+  @override
+  String get foundationWordFavorite => 'Favorite';
+
+  @override
+  String get foundationWordUnfavorite => 'Unfavorite';
+
+  @override
+  String get foundationWordJobDirector => 'Director';
+
+  @override
+  String get foundationWordJobWriter => 'Writer';
+
+  @override
+  String get foundationWordJobScreenplay => 'Screenplay';
+
+  @override
+  String get foundationWordJobStory => 'Story';
+
+  @override
+  String get foundationWordJobNovel => 'Novel';
+
+  @override
+  String get foundationWordJobCharacters => 'Characters';
+
+  @override
+  String get foundationWordJobProducer => 'Producer';
+
+  @override
+  String get foundationWordJobExecutiveProducer => 'Executive Producer';
+
+  @override
+  String get foundationWordJobCoProducer => 'Co-Producer';
+
+  @override
+  String get foundationWordJobDirectorOfPhotography =>
+      'Director of Photography';
+
+  @override
+  String get foundationWordJobOriginalMusicComposer =>
+      'Original Music Composer';
+
+  @override
+  String get foundationWordJobEditor => 'Editor';
+
+  @override
+  String get foundationWordJobCasting => 'Casting';
+
+  @override
+  String get foundationWordJobCostumeDesign => 'Costume Design';
+
+  @override
+  String get foundationWordJobProductionDesign => 'Production Design';
+
+  @override
+  String get foundationWordJobArtDirection => 'Art Direction';
+
+  @override
+  String get foundationWordJobSoundDesigner => 'Sound Designer';
+
+  @override
+  String get foundationWordJobVisualEffectsSupervisor =>
+      'Visual Effects Supervisor';
+
+  @override
+  String get foundationWordJobAnimationSupervisor => 'Animation Supervisor';
+
+  @override
+  String get foundationWordCreditVoice => 'voice';
+
+  @override
+  String get foundationWordCreditUncredited => 'uncredited';
+
+  @override
+  String get foundationWordCreditArchiveFootage => 'archive footage';
+
+  @override
+  String get foundationWordCreditCreditOnly => 'credit only';
 }

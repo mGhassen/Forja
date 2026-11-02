@@ -1,10 +1,28 @@
 import 'package:flutter/material.dart';
 import 'package:forja_foundation/components/network_image.dart';
+import 'package:forja_foundation/l10n/foundation_strings.dart';
 import 'package:forja_foundation/tokens/forja_details_tokens.dart';
 import 'package:forja_foundation/tokens/forja_motion_theme.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 import 'package:forja_foundation/widgets/chrome/horizontal_scroller.dart';
 import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
+
+/// A character or crew job in the app language. TMDB sends both in English:
+/// a job ("Director") is looked up as a whole, and the markers it adds to a
+/// character ("(voice)") are replaced one by one. English text passes through.
+String localizeCredit(String credit) {
+  final strings = ForjaFoundationStrings.current;
+  var out = strings.t(credit);
+  for (final marker in const [
+    'voice',
+    'uncredited',
+    'archive footage',
+    'credit only',
+  ]) {
+    out = out.replaceAll('($marker)', '(${strings.t(marker)})');
+  }
+  return out;
+}
 
 /// Horizontal cast row under a details hero — props only.
 class DetailsCastSection extends StatelessWidget {
@@ -89,7 +107,7 @@ class DetailsCastSection extends StatelessWidget {
               final m = cast[i];
               final profilePath = m['profilePath'] ?? '';
               final name = m['name'] ?? '';
-              final character = m['character'] ?? '';
+              final character = localizeCredit(m['character'] ?? '');
               final avatar = ClipOval(
                 child: profilePath.startsWith('http')
                     ? ForjaNetworkImage(

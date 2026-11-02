@@ -5683,4 +5683,82 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get foundationWordTv => 'Séries';
+
+  @override
+  String get foundationWordFavorite => 'Ajouter aux favoris';
+
+  @override
+  String get foundationWordUnfavorite => 'Retirer des favoris';
+
+  @override
+  String get foundationWordJobDirector => 'Réalisation';
+
+  @override
+  String get foundationWordJobWriter => 'Écriture';
+
+  @override
+  String get foundationWordJobScreenplay => 'Scénario';
+
+  @override
+  String get foundationWordJobStory => 'Histoire';
+
+  @override
+  String get foundationWordJobNovel => 'Roman';
+
+  @override
+  String get foundationWordJobCharacters => 'Personnages';
+
+  @override
+  String get foundationWordJobProducer => 'Production';
+
+  @override
+  String get foundationWordJobExecutiveProducer => 'Production exécutive';
+
+  @override
+  String get foundationWordJobCoProducer => 'Coproduction';
+
+  @override
+  String get foundationWordJobDirectorOfPhotography =>
+      'Direction de la photographie';
+
+  @override
+  String get foundationWordJobOriginalMusicComposer => 'Musique originale';
+
+  @override
+  String get foundationWordJobEditor => 'Montage';
+
+  @override
+  String get foundationWordJobCasting => 'Casting';
+
+  @override
+  String get foundationWordJobCostumeDesign => 'Costumes';
+
+  @override
+  String get foundationWordJobProductionDesign => 'Décors';
+
+  @override
+  String get foundationWordJobArtDirection => 'Direction artistique';
+
+  @override
+  String get foundationWordJobSoundDesigner => 'Conception sonore';
+
+  @override
+  String get foundationWordJobVisualEffectsSupervisor =>
+      'Supervision des effets visuels';
+
+  @override
+  String get foundationWordJobAnimationSupervisor =>
+      'Supervision de l\'animation';
+
+  @override
+  String get foundationWordCreditVoice => 'voix';
+
+  @override
+  String get foundationWordCreditUncredited => 'non crédité';
+
+  @override
+  String get foundationWordCreditArchiveFootage => 'images d\'archive';
+
+  @override
+  String get foundationWordCreditCreditOnly => 'crédité uniquement';
 }
