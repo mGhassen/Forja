@@ -5718,8 +5718,7 @@ class AppLocalizationsFr extends AppLocalizations {
   String get foundationWordJobCoProducer => 'Coproduction';
 
   @override
-  String get foundationWordJobDirectorOfPhotography =>
-      'Direction de la photographie';
+  String get foundationWordJobDirectorOfPhotography => 'Photographie';
 
   @override
   String get foundationWordJobOriginalMusicComposer => 'Musique originale';

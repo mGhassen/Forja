@@ -7,6 +7,8 @@ import 'package:forja/features/settings/shell/catalog.dart';
 import 'package:forja/features/settings/shell/visibility.dart';
 import 'package:forja/l10n/app_localizations.dart';
 import 'package:forja/shared/engine/cache/engine_cache.dart';
+import 'package:forja/shared/engine/packs/catalog/official_forjahq_install.dart';
+import 'package:forja/shared/engine/packs/install/plugin_install_prompt.dart';
 import 'package:forja/shared/services/app/app_locale.dart';
 
 Map<String, String> _messages(File arb) {
@@ -216,6 +218,32 @@ void main() {
     expect(key(), en);
     AppLocale.notifier.value = const Locale('fr');
     expect(key(), isNot(en));
+  });
+
+  test('pack install progress text follows the app language', () async {
+    addTearDown(() => AppLocale.notifier.value = null);
+    Future<List<String>> run(
+      Locale locale,
+      List<PluginInstallCandidate> picks,
+    ) async {
+      AppLocale.notifier.value = locale;
+      final statuses = <String>[];
+      await installSelectedOfficialPacks(
+        picks,
+        onProgress: ({required done, required total, required status}) =>
+            statuses.add(status),
+      ).timeout(const Duration(seconds: 30), onTimeout: () => <String>[]);
+      return statuses;
+    }
+
+    expect(await run(const Locale('fr'), const []), ['Rien à installer']);
+    expect(await run(const Locale('en'), const []), ['Nothing to install']);
+    const pick = PluginInstallCandidate(
+      manifestUrl: 'http://127.0.0.1:9/manifest.json',
+      displayName: 'Home',
+    );
+    expect((await run(const Locale('fr'), const [pick])).first, 'Installation de Home (1/1)…');
+    expect((await run(const Locale('en'), const [pick])).first, 'Installing Home (1/1)…');
   });
 
   group('plurals', () {
