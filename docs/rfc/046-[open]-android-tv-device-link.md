@@ -79,4 +79,6 @@ Link a Forja account to Android TV without typing email/password on the leanback
 
 - [RFC-042](042-[open]-unified-auth-system.md) — unified auth / desktop mint
 - [Link Android TV](../features/accounts/tv-connect.md) — user guide
+- [522](../issues/fixed/522-[fixed]-connect-code-stolen-as-pkce.md) — `/connect?code=` must not be treated as PKCE
+- [523](../issues/fixed/523-[fixed]-device-link-cloud-packs-not-applied.md) — post-link cloud packs must hydrate on device
 - Trakt device-code UX in Settings (precedent only)

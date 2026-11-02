@@ -32,12 +32,36 @@ function readHashParams(hash: string): URLSearchParams {
   return new URLSearchParams(hash.replace(/^#/, ''))
 }
 
+/** True for device-link `/connect` (and nested paths). */
+function isConnectPath(pathname: string): boolean {
+  return (
+    pathname === '/connect' ||
+    pathname.endsWith('/connect') ||
+    pathname.startsWith('/connect/')
+  )
+}
+
+/**
+ * Device-link QR / login return use `?code=` for the TV user code — not a
+ * Supabase PKCE auth code. Never treat those as auth redirects.
+ */
+function isDeviceLinkUserCode(
+  query: URLSearchParams,
+  pathname: string,
+): boolean {
+  if (!query.has('code')) return false
+  if (isConnectPath(pathname)) return true
+  const next = query.get('next') ?? ''
+  return next === '/connect' || next.startsWith('/connect?')
+}
+
 /**
  * Default / misconfigured confirm emails land on Site URL with
  * `#access_token=…&type=signup` (or `?code=` / `?token_hash=`). Supabase then
  * consumes the hash on `/` and leaves the user on `/#` with no profiles hop.
  * Move those onto `/auth/callback` *before* `createClient` (keep recovery on
- * `/reset-password`).
+ * `/reset-password`). Skip device-link `?code=` on `/connect` and
+ * `/login?next=/connect&code=…`.
  *
  * @returns true when `location.replace` was called (page will reload).
  */
@@ -65,12 +89,13 @@ export function relocateAuthRedirectToCallback(options?: {
 
   const hasImplicit = hashParams.has('access_token')
   const hasTokenHash = query.has('token_hash')
-  const hasCode = query.has('code')
+  const hasAuthCode =
+    query.has('code') && !isDeviceLinkUserCode(query, path)
   const hasError = query.has('error') || hashParams.has('error')
-  if (!hasImplicit && !hasTokenHash && !hasCode && !hasError) return false
+  if (!hasImplicit && !hasTokenHash && !hasAuthCode && !hasError) return false
 
   const nextQuery = new URLSearchParams(query)
-  if (!nextQuery.has('next') && (hasImplicit || hasTokenHash || hasCode)) {
+  if (!nextQuery.has('next') && (hasImplicit || hasTokenHash || hasAuthCode)) {
     nextQuery.set('next', defaultNext)
   }
   const qs = nextQuery.toString()

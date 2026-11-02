@@ -10,7 +10,7 @@
 
 | | |
 |--|--|
-| **Progress** | **7 / 7** fix · **0 / 4** acceptance |
+| **Progress** | **8 / 8** fix · **0 / 5** acceptance |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started · ⏭️ deferred (later slice)
 
@@ -27,6 +27,7 @@
 | 5 | I106-T05 | About Check for Updates — failed check is an error toast, not “latest version” | ✅ |
 | 6 | I106-T06 | Settings profile load (loading + error) always offers Sign out; refresh/listProfiles fail-fast on hung DNS; `signOut` survives revoke failure | ✅ |
 | 7 | I106-T07 | Narrow focus/resume wake — JWT only; drop cloud/Simkl/telemetry storm → [364](fixed/364-[fixed]-desktop-focus-sync-storm.md) | ✅ |
+| 8 | I106-T08 | Auth posture: transient refresh → offlineWithCache; terminal refresh → local sign-out (no zombie signed-in); Settings Retry shows loading | ✅ |
 
 ---
 
@@ -38,6 +39,7 @@
 | 2 | I106-A02 | Forced profile API hang/timeout → Who’s watching shows error + Retry (not infinite spinner / create copy) | ⬜ |
 | 3 | I106-A03 | About with CDN down / bad manifest → error toast (never “You’re running the latest version!”) | ⬜ |
 | 4 | I106-A04 | Profile load error in Settings → Sign out works offline and returns to signed-out / account entry (Retry alone not a dead end) | ⬜ |
+| 5 | I106-A05 | Terminal refresh fail (revoked RT) → Account entry; DNS/timeout refresh fail → stays signed in with offline cloud copy + working Retry spinner | ⬜ |
 
 ---
 
@@ -48,5 +50,7 @@ After leaving the Mac app open a long time, the rail could show **Guest** while 
 **Root (host):** macOS windows often stay `resumed` so lifecycle refresh never runs; `listProfiles` had no timeout and swallowed errors as `[]`; rail cleared profile chrome before reload finished; About treated every `null` update check as up-to-date.
 
 **Escape hatch (I106-T06):** Profile-load error chrome in Settings only offered **Retry**. With an expired access token and dead DNS, Retry kept failing and **Sign out** was hidden behind the successful Synced hero — user trapped “signed in” with no cloud and no logout. Worse: loading was **spinner-only** while `ensureFreshAccessToken` / gotrue refresh hung (timeout only wrapped PostgREST, not refresh), so Sign out never appeared. Fix: Sign out on loading + error chrome; `refreshSession` 12s cap; fail fast when AT still expired after refresh; `signOut` swallows remote revoke failures after gotrue local clear.
+
+**Auth posture (I106-T08):** Soft-failing every refresh left a zombie “signed in” session (expired AT, app still usable, Settings lying). Correct split: **transient** (timeout / DNS) → keep local session + `offlineWithCache` / honest offline copy; **terminal** Auth (revoked RT, invalid grant, unusable refresh apply) → local `signOut` so the gate returns to Account. Settings Retry clears the error and shows loading.
 
 **Related:** [085](085-[open]-desktop-involuntary-signout-dumps-login.md) (hard sign-out wipe) · [364](fixed/364-[fixed]-desktop-focus-sync-storm.md) (focus wake narrowed) · [RFC-042](../rfc/042-[open]-unified-auth-system.md)

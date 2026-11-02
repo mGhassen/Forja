@@ -200,14 +200,14 @@ class _ProfileSwitchSplashState extends ConsumerState<ProfileSwitchSplash>
         .pullAndMergeForProfileSwitch();
 
     try {
+      // Status / Continue can finish early — do not treat that as "sync done".
       await _awaitWithRotatingStatus(
         Future.any<void>([syncFuture, earlySync.future]).timeout(
           _settingsSyncTimeout,
           onTimeout: () {
             debugPrint(
-              '[ProfileSplash] Settings sync timed out after '
-              '${_settingsSyncTimeout.inSeconds}s — opening; IPTV stays '
-              'empty until this profile\'s portal pull finishes',
+              '[ProfileSplash] Settings sync UI timed out after '
+              '${_settingsSyncTimeout.inSeconds}s — still awaiting lean apply',
             );
           },
         ),
@@ -220,6 +220,17 @@ class _ProfileSwitchSplashState extends ConsumerState<ProfileSwitchSplash>
       if (mounted && !_finished) {
         setState(() => _offerContinue = false);
       }
+    }
+
+    // Lean packs/addons must finish before BootNeeds / pack warm — even if the
+    // status UI timed out or Continue was tapped. Do not start a second pull.
+    if (mounted && !_finished) {
+      _setStatus(context.l10n.accountSplashApplyingPacks);
+    }
+    try {
+      await syncFuture;
+    } catch (e) {
+      debugPrint('[ProfileSplash] lean sync error: $e');
     }
   }
 
@@ -381,7 +392,7 @@ class _ProfileSwitchSplashState extends ConsumerState<ProfileSwitchSplash>
       _syncContinueTimer = null;
       if (mounted) setState(() => _offerContinue = false);
       ForjaToast.info(
-        l10n.accountSplashOpeningSyncing,
+        l10n.accountSplashStillApplying,
         duration: const Duration(seconds: 3),
       );
       return;

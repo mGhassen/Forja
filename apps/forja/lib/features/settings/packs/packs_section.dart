@@ -74,9 +74,21 @@ class _SettingsForjaPacksSectionState
     SettingsPackPromptDrill.current.addListener(_onPackPromptDrill);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      // Unstick empty cache if nav badge pulled packs before profile scope.
-      unawaited(ref.read(enginePacksProvider.notifier).reload());
-      unawaited(ref.read(enginePackUpdatesProvider.notifier).refresh());
+      // Pull cloud membership first when signed in — empty local after
+      // device-link must not stick until a manual reload.
+      unawaited(() async {
+        if (SyncService.instance.isSignedIn) {
+          try {
+            await SyncDomainBridge.instance.syncFromCloud(force: true);
+          } catch (e) {
+            debugPrint('[ForjaPacks] soft-pull on open: $e');
+          }
+          if (!mounted) return;
+        }
+        await ref.read(enginePacksProvider.notifier).reload();
+        if (!mounted) return;
+        await ref.read(enginePackUpdatesProvider.notifier).refresh();
+      }());
     });
   }
 

@@ -1868,6 +1868,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get profileCloudProfileLoading => 'Loading cloud profile…';
 
   @override
+  String get profileCloudProfileOffline =>
+      'Working offline — cloud profile unavailable. Retry when online, or sign out on this device.';
+
+  @override
   String get profileCloudProfileLoadFailed =>
       'Cloud profile could not load. Retry, or sign out to clear this session on the device.';
 
@@ -4424,8 +4428,15 @@ class AppLocalizationsEn extends AppLocalizations {
   String get accountSplashWarmingHome => 'Warming up Home…';
 
   @override
-  String get accountSplashOpeningSyncing =>
-      'Opening while settings finish syncing. IPTV portals load when ready.';
+  String get accountSplashApplyingPacks => 'Applying your packs and settings…';
+
+  @override
+  String get syncCloudUnreachable =>
+      'Cloud unreachable. Retry when online, or sign out on this device.';
+
+  @override
+  String get accountSplashStillApplying =>
+      'Still applying your packs and settings…';
 
   @override
   String get appBootPluginsBackground =>

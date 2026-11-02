@@ -1911,6 +1911,10 @@ class AppLocalizationsFr extends AppLocalizations {
   String get profileCloudProfileLoading => 'Chargement du profil cloud…';
 
   @override
+  String get profileCloudProfileOffline =>
+      'Hors ligne : le profil cloud est indisponible. Réessayez une fois en ligne, ou déconnectez-vous sur cet appareil.';
+
+  @override
   String get profileCloudProfileLoadFailed =>
       'Le profil cloud n\'a pas pu se charger. Réessayez, ou déconnectez-vous pour effacer cette session sur l\'appareil.';
 
@@ -4521,8 +4525,16 @@ class AppLocalizationsFr extends AppLocalizations {
   String get accountSplashWarmingHome => 'Préparation de l\'accueil…';
 
   @override
-  String get accountSplashOpeningSyncing =>
-      'Ouverture pendant la fin de la synchronisation des paramètres. Les portails IPTV se chargent dès qu\'ils sont prêts.';
+  String get accountSplashApplyingPacks =>
+      'Application de vos packs et de vos réglages…';
+
+  @override
+  String get syncCloudUnreachable =>
+      'Cloud injoignable. Réessayez une fois en ligne, ou déconnectez-vous sur cet appareil.';
+
+  @override
+  String get accountSplashStillApplying =>
+      'Application de vos packs et de vos réglages en cours…';
 
   @override
   String get appBootPluginsBackground =>

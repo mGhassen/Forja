@@ -422,10 +422,14 @@ void main() {
         'player-up-next-cancel',
       );
 
-      // ↑ with chrome hidden reveals chrome via the key scope.
+      // ↑ with chrome hidden must not reveal chrome while the chip holds focus.
       await tester.sendKeyEvent(LogicalKeyboardKey.arrowUp);
       await tester.pump();
-      expect(focusBack, 1);
+      expect(focusBack, 0);
+      expect(
+        FocusManager.instance.primaryFocus?.debugLabel,
+        'player-up-next-cancel',
+      );
 
       keyFocus.dispose();
       chipFocus.dispose();
@@ -439,6 +443,7 @@ void main() {
       final chipFocus = FocusNode(debugLabel: 'test-skip');
       var skipped = 0;
       var focusBack = 0;
+      var focusPlay = 0;
 
       await tester.pumpWidget(
         MaterialApp(
@@ -454,7 +459,7 @@ void main() {
               onSeekForward: () {},
               onToggleControls: () {},
               onFocusBack: () => focusBack++,
-              onFocusPlay: () {},
+              onFocusPlay: () => focusPlay++,
               onClaimPlayFocus: () {},
               floatingChipVisible: true,
               onClaimFloatingChipFocus: chipFocus.requestFocus,
@@ -481,15 +486,100 @@ void main() {
       await tester.pump();
       expect(skipped, 1);
 
-      // ↑ the chip did not use reveals chrome via the key scope.
+      // Arrows the chip did not use must not reveal chrome.
       await tester.sendKeyEvent(LogicalKeyboardKey.arrowUp);
+      await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
       await tester.pump();
-      expect(focusBack, 1);
+      expect(focusBack, 0);
+      expect(focusPlay, 0);
+      expect(chipFocus.hasFocus, isTrue);
 
       keyFocus.dispose();
       chipFocus.dispose();
     },
   );
+
+  testWidgets('Next Episode → focuses X, not Play, while chrome is visible', (
+    tester,
+  ) async {
+    final keyFocus = FocusNode(debugLabel: 'test-player-tv-keys');
+    final chipFocus = FocusNode(debugLabel: 'test-next-ep');
+    final playFocus = FocusNode(debugLabel: 'test-play');
+    var focusPlay = 0;
+
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(
+          body: PlayerTvKeyScope(
+            enabled: true,
+            focusNode: keyFocus,
+            showControls: true,
+            onBack: () {},
+            onPlayPause: () {},
+            onShowControls: () {},
+            onSeekBack: () {},
+            onSeekForward: () {},
+            onToggleControls: () {},
+            onFocusBack: () {},
+            onFocusPlay: () {
+              focusPlay++;
+              playFocus.requestFocus();
+            },
+            onClaimPlayFocus: playFocus.requestFocus,
+            floatingChipVisible: true,
+            onClaimFloatingChipFocus: chipFocus.requestFocus,
+            child: SizedBox(
+              width: 800,
+              height: 400,
+              child: Stack(
+                children: [
+                  Positioned(
+                    left: 0,
+                    bottom: 0,
+                    child: FocusableControl(
+                      focusNode: playFocus,
+                      onTap: () {},
+                      child: const SizedBox(width: 64, height: 64),
+                    ),
+                  ),
+                  Positioned(
+                    right: 0,
+                    bottom: 0,
+                    child: PlayerNextEpisodeChip(
+                      onPressed: () {},
+                      countdown: true,
+                      countdownPaused: true,
+                      onCancel: () {},
+                      focusNode: chipFocus,
+                      tvFocusable: true,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pump();
+    chipFocus.requestFocus();
+    await tester.pump();
+    expect(chipFocus.hasFocus, isTrue);
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowRight);
+    await tester.pump();
+
+    expect(
+      FocusManager.instance.primaryFocus?.debugLabel,
+      'player-up-next-cancel',
+    );
+    expect(playFocus.hasFocus, isFalse);
+    expect(focusPlay, 0);
+
+    keyFocus.dispose();
+    chipFocus.dispose();
+    playFocus.dispose();
+  });
 
   testWidgets(
     'PlayerTvKeyScope restores play focus on ←/→ when chrome is visible',

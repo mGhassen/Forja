@@ -2130,6 +2130,143 @@ void main() {
     },
   );
 
+  testWidgets('enterTabFromNav skips mood chips for hero defaultFocus', (
+    tester,
+  ) async {
+    // Mood chips register with a fixed option count (often before / with a
+    // lower sortOrder than bleed rails). Enter must land hero View details,
+    // not "Pick your vibe".
+    const tab = 'hub_mood_early';
+    final nav = FocusNode(debugLabel: 'nav-$tab');
+    final mood = FocusNode(debugLabel: 'mood-chip');
+    final play = FocusNode(debugLabel: 'hero-play');
+    ShellTvFocus.registerNav(tab, nav);
+    ShellTvFocus.currentNavTabId = tab;
+    ShellTvFocusCoordinator.setNavOrder(['home', tab]);
+    ShellTvFocusCoordinator.registerTabDefaults(tab, defaultFocus: () => play);
+
+    shellTvRegisterRow(
+      tabId: tab,
+      rowId: 'mood-chips',
+      sortOrder: 0,
+      itemCount: 4,
+    );
+    ShellTvFocusCoordinator.registerItemNode(
+      tabId: tab,
+      rowId: 'mood-chips',
+      index: 0,
+      node: mood,
+    );
+
+    await tester.pumpWidget(
+      _wrapTv(
+        Row(
+          children: [
+            Focus(focusNode: nav, child: const SizedBox(width: 40, height: 40)),
+            Focus(
+              focusNode: mood,
+              child: const SizedBox(width: 40, height: 40),
+            ),
+            Focus(
+              focusNode: play,
+              child: const SizedBox(width: 40, height: 40),
+            ),
+          ],
+        ),
+      ),
+    );
+    await tester.pump();
+    nav.requestFocus();
+    await tester.pump();
+    expect(nav.hasFocus, isTrue);
+
+    ShellTvFocusCoordinator.enterTabFromNav(tab);
+    for (var i = 0; i < 8; i++) {
+      await tester.pump();
+    }
+    expect(play.hasFocus, isTrue);
+    expect(mood.hasFocus, isFalse);
+    expect(nav.hasFocus, isFalse);
+
+    nav.dispose();
+    mood.dispose();
+    play.dispose();
+    ShellTvFocusCoordinator.clearTab(tab);
+  });
+
+  testWidgets(
+    'enterTabFromNav skips mood chips for first rail when hero missing',
+    (tester) async {
+      const tab = 'hub_mood_skip';
+      final nav = FocusNode(debugLabel: 'nav-$tab');
+      final mood = FocusNode(debugLabel: 'mood');
+      final rail = FocusNode(debugLabel: 'rail');
+      ShellTvFocus.registerNav(tab, nav);
+      ShellTvFocus.currentNavTabId = tab;
+      ShellTvFocusCoordinator.setNavOrder(['home', tab]);
+      shellTvRegisterRow(
+        tabId: tab,
+        rowId: 'mood-chips',
+        sortOrder: 0,
+        itemCount: 4,
+      );
+      ShellTvFocusCoordinator.registerItemNode(
+        tabId: tab,
+        rowId: 'mood-chips',
+        index: 0,
+        node: mood,
+      );
+      shellTvRegisterRow(
+        tabId: tab,
+        rowId: 'trending',
+        sortOrder: 1,
+        itemCount: 1,
+      );
+      ShellTvFocusCoordinator.registerItemNode(
+        tabId: tab,
+        rowId: 'trending',
+        index: 0,
+        node: rail,
+      );
+
+      await tester.pumpWidget(
+        _wrapTv(
+          Row(
+            children: [
+              Focus(
+                focusNode: nav,
+                child: const SizedBox(width: 40, height: 40),
+              ),
+              Focus(
+                focusNode: mood,
+                child: const SizedBox(width: 40, height: 40),
+              ),
+              Focus(
+                focusNode: rail,
+                child: const SizedBox(width: 40, height: 40),
+              ),
+            ],
+          ),
+        ),
+      );
+      await tester.pump();
+      nav.requestFocus();
+      await tester.pump();
+
+      ShellTvFocusCoordinator.enterTabFromNav(tab);
+      for (var i = 0; i < 8; i++) {
+        await tester.pump();
+      }
+      expect(rail.hasFocus, isTrue);
+      expect(mood.hasFocus, isFalse);
+
+      nav.dispose();
+      mood.dispose();
+      rail.dispose();
+      ShellTvFocusCoordinator.clearTab(tab);
+    },
+  );
+
   test('clearTabPageBack drops a stale Back ladder', () {
     var calls = 0;
     ShellTvFocusCoordinator.registerTabDefaults(

@@ -40,5 +40,6 @@ On Android TV, when **Skip Intro** / **Skip Recap** / **Skip Credits** / **Skip 
 
 ## Links
 
+- [521](521-[fixed]-android-tv-player-chip-arrows-reveal-chrome.md) — chip arrows must not reveal chrome; → → X
 - [RFC-122](../../rfc/122-[draft]-android-tv-remote-ux.md)
 - [player.md](../../features/playback/player.md) · [next-episode.md](../../features/playback/next-episode.md)

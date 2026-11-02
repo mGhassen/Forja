@@ -90,13 +90,30 @@ class _SettingsForjaAccountPanelState extends State<SettingsForjaAccountPanel> {
       setState(_clearProfileUi);
       return;
     }
+    // Clear prior error so Retry shows loading instead of looking dead.
+    setState(() {
+      _profileLoadError = null;
+      _profileReady = false;
+      _profiles = const [];
+      _activeProfileId = null;
+      _domains = 0;
+    });
     try {
       final profiles = await SyncService.instance.listProfiles();
+      if (!mounted || gen != _refreshGen) return;
+      if (!SyncService.instance.isSignedIn) {
+        setState(_clearProfileUi);
+        return;
+      }
       final activeProfile = await SyncService.instance.activeProfile(
         profiles: profiles,
       );
       final remote = await SyncService.instance.pullProfileSettings();
       if (!mounted || gen != _refreshGen) return;
+      if (!SyncService.instance.isSignedIn) {
+        setState(_clearProfileUi);
+        return;
+      }
       setState(() {
         _profiles = profiles;
         _activeProfileId = activeProfile?.id;
@@ -106,6 +123,10 @@ class _SettingsForjaAccountPanelState extends State<SettingsForjaAccountPanel> {
       });
     } catch (e) {
       if (!mounted || gen != _refreshGen) return;
+      if (!SyncService.instance.isSignedIn) {
+        setState(_clearProfileUi);
+        return;
+      }
       final message = e is SyncProfileFetchException
           ? e.message
           : context.l10n.profileLoadFailed;
@@ -328,6 +349,9 @@ class _SettingsForjaAccountPanelState extends State<SettingsForjaAccountPanel> {
                     title: email ?? context.l10n.profileSignedIn,
                     subtitle: loading
                         ? context.l10n.profileCloudProfileLoading
+                        : SyncService.instance.authStatus ==
+                              SyncAuthStatus.offlineWithCache
+                        ? context.l10n.profileCloudProfileOffline
                         : context.l10n.profileCloudProfileLoadFailed,
                     icon: loading
                         ? Icons.cloud_sync_rounded

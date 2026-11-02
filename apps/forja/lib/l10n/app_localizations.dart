@@ -3113,6 +3113,12 @@ abstract class AppLocalizations {
   /// **'Loading cloud profile…'**
   String get profileCloudProfileLoading;
 
+  /// No description provided for @profileCloudProfileOffline.
+  ///
+  /// In en, this message translates to:
+  /// **'Working offline — cloud profile unavailable. Retry when online, or sign out on this device.'**
+  String get profileCloudProfileOffline;
+
   /// No description provided for @profileCloudProfileLoadFailed.
   ///
   /// In en, this message translates to:
@@ -7631,11 +7637,23 @@ abstract class AppLocalizations {
   /// **'Warming up Home…'**
   String get accountSplashWarmingHome;
 
-  /// No description provided for @accountSplashOpeningSyncing.
+  /// No description provided for @accountSplashApplyingPacks.
   ///
   /// In en, this message translates to:
-  /// **'Opening while settings finish syncing. IPTV portals load when ready.'**
-  String get accountSplashOpeningSyncing;
+  /// **'Applying your packs and settings…'**
+  String get accountSplashApplyingPacks;
+
+  /// No description provided for @syncCloudUnreachable.
+  ///
+  /// In en, this message translates to:
+  /// **'Cloud unreachable. Retry when online, or sign out on this device.'**
+  String get syncCloudUnreachable;
+
+  /// No description provided for @accountSplashStillApplying.
+  ///
+  /// In en, this message translates to:
+  /// **'Still applying your packs and settings…'**
+  String get accountSplashStillApplying;
 
   /// No description provided for @appBootPluginsBackground.
   ///
