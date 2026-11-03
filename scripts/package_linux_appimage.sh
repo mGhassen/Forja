@@ -67,6 +67,13 @@ export VERSION="$VERSION"
 export APPIMAGE_EXTRACT_AND_RUN=1
 export PATH="$TOOLS_DIR:$PATH"
 
+# linuxdeploy-plugin-gtk copies this host tree; missing → opaque "cp: cannot stat".
+gdk_loaders="$(pkg-config --variable=gdk_pixbuf_binarydir gdk-pixbuf-2.0 2>/dev/null || true)"
+if [[ -z "$gdk_loaders" || ! -d "$gdk_loaders" ]]; then
+  echo "error: gdk-pixbuf loaders missing (${gdk_loaders:-unset}) — install librsvg2-common libgdk-pixbuf2.0-bin" >&2
+  exit 1
+fi
+
 "$LINUXDEPLOY" \
   --appdir "$APPDIR" \
   --desktop-file="$APPDIR/forja.desktop" \
