@@ -12,8 +12,9 @@ import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 /// list by roughly one viewport width per click. Touch-only / narrow
 /// layouts get plain swipe scrolling with no overlay.
 ///
-/// On desktop, vertical mouse wheel / trackpad scroll over the row moves
-/// the strip horizontally instead of scrolling the parent page.
+/// On desktop trackpad, vertical scroll over the row moves the strip
+/// horizontally instead of scrolling the parent page. Mouse wheel stays
+/// with the parent (vertical page scroll only).
 class HorizontalScroller extends StatefulWidget {
   final double height;
   final EdgeInsetsGeometry padding;
@@ -24,6 +25,7 @@ class HorizontalScroller extends StatefulWidget {
   final ScrollController? controller;
   final Clip clipBehavior;
   final ScrollPhysics? physics;
+
   /// Fires while scrolling near the end (caller debounces). ~1 viewport of runway.
   final VoidCallback? onApproachingEnd;
 
@@ -102,8 +104,10 @@ class _HorizontalScrollerState extends State<HorizontalScroller> {
 
   void _scrollBy(double delta) {
     if (!_ctrl.hasClients) return;
-    final target = (_ctrl.offset + delta)
-        .clamp(0.0, _ctrl.position.maxScrollExtent);
+    final target = (_ctrl.offset + delta).clamp(
+      0.0,
+      _ctrl.position.maxScrollExtent,
+    );
     _ctrl.animateTo(
       target,
       duration: const Duration(milliseconds: 320),
@@ -114,6 +118,9 @@ class _HorizontalScrollerState extends State<HorizontalScroller> {
   void _onPointerSignal(PointerSignalEvent event) {
     if (!ShellPaintScope.scaleOnHoverOf(context)) return;
     if (event is! PointerScrollEvent) return;
+    // Mouse wheel must keep scrolling the parent page. Only trackpad
+    // (macOS) remaps vertical scroll onto this strip.
+    if (event.kind != PointerDeviceKind.trackpad) return;
 
     final dy = event.scrollDelta.dy;
     if (dy == 0.0) return;
@@ -140,8 +147,10 @@ class _HorizontalScrollerState extends State<HorizontalScroller> {
       final atEnd = position.pixels >= position.maxScrollExtent - 0.5;
       if ((atStart && delta < 0) || (atEnd && delta > 0)) return;
 
-      final target = (position.pixels + delta)
-          .clamp(position.minScrollExtent, position.maxScrollExtent);
+      final target = (position.pixels + delta).clamp(
+        position.minScrollExtent,
+        position.maxScrollExtent,
+      );
       if (target != position.pixels) {
         _ctrl.jumpTo(target);
         _updateEdges();
@@ -158,7 +167,8 @@ class _HorizontalScrollerState extends State<HorizontalScroller> {
         // Enough for ±1 card off-screen; 2000 kept too many live FocusableControls.
         tvFocus ? ScrollCacheExtent.pixels(720) : null;
     final scope = ShellPaintScope.maybeOf(context);
-    final absorb = scope?.absorbHorizontalScroll ??
+    final absorb =
+        scope?.absorbHorizontalScroll ??
         ((ScrollNotification n) => n.metrics.axis == Axis.horizontal);
     final wrap = scope?.wrapHorizontalScroller;
 
@@ -231,6 +241,7 @@ class _HorizontalScrollerState extends State<HorizontalScroller> {
 
 class _ArrowButton extends StatelessWidget {
   final bool visible;
+
   /// True = scroll toward start (offset decreases); false = toward end.
   final bool atStart;
   final double offset;
@@ -267,12 +278,12 @@ class _ArrowButton extends StatelessWidget {
                   height: controlSize,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
-                    color: ForjaShellColors.surfaceElevated
-                        .withValues(alpha: hover ? 0.98 : 0.92),
+                    color: ForjaShellColors.surfaceElevated.withValues(
+                      alpha: hover ? 0.98 : 0.92,
+                    ),
                     border: Border.all(
                       color: hover
-                          ? ForjaShellColors.textPrimary
-                              .withValues(alpha: 0.22)
+                          ? ForjaShellColors.textPrimary.withValues(alpha: 0.22)
                           : ForjaShellColors.borderSubtle,
                     ),
                     boxShadow: [
@@ -286,11 +297,11 @@ class _ArrowButton extends StatelessWidget {
                   child: Icon(
                     Directionality.of(context) == TextDirection.rtl
                         ? (atStart
-                            ? Icons.chevron_right_rounded
-                            : Icons.chevron_left_rounded)
+                              ? Icons.chevron_right_rounded
+                              : Icons.chevron_left_rounded)
                         : (atStart
-                            ? Icons.chevron_left_rounded
-                            : Icons.chevron_right_rounded),
+                              ? Icons.chevron_left_rounded
+                              : Icons.chevron_right_rounded),
                     color: hover
                         ? ForjaShellColors.textPrimary
                         : ForjaShellColors.iconActive,

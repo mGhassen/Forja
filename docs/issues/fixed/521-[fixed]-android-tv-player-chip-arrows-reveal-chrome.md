@@ -10,7 +10,7 @@
 
 | | |
 |--|--|
-| **Progress** | **Complete** · **3 / 3** fix · **0 / 2** acceptance |
+| **Progress** | **Complete** · **6 / 6** fix · **0 / 2** acceptance |
 
 **Legend:** ✅ done · 🔄 in progress · ⬜ not started
 
@@ -34,6 +34,9 @@ Product rule: if chrome is already showing, keep it; if it is hidden, do not sho
 | 1 | I521-T01 | Swallow arrow keys on floating-chip focus when chrome is hidden (do not reveal) | ✅ |
 | 2 | I521-T02 | Trap ←/→ on Skip + Next Episode chips so spatial focus cannot jump to Play; → → X with countdown | ✅ |
 | 3 | I521-T03 | Widget tests: chrome stays hidden on chip arrows; chrome-up → reaches X not Play | ✅ |
+| 4 | I521-T04 | `_claimPlayFocus` / `_ensureFocus` must not steal Play or main chip off countdown X | ✅ |
+| 5 | I521-T05 | HW handler: floating chip visible → arrows reclaim chip, never `onFocusPlay` | ✅ |
+| 6 | I521-T06 | Next Episode `FocusScope` + → re-assert cancel; detect host chip debugLabels | ✅ |
 
 ## Acceptance
 

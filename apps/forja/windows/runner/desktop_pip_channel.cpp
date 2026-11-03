@@ -1,6 +1,7 @@
 #include "desktop_pip_channel.h"
 
 #include <flutter/method_channel.h>
+#include <flutter/method_result_functions.h>
 #include <flutter/standard_method_codec.h>
 
 #include "flutter/generated_plugin_registrant.h"
@@ -36,6 +37,10 @@ flutter::EncodableMap VisibleFramePayload(HWND hwnd) {
 }
 
 const wchar_t kFloatClass[] = L"ForjaPipFloatWindow";
+// Cap so a hung float never blocks Expand forever.
+constexpr UINT kDestroyTimeoutMs = 3000;
+// Defer engine reset off the float MethodResult reply stack (issue 527).
+constexpr UINT kDeferredFinishMs = 1;
 
 LRESULT CALLBACK FloatWndProc(HWND hwnd, UINT msg, WPARAM wparam,
                               LPARAM lparam) {
@@ -64,6 +69,15 @@ void EnsureFloatClass() {
   wc.hbrBackground = reinterpret_cast<HBRUSH>(GetStockObject(BLACK_BRUSH));
   RegisterClassW(&wc);
   registered = true;
+}
+
+VOID CALLBACK DestroyTimerProc(HWND hwnd, UINT /*msg*/, UINT_PTR id,
+                               DWORD /*time*/) {
+  KillTimer(hwnd, id);
+  auto* self = reinterpret_cast<DesktopPipChannel*>(id);
+  if (self != nullptr) {
+    self->OnDestroyTimer();
+  }
 }
 
 }  // namespace
@@ -107,8 +121,8 @@ std::unique_ptr<DesktopPipChannel> DesktopPipChannel::Register(
           }
           result->Success();
         } else if (method == "destroyFloat") {
-          raw->DestroyFloat();
-          result->Success();
+          // Hold Success until float media_kit dispose finishes (issue 527).
+          raw->DestroyFloatAsync(std::move(result));
         } else if (method == "setEnabled" || method == "enterPip" ||
                    method == "dockBottomRight" ||
                    method == "setSpaceLeavePrepAllowed" ||
@@ -129,10 +143,24 @@ DesktopPipChannel::DesktopPipChannel(HWND hwnd,
                                      const flutter::DartProject& project)
     : hwnd_(hwnd), project_(project) {}
 
-DesktopPipChannel::~DesktopPipChannel() { DestroyFloat(); }
+DesktopPipChannel::~DesktopPipChannel() {
+  destroy_generation_++;
+  CancelDestroyTimer();
+  if (pending_destroy_result_) {
+    pending_destroy_result_->Success();
+    pending_destroy_result_.reset();
+  }
+  DestroyFloatImmediate();
+}
 
 bool DesktopPipChannel::CreateFloat(double width, double height) {
-  DestroyFloat();
+  destroy_generation_++;
+  CancelDestroyTimer();
+  if (pending_destroy_result_) {
+    pending_destroy_result_->Success();
+    pending_destroy_result_.reset();
+  }
+  DestroyFloatImmediate();
   EnsureFloatClass();
 
   const RECT work = WorkAreaFor(hwnd_);
@@ -156,7 +184,7 @@ bool DesktopPipChannel::CreateFloat(double width, double height) {
   float_controller_ = std::make_unique<flutter::FlutterViewController>(
       w, h, float_project);
   if (!float_controller_->engine() || !float_controller_->view()) {
-    DestroyFloat();
+    DestroyFloatImmediate();
     return false;
   }
   RegisterPlugins(float_controller_->engine());
@@ -190,11 +218,8 @@ void DesktopPipChannel::OpenFloat(const flutter::EncodableValue& args) {
   }
 }
 
-void DesktopPipChannel::DestroyFloat() {
-  if (float_channel_) {
-    float_channel_->InvokeMethod("teardown", nullptr);
-    float_channel_.reset();
-  }
+void DesktopPipChannel::DestroyFloatImmediate() {
+  float_channel_.reset();
   float_controller_.reset();
   if (float_hwnd_ != nullptr) {
     DestroyWindow(float_hwnd_);
@@ -202,6 +227,79 @@ void DesktopPipChannel::DestroyFloat() {
   }
   has_pending_open_ = false;
   float_ready_ = false;
+}
+
+void DesktopPipChannel::CancelDestroyTimer() {
+  if (destroy_timeout_timer_ != 0) {
+    KillTimer(hwnd_, destroy_timeout_timer_);
+    destroy_timeout_timer_ = 0;
+  }
+}
+
+void DesktopPipChannel::ScheduleFinishDestroy(uint64_t gen, UINT delay_ms) {
+  if (gen != destroy_generation_) return;
+  CancelDestroyTimer();
+  armed_destroy_generation_ = gen;
+  // Timer id is `this` so the static proc can recover the channel.
+  destroy_timeout_timer_ = reinterpret_cast<UINT_PTR>(this);
+  SetTimer(hwnd_, destroy_timeout_timer_, delay_ms, DestroyTimerProc);
+}
+
+void DesktopPipChannel::FinishPendingDestroy() {
+  CancelDestroyTimer();
+  DestroyFloatImmediate();
+  if (pending_destroy_result_) {
+    pending_destroy_result_->Success();
+    pending_destroy_result_.reset();
+  }
+}
+
+void DesktopPipChannel::OnDestroyTimer() {
+  destroy_timeout_timer_ = 0;
+  // Stale WM_TIMER after CreateFloat / newer DestroyFloatAsync — ignore.
+  if (armed_destroy_generation_ != destroy_generation_) return;
+  FinishPendingDestroy();
+}
+
+void DesktopPipChannel::DestroyFloatAsync(
+    std::unique_ptr<flutter::MethodResult<flutter::EncodableValue>> result) {
+  destroy_generation_++;
+  const uint64_t gen = destroy_generation_;
+
+  CancelDestroyTimer();
+  if (pending_destroy_result_) {
+    pending_destroy_result_->Success();
+    pending_destroy_result_.reset();
+  }
+  pending_destroy_result_ = std::move(result);
+  armed_destroy_generation_ = gen;
+
+  if (!float_channel_) {
+    FinishPendingDestroy();
+    return;
+  }
+
+  // Hide while Dart media_kit disposes — main still shows the PiP placeholder.
+  if (float_hwnd_ != nullptr) {
+    ShowWindow(float_hwnd_, SW_HIDE);
+  }
+
+  // Arm timeout before InvokeMethod so a synchronous reply cannot race the arm.
+  ScheduleFinishDestroy(gen, kDestroyTimeoutMs);
+
+  auto finish = [this, gen]() {
+    if (gen != destroy_generation_) return;
+    // Defer engine kill off the float MethodResult reply stack.
+    ScheduleFinishDestroy(gen, kDeferredFinishMs);
+  };
+
+  float_channel_->InvokeMethod(
+      "teardown", nullptr,
+      std::make_unique<flutter::MethodResultFunctions<flutter::EncodableValue>>(
+          [finish](const flutter::EncodableValue*) { finish(); },
+          [finish](const std::string&, const std::string&,
+                   const flutter::EncodableValue*) { finish(); },
+          [finish]() { finish(); }));
 }
 
 void DesktopPipChannel::NotifyMain(

@@ -47,7 +47,11 @@ class _ShellEmptyFeaturesScreenState
     TvHeroActions.bind(
       'settings',
       defaultFocus: () => _cardFocus.isNotEmpty ? _cardFocus.first : null,
-      enterFromNavFocus: _focusFirstCard,
+      enterFromNavFocus: () {
+        _focusFirstCard();
+        return _cardFocus.isNotEmpty &&
+            (_cardFocus.first.hasPrimaryFocus || _cardFocus.first.hasFocus);
+      },
       restoreFocus: () {
         _focusFirstCard();
         return _cardFocus.isNotEmpty &&

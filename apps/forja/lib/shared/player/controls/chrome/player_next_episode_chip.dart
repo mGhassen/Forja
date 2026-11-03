@@ -57,6 +57,25 @@ class _PlayerNextEpisodeChipState extends State<PlayerNextEpisodeChip>
   )..addStatusListener(_onRingStatus);
   final FocusNode _cancelNode = FocusNode(debugLabel: 'player-up-next-cancel');
   FocusNode? _ownedMainNode;
+
+  /// True between → to X and the next frame — re-claims X if Play stole it.
+  bool _cancelFocusPending = false;
+
+  void _focusCancel() {
+    if (!_showCancel || !_cancelNode.canRequestFocus) return;
+    _cancelFocusPending = true;
+    _cancelNode.requestFocus();
+    // Re-assert next frame only while still pending — ← back to main clears
+    // the flag so we do not yank focus off the chip after the user returns.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !_cancelFocusPending || !_showCancel) return;
+      _cancelFocusPending = false;
+      if (!_cancelNode.hasFocus && _cancelNode.canRequestFocus) {
+        _cancelNode.requestFocus();
+      }
+    });
+  }
+
   final ValueNotifier<bool> _mainHovered = ValueNotifier(false);
   final ValueNotifier<bool> _cancelHovered = ValueNotifier(false);
   bool _mainFocused = false;
@@ -72,9 +91,11 @@ class _PlayerNextEpisodeChipState extends State<PlayerNextEpisodeChip>
       _cancelFocused ||
       (_mainFocused && (widget.pauseOnFocus || _userNavigated));
 
-  FocusNode get _mainNode =>
-      widget.focusNode ??
-      (_ownedMainNode ??= FocusNode(debugLabel: 'player-up-next-main'));
+  FocusNode get _mainNode {
+    final host = widget.focusNode;
+    if (host != null) return host;
+    return _ownedMainNode ??= FocusNode(debugLabel: 'player-up-next-main');
+  }
 
   bool get _showCancel => widget.countdown && widget.onCancel != null;
 
@@ -156,11 +177,14 @@ class _PlayerNextEpisodeChipState extends State<PlayerNextEpisodeChip>
     }
     final key = event.logicalKey;
     if (key == LogicalKeyboardKey.arrowRight) {
-      if (_showCancel) _cancelNode.requestFocus();
+      _focusCancel();
       // Trap ←/→ so spatial focus cannot jump to Play while chrome is up.
       return KeyEventResult.handled;
     }
-    if (key == LogicalKeyboardKey.arrowLeft) return KeyEventResult.handled;
+    if (key == LogicalKeyboardKey.arrowLeft) {
+      _cancelFocusPending = false;
+      return KeyEventResult.handled;
+    }
     return KeyEventResult.ignored;
   }
 
@@ -172,6 +196,7 @@ class _PlayerNextEpisodeChipState extends State<PlayerNextEpisodeChip>
     }
     final key = event.logicalKey;
     if (key == LogicalKeyboardKey.arrowLeft) {
+      _cancelFocusPending = false;
       _mainNode.requestFocus();
       return KeyEventResult.handled;
     }
@@ -322,6 +347,7 @@ class _PlayerNextEpisodeChipState extends State<PlayerNextEpisodeChip>
     required FocusNode focusNode,
     required FocusOnKeyEventCallback onKey,
     required ValueChanged<bool> onFocusChange,
+    VoidCallback? onRightEdge,
   }) {
     final painted = ListenableBuilder(
       listenable: hovered,
@@ -332,6 +358,7 @@ class _PlayerNextEpisodeChipState extends State<PlayerNextEpisodeChip>
         focusNode: focusNode,
         onTap: onTap,
         onKeyEvent: onKey,
+        onRightEdge: onRightEdge,
         borderRadius: 0,
         scaleOnFocus: 1.0,
         onFocusChange: onFocusChange,
@@ -381,6 +408,7 @@ class _PlayerNextEpisodeChipState extends State<PlayerNextEpisodeChip>
                   onTap: widget.onPressed,
                   focusNode: _mainNode,
                   onKey: _onMainKey,
+                  onRightEdge: _showCancel ? _focusCancel : null,
                   onFocusChange: (f) {
                     if (!mounted) return;
                     setState(() => _mainFocused = f);

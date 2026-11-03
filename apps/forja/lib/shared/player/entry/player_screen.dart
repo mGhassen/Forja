@@ -377,7 +377,12 @@ class _PlayerScreenState extends State<PlayerScreen> {
     }
 
     if (builtInEngine == null) return;
-    if (builtInEngine == _builtInEngine && !_useExternalPlayer) return;
+    // Same engine + new session (source switch): session already applied —
+    // rebuild so ValueKey remounts the living screen.
+    if (builtInEngine == _builtInEngine && !_useExternalPlayer) {
+      if (mounted) setState(() {});
+      return;
+    }
 
     if (builtInEngine == BuiltInPlayerEngine.vlc &&
         !await VlcPlayerBridge.isAvailable()) {
@@ -725,9 +730,15 @@ class _PlayerScreenState extends State<PlayerScreen> {
         movie: widget.movie,
         selectedSeason: widget.selectedSeason,
         selectedEpisode: widget.selectedEpisode,
+        magnetLink: widget.magnetLink,
         activeProvider: _sessionActiveProvider,
         startPosition: _effectiveStartPosition,
         sources: _sessionSources,
+        fileIndex: widget.fileIndex,
+        externalSubtitles: widget.externalSubtitles,
+        stremioId: widget.stremioId,
+        stremioAddonBaseUrl: widget.stremioAddonBaseUrl,
+        providers: widget.providers,
         onNextEpisode: widget.onNextEpisode,
         hasNextEpisode: widget.hasNextEpisode,
         episodes: widget.episodes,
@@ -736,7 +747,15 @@ class _PlayerScreenState extends State<PlayerScreen> {
         episodeOverview: widget.episodeOverview,
         enginePlaySession: widget.enginePlaySession,
         onSaveProgress: widget.onSaveProgress,
+        onSourcePinned: widget.onSourcePinned,
+        pinSource: widget.pinSource,
+        streamsPrevalidated: widget.streamsPrevalidated,
         onPlaybackStarted: widget.onPlaybackStarted,
+        onAllSourcesExhausted: widget.onAllSourcesExhausted,
+        onReloadStreams: widget.onReloadStreams,
+        sourcesListNotifier: widget.sourcesListNotifier,
+        providerSourcesCache: widget.providerSourcesCache,
+        providerProbesNotifier: widget.providerProbesNotifier,
         onSwitchPlayer: _switchPlayer,
       );
     } else {

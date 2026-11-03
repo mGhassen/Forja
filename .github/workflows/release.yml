@@ -518,7 +518,10 @@ jobs:
     name: Linux
     if: ${{ inputs.platform_linux }}
     needs: resolve_version
-    runs-on: ubuntu-latest
+    # 22.04: linuxdeploy-plugin-gtk needs gdk-pixbuf 2.10.0 loaders on disk;
+    # ubuntu-latest (24.04+) often lacks that tree. Older glibc also keeps the
+    # AppImage runnable on more distros.
+    runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
         with:
@@ -556,7 +559,9 @@ jobs:
             libgtk-3-dev libmpv-dev libfuse2 libsecret-1-dev \
             libgstreamer1.0-dev libgstreamer-plugins-base1.0-dev \
             libcurl4-openssl-dev \
+            librsvg2-common libgdk-pixbuf2.0-bin \
             file wget curl
+          sudo gdk-pixbuf-query-loaders --update-cache
 
       - name: Build Rust FFI
         run: ./scripts/ci_with_heartbeat.sh "rust ffi" ./scripts/build_rust_release.sh

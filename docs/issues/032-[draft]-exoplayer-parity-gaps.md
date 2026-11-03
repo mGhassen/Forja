@@ -44,4 +44,4 @@
 
 **Still media_kit-only (or open):** ASS/SSA styling, torrent localhost, seek preview, PiP, separate `audioUrl`. Users can switch **Settings → Built-in engine → MediaKit** when needed.
 
-IntroDB seek-bar color zones: [517](fixed/517-[fixed]-exo-introdb-seekbar-zones.md).
+IntroDB seek-bar color zones: [517](fixed/517-[fixed]-exo-introdb-seekbar-zones.md). Skip Intro / Recap chip: [530](fixed/530-[fixed]-exo-skip-intro-recap-chip.md).

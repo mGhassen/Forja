@@ -48,3 +48,5 @@
 | **Plan target** | Same — device QA still open |
 
 Handoff hitch (dispose → reopen URL+headers+seek) is required. Distinct from in-app mini.
+
+Windows Expand must await float `teardown` before destroying the secondary engine ([527](../issues/fixed/527-[fixed]-windows-pip-expand-black-loading.md)).

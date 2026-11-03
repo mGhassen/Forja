@@ -3,31 +3,59 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:forja/l10n/l10n.dart';
+import 'package:forja/shared/casting/casting.dart';
+import 'package:forja/shared/downloads/download_enqueue.dart';
+import 'package:forja/shared/downloads/download_source_match.dart';
+import 'package:forja/shared/engine/engine.dart';
 import 'package:forja/shared/engine/store/list_follow_from_watched.dart';
+import 'package:forja/shared/playback/loading_overlay.dart';
+import 'package:forja/shared/playback/open/engine_auto_play.dart';
+import 'package:forja/shared/playback/open/player_source_resolve.dart';
+import 'package:forja/shared/playback/probe/playback_stream_guards.dart';
+import 'package:forja/shared/playback/probe/stream_drm_platform.dart';
+import 'package:forja/shared/playback/sources/stremio_external_link.dart';
+import 'package:forja/shared/playback/stream_provider_probe.dart';
 import 'package:forja/shared/player/avplayer/av_player_bridge.dart';
 import 'package:forja/shared/player/avplayer/av_player_view.dart';
 import 'package:forja/shared/player/controls/chrome/player_chrome_overlay.dart';
-import 'package:forja/shared/player/controls/chrome/player_seek_scrub_cancel.dart';
+import 'package:forja/shared/player/controls/chrome/player_chrome_overlays.dart';
+import 'package:forja/shared/player/controls/chrome/player_next_episode_chip.dart';
+import 'package:forja/shared/player/controls/chrome/player_status_roulette.dart';
 import 'package:forja/shared/player/controls/episodes/catalog_episode.dart';
+import 'package:forja/shared/player/controls/episodes/player_episode_menu.dart';
+import 'package:forja/shared/player/controls/episodes/player_episode_panel.dart';
 import 'package:forja/shared/player/controls/menus/player_app_menu.dart';
+import 'package:forja/shared/player/controls/menus/player_menus.dart';
+import 'package:forja/shared/player/controls/menus/player_popup_panel.dart';
+import 'package:forja/shared/player/controls/menus/player_provider_menu.dart';
 import 'package:forja/shared/player/controls/seek/seek_bar_with_preview.dart';
 import 'package:forja/shared/player/controls/seek/seek_bar_zones.dart';
-import 'package:forja/shared/playback/probe/playback_stream_guards.dart';
+import 'package:forja/shared/player/controls/sources/panel/player_sources_panel.dart';
+import 'package:forja/shared/player/controls/sources/stream/player_stream_menu.dart';
+import 'package:forja/shared/player/in_app_mini/in_app_mini_player_chrome.dart';
+import 'package:forja/shared/player/in_app_mini/in_app_mini_player_controller.dart';
+import 'package:forja/shared/player/platform/pip_service.dart';
+import 'package:forja/shared/player/resolvers/episode_switch_resolver.dart';
 import 'package:forja/shared/player/screens/utils.dart';
 import 'package:forja/shared/player/vlc/vlc_player_bridge.dart';
 import 'package:forja/shared/player/vlc/vlc_player_view.dart';
-import 'package:forja/shared/playback/open/engine_auto_play.dart';
-import 'package:forja/shared/playback/loading_overlay.dart';
+import 'package:forja/shared/sync/sync.dart';
 import 'package:forja/shell/desktop/desktop_window_chrome.dart';
 import 'package:forja/shell/desktop/desktop_window_geometry.dart';
 import 'package:forja/shell/feedback/forja_toast.dart';
+import 'package:forja/shell/routing/app_router.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:rust/rust.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
+part 'desktop_native_player_chrome.dart';
+part 'desktop_native_player_menus.dart';
+
 /// Catalog VOD on desktop via AVPlayer (macOS) or libVLC (macOS / Windows).
 ///
-/// Thin sibling of [ExoPlayerScreen] — not a MediaKit [DesktopPlayerScreen] fork.
+/// Thin sibling of [ExoPlayerScreen] — MediaKit-parity chrome, not the
+/// DesktopPlayerScreen mixin god. Track APIs (audio/subs/quality) and desktop
+/// OS PiP stay toast stubs until native bridges grow those surfaces.
 class DesktopNativePlayerScreen extends StatefulWidget {
   const DesktopNativePlayerScreen({
     super.key,
@@ -38,9 +66,15 @@ class DesktopNativePlayerScreen extends StatefulWidget {
     this.movie,
     this.selectedSeason,
     this.selectedEpisode,
+    this.magnetLink,
     this.activeProvider,
     this.startPosition,
     this.sources,
+    this.fileIndex,
+    this.externalSubtitles,
+    this.stremioId,
+    this.stremioAddonBaseUrl,
+    this.providers,
     this.onNextEpisode,
     this.hasNextEpisode = false,
     this.episodes,
@@ -49,7 +83,15 @@ class DesktopNativePlayerScreen extends StatefulWidget {
     this.episodeOverview,
     this.enginePlaySession,
     this.onSaveProgress,
+    this.onSourcePinned,
+    this.pinSource = false,
+    this.streamsPrevalidated = false,
     this.onPlaybackStarted,
+    this.onAllSourcesExhausted,
+    this.onReloadStreams,
+    this.sourcesListNotifier,
+    this.providerSourcesCache,
+    this.providerProbesNotifier,
     this.onSwitchPlayer,
   });
 
@@ -60,9 +102,15 @@ class DesktopNativePlayerScreen extends StatefulWidget {
   final Movie? movie;
   final int? selectedSeason;
   final int? selectedEpisode;
+  final String? magnetLink;
   final String? activeProvider;
   final Duration? startPosition;
   final List<StreamSource>? sources;
+  final int? fileIndex;
+  final List<Map<String, dynamic>>? externalSubtitles;
+  final String? stremioId;
+  final String? stremioAddonBaseUrl;
+  final Map<String, dynamic>? providers;
   final Future<void> Function()? onNextEpisode;
   final bool hasNextEpisode;
   final List<PlayerKitEpisode>? episodes;
@@ -70,9 +118,23 @@ class DesktopNativePlayerScreen extends StatefulWidget {
   final Future<void> Function(PlayerKitEpisode episode)? onHubEpisodeSelected;
   final String? episodeOverview;
   final EnginePlaySession? enginePlaySession;
-  final Future<void> Function(Duration position, Duration duration, {String? sourceId, String? streamUrl})?
-      onSaveProgress;
+  final Future<void> Function(
+    Duration position,
+    Duration duration, {
+    String? sourceId,
+    String? streamUrl,
+  })?
+  onSaveProgress;
+  final Future<void> Function(String sourceUrl, String sourceTitle)?
+  onSourcePinned;
+  final bool pinSource;
+  final bool streamsPrevalidated;
   final VoidCallback? onPlaybackStarted;
+  final VoidCallback? onAllSourcesExhausted;
+  final Future<List<StreamSource>?> Function()? onReloadStreams;
+  final ValueNotifier<List<StreamSource>>? sourcesListNotifier;
+  final ValueNotifier<Map<String, List<StreamSource>>>? providerSourcesCache;
+  final ValueNotifier<List<StreamProviderProbe>>? providerProbesNotifier;
   final PlayerSwitchHandler? onSwitchPlayer;
 
   @override
@@ -80,7 +142,9 @@ class DesktopNativePlayerScreen extends StatefulWidget {
       _DesktopNativePlayerScreenState();
 }
 
-class _DesktopNativePlayerScreenState extends State<DesktopNativePlayerScreen> {
+class _DesktopNativePlayerScreenState extends State<DesktopNativePlayerScreen>
+    with _DesktopNativeChrome, _DesktopNativeMenus
+    implements InAppMiniPlayerSession {
   static int _nextViewId = 1;
 
   late final int _viewId = _nextViewId++;
@@ -91,6 +155,15 @@ class _DesktopNativePlayerScreenState extends State<DesktopNativePlayerScreen> {
 
   String _url = '';
   Map<String, String>? _headers;
+  String? _currentProvider;
+  String? _activeMagnet;
+  String? _catalogAddonBaseUrl;
+  String? _catalogAddonName;
+  String? _catalogSourceKind;
+  String? _currentPlayingCatalogUrl;
+  String? _catalogStreamRowKey;
+  List<StreamSource>? _currentSources;
+
   Duration _position = Duration.zero;
   Duration _duration = Duration.zero;
   Duration _buffered = Duration.zero;
@@ -104,22 +177,139 @@ class _DesktopNativePlayerScreenState extends State<DesktopNativePlayerScreen> {
   bool _playbackStartedNotified = false;
   bool _escapeArmed = false;
   bool _failoverToMediaKitUsed = false;
+  bool _isFullscreen = false;
+  bool _loadingNextEp = false;
+  bool _hasPrevEpisodeAdjacent = false;
+  bool _hasNextEpisodeAdjacent = false;
+  bool _nearEndOfEpisode = false;
+  bool _autoNextCountdown = false;
+  bool _autoNextDismissed = false;
+  bool _skipDismissed = false;
+  bool _providerPinned = false;
+  bool _sourcePinned = false;
+  bool _audioPinned = false;
+  bool _subtitlePinned = false;
   double _volume = 100;
+  BoxFit _videoFit = BoxFit.contain;
+
+  IntroDbResponse? _introDbData;
+  String? _activeSkipLabel;
+  Duration? _activeSkipTarget;
+  Duration? _autoSkipLatchedTarget;
+
+  final PlayerStatusController _statusController = PlayerStatusController();
+  final ValueNotifier<Set<String>> _providerLoadFailures =
+      ValueNotifier<Set<String>>(<String>{});
+  final ValueNotifier<int> _streamMenuRefreshTick = ValueNotifier<int>(0);
+  late final ValueNotifier<Map<String, List<StreamSource>>>
+  _ownedProviderSourcesCache;
+  final Map<String, int> _providerLoadGens = {};
+  Completer<void>? _stopForNewPlayCompleter;
+
+  late final FocusNode _miniRootFocus = FocusNode(
+    debugLabel: 'native-in-app-mini-root',
+  );
+  late final FocusNode _miniPlayPauseFocus = FocusNode(
+    debugLabel: 'native-in-app-mini-play',
+  );
+  late final FocusNode _miniExpandFocus = FocusNode(
+    debugLabel: 'native-in-app-mini-expand',
+  );
+  late final FocusNode _miniCloseFocus = FocusNode(
+    debugLabel: 'native-in-app-mini-close',
+  );
 
   bool get _av => widget.builtInEngine == BuiltInPlayerEngine.avPlayer;
   bool get _vlc => widget.builtInEngine == BuiltInPlayerEngine.vlc;
+
+  ValueNotifier<Map<String, List<StreamSource>>>
+  get _liveProviderSourcesCache =>
+      widget.providerSourcesCache ?? _ownedProviderSourcesCache;
+
+  @override
+  FocusNode get miniRootFocus => _miniRootFocus;
+
+  @override
+  bool get isPlaying => _playing;
 
   @override
   void initState() {
     super.initState();
     _url = widget.mediaPath;
     _headers = widget.headers;
+    _currentProvider = widget.activeProvider;
+    _activeMagnet = widget.magnetLink;
+    _catalogAddonBaseUrl = widget.stremioAddonBaseUrl;
+    _catalogSourceKind = _initialCatalogSourceKind();
+    _catalogStreamRowKey = takePendingMetaStreamRowKey();
+    if (widget.magnetLink == null || widget.magnetLink!.isEmpty) {
+      _currentPlayingCatalogUrl = widget.mediaPath;
+    }
+    String? seedAddon;
+    for (final s in widget.sources ?? const <StreamSource>[]) {
+      final t = s.title.trim();
+      if (t.isEmpty) continue;
+      final lines = splitSourceButtonLines(t);
+      if (lines.server != null) {
+        seedAddon = '${lines.label} · ${lines.server}';
+        break;
+      }
+    }
+    _catalogAddonName = seedAddon;
     _position = widget.startPosition ?? Duration.zero;
+    _ownedProviderSourcesCache = ValueNotifier<Map<String, List<StreamSource>>>(
+      {},
+    );
+    if (widget.sources != null && widget.sources!.isNotEmpty) {
+      _currentSources = dedupeStreamSources(widget.sources!);
+      final pid = _currentProvider;
+      if (pid != null && pid.isNotEmpty) {
+        _ownedProviderSourcesCache.value = {pid: _currentSources!};
+      }
+    }
+    _providerPinned = widget.pinSource;
+    _sourcePinned = widget.pinSource;
+    widget.sourcesListNotifier?.addListener(_onLiveSourcesUpdated);
+    widget.providerProbesNotifier?.addListener(_onLiveSourcesUpdated);
+    InAppMiniPlayerController.instance.attach(this);
     unawaited(_boot());
+    unawaited(_loadPlayerAutoPins());
+    unawaited(_fetchIntroDbTimestamps());
+    unawaited(_refreshAdjacentEpisodeFlags());
     _progressSaveTimer = Timer.periodic(const Duration(seconds: 15), (_) {
       if (!_disposed && _playing) unawaited(_saveProgress());
     });
     _scheduleHideControls();
+  }
+
+  void _onLiveSourcesUpdated() {
+    if (_disposed || !mounted) return;
+    final live = widget.sourcesListNotifier?.value;
+    if (live == null || live.isEmpty) {
+      _streamMenuRefreshTick.value++;
+      return;
+    }
+    final merged = dedupeStreamSources(live);
+    if (_playbackStartedNotified &&
+        _currentPlayingCatalogUrl != null &&
+        !merged.any(
+          (s) =>
+              s.url == _url ||
+              s.url == _currentPlayingCatalogUrl ||
+              s.catalogUrl == _currentPlayingCatalogUrl,
+        )) {
+      _streamMenuRefreshTick.value++;
+      return;
+    }
+    setState(() => _currentSources = merged);
+    final pid = _currentProvider;
+    if (pid != null && pid.isNotEmpty && merged.isNotEmpty) {
+      _liveProviderSourcesCache.value = {
+        ..._liveProviderSourcesCache.value,
+        pid: merged,
+      };
+    }
+    _streamMenuRefreshTick.value++;
   }
 
   Future<void> _boot() async {
@@ -142,7 +332,11 @@ class _DesktopNativePlayerScreenState extends State<DesktopNativePlayerScreen> {
       _resumeApplied = false;
     });
     try {
-      final prepared = await _prepareOpenTarget();
+      final prepared = await _prepareOpenTarget(
+        mediaPath: widget.mediaPath,
+        headers: widget.headers,
+        providerId: widget.activeProvider,
+      );
       _url = prepared.url;
       _headers = prepared.headers;
       debugPrint(
@@ -173,35 +367,35 @@ class _DesktopNativePlayerScreenState extends State<DesktopNativePlayerScreen> {
     }
   }
 
-  /// Same header / proxy prep as MediaKit [openPlayerStream] (mwVault strip, etc.).
-  Future<({String url, Map<String, String>? headers})> _prepareOpenTarget()
-      async {
-    var openUrl = normalizePlaybackStreamUrl(widget.mediaPath);
-    final rawHeaders = widget.headers ?? const <String, String>{};
+  Future<({String url, Map<String, String>? headers})> _prepareOpenTarget({
+    required String mediaPath,
+    Map<String, String>? headers,
+    String? providerId,
+  }) async {
+    var openUrl = normalizePlaybackStreamUrl(mediaPath);
+    final rawHeaders = headers ?? const <String, String>{};
     final proxiedExt = await proxyExtensionlessHlsIfNeeded(
       streamUrl: openUrl,
       headers: rawHeaders,
-      providerId: widget.activeProvider,
+      providerId: providerId,
     );
     openUrl = proxiedExt.url;
     final catalogForHeaders = hlsProxyTargetUrl(openUrl) ?? openUrl;
-    final hdrs = (isLocalLoopbackPlayUrl(openUrl) &&
+    final hdrs =
+        (isLocalLoopbackPlayUrl(openUrl) &&
             shouldProxyExtensionlessHls(catalogForHeaders))
         ? const <String, String>{}
         : resolvePlaybackHttpHeaders(
-            widget.headers,
+            headers,
             streamUrl: catalogForHeaders,
-            providerId: widget.activeProvider,
+            providerId: providerId,
           );
     final isRemoteHttp =
         (openUrl.startsWith('http://') || openUrl.startsWith('https://')) &&
         !isLocalTorrentStreamUrl(openUrl) &&
         !isLocalLoopbackPlayUrl(openUrl);
     final attachHeaders = hdrs.isNotEmpty && isRemoteHttp;
-    return (
-      url: openUrl,
-      headers: attachHeaders ? hdrs : null,
-    );
+    return (url: openUrl, headers: attachHeaders ? hdrs : null);
   }
 
   String _shortUrl(String url) {
@@ -214,6 +408,9 @@ class _DesktopNativePlayerScreenState extends State<DesktopNativePlayerScreen> {
     final handler = widget.onSwitchPlayer;
     if (handler == null) {
       if (mounted) ForjaToast.error(context.l10n.playerScreenCouldNotOpenStream);
+      if (!_playbackStartedNotified) {
+        widget.onAllSourcesExhausted?.call();
+      }
       return;
     }
     _failoverToMediaKitUsed = true;
@@ -224,8 +421,8 @@ class _DesktopNativePlayerScreenState extends State<DesktopNativePlayerScreen> {
       builtInEngine: BuiltInPlayerEngine.mediaKit,
       streamUrl: _url.isNotEmpty ? _url : widget.mediaPath,
       headers: _headers ?? widget.headers,
-      activeProvider: widget.activeProvider,
-      sources: widget.sources,
+      activeProvider: _currentProvider ?? widget.activeProvider,
+      sources: _currentSources ?? widget.sources,
     );
   }
 
@@ -276,6 +473,7 @@ class _DesktopNativePlayerScreenState extends State<DesktopNativePlayerScreen> {
           if (durMs > 0) _duration = Duration(milliseconds: durMs);
           if (bufMs > 0) _buffered = Duration(milliseconds: bufMs);
         });
+        _applyPlayheadChrome(pos);
         break;
       case 'error':
         final msg = event['value']?.toString() ?? 'playback error';
@@ -330,14 +528,14 @@ class _DesktopNativePlayerScreenState extends State<DesktopNativePlayerScreen> {
       await widget.onSaveProgress!(
         _position,
         _duration,
-        sourceId: widget.activeProvider,
+        sourceId: _currentProvider ?? widget.activeProvider,
         streamUrl: durableUrl ?? playUrl,
       );
       return;
     }
     final movie = widget.movie;
     if (movie == null) return;
-    final provider = widget.activeProvider;
+    final provider = _currentProvider ?? widget.activeProvider;
     await WatchHistoryService().saveProgress(
       tmdbId: movie.id,
       imdbId: movie.imdbId,
@@ -372,14 +570,20 @@ class _DesktopNativePlayerScreenState extends State<DesktopNativePlayerScreen> {
   void _scheduleHideControls() {
     _hideControlsTimer?.cancel();
     _hideControlsTimer = Timer(const Duration(seconds: 3), () {
-      if (!_disposed && mounted && _playing) {
+      if (!_disposed &&
+          mounted &&
+          _playing &&
+          !InAppMiniPlayerController.instance.isActive) {
         setState(() => _controlsVisible = false);
       }
     });
   }
 
   Future<void> _exit() async {
+    if (dismissAnyPlayerChromeOverlay()) return;
     await _saveProgress();
+    if (!mounted) return;
+    await DesktopWindowGeometry.leavePlayerChrome();
     if (!mounted) return;
     final navigator = Navigator.of(context, rootNavigator: true);
     dismissActiveLoadingOverlayRoute(navigator);
@@ -399,7 +603,6 @@ class _DesktopNativePlayerScreenState extends State<DesktopNativePlayerScreen> {
       surface: BuiltInPlayerMenuSurface.catalogVod,
       streamUrl: _url,
       torrentLocalhost: isLocalTorrentStreamUrl(_url),
-      separateAudioUrl: false,
       onSelect: ({builtInEngine, externalPlayer}) async {
         if (_av) {
           try {
@@ -416,16 +619,36 @@ class _DesktopNativePlayerScreenState extends State<DesktopNativePlayerScreen> {
           externalPlayer: externalPlayer,
           streamUrl: _url,
           headers: _headers,
-          activeProvider: widget.activeProvider,
-          sources: widget.sources,
+          activeProvider: _currentProvider ?? widget.activeProvider,
+          sources: _currentSources ?? widget.sources,
         );
       },
     );
     _bumpControls();
   }
 
+  Future<void> _toggleFullscreen() async {
+    final next = await DesktopWindowGeometry.toggleFullscreen();
+    if (mounted) setState(() => _isFullscreen = next);
+  }
+
+  Future<void> _setVolume(double uiVolume) async {
+    final v = uiVolume.clamp(0.0, 100.0);
+    setState(() => _volume = v);
+    final norm = v / 100.0;
+    if (_av) {
+      await AvPlayerBridge.setVolume(_viewId, norm);
+    } else {
+      await VlcPlayerBridge.setVolume(_viewId, norm);
+    }
+    _bumpControls();
+  }
+
   KeyEventResult _onKey(FocusNode node, KeyEvent event) {
     if (event is! KeyDownEvent) return KeyEventResult.ignored;
+    if (InAppMiniPlayerController.instance.isActive) {
+      return KeyEventResult.ignored;
+    }
     final key = event.logicalKey;
     if (key == LogicalKeyboardKey.space) {
       unawaited(_playPause());
@@ -440,6 +663,11 @@ class _DesktopNativePlayerScreenState extends State<DesktopNativePlayerScreen> {
       return KeyEventResult.handled;
     }
     if (key == LogicalKeyboardKey.escape) {
+      if (dismissAnyPlayerChromeOverlay()) return KeyEventResult.handled;
+      if (_isFullscreen) {
+        unawaited(_toggleFullscreen());
+        return KeyEventResult.handled;
+      }
       if (_controlsVisible) {
         setState(() => _controlsVisible = false);
         _escapeArmed = false;
@@ -458,12 +686,110 @@ class _DesktopNativePlayerScreenState extends State<DesktopNativePlayerScreen> {
   }
 
   @override
+  Future<void> pauseForMini() async {
+    if (_disposed) return;
+    try {
+      if (_av) {
+        await AvPlayerBridge.pause(_viewId);
+      } else {
+        await VlcPlayerBridge.pause(_viewId);
+      }
+    } catch (e) {
+      debugPrint('[DesktopNative] pauseForMini: $e');
+    }
+  }
+
+  @override
+  Future<void> playFromMini() async {
+    if (_disposed) return;
+    try {
+      if (_av) {
+        await AvPlayerBridge.play(_viewId);
+      } else {
+        await VlcPlayerBridge.play(_viewId);
+      }
+    } catch (e) {
+      debugPrint('[DesktopNative] playFromMini: $e');
+    }
+  }
+
+  @override
+  void onEnteredMini() {
+    if (!mounted || _disposed) return;
+    setState(() {
+      _controlsVisible = false;
+      _escapeArmed = false;
+    });
+  }
+
+  @override
+  void onExpandedFromMini() {
+    if (!mounted || _disposed) return;
+    setState(() => _controlsVisible = true);
+    _scheduleHideControls();
+  }
+
+  @override
+  Future<void> closeFromMini() async {
+    await _exit();
+  }
+
+  @override
+  Future<void> stopForNewPlay() async {
+    final existing = _stopForNewPlayCompleter;
+    if (existing != null) return existing.future;
+    final c = Completer<void>();
+    _stopForNewPlayCompleter = c;
+    try {
+      await _saveProgress();
+      if (_av) {
+        try {
+          await AvPlayerBridge.pause(_viewId);
+        } catch (_) {}
+      } else {
+        try {
+          await VlcPlayerBridge.pause(_viewId);
+        } catch (_) {}
+      }
+    } finally {
+      if (!c.isCompleted) c.complete();
+      _stopForNewPlayCompleter = null;
+    }
+  }
+
+  Widget _buildNativeVideo() {
+    final child = _av
+        ? AvPlayerView(viewId: _viewId)
+        : VlcPlayerView(viewId: _viewId, textureId: _vlcTextureId);
+    return FittedBox(
+      fit: _videoFit,
+      clipBehavior: Clip.hardEdge,
+      child: AspectRatio(aspectRatio: 16 / 9, child: child),
+    );
+  }
+
+  @override
   void dispose() {
     _disposed = true;
+    widget.sourcesListNotifier?.removeListener(_onLiveSourcesUpdated);
+    widget.providerProbesNotifier?.removeListener(_onLiveSourcesUpdated);
+    InAppMiniPlayerController.instance.detach(this);
+    PlayerSourcesPanel.dismiss(cancelEngine: false);
+    PlayerStreamMenu.dismiss();
+    PlayerPopupPanel.dismiss();
+    PlayerKitEpisodePanel.dismiss();
     _progressSaveTimer?.cancel();
     _hideControlsTimer?.cancel();
     unawaited(_eventSub?.cancel());
     unawaited(WakelockPlus.disable());
+    _statusController.dispose();
+    _providerLoadFailures.dispose();
+    _streamMenuRefreshTick.dispose();
+    _ownedProviderSourcesCache.dispose();
+    _miniRootFocus.dispose();
+    _miniPlayPauseFocus.dispose();
+    _miniExpandFocus.dispose();
+    _miniCloseFocus.dispose();
     if (_av) {
       unawaited(AvPlayerBridge.dispose(_viewId));
     } else {
@@ -473,298 +799,138 @@ class _DesktopNativePlayerScreenState extends State<DesktopNativePlayerScreen> {
     super.dispose();
   }
 
-  Future<void> _setVolume(double uiVolume) async {
-    final v = uiVolume.clamp(0.0, 100.0);
-    setState(() => _volume = v);
-    final norm = v / 100.0;
-    if (_av) {
-      await AvPlayerBridge.setVolume(_viewId, norm);
-    } else {
-      await VlcPlayerBridge.setVolume(_viewId, norm);
-    }
-    _bumpControls();
-  }
-
   @override
   Widget build(BuildContext context) {
-    final compact = MediaQuery.sizeOf(context).width < 700;
     return Focus(
       autofocus: true,
       onKeyEvent: _onKey,
-      child: MouseRegion(
-        onHover: (_) => _bumpControls(),
-        // Pointer hides with the chrome; hover reveals both.
-        cursor: _controlsVisible
-            ? SystemMouseCursors.basic
-            : SystemMouseCursors.none,
-        child: Scaffold(
-          backgroundColor: Colors.black,
-          body: Stack(
-            fit: StackFit.expand,
-            children: [
-              const ColoredBox(color: Colors.black),
-              if (_ready)
-                Positioned.fill(
-                  child: _av
-                      ? AvPlayerView(viewId: _viewId)
-                      : VlcPlayerView(
-                          viewId: _viewId,
-                          textureId: _vlcTextureId,
-                        ),
-                ),
-              if (!_ready || _buffering)
-                const Center(
-                  child: CircularProgressIndicator(
-                    color: ForjaShellColors.brandGreen,
-                  ),
-                ),
-              if (_controlsVisible) ...[
-                Positioned.fill(
-                  child: GestureDetector(
-                    behavior: HitTestBehavior.translucent,
-                    onTap: () => unawaited(_playPause()),
-                    child: const SizedBox.expand(),
-                  ),
-                ),
-                _buildChrome(compact: compact),
-              ],
-              // Above chrome so the top gradient does not eat caption clicks.
-              DesktopWindowChrome.overlayDragStrip(
-                showCaption: _controlsVisible,
-              ),
-            ],
-          ),
-        ),
+      child: ListenableBuilder(
+        listenable: InAppMiniPlayerController.instance.active,
+        builder: (context, _) => _buildBody(context),
       ),
     );
   }
 
-  /// Same shared chrome widgets as MediaKit [DesktopPlayerScreen] / Exo desktop.
-  Widget _buildChrome({required bool compact}) {
-    final topBarHeight = PlayerTopBar.totalHeight(context);
-    final showCenter = !_buffering;
-    final showPausedHero = widget.movie != null && (!_playing || _buffering);
-
-    return Positioned.fill(
-      child: Stack(
-        children: [
-          const Positioned(
-            top: 0,
-            left: 0,
-            right: 0,
-            child: PlayerOverlayGradient(isTop: true),
-          ),
-          const Positioned(
-            bottom: 0,
-            left: 0,
-            right: 0,
-            child: PlayerOverlayGradient(isTop: false),
-          ),
-          Positioned(
-            top: 0,
-            left: 0,
-            right: 0,
-            child: PlayerTopBar(
-              title: widget.title,
-              season: widget.episodes != null ? null : widget.selectedSeason,
-              episode: widget.episodes != null ? null : widget.selectedEpisode,
-              onBack: () => unawaited(_exit()),
-              trailing: PlayerTopBarActions(
-                showPlayer: widget.onSwitchPlayer != null,
-                onPlayer: widget.onSwitchPlayer != null
-                    ? (anchor) => unawaited(_showPlayerMenu(anchor))
-                    : null,
+  Widget _buildBody(BuildContext context) {
+    final mini = InAppMiniPlayerController.instance.isActive;
+    final compact = MediaQuery.sizeOf(context).width < 900;
+    return MouseRegion(
+      onHover: (_) {
+        if (!mini) _bumpControls();
+      },
+      cursor: (!mini && !_controlsVisible)
+          ? SystemMouseCursors.none
+          : SystemMouseCursors.basic,
+      child: Scaffold(
+        backgroundColor: mini ? Colors.transparent : Colors.black,
+        body: Stack(
+          fit: StackFit.expand,
+          children: [
+            if (!mini) const ColoredBox(color: Colors.black),
+            if (_ready)
+              ValueListenableBuilder<Size>(
+                valueListenable: InAppMiniPlayerController.instance.size,
+                builder: (context, miniSize, _) {
+                  return Positioned(
+                    left: mini ? null : 0,
+                    top: mini ? null : 0,
+                    right: mini ? 16 : 0,
+                    bottom: mini ? 16 : 0,
+                    width: mini ? miniSize.width : null,
+                    height: mini ? miniSize.height : null,
+                    child: Material(
+                      elevation: mini ? 12 : 0,
+                      color: Colors.black,
+                      borderRadius: BorderRadius.circular(mini ? 10 : 0),
+                      clipBehavior: Clip.antiAlias,
+                      child: Stack(
+                        fit: StackFit.expand,
+                        children: [
+                          Positioned.fill(child: _buildNativeVideo()),
+                          if (mini)
+                            InAppMiniPlayerChrome(
+                              playing: _playing,
+                              rootFocus: _miniRootFocus,
+                              playPauseFocus: _miniPlayPauseFocus,
+                              expandFocus: _miniExpandFocus,
+                              closeFocus: _miniCloseFocus,
+                              onPlayPause: () {
+                                unawaited(
+                                  InAppMiniPlayerController.instance
+                                      .togglePlayPause(),
+                                );
+                              },
+                              onExpand: () {
+                                unawaited(
+                                  InAppMiniPlayerController.instance.expand(),
+                                );
+                              },
+                              onClose: () {
+                                unawaited(
+                                  InAppMiniPlayerController.instance.close(),
+                                );
+                              },
+                            ),
+                        ],
+                      ),
+                    ),
+                  );
+                },
               ),
-            ),
-          ),
-          if (showPausedHero)
-            Positioned(
-              left: 0,
-              top: topBarHeight,
-              bottom: 110,
-              child: AnimatedOpacity(
-                opacity: showPausedHero ? 1.0 : 0.0,
-                duration: const Duration(milliseconds: 200),
-                child: Align(
-                  alignment: Alignment.centerLeft,
-                  child: PlayerPausedHero(
-                    movie: widget.movie!,
-                    season:
-                        widget.episodes != null ? null : widget.selectedSeason,
-                    episode:
-                        widget.episodes != null ? null : widget.selectedEpisode,
-                    episodeOverview: widget.episodeOverview,
-                  ),
+            if (!mini && (!_ready || _buffering))
+              const Center(
+                child: CircularProgressIndicator(
+                  color: ForjaShellColors.brandGreen,
                 ),
               ),
-            ),
-          if (showCenter)
-            Positioned.fill(
-              child: Center(
-                child: Row(
+            // Always mounted (MediaKit parity) so click still pauses when chrome
+            // is hidden; hover alone must not be required to arm taps.
+            if (!mini)
+              Positioned.fill(
+                child: GestureDetector(
+                  behavior: HitTestBehavior.translucent,
+                  onTap: () {
+                    unawaited(_playPause());
+                    _bumpControls();
+                  },
+                  onDoubleTap: () => unawaited(_toggleFullscreen()),
+                  child: const SizedBox.expand(),
+                ),
+              ),
+            if (!mini && _controlsVisible) _buildChrome(compact: compact),
+            if (!mini && (_showSkipChip || _showNextEpChip))
+              Positioned(
+                bottom: 100,
+                right: 24,
+                child: Column(
                   mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
-                    PlayerCenterActionButton(
-                      icon: Icons.replay_10_rounded,
-                      onPressed: () => unawaited(
-                        _seek(_position - const Duration(seconds: 10)),
+                    if (_showSkipChip)
+                      PlayerFloatingChip(
+                        label: _activeSkipLabel!,
+                        onPressed: _performSkip,
                       ),
-                    ),
-                    const SizedBox(width: 28),
-                    PlayerCenterActionButton(
-                      icon: _playing
-                          ? Icons.pause_rounded
-                          : Icons.play_arrow_rounded,
-                      size: 80,
-                      iconSize: 44,
-                      onPressed: () => unawaited(_playPause()),
-                    ),
-                    const SizedBox(width: 28),
-                    PlayerCenterActionButton(
-                      icon: Icons.forward_10_rounded,
-                      onPressed: () => unawaited(
-                        _seek(_position + const Duration(seconds: 10)),
+                    if (_showSkipChip && _showNextEpChip)
+                      const SizedBox(
+                        height: PlayerFloatingChipMetrics.stackGap,
                       ),
-                    ),
+                    if (_showNextEpChip)
+                      PlayerNextEpisodeChip(
+                        countdown: _autoNextCountdown,
+                        onCountdownComplete: _onAutoNextCountdownDone,
+                        onCancel: _cancelAutoNext,
+                        onPressed: () => unawaited(_nextEpisode()),
+                      ),
                   ],
                 ),
               ),
-            ),
-          if (widget.hasNextEpisode || widget.onNextEpisode != null)
-            Positioned(
-              bottom: 100,
-              right: 24,
-              child: PlayerFloatingChip(
-                label: context.l10n.playerScreenNextEpisodeButton,
-                trailingIcon: Icons.arrow_forward_rounded,
-                onPressed: () async {
-                  await _saveProgress();
-                  await widget.onNextEpisode?.call();
-                },
+            if (!mini)
+              DesktopWindowChrome.overlayDragStrip(
+                showCaption: _controlsVisible,
               ),
-            ),
-          Positioned(
-            bottom: 0,
-            left: 0,
-            right: 0,
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 14),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: SeekBarWithPreview(
-                          duration: _duration,
-                          position: _position,
-                          bufferedPosition: _buffered,
-                          zones: buildSeekBarZones(
-                            duration: _duration,
-                            hasNextEpisode: widget.hasNextEpisode,
-                          ),
-                          onSeek: (t) => unawaited(_seek(t)),
-                          onDragStart: () => _hideControlsTimer?.cancel(),
-                          onDragEnd: _scheduleHideControls,
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      PlayerTimeRange(
-                        position: _position,
-                        duration: _duration,
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 10),
-                  Material(
-                    type: MaterialType.transparency,
-                    child: SizedBox(
-                      width: double.infinity,
-                      child: MouseRegion(
-                        onEnter: (_) => playerChromeCancelSeekScrubs(),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: [
-                            Row(
-                              children: [
-                                PlayerFlatIconButton(
-                                  icon: _playing
-                                      ? Icons.pause_rounded
-                                      : Icons.play_arrow_rounded,
-                                  tooltip: _playing
-                                      ? context.l10n.downloadsPause
-                                      : context.l10n.playerScreenPlay,
-                                  onPressed: () => unawaited(_playPause()),
-                                ),
-                                const SizedBox(width: 2),
-                                PlayerFlatIconButton(
-                                  icon: Icons.replay_10_rounded,
-                                  tooltip: '-10s',
-                                  onPressed: () => unawaited(
-                                    _seek(
-                                      _position - const Duration(seconds: 10),
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(width: 2),
-                                PlayerFlatIconButton(
-                                  icon: Icons.forward_10_rounded,
-                                  tooltip: '+10s',
-                                  onPressed: () => unawaited(
-                                    _seek(
-                                      _position + const Duration(seconds: 10),
-                                    ),
-                                  ),
-                                ),
-                                if (widget.hasNextEpisode ||
-                                    widget.onNextEpisode != null) ...[
-                                  const SizedBox(width: 2),
-                                  PlayerFlatIconButton(
-                                    icon: Icons.skip_next_rounded,
-                                    tooltip: context.l10n.playerScreenNextEpisodeTooltip,
-                                    onPressed: () async {
-                                      await _saveProgress();
-                                      await widget.onNextEpisode?.call();
-                                    },
-                                  ),
-                                ],
-                                const SizedBox(width: 6),
-                                PlayerVolumeControl(
-                                  volume: _volume,
-                                  maxVolume: 100,
-                                  compact: compact,
-                                  onVolumeChanged: (v) =>
-                                      unawaited(_setVolume(v)),
-                                  onInteraction: _bumpControls,
-                                  onDragStart: () =>
-                                      _hideControlsTimer?.cancel(),
-                                  onDragEnd: _scheduleHideControls,
-                                ),
-                              ],
-                            ),
-                            Row(
-                              children: [
-                                if (widget.onSwitchPlayer != null)
-                                  Builder(
-                                    builder: (anchor) => PlayerFlatIconButton(
-                                      icon: Icons.smart_display_outlined,
-                                      tooltip: context.l10n.playerScreenPlayer,
-                                      onPressed: () =>
-                                          unawaited(_showPlayerMenu(anchor)),
-                                    ),
-                                  ),
-                              ],
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

@@ -40,4 +40,4 @@ Issue [493](493-[fixed]-android-tv-hub-nav-enter-stuck-on-rail.md) made `enterTa
 
 ## Links
 
-- [493](493-[fixed]-android-tv-hub-nav-enter-stuck-on-rail.md) · [309](309-[fixed]-android-tv-home-dpad-dies-on-popular.md) · [243](243-[fixed]-android-tv-live-sports-first-focus-catalog.md)
+- [493](493-[fixed]-android-tv-hub-nav-enter-stuck-on-rail.md) · [309](309-[fixed]-android-tv-home-dpad-dies-on-popular.md) · [243](243-[fixed]-android-tv-live-sports-first-focus-catalog.md) · [528](528-[fixed]-hub-open-not-at-top.md)

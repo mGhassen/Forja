@@ -79,7 +79,7 @@ abstract final class TvHeroActions {
     String tabId, {
     FocusNode? Function()? defaultFocus,
     VoidCallback? heroReveal,
-    VoidCallback? enterFromNavFocus,
+    bool Function()? enterFromNavFocus,
     bool Function()? restoreFocus,
     bool Function()? pageBack,
     bool? preferCustomRestoreFromNav,
