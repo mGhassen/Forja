@@ -42,4 +42,13 @@ void main() {
     expect(first.restoreRemembered, isFalse);
     expect(remembered.signature, isNot(first.signature));
   });
+
+  test('HubPageFocus.parse reads hero-details enter', () {
+    final f = HubPageFocus.parse({
+      'focus': {'enter': 'hero-details', 'restore': 'hero-details'},
+    });
+    expect(f.enter, 'hero-details');
+    expect(f.restore, 'hero-details');
+    expect(f.isEmpty, isFalse);
+  });
 }

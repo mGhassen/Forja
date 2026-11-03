@@ -45,10 +45,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
       'settings',
       defaultFocus: () => _selectedCategoryFocus,
       enterFromNavFocus: () {
-        if (!ShellScope.metricsOf(context).usesTvDensity) return;
+        if (!ShellScope.metricsOf(context).usesTvDensity) return false;
         if (_selectedCategoryFocus.canRequestFocus) {
           _selectedCategoryFocus.requestFocus();
+          return true;
         }
+        return false;
       },
       restoreFocus: () {
         if (!ShellScope.metricsOf(context).usesTvDensity) return false;

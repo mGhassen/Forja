@@ -13,6 +13,7 @@ import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja/shell/tv/media_details_tv_scope.dart';
 import 'package:forja/shell/tv/shell_tv_app_exit.dart';
+import 'package:forja/shared/engine/runtime/kit/hub_page_focus.dart';
 import 'package:forja/shell/tv/shell_tv_coordinator.dart';
 import 'package:forja/shell/tv/shell_tv_focus.dart';
 import 'package:forja/shell/tv/tv_focus_graph.dart';
@@ -2013,7 +2014,9 @@ void main() {
       'settings',
       defaultFocus: () => category,
       enterFromNavFocus: () {
-        if (category.canRequestFocus) category.requestFocus();
+        if (!category.canRequestFocus) return false;
+        category.requestFocus();
+        return true;
       },
       restoreFocus: () {
         if (!category.canRequestFocus) return false;
@@ -2113,8 +2116,9 @@ void main() {
       expect(nav.hasFocus, isTrue);
 
       ShellTvFocusCoordinator.enterTabFromNav(tab);
-      for (var i = 0; i < 8; i++) {
-        await tester.pump();
+      // Chained post-frame retries need a non-zero pump so the next frame runs.
+      for (var i = 0; i < 60; i++) {
+        await tester.pump(const Duration(milliseconds: 16));
       }
       expect(
         card.hasFocus,
@@ -2126,6 +2130,239 @@ void main() {
 
       nav.dispose();
       card.dispose();
+      ShellTvFocusCoordinator.clearTab(tab);
+    },
+  );
+
+  testWidgets('enterTabFromNav waits for late hero over early body row', (
+    tester,
+  ) async {
+    // Early body row (any pack id) must not steal enter while hero CTA binds
+    // later — no host denylist of product row ids.
+    const tab = 'hub_late_hero';
+    final nav = FocusNode(debugLabel: 'nav-$tab');
+    final early = FocusNode(debugLabel: 'early-body');
+    final play = FocusNode(debugLabel: 'hero-play');
+    FocusNode? boundPlay;
+    ShellTvFocus.registerNav(tab, nav);
+    ShellTvFocus.currentNavTabId = tab;
+    ShellTvFocusCoordinator.setNavOrder(['home', tab]);
+    // Binder present (catalog hubs expect hero) but CTA node not ready yet.
+    ShellTvFocusCoordinator.registerTabDefaults(
+      tab,
+      defaultFocus: () => boundPlay,
+    );
+
+    shellTvRegisterRow(
+      tabId: tab,
+      rowId: 'early_body',
+      sortOrder: 0,
+      itemCount: 2,
+    );
+    ShellTvFocusCoordinator.registerItemNode(
+      tabId: tab,
+      rowId: 'early_body',
+      index: 0,
+      node: early,
+    );
+
+    await tester.pumpWidget(
+      _wrapTv(
+        Row(
+          children: [
+            Focus(focusNode: nav, child: const SizedBox(width: 40, height: 40)),
+            Focus(
+              focusNode: early,
+              child: const SizedBox(width: 40, height: 40),
+            ),
+            Focus(
+              focusNode: play,
+              child: const SizedBox(width: 40, height: 40),
+            ),
+          ],
+        ),
+      ),
+    );
+    await tester.pump();
+    nav.requestFocus();
+    await tester.pump();
+
+    ShellTvFocusCoordinator.enterTabFromNav(tab);
+    for (var i = 0; i < 4; i++) {
+      await tester.pump(const Duration(milliseconds: 16));
+    }
+    expect(early.hasFocus, isFalse);
+
+    boundPlay = play;
+    for (var i = 0; i < 8; i++) {
+      await tester.pump(const Duration(milliseconds: 16));
+    }
+    expect(play.hasFocus, isTrue);
+    expect(early.hasFocus, isFalse);
+    expect(nav.hasFocus, isFalse);
+
+    nav.dispose();
+    early.dispose();
+    play.dispose();
+    ShellTvFocusCoordinator.clearTab(tab);
+  });
+
+  testWidgets('enterTabFromNav pack enter hero-details beats early body', (
+    tester,
+  ) async {
+    const tab = 'hub_pack_hero_enter';
+    final nav = FocusNode(debugLabel: 'nav-$tab');
+    final early = FocusNode(debugLabel: 'early-body');
+    final play = FocusNode(debugLabel: 'hero-play');
+    FocusNode? boundPlay;
+    ShellTvFocus.registerNav(tab, nav);
+    ShellTvFocus.currentNavTabId = tab;
+    ShellTvFocusCoordinator.setNavOrder(['home', tab]);
+    ShellTvFocusCoordinator.registerTabDefaults(
+      tab,
+      defaultFocus: () => boundPlay,
+    );
+    bindHubPageFocus(
+      tab,
+      const HubPageFocus(enter: 'hero-details', restore: 'hero-details'),
+    );
+
+    shellTvRegisterRow(
+      tabId: tab,
+      rowId: 'early_body',
+      sortOrder: 0,
+      itemCount: 2,
+    );
+    ShellTvFocusCoordinator.registerItemNode(
+      tabId: tab,
+      rowId: 'early_body',
+      index: 0,
+      node: early,
+    );
+
+    await tester.pumpWidget(
+      _wrapTv(
+        Row(
+          children: [
+            Focus(focusNode: nav, child: const SizedBox(width: 40, height: 40)),
+            Focus(
+              focusNode: early,
+              child: const SizedBox(width: 40, height: 40),
+            ),
+            Focus(
+              focusNode: play,
+              child: const SizedBox(width: 40, height: 40),
+            ),
+          ],
+        ),
+      ),
+    );
+    await tester.pump();
+    nav.requestFocus();
+    await tester.pump();
+    early.requestFocus();
+    await tester.pump();
+
+    ShellTvFocusCoordinator.enterTabFromNav(tab);
+    for (var i = 0; i < 4; i++) {
+      await tester.pump(const Duration(milliseconds: 16));
+    }
+    expect(early.hasFocus, isFalse);
+
+    boundPlay = play;
+    for (var i = 0; i < 8; i++) {
+      await tester.pump(const Duration(milliseconds: 16));
+    }
+    expect(play.hasFocus, isTrue);
+    expect(early.hasFocus, isFalse);
+    expect(nav.hasFocus, isFalse);
+
+    nav.dispose();
+    early.dispose();
+    play.dispose();
+    ShellTvFocusCoordinator.clearTab(tab);
+  });
+
+  testWidgets(
+    'enterTabFromNav awaits hero with no binder yet (Anime CW race)',
+    (tester) async {
+      // Anime/Asian: local CW mounts while spotlight is still shimmer — no
+      // defaultFocus binder. Pack enter awaits hero; must not fall to CW after
+      // the short enter budget.
+      const tab = 'hub_awaits_hero_no_binder';
+      final nav = FocusNode(debugLabel: 'nav-$tab');
+      final early = FocusNode(debugLabel: 'continue-watching');
+      final play = FocusNode(debugLabel: 'hero-play');
+      ShellTvFocus.registerNav(tab, nav);
+      ShellTvFocus.currentNavTabId = tab;
+      ShellTvFocusCoordinator.setNavOrder(['home', tab]);
+      // No registerTabDefaults defaultFocus — simulates shimmer (hero unbound).
+      bindHubPageFocus(
+        tab,
+        const HubPageFocus(enter: 'hero-details', restore: 'hero-details'),
+      );
+
+      shellTvRegisterRow(
+        tabId: tab,
+        rowId: 'early_body',
+        sortOrder: 0,
+        itemCount: 2,
+      );
+      ShellTvFocusCoordinator.registerItemNode(
+        tabId: tab,
+        rowId: 'early_body',
+        index: 0,
+        node: early,
+      );
+
+      await tester.pumpWidget(
+        _wrapTv(
+          Row(
+            children: [
+              Focus(
+                focusNode: nav,
+                child: const SizedBox(width: 40, height: 40),
+              ),
+              Focus(
+                focusNode: early,
+                child: const SizedBox(width: 40, height: 40),
+              ),
+              Focus(
+                focusNode: play,
+                child: const SizedBox(width: 40, height: 40),
+              ),
+            ],
+          ),
+        ),
+      );
+      await tester.pump();
+      nav.requestFocus();
+      await tester.pump();
+      early.requestFocus();
+      await tester.pump();
+
+      ShellTvFocusCoordinator.enterTabFromNav(tab);
+      // Past the ~24-frame enter budget — old path fell through to CW here.
+      for (var i = 0; i < 40; i++) {
+        await tester.pump(const Duration(milliseconds: 16));
+      }
+      expect(early.hasFocus, isFalse);
+
+      // Spotlight finally mounts — binder appears mid late-poll.
+      ShellTvFocusCoordinator.registerTabDefaults(
+        tab,
+        defaultFocus: () => play,
+      );
+      for (var i = 0; i < 20; i++) {
+        await tester.pump(const Duration(milliseconds: 16));
+      }
+      expect(play.hasFocus, isTrue);
+      expect(early.hasFocus, isFalse);
+      expect(nav.hasFocus, isFalse);
+
+      nav.dispose();
+      early.dispose();
+      play.dispose();
       ShellTvFocusCoordinator.clearTab(tab);
     },
   );
@@ -2254,8 +2491,9 @@ void main() {
       await tester.pump();
 
       ShellTvFocusCoordinator.enterTabFromNav(tab);
-      for (var i = 0; i < 8; i++) {
-        await tester.pump();
+      // No hero binder — first content after enter retry budget.
+      for (var i = 0; i < 60; i++) {
+        await tester.pump(const Duration(milliseconds: 16));
       }
       expect(rail.hasFocus, isTrue);
       expect(mood.hasFocus, isFalse);

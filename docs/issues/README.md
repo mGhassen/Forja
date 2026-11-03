@@ -564,6 +564,8 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [525-[fixed]-…](fixed/525-[fixed]-windows-quit-loses-session.md) | Windows quit loses Supabase session | P0 | High | fixed | Complete · 2/2 · A 0/1 | [085](085-[open]-desktop-involuntary-signout-dumps-login.md) |
 | [526-[fixed]-…](fixed/526-[fixed]-hub-mouse-wheel-steals-horizontal-rail.md) | Hub mouse wheel steals horizontal rail | P2 | Medium | fixed | Complete · 2/2 · A 0/2 | — |
 | [527-[fixed]-…](fixed/527-[fixed]-windows-pip-expand-black-loading.md) | Windows PiP expand: black player + loading | P1 | High | fixed | Complete · 3/3 · A 0/2 | [430](430-[open]-desktop-pip-placeholder-separate-float.md) · [RFC-121](../rfc/121-[open]-desktop-pip-float-window.md) |
+| [528-[fixed]-…](fixed/528-[fixed]-hub-open-not-at-top.md) | Hub enter lands mid-page (early body focus) not hero | P1 | High | fixed | Complete · 9/9 · A 0/1 | [524](fixed/524-[fixed]-hub-enter-lands-on-mood-chips.md) |
+| [529-[fixed]-…](fixed/529-[fixed]-linux-appimage-gdk-pixbuf-gtk-plugin.md) | Linux AppImage gtk plugin missing gdk-pixbuf | P0 | High | fixed | Complete · 3/3 · A 0/1 | — |
 
 **Migration parity (draft):** [018](018-[draft]-migration-playback-parity-unverified.md) → [019](019-[draft]-webstreamr-enginejobs-e2e-test-gap.md)–[022](022-[draft]-playback-widget-integration-tests.md).
 

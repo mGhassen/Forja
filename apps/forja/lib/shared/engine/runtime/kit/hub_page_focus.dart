@@ -1,4 +1,5 @@
 import 'package:flutter/foundation.dart';
+import 'package:forja/shared/engine/runtime/kit/focus_edge.dart';
 import 'package:forja/shell/tv/shell_tv_coordinator.dart';
 import 'package:forja/shell/tv/tv_focus_graph.dart';
 
@@ -6,12 +7,14 @@ import 'package:forja/shell/tv/tv_focus_graph.dart';
 ///
 /// ```json
 /// "focus": {
-///   "enter": "cats",
-///   "restore": "cats",
+///   "enter": "hero-details",
+///   "restore": "hero-details",
 ///   "restoreMode": "remembered",
 ///   "pageBack": ["items", "cats"]
 /// }
 /// ```
+///
+/// `hero-details` lands the spotlight View details CTA (not a [TvKitRow]).
 class HubPageFocus {
   const HubPageFocus({
     this.enter,
@@ -98,37 +101,45 @@ void bindHubPageFocus(
     return;
   }
 
-  void land(String? rowId, {required bool remembered}) {
+  bool land(String? rowId, {required bool remembered}) {
     final id = (rowId ?? '').trim();
     if (id.isEmpty) {
-      if (ShellTvFocusCoordinator.focusFirstContentRow(tabId)) return;
+      if (ShellTvFocusCoordinator.focusFirstContentRow(tabId)) return true;
       if (landFallback != null) {
         landFallback();
-        return;
+        return true;
       }
-      ShellTvFocusCoordinator.focusChromeRow(tabId);
-      return;
+      return ShellTvFocusCoordinator.focusChromeRow(tabId);
+    }
+    // Pack `enter` / `restore`: `hero-details` — same as kit focusUp edge.
+    // Miss returns false so enter retries wait (never treat sticky CW as land).
+    if (id == kHubHeroDetailsFocusId) {
+      return ShellTvFocusCoordinator.focusHero(revealFull: true, tabId: tabId);
     }
     if (remembered) {
-      if (ShellTvFocusCoordinator.focusRowItemRemembered(tabId, id)) return;
+      if (ShellTvFocusCoordinator.focusRowItemRemembered(tabId, id)) {
+        return true;
+      }
     }
-    if (ShellTvFocusCoordinator.focusRowItem(tabId, id, 0)) return;
-    if (ShellTvFocusCoordinator.focusFirstContentRow(tabId)) return;
+    if (ShellTvFocusCoordinator.focusRowItem(tabId, id, 0)) return true;
+    if (ShellTvFocusCoordinator.focusFirstContentRow(tabId)) return true;
     if (landFallback != null) {
       landFallback();
-      return;
+      return true;
     }
-    ShellTvFocusCoordinator.focusChromeRow(tabId);
+    return ShellTvFocusCoordinator.focusChromeRow(tabId);
   }
 
-  void enter() {
+  bool enter() {
     // Same remembered land as restore — selected/last chip, not always index 0.
-    land(focus.enter, remembered: focus.restoreRemembered);
+    return land(focus.enter, remembered: focus.restoreRemembered);
   }
 
   bool restore() {
-    land(focus.restore ?? focus.enter, remembered: focus.restoreRemembered);
-    return true;
+    return land(
+      focus.restore ?? focus.enter,
+      remembered: focus.restoreRemembered,
+    );
   }
 
   bool pageBack() {
@@ -159,6 +170,10 @@ void bindHubPageFocus(
     restoreFocus: hasRestore ? restore : null,
     preferCustomRestoreFromNav: hasRestore,
     pageBack: hasBack ? pageBack : null,
+  );
+  ShellTvFocusCoordinator.setTabEnterAwaitsHero(
+    tabId,
+    focus.enter == kHubHeroDetailsFocusId,
   );
   ShellTvFocusCoordinator.setPageBackOnRowLeftEdge(tabId, hasBack);
 }

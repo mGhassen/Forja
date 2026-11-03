@@ -307,13 +307,8 @@ class _PackLayoutPainterState extends State<PackLayoutPainter>
 
   void _revealHeroScroll() {
     if (!_scroll.hasClients) return;
-    unawaited(
-      _scroll.animateTo(
-        0,
-        duration: const Duration(milliseconds: 220),
-        curve: Curves.easeOutCubic,
-      ),
-    );
+    // Instant jump — animateTo loses to focus ensureVisible on enter.
+    if (_scroll.offset > 0.5) _scroll.jumpTo(0);
   }
 
   void _rebindChromeFilters() {

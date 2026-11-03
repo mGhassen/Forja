@@ -109,7 +109,9 @@ abstract final class ShellTvFocusCoordinator {
 
   static final Map<String, FocusNode? Function()> _tabDefaultFocus = {};
   static final Map<String, VoidCallback> _tabHeroReveal = {};
-  static final Map<String, VoidCallback> _tabEnterFocus = {};
+
+  /// Returns true when enter actually landed focus (not a sticky miss).
+  static final Map<String, bool Function()> _tabEnterFocus = {};
   static final Map<String, bool Function()> _tabRestoreFocus = {};
 
   /// Optional in-page Back step before focusing the nav rail (e.g. IPTV
@@ -129,6 +131,11 @@ abstract final class ShellTvFocusCoordinator {
   /// When set, nav RIGHT skips leave-memory and runs [restoreFocus] (e.g. IPTV
   /// → selected category, not a skimmed group / last channel tile).
   static final Set<String> _tabPreferCustomNavRestore = {};
+
+  /// Pack `focus.enter: hero-details` — wait for spotlight CTA even while the
+  /// hero widget is still shimmer / unbound. Never fall through to Continue
+  /// Watching (Anime / Asian Drama: CW mounts before AniList/KissKH spotlight).
+  static final Set<String> _tabEnterAwaitsHero = {};
 
   /// Pack [kitFocusEdge] miss — [shellTvHandleRowArrows] must not swallow →/←
   /// when the target row is unregistered (e.g. Live schedule → sources-kind
@@ -155,7 +162,7 @@ abstract final class ShellTvFocusCoordinator {
     String tabId, {
     FocusNode? Function()? defaultFocus,
     VoidCallback? heroReveal,
-    VoidCallback? enterFromNavFocus,
+    bool Function()? enterFromNavFocus,
     bool Function()? restoreFocus,
     bool Function()? pageBack,
     bool? preferCustomRestoreFromNav,
@@ -267,7 +274,18 @@ abstract final class ShellTvFocusCoordinator {
     _tabPageScroll.remove(tabId);
     _pageBackOnRowLeftEdge.remove(tabId);
     _tabPreferCustomNavRestore.remove(tabId);
+    _tabEnterAwaitsHero.remove(tabId);
     _columnMemoryOff.remove(tabId);
+  }
+
+  /// Pack declared enter → hero View details; host must wait for CTA mount.
+  static void setTabEnterAwaitsHero(String tabId, bool awaits) {
+    if (tabId.isEmpty) return;
+    if (awaits) {
+      _tabEnterAwaitsHero.add(tabId);
+    } else {
+      _tabEnterAwaitsHero.remove(tabId);
+    }
   }
 
   // --- Column memory: ↑/↓ land on the item nearest the departing x ---
@@ -449,6 +467,7 @@ abstract final class ShellTvFocusCoordinator {
     _tabEnterFocus.remove(tabId);
     _tabRestoreFocus.remove(tabId);
     _tabPreferCustomNavRestore.remove(tabId);
+    _tabEnterAwaitsHero.remove(tabId);
   }
 
   /// Drop [pageBack] for a tab (flat catalog hubs omit it; null merge would keep a stale ladder).
@@ -481,8 +500,7 @@ abstract final class ShellTvFocusCoordinator {
   static bool focusTabEnterFromNav(String tabId) {
     final enter = _tabEnterFocus[tabId];
     if (enter == null) return false;
-    enter();
-    return _pageHasContentFocus(tabId);
+    return enter();
   }
 
   /// Page has D-pad focus usable as a nav-enter land.
@@ -516,43 +534,43 @@ abstract final class ShellTvFocusCoordinator {
   /// Retries across frames when hub heroes are still on shimmer; falls back to
   /// [restoreTabFocusAfterNav] so focus does not stay on the rail silently.
   ///
-  /// Catalog hubs that omit pack `focus.enter` (hero owns land) also try
-  /// [_restoreDefault] each frame — otherwise empty enter retries burn the
-  /// budget while spotlight/rails are still painting, and focus stays on nav.
-  ///
-  /// [focusFirstContentRow] skips mood chips so early vibe registration cannot
-  /// steal land and stop hero retries (issue 524).
+  /// Catalog hubs that omit pack `focus.enter` (hero owns land): during the
+  /// retry window only land the hero CTA (+ scroll reveal). Do **not** call
+  /// [focusFirstContentRow] mid-retry — any early body row (local continue,
+  /// chips, …) would steal focus and `ensureVisible` would scroll mid-page
+  /// (issue 528). Stop only when the hero CTA itself has focus. First content /
+  /// chrome only after the budget is exhausted.
   static void enterTabFromNav(String tabId) {
     _clearFocusBeforeNav();
     void attempt({required int remaining}) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (focusTabEnterFromNav(tabId) && _pageHasContentFocus(tabId)) {
+      void run() {
+        // enter() must return true only when land succeeded — sticky body
+        // focus after a hero-details miss must not look like success.
+        if (focusTabEnterFromNav(tabId)) {
+          if (_heroHasFocus(tabId)) _revealHeroForTab(tabId);
           return;
         }
-        // No pack enter → hero / first content / chrome each frame (slow feeds).
-        if (!_tabEnterFocus.containsKey(tabId)) {
-          // When the CTA just bound after miss frames, drop sticky nav so
-          // requestFocus can win (same class as late nav enter land).
-          if (_tabDefaultFocus.containsKey(tabId)) {
-            unfocusShellNav();
+        // Pack enter (hero-details) and/or defaultFocus binder: wait for
+        // hero CTA. Never first-content mid-retry.
+        final awaitsHero = _tabEnterAwaitsHero.contains(tabId);
+        final heroBinder = _tabDefaultFocus.containsKey(tabId);
+        if (awaitsHero || heroBinder) {
+          unfocusShellNav();
+          if (!_heroHasFocus(tabId) && _pageHasContentFocus(tabId)) {
+            FocusManager.instance.primaryFocus?.unfocus();
           }
-          _restoreDefault(tabId);
-          FocusManager.instance.applyFocusChangesIfNeeded();
-          if (_pageHasContentFocus(tabId)) {
-            // Prefer hero CTA when it bound this frame — upgrade off an early
-            // rail land so View details still wins once spotlight mounts.
-            if (remaining > 0 && _tabDefaultFocus.containsKey(tabId)) {
-              final def = _tabDefaultFocus[tabId]?.call();
-              if (def != null && !def.hasFocus && def.canRequestFocus) {
-                focusHero(revealFull: false, tabId: tabId);
-                FocusManager.instance.applyFocusChangesIfNeeded();
-              }
-            }
+          _revealHeroForTab(tabId);
+          if (heroBinder) {
+            _restoreHeroOnly(tabId);
+            FocusManager.instance.applyFocusChangesIfNeeded();
+          }
+          if (_heroHasFocus(tabId)) {
+            _revealHeroForTab(tabId);
             return;
           }
         }
         if (remaining > 0) {
-          attempt(remaining: remaining - 1);
+          _scheduleEnterRetry(() => attempt(remaining: remaining - 1));
           return;
         }
         // Catalog/Schedule autofocus often wrote topBar memory during retries —
@@ -563,12 +581,96 @@ abstract final class ShellTvFocusCoordinator {
             _tabHasFocusableContentRow(tabId)) {
           _tabMemory.remove(tabId);
         }
+        unfocusShellNav();
+        // Spotlight may still be shimmer (no defaultFocus binder yet) — keep
+        // polling when pack enter awaits hero. Never focusFirstContentRow or
+        // CW steals + ensureVisible scrolls mid-page.
+        if (heroBinder || awaitsHero) {
+          _scheduleLateHeroOnlyLand(tabId, remaining: 180);
+          return;
+        }
+        if (_restoreDefault(tabId)) {
+          FocusManager.instance.applyFocusChangesIfNeeded();
+          if (_pageHasContentFocus(tabId)) return;
+        }
         restoreTabFocusAfterNav(tabId);
-      });
+      }
+
+      _scheduleEnterRetry(run);
     }
 
     // ~400ms at 60fps — hub spotlight / rail paint often exceeds the old ~100ms.
     attempt(remaining: 24);
+  }
+
+  /// Post-frame enter retry — [scheduleFrame] so tests / idle engines advance.
+  static void _scheduleEnterRetry(VoidCallback run) {
+    WidgetsBinding.instance.addPostFrameCallback((_) => run());
+    WidgetsBinding.instance.scheduleFrame();
+  }
+
+  /// Keep trying hero CTA after the enter budget — spotlight slides often bind
+  /// after local Continue Watching. Never fall through to first content while
+  /// pack enter still awaits hero (binder may appear mid-poll).
+  static void _scheduleLateHeroOnlyLand(
+    String tabId, {
+    required int remaining,
+  }) {
+    if (tabId.isEmpty || remaining <= 0) return;
+    _scheduleEnterRetry(() {
+      final awaitsHero = _tabEnterAwaitsHero.contains(tabId);
+      final heroBinder = _tabDefaultFocus.containsKey(tabId);
+      if (!heroBinder && !awaitsHero) {
+        // Hero unbound and pack no longer awaits — normal fallthrough.
+        unfocusShellNav();
+        if (_restoreDefault(tabId)) {
+          FocusManager.instance.applyFocusChangesIfNeeded();
+        }
+        return;
+      }
+      unfocusShellNav();
+      if (!_heroHasFocus(tabId) && _pageHasContentFocus(tabId)) {
+        FocusManager.instance.primaryFocus?.unfocus();
+      }
+      _revealHeroForTab(tabId);
+      // Pack enter may succeed the frame the CTA mounts.
+      if (awaitsHero && focusTabEnterFromNav(tabId) && _heroHasFocus(tabId)) {
+        _revealHeroForTab(tabId);
+        return;
+      }
+      if (heroBinder) {
+        _restoreHeroOnly(tabId);
+        FocusManager.instance.applyFocusChangesIfNeeded();
+      }
+      if (_heroHasFocus(tabId)) {
+        _revealHeroForTab(tabId);
+        return;
+      }
+      // Still shimmer / no binder — keep waiting; do NOT restoreDefault → CW.
+      if (remaining > 1) {
+        _scheduleLateHeroOnlyLand(tabId, remaining: remaining - 1);
+        return;
+      }
+      // Budget exhausted with no hero — leave page unfocused rather than CW.
+    });
+  }
+
+  /// Hero CTA only — used during [enterTabFromNav] retries so early body rows
+  /// cannot satisfy land before spotlight binds.
+  static bool _restoreHeroOnly(String tabId) {
+    final node =
+        _tabDefaultFocus[tabId]?.call() ?? defaultFocusForTab?.call(tabId);
+    if (node != null && node.canRequestFocus) {
+      _revealHeroForTab(tabId);
+      return _request(node);
+    }
+    return focusHero(revealFull: true, tabId: tabId);
+  }
+
+  static bool _heroHasFocus(String tabId) {
+    final node =
+        _tabDefaultFocus[tabId]?.call() ?? defaultFocusForTab?.call(tabId);
+    return node != null && node.hasFocus;
   }
 
   // --- Nav order ---
