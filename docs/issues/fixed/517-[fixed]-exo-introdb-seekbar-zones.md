@@ -43,3 +43,5 @@ On ExoPlayer (phone / Android TV), the seek bar never painted IntroDB intro/reca
 
 - [032](../032-[draft]-exoplayer-parity-gaps.md) — broader Exo parity tracker
 - [423](423-[fixed]-offline-download-play-network-side-effects.md) — offline skips IntroDB
+- [530](530-[fixed]-exo-skip-intro-recap-chip.md) — Skip Intro / Recap chip (zones were 517 only)
+

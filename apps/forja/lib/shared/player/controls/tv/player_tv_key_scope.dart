@@ -148,6 +148,9 @@ class _PlayerTvKeyScopeState extends State<PlayerTvKeyScope> {
       playerTvReclaimOpenMenuFocus();
       return;
     }
+    // Already on Skip / Next Episode / cancel X — do not yank to Play or
+    // re-claim the main chip (that stole → off the countdown X).
+    if (playerTvFloatingChipHasFocus()) return;
     final primary = FocusManager.instance.primaryFocus;
     final lost = primary == null || !primary.hasFocus;
     if (widget.showControls) {
@@ -196,8 +199,22 @@ class _PlayerTvKeyScopeState extends State<PlayerTvKeyScope> {
       return false;
     }
     if (playerChromeOverlayBlocksSeek()) return false;
-    // Focused floating chip: let focus dispatch reach the chip first.
-    if (playerTvFloatingChipHasFocus()) return false;
+    // Floating Skip / Next Episode on screen: arrows never reveal chrome /
+    // Play via this handler. Focused chip owns ←/→ (Next Episode → → X);
+    // unfocused chip → reclaim chip focus instead of Play.
+    if (widget.floatingChipVisible) {
+      final key = event.logicalKey;
+      if (key == LogicalKeyboardKey.arrowLeft ||
+          key == LogicalKeyboardKey.arrowRight ||
+          key == LogicalKeyboardKey.arrowUp ||
+          key == LogicalKeyboardKey.arrowDown) {
+        if (playerTvFloatingChipHasFocus()) return false;
+        if (event is KeyDownEvent || event is KeyRepeatEvent) {
+          widget.onClaimFloatingChipFocus?.call();
+        }
+        return true;
+      }
+    }
     return _handler.handle(event, showControls: false);
   }
 
@@ -216,13 +233,18 @@ class _PlayerTvKeyScopeState extends State<PlayerTvKeyScope> {
       return KeyEventResult.ignored;
     }
     // Chrome visible but focus not on a control (race / platform view): ←/→
-    // must restore chrome focus — never seek. Progress-bar seek only when the
-    // bar itself holds focus (handled above via FocusableControl / seekbar).
+    // must restore chrome focus — never seek. If a floating chip is up, reclaim
+    // the chip (not Play) so Next Episode → can still reach the cancel X.
     if (widget.showControls && shellTvIsNavigationKey(event)) {
       final key = event.logicalKey;
       if (key == LogicalKeyboardKey.arrowLeft ||
           key == LogicalKeyboardKey.arrowRight) {
-        widget.onFocusPlay();
+        if (widget.floatingChipVisible &&
+            widget.onClaimFloatingChipFocus != null) {
+          widget.onClaimFloatingChipFocus!();
+        } else {
+          widget.onFocusPlay();
+        }
         return KeyEventResult.handled;
       }
     }
@@ -290,11 +312,27 @@ bool playerTvChromeHasFocus(FocusNode playerKeyNode) {
   return false;
 }
 
-/// True when TV focus is on a floating Skip / Next Episode chip.
+/// Focus node debugLabels that mean a floating Skip / Next Episode chip (or
+/// its countdown cancel X) owns the remote — including host-owned chip nodes
+/// that sit under a non-focusable label wrapper.
+const Set<String> kPlayerFloatingChipFocusLabels = {
+  kPlayerFloatingChipFocusLabel,
+  'player-up-next-cancel',
+  'player-up-next-main',
+  'player-next-ep-chip',
+  'exo-next-ep-chip',
+  'player-skip-chip',
+  'exo-skip-chip',
+};
+
+/// True when TV focus is on a floating Skip / Next Episode chip (or its X).
 bool playerTvFloatingChipHasFocus() {
   FocusNode? node = FocusManager.instance.primaryFocus;
   while (node != null) {
-    if (node.debugLabel == kPlayerFloatingChipFocusLabel) return true;
+    final label = node.debugLabel;
+    if (label != null && kPlayerFloatingChipFocusLabels.contains(label)) {
+      return true;
+    }
     node = node.parent;
   }
   return false;

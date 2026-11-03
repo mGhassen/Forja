@@ -122,6 +122,8 @@ mixin _MobilePlayerUi on ConsumerState<MobilePlayerScreen> {
     void tryClaim() {
       if (!mounted || !_s._playFocus.canRequestFocus) return;
       if (playerChromeOverlayBlocksFocusClaim()) return;
+      // Skip / Next Episode / countdown X own the remote — never steal Play.
+      if (playerTvFloatingChipHasFocus()) return;
       _s._playFocus.requestFocus();
     }
 
@@ -136,6 +138,7 @@ mixin _MobilePlayerUi on ConsumerState<MobilePlayerScreen> {
     void tryClaim() {
       if (!mounted || !_s._backFocus.canRequestFocus) return;
       if (playerChromeOverlayBlocksFocusClaim()) return;
+      if (playerTvFloatingChipHasFocus()) return;
       _s._backFocus.requestFocus();
     }
 

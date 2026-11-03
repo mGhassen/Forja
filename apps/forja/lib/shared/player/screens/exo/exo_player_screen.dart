@@ -282,8 +282,14 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
   Duration _buffered = Duration.zero;
   bool _nearEndOfEpisode = false;
 
-  /// IntroDB intro/recap/credits/preview — seek-bar zone paint (MediaKit parity).
+  /// IntroDB intro/recap/credits/preview — seek-bar zones + Skip chip.
   IntroDbResponse? _introDbData;
+  String? _activeSkipLabel;
+  Duration? _activeSkipTarget;
+  bool _skipDismissed = false;
+
+  /// Auto-skip fires once per intro/recap end (avoids remount spam).
+  Duration? _autoSkipLatchedTarget;
 
   /// Auto next countdown ring is running on the Next Episode chip.
   bool _autoNextCountdown = false;
@@ -294,6 +300,7 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
   /// TV focus landed on the chip on its own (not by the user).
   bool _nextEpChipAutoFocus = false;
   final FocusNode _nextEpChipFocus = FocusNode(debugLabel: 'exo-next-ep-chip');
+  final FocusNode _skipChipFocus = FocusNode(debugLabel: 'exo-skip-chip');
 
   late List<_ExoSource> _sources;
   int _sourceIndex = 0;
@@ -826,6 +833,7 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
         // The controls overlay is always built (hidden via AnimatedOpacity, not
         // removed), so an unconditional setState here re-laid-out the whole
         // player tree twice a second over the platform view (issue 151).
+        // Skip chip setState lives in [_updateActiveSkipSegment].
         final needsRepaint = _showControls || nearEnd != _nearEndOfEpisode;
         _position = pos;
         _positionNotifier.value = pos;
@@ -839,8 +847,9 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
         if (nearEnd != _nearEndOfEpisode) _onNearEndChanged(nearEnd);
         _nearEndOfEpisode = nearEnd;
         if (needsRepaint) setState(() {});
+        _updateActiveSkipSegment(pos);
         // Chip just mounted — park D-pad on it (chrome up or hidden).
-        if (nearEndAppeared) _scheduleClaimNextEpChipFocus();
+        if (nearEndAppeared) _scheduleClaimFloatingChipFocus();
         break;
       case 'ended':
         _isPlaying = false;
@@ -1214,6 +1223,8 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
       if (!mounted || !_playFocus.canRequestFocus) return;
       // Menu/panel owns the remote - don't yank focus back to Play.
       if (playerChromeOverlayBlocksFocusClaim()) return;
+      // Skip / Next Episode / countdown X own the remote — never steal Play.
+      if (playerTvFloatingChipHasFocus()) return;
       _playFocus.requestFocus();
     }
 
@@ -1228,6 +1239,7 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
     void tryClaim() {
       if (!mounted || !_backFocus.canRequestFocus) return;
       if (playerChromeOverlayBlocksFocusClaim()) return;
+      if (playerTvFloatingChipHasFocus()) return;
       _backFocus.requestFocus();
     }
 
@@ -1276,9 +1288,14 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
   void _focusRightFromSeekbar() => _focusFirstRightTransport();
 
   void _focusUpFromSeekbar() {
+    // Progress bar ↑: Next Episode (closest) → Skip → top Back.
     if (_showNextEpChip && _nextEpChipFocus.canRequestFocus) {
       setState(() => _nextEpChipAutoFocus = false);
       _nextEpChipFocus.requestFocus();
+      return;
+    }
+    if (_showSkipChip && _skipChipFocus.canRequestFocus) {
+      _skipChipFocus.requestFocus();
       return;
     }
     if (_backFocus.canRequestFocus) {
@@ -2200,6 +2217,99 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
   bool get _showNextEpChip =>
       _hasNextEpisodeAdjacent && _nearEndOfEpisode && !_loadingNextEp;
 
+  bool get _showSkipChip => _activeSkipLabel != null && !_skipDismissed;
+
+  void _updateActiveSkipSegment(Duration pos) {
+    if (_introDbData == null) return;
+
+    final posMs = pos.inMilliseconds;
+    String? label;
+    Duration? target;
+
+    for (final seg in _introDbData!.recap) {
+      final s = seg.startMs ?? 0;
+      final e = seg.endMs;
+      if (e != null && posMs >= s && posMs < e) {
+        label = 'Skip Recap';
+        target = Duration(milliseconds: e);
+        break;
+      }
+    }
+    if (label == null) {
+      for (final seg in _introDbData!.intro) {
+        final s = seg.startMs ?? 0;
+        final e = seg.endMs;
+        if (e != null && posMs >= s && posMs < e) {
+          label = 'Skip Intro';
+          target = Duration(milliseconds: e);
+          break;
+        }
+      }
+    }
+    if (label == null) {
+      for (final seg in _introDbData!.credits) {
+        final s = seg.startMs;
+        final e = seg.endMs;
+        if (s != null && posMs >= s) {
+          final end = e ?? _duration.inMilliseconds;
+          if (posMs < end) {
+            label = 'Skip Credits';
+            target = Duration(milliseconds: end);
+            break;
+          }
+        }
+      }
+    }
+    if (label == null) {
+      for (final seg in _introDbData!.preview) {
+        final s = seg.startMs;
+        final e = seg.endMs;
+        if (s != null && posMs >= s) {
+          final end = e ?? _duration.inMilliseconds;
+          if (posMs < end) {
+            label = 'Skip Preview';
+            target = Duration(milliseconds: end);
+            break;
+          }
+        }
+      }
+    }
+
+    if (label != _activeSkipLabel) {
+      setState(() {
+        _activeSkipLabel = label;
+        _activeSkipTarget = target;
+        _skipDismissed = false;
+      });
+      final skipAuto = SettingsService.autoSkipIntroNotifier.value;
+      final willAutoSkip =
+          skipAuto &&
+          (label == 'Skip Intro' || label == 'Skip Recap') &&
+          target != null &&
+          _autoSkipLatchedTarget != target;
+      if (willAutoSkip) {
+        _autoSkipLatchedTarget = target;
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted) return;
+          if (_activeSkipLabel != label) return;
+          _performSkip();
+        });
+      } else if (label != null) {
+        _scheduleClaimFloatingChipFocus();
+      }
+      if (label == null) _autoSkipLatchedTarget = null;
+    }
+  }
+
+  void _performSkip() {
+    if (_activeSkipTarget == null) return;
+    unawaited(_seekTo(_activeSkipTarget!));
+    setState(() {
+      _activeSkipLabel = null;
+      _activeSkipTarget = null;
+    });
+  }
+
   /// Next Episode chip shows or hides (caller repaints). Auto next arms the
   /// countdown ring; leaving the window clears the X for the next pass.
   void _onNearEndChanged(bool nearEnd) {
@@ -2230,6 +2340,10 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
 
   /// Chrome hidden: false — the key scope reveals chrome instead.
   bool _focusUpFromNextEpChip() {
+    if (_showSkipChip && _skipChipFocus.canRequestFocus) {
+      _skipChipFocus.requestFocus();
+      return true;
+    }
     if (!_showControls || !_backFocus.canRequestFocus) return false;
     _backFocus.requestFocus();
     return true;
@@ -2241,14 +2355,41 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
     return true;
   }
 
-  /// After the Next Episode chip mounts.
-  void _scheduleClaimNextEpChipFocus() {
+  bool _focusUpFromSkipChip() {
+    if (!_showControls || !_backFocus.canRequestFocus) return false;
+    _backFocus.requestFocus();
+    return true;
+  }
+
+  bool _focusDownFromSkipChip() {
+    if (_showNextEpChip && _nextEpChipFocus.canRequestFocus) {
+      setState(() => _nextEpChipAutoFocus = false);
+      _nextEpChipFocus.requestFocus();
+      return true;
+    }
+    return _focusDownFromNextEpChip();
+  }
+
+  /// After Skip / Next Episode mounts — Next Episode preferred over Skip.
+  void _scheduleClaimFloatingChipFocus() {
     if (!_isTv) return;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       if (playerChromeOverlayBlocksFocusClaim()) return;
-      _claimNextEpChipFocus();
+      _claimFloatingChipFocus();
     });
+  }
+
+  /// Next Episode first (countdown), else Skip. Chrome up or hidden.
+  void _claimFloatingChipFocus() {
+    if (playerChromeOverlayBlocksFocusClaim()) return;
+    if (_showNextEpChip) {
+      _claimNextEpChipFocus();
+      return;
+    }
+    if (_showSkipChip && _skipChipFocus.canRequestFocus) {
+      _skipChipFocus.requestFocus();
+    }
   }
 
   /// Key scope / appear claim — does not hold the countdown.
@@ -2384,6 +2525,7 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
     _streamActionFocus.dispose();
     _tvKeyFocus.dispose();
     _nextEpChipFocus.dispose();
+    _skipChipFocus.dispose();
     playerChromeOnOverlayDismissed = null;
     _statusController.removeListener(_onPlayerStatusForChromeHide);
     playerMenuClearReturnFocus();
@@ -3009,27 +3151,48 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
               ),
               if (_escapeExitArmed) const PlayerEscapeExitHint(),
               // Outside the chrome: shows alone while chrome is hidden.
-              if (_showNextEpChip)
+              if (_showSkipChip || _showNextEpChip)
                 Positioned(
                   bottom: 120,
                   right: 16,
-                  child: ValueListenableBuilder<bool>(
-                    valueListenable: _isPlayingNotifier,
-                    builder: (context, playing, _) => PlayerNextEpisodeChip(
-                      onPressed: () {
-                        setState(() => _autoNextCountdown = false);
-                        unawaited(_nextEpisode());
-                      },
-                      countdown: _autoNextCountdown,
-                      countdownPaused: !playing,
-                      onCountdownComplete: _onAutoNextCountdownDone,
-                      onCancel: _cancelAutoNext,
-                      focusNode: _isTv ? _nextEpChipFocus : null,
-                      tvFocusable: _isTv,
-                      onArrowUp: _focusUpFromNextEpChip,
-                      onArrowDown: _focusDownFromNextEpChip,
-                      pauseOnFocus: !_nextEpChipAutoFocus,
-                    ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      if (_showSkipChip)
+                        PlayerFloatingChip(
+                          label: _activeSkipLabel!,
+                          onPressed: _performSkip,
+                          tvFocusable: _isTv,
+                          focusNode: _isTv ? _skipChipFocus : null,
+                          onArrowUp: _focusUpFromSkipChip,
+                          onArrowDown: _focusDownFromSkipChip,
+                        ),
+                      if (_showSkipChip && _showNextEpChip)
+                        const SizedBox(
+                          height: PlayerFloatingChipMetrics.stackGap,
+                        ),
+                      if (_showNextEpChip)
+                        ValueListenableBuilder<bool>(
+                          valueListenable: _isPlayingNotifier,
+                          builder: (context, playing, _) =>
+                              PlayerNextEpisodeChip(
+                                onPressed: () {
+                                  setState(() => _autoNextCountdown = false);
+                                  unawaited(_nextEpisode());
+                                },
+                                countdown: _autoNextCountdown,
+                                countdownPaused: !playing,
+                                onCountdownComplete: _onAutoNextCountdownDone,
+                                onCancel: _cancelAutoNext,
+                                focusNode: _isTv ? _nextEpChipFocus : null,
+                                tvFocusable: _isTv,
+                                onArrowUp: _focusUpFromNextEpChip,
+                                onArrowDown: _focusDownFromNextEpChip,
+                                pauseOnFocus: !_nextEpChipAutoFocus,
+                              ),
+                        ),
+                    ],
                   ),
                 ),
               if (!_loadingNextEp)
@@ -3088,8 +3251,8 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
       },
       onClaimPlayFocus: _claimPlayFocus,
       onControlsActivity: _syncChromeHideTimer,
-      floatingChipVisible: _showNextEpChip,
-      onClaimFloatingChipFocus: _claimNextEpChipFocus,
+      floatingChipVisible: _showNextEpChip || _showSkipChip,
+      onClaimFloatingChipFocus: _claimFloatingChipFocus,
       child: body,
     );
   }
