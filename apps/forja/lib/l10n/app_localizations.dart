@@ -4103,6 +4103,36 @@ abstract class AppLocalizations {
   /// **'Next episode'**
   String get playerScreenNextEpisodeTooltip;
 
+  /// No description provided for @playerScreenTorrentsNeedMediaKit.
+  ///
+  /// In en, this message translates to:
+  /// **'Torrents need MediaKit for now'**
+  String get playerScreenTorrentsNeedMediaKit;
+
+  /// No description provided for @playerScreenPipNeedsMediaKit.
+  ///
+  /// In en, this message translates to:
+  /// **'Desktop PiP needs MediaKit for now'**
+  String get playerScreenPipNeedsMediaKit;
+
+  /// No description provided for @playerScreenAutoAudioNeedsMediaKitOrExo.
+  ///
+  /// In en, this message translates to:
+  /// **'Auto audio track needs MediaKit or Exo for now'**
+  String get playerScreenAutoAudioNeedsMediaKitOrExo;
+
+  /// No description provided for @playerScreenAutoSubtitlesNeedMediaKitOrExo.
+  ///
+  /// In en, this message translates to:
+  /// **'Auto subtitles need MediaKit or Exo for now'**
+  String get playerScreenAutoSubtitlesNeedMediaKitOrExo;
+
+  /// No description provided for @playerScreenPreviousEpisodeTooltip.
+  ///
+  /// In en, this message translates to:
+  /// **'Previous episode'**
+  String get playerScreenPreviousEpisodeTooltip;
+
   /// No description provided for @playerScreenPlayer.
   ///
   /// In en, this message translates to:

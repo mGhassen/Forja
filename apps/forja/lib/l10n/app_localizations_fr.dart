@@ -2473,6 +2473,25 @@ class AppLocalizationsFr extends AppLocalizations {
   String get playerScreenNextEpisodeTooltip => 'Épisode suivant';
 
   @override
+  String get playerScreenTorrentsNeedMediaKit =>
+      'Les torrents nécessitent MediaKit pour le moment';
+
+  @override
+  String get playerScreenPipNeedsMediaKit =>
+      'L\'image dans l\'image sur ordinateur nécessite MediaKit pour le moment';
+
+  @override
+  String get playerScreenAutoAudioNeedsMediaKitOrExo =>
+      'La piste audio automatique nécessite MediaKit ou Exo pour le moment';
+
+  @override
+  String get playerScreenAutoSubtitlesNeedMediaKitOrExo =>
+      'Les sous-titres automatiques nécessitent MediaKit ou Exo pour le moment';
+
+  @override
+  String get playerScreenPreviousEpisodeTooltip => 'Épisode précédent';
+
+  @override
   String get playerScreenPlayer => 'Lecteur';
 
   @override

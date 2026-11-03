@@ -407,7 +407,8 @@ class _DesktopNativePlayerScreenState extends State<DesktopNativePlayerScreen>
     if (_failoverToMediaKitUsed || _disposed) return;
     final handler = widget.onSwitchPlayer;
     if (handler == null) {
-      if (mounted) ForjaToast.error(context.l10n.playerScreenCouldNotOpenStream);
+      if (mounted)
+        ForjaToast.error(context.l10n.playerScreenCouldNotOpenStream);
       if (!_playbackStartedNotified) {
         widget.onAllSourcesExhausted?.call();
       }

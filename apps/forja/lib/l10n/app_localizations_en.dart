@@ -2414,6 +2414,25 @@ class AppLocalizationsEn extends AppLocalizations {
   String get playerScreenNextEpisodeTooltip => 'Next episode';
 
   @override
+  String get playerScreenTorrentsNeedMediaKit =>
+      'Torrents need MediaKit for now';
+
+  @override
+  String get playerScreenPipNeedsMediaKit =>
+      'Desktop PiP needs MediaKit for now';
+
+  @override
+  String get playerScreenAutoAudioNeedsMediaKitOrExo =>
+      'Auto audio track needs MediaKit or Exo for now';
+
+  @override
+  String get playerScreenAutoSubtitlesNeedMediaKitOrExo =>
+      'Auto subtitles need MediaKit or Exo for now';
+
+  @override
+  String get playerScreenPreviousEpisodeTooltip => 'Previous episode';
+
+  @override
   String get playerScreenPlayer => 'Player';
 
   @override

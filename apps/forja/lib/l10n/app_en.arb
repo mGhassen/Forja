@@ -1309,6 +1309,11 @@
   "playerScreenSwitchingToMediaKit": "Switching to MediaKit…",
   "playerScreenPressEscAgain": "Press Esc again to exit",
   "playerScreenNextEpisodeTooltip": "Next episode",
+  "playerScreenTorrentsNeedMediaKit": "Torrents need MediaKit for now",
+  "playerScreenPipNeedsMediaKit": "Desktop PiP needs MediaKit for now",
+  "playerScreenAutoAudioNeedsMediaKitOrExo": "Auto audio track needs MediaKit or Exo for now",
+  "playerScreenAutoSubtitlesNeedMediaKitOrExo": "Auto subtitles need MediaKit or Exo for now",
+  "playerScreenPreviousEpisodeTooltip": "Previous episode",
   "playerScreenPlayer": "Player",
   "playerScreenSourceFailed": "Failed: {title}",
   "@playerScreenSourceFailed": {
