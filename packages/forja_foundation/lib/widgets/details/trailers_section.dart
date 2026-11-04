@@ -2,6 +2,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:forja_foundation/components/network_image.dart';
+import 'package:forja_foundation/l10n/foundation_strings.dart';
 import 'package:forja_foundation/tokens/forja_details_tokens.dart';
 import 'package:forja_foundation/tokens/forja_motion_theme.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
@@ -33,14 +34,15 @@ class DetailsTrailersSection extends StatelessWidget {
     super.key,
     required this.trailers,
     required this.onTap,
-    this.title = 'Trailers',
+    this.title,
     this.outdentHorizontal = 0,
     this.itemBuilder,
   });
 
   final List<DetailsTrailerItem> trailers;
   final void Function(int index) onTap;
-  final String title;
+  /// Heading; the translated "Trailers" when null.
+  final String? title;
   /// Cancels parent horizontal padding so row insets match home catalog rows.
   final double outdentHorizontal;
   final Widget Function(
@@ -88,7 +90,10 @@ class DetailsTrailersSection extends StatelessWidget {
             homePad,
             titleGap,
           ),
-          child: Text(title, style: titleStyle),
+          child: Text(
+            title ?? ForjaFoundationStrings.of(context).t('Trailers'),
+            style: titleStyle,
+          ),
         ),
         FocusTraversalGroup(
           child: HorizontalScroller(
@@ -158,9 +163,9 @@ class DetailsTrailersSection extends StatelessWidget {
                               color: Colors.black.withValues(alpha: 0.65),
                               borderRadius: BorderRadius.circular(4),
                             ),
-                            child: const Text(
-                              'Official',
-                              style: TextStyle(
+                            child: Text(
+                              ForjaFoundationStrings.of(context).t('Official'),
+                              style: const TextStyle(
                                 color: Colors.white,
                                 fontSize: 10,
                                 fontWeight: FontWeight.w600,
@@ -193,7 +198,7 @@ class DetailsTrailersSection extends StatelessWidget {
                               color: const Color(0xFFEF4444),
                               alignment: Alignment.center,
                               child: Text(
-                                'Geoblocked',
+                                ForjaFoundationStrings.of(context).t('Geoblocked'),
                                 textAlign: TextAlign.center,
                                 style: TextStyle(
                                   color: ForjaShellColors.textPrimary,

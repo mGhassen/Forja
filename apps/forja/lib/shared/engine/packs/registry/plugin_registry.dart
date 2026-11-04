@@ -4,6 +4,8 @@ import 'dart:io';
 
 import 'package:crypto/crypto.dart';
 import 'package:flutter/foundation.dart';
+import 'package:forja/l10n/app_localizations_en.dart';
+import 'package:forja/l10n/l10n.dart';
 import 'package:forja/shared/engine/cache/engine_cache.dart';
 import 'package:forja/shared/engine/models/lean_apply_result.dart';
 import 'package:forja/shared/engine/packs/live_sport_capabilities.dart';
@@ -17,6 +19,7 @@ import 'package:forja/shared/engine/packs/registry/plugin_script_disk_store.dart
 import 'package:forja/shared/engine/packs/install/remote_pack_intent_store.dart';
 import 'package:forja/shared/playback/cache/catalog_sources_session_cache.dart';
 import 'package:forja/shared/playback/cache/player_stream_extract_cache.dart';
+import 'package:forja/shared/services/app/app_locale.dart';
 import 'package:forja/shared/utils/bounded_parallel.dart';
 import 'package:http/http.dart' as http;
 import 'package:rust/rust.dart';
@@ -28,7 +31,18 @@ import 'package:shared_preferences/shared_preferences.dart';
 /// Remote JS bodies live on disk ([PluginScriptDiskStore]); pack metadata in
 /// prefs scoped per launched profile ([LocalDataScope]).
 class PluginRegistry {
-  PluginRegistry._();
+  PluginRegistry._() {
+    AppLocale.notifier.addListener(_onAppLanguageChanged);
+  }
+
+  /// Pack text (names, nav and settings labels) is read in the app language when
+  /// a pack is parsed, so a change of language needs the packs read again.
+  void _onAppLanguageChanged() {
+    _packsMem = null;
+    _packsMemScopeGen = -1;
+    notifyChanged();
+  }
+
   static final PluginRegistry instance = PluginRegistry._();
 
   /// Pack `prelude` may list one path or comma-separated paths (`_kit.js,_search.js`).
@@ -363,16 +377,20 @@ class PluginRegistry {
     packKindOther,
   ];
 
-  static String packKindLabel(String key) => switch (key) {
-    packKindProviders => 'Providers',
-    packKindLive => 'Live',
-    packKindCatalog => 'Catalog',
-    packKindTorrent => 'Torrent',
-    packKindDebrid => 'Debrid',
-    packKindIptv => 'IPTV',
-    packKindHubs => 'Hubs',
-    _ => 'Other',
-  };
+  /// [l] defaults to English for callers without a BuildContext.
+  static String packKindLabel(String key, [AppLocalizations? l]) {
+    final t = l ?? AppLocalizationsEn();
+    return switch (key) {
+      packKindProviders => t.enginePacksKindProviders,
+      packKindLive => t.enginePacksKindLive,
+      packKindCatalog => t.packsLiveTabCatalog,
+      packKindTorrent => t.enginePacksKindTorrent,
+      packKindDebrid => t.addonsHostDebridGroupLabel,
+      packKindIptv => 'IPTV',
+      packKindHubs => t.enginePacksKindHubs,
+      _ => t.downloadsLegendOther,
+    };
+  }
 
   /// Pack bucket for the installed list: Providers / Live / Catalog / IPTV / Hubs / Other.
   ///
@@ -405,17 +423,17 @@ class PluginRegistry {
   }
 
   /// Subtitle kind chip: `Providers` or `Hubs · Home` or `IPTV · VOD`.
-  static String packKindInfo(EnginePack pack) {
+  static String packKindInfo(EnginePack pack, [AppLocalizations? l]) {
     final kind = packKindKey(pack);
     final slot = forjaHqSlot(pack.sourceUrl);
     final slotLabel = hubSlotLabel(slot);
     if (kind == packKindHubs && slotLabel != null) {
-      return '${packKindLabel(kind)} · $slotLabel';
+      return '${packKindLabel(kind, l)} · $slotLabel';
     }
     if (kind == packKindIptv && slotLabel != null) {
-      return '${packKindLabel(kind)} · $slotLabel';
+      return '${packKindLabel(kind, l)} · $slotLabel';
     }
-    return packKindLabel(kind);
+    return packKindLabel(kind, l);
   }
 
   /// Pack at a conventional ForjaHQ path that is not in [keepUrls].

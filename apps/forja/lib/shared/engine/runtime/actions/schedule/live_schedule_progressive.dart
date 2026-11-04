@@ -1,3 +1,4 @@
+import 'package:forja/shared/services/app/app_locale.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja/shared/engine/engine.dart';
@@ -135,7 +136,7 @@ Stream<MetaEnvelope> loadLiveScheduleProgressive({
   }
 
   if (isLiveStremioCatalogFilter(filter)) {
-    busy(busy: true, label: 'Loading…');
+    busy(busy: true, label: AppLocale.strings.engineScheduleLoading);
     try {
       final cacheKey = _liveFeedCacheKey(filter);
       if (!forceRefresh) {
@@ -357,7 +358,10 @@ Stream<MetaEnvelope> fanOutLiveScheduleCatalogs({
         raw.add(map);
       }
     } else {
-      busy(busy: true, label: 'Loading $name… ${i + 1}/$total');
+      busy(
+        busy: true,
+        label: AppLocale.strings.engineScheduleLoadingNamed(name, i + 1, total),
+      );
       try {
         final scraped = await runCatalog(plugin);
         if (cancelled()) return;

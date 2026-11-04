@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:forja/l10n/l10n.dart';
 import 'package:forja/shared/engine/models/models.dart';
 import 'package:forja/shared/engine/packs/settings/pack_addon_settings_spec.dart';
 import 'package:forja/shared/sync/sync.dart';
@@ -38,8 +39,10 @@ abstract final class SettingsAddonId {
 class SettingsAddonMeta {
   const SettingsAddonMeta({
     required this.id,
-    required this.title,
-    required this.subtitle,
+    this.title,
+    this.subtitle,
+    this.titleOf,
+    this.subtitleOf,
     required this.icon,
     this.hasToggle = true,
     this.adminOnly = false,
@@ -47,8 +50,18 @@ class SettingsAddonMeta {
   });
 
   final String id;
-  final String title;
-  final String subtitle;
+
+  /// Literal title: product names and pack-supplied labels (never translated).
+  final String? title;
+
+  /// Literal subtitle (unused today; kept symmetric with [title]).
+  final String? subtitle;
+
+  /// Host-owned title, resolved at build time.
+  final String Function(AppLocalizations l)? titleOf;
+
+  /// Host-owned subtitle, resolved at build time.
+  final String Function(AppLocalizations l)? subtitleOf;
   final IconData icon;
 
   /// False for addons without a master on/off (e.g. Connected services,
@@ -58,45 +71,50 @@ class SettingsAddonMeta {
 
   /// Invented from an enabled pack `settings.addon` (not in [kSettingsAddons]).
   final bool packContributed;
+
+  String titleFor(AppLocalizations l) => titleOf?.call(l) ?? title ?? '';
+
+  String subtitleFor(AppLocalizations l) =>
+      subtitleOf?.call(l) ?? subtitle ?? '';
 }
 
-const List<SettingsAddonMeta> kSettingsAddons = [
+final List<SettingsAddonMeta> kSettingsAddons = [
   SettingsAddonMeta(
     id: SettingsAddonId.playback,
-    title: 'Playback',
-    subtitle: 'Quality, audio, auto-play',
+    titleOf: (l) => l.addonsPlaybackTitle,
+    subtitleOf: (l) => l.addonsPlaybackSubtitle,
     icon: Icons.play_circle_outline_rounded,
     hasToggle: false,
   ),
   SettingsAddonMeta(
     id: SettingsAddonId.torrent,
-    title: 'Direct torrent',
-    subtitle: 'Jackett, Prowlarr, torrent engine',
+    titleOf: (l) => l.addonsTorrentTitle,
+    subtitleOf: (l) => l.addonsTorrentSubtitle,
     icon: Icons.downloading_rounded,
   ),
   SettingsAddonMeta(
     id: SettingsAddonId.stremio,
     title: 'Stremio',
-    subtitle: 'Stremio addons',
+    subtitleOf: (l) => l.addonsStremioSubtitle,
     icon: Icons.extension_rounded,
   ),
   SettingsAddonMeta(
     id: SettingsAddonId.nuvio,
     title: 'Nuvio',
-    subtitle: 'Nuvio scrapers',
+    subtitleOf: (l) => l.addonsNuvioSubtitle,
     icon: Icons.travel_explore_rounded,
   ),
   SettingsAddonMeta(
     id: SettingsAddonId.connectedServices,
-    title: 'Connected services',
-    subtitle: 'Simkl; MDBlist (admin)',
+    titleOf: (l) => l.addonsConnectedServicesTitle,
+    subtitleOf: (l) => l.addonsConnectedServicesSubtitle,
     icon: Icons.sync_rounded,
     hasToggle: false,
   ),
   SettingsAddonMeta(
     id: SettingsAddonId.lan,
     title: 'LAN',
-    subtitle: 'Desktop server, pairing, torrent relay',
+    subtitleOf: (l) => l.addonsLanSubtitle,
     icon: Icons.lan_outlined,
   ),
 ];
@@ -151,9 +169,7 @@ List<SettingsAddonMeta> packContributedAddonMetas(
       SettingsAddonMeta(
         id: id,
         title: title,
-        subtitle: list.length == 1
-            ? 'Pack settings'
-            : '${list.length} pack settings',
+        subtitleOf: (l) => l.addonsPackSettingsCount(list.length),
         icon: Icons.tune_rounded,
         hasToggle: false,
         packContributed: true,

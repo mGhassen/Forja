@@ -27,8 +27,8 @@ class StreamLoadingSession {
     this.subtitle,
     this.recheckBanner,
     this.showReloadButton = false,
-    this.reloadLabel = 'Search again',
-    this.reloadHint = 'That saved link is no longer working',
+    this.reloadLabel,
+    this.reloadHint,
     this.onReload,
     this.onManualCheckProvider,
   });
@@ -43,8 +43,8 @@ class StreamLoadingSession {
   final String? subtitle;
   final String? recheckBanner;
   final bool showReloadButton;
-  final String reloadLabel;
-  final String reloadHint;
+  final String? reloadLabel;
+  final String? reloadHint;
   final VoidCallback? onReload;
   final ValueChanged<String>? onManualCheckProvider;
 
@@ -73,8 +73,8 @@ StreamLoadingSession showStreamLoadingOverlay(
   String? subtitle,
   String? recheckBanner,
   bool showReloadButton = false,
-  String reloadLabel = 'Search again',
-  String reloadHint = 'That saved link is no longer working',
+  String? reloadLabel,
+  String? reloadHint,
   VoidCallback? onReload,
   VoidCallback? onCancel,
   ValueChanged<String>? onManualCheckProvider,

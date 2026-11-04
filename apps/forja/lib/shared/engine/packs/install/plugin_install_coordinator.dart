@@ -1,3 +1,4 @@
+import 'package:forja/shared/services/app/app_locale.dart';
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
@@ -481,8 +482,8 @@ class PluginInstallCoordinator {
 
     if (awaitCloudLean && SyncService.instance.isSignedIn) {
       _setProgress(
-        const PluginInstallProgress(
-          label: 'Syncing plugins…',
+        PluginInstallProgress(
+          label: AppLocale.strings.pluginSyncProgressLabel,
           completedSteps: 0,
           totalSteps: 1,
           isUpdate: false,

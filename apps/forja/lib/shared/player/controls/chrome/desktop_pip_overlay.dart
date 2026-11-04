@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:forja/l10n/l10n.dart';
 import 'package:forja/shared/player/platform/pip_service.dart';
 import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 import 'package:window_manager/window_manager.dart';
@@ -112,19 +113,19 @@ class DesktopPipOverlay extends StatelessWidget {
                 children: [
                   _PipIconChip(
                     icon: Icons.open_in_full_rounded,
-                    tooltip: 'Expand',
+                    tooltip: context.l10n.playerControlExpand,
                     onTap: () => unawaited(_restore()),
                   ),
                   const Spacer(),
                   _PipIconChip(
                     icon: Icons.remove_rounded,
-                    tooltip: 'Minimize',
+                    tooltip: context.l10n.playerControlMinimize,
                     onTap: () => unawaited(_minimize()),
                   ),
                   const SizedBox(width: 8),
                   _PipIconChip(
                     icon: Icons.close_rounded,
-                    tooltip: 'Close',
+                    tooltip: context.l10n.settingsUiClose,
                     onTap: () => unawaited(_close()),
                   ),
                 ],

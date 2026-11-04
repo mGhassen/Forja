@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:forja_foundation/l10n/foundation_strings.dart';
 import 'package:forja_foundation/tokens/event_card_tokens.dart';
 import 'package:forja_foundation/tokens/forja_motion_theme.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
@@ -165,7 +166,7 @@ class ContinueSection extends StatelessWidget {
         GestureDetector(
           onTap: onSeeAll,
           child: Text(
-            'See all',
+            ForjaFoundationStrings.of(context).t('See all'),
             style: TextStyle(
               color: ForjaShellColors.textSecondary,
               fontSize: seeAllFontSize,

@@ -1,5 +1,6 @@
 import 'package:forja_foundation/protocol/protocol.dart';
 import 'package:forja/shared/player/controls/episodes/catalog_episode.dart';
+import 'package:forja/shell/routing/shell_ambient_l10n.dart';
 import 'package:rust/rust.dart';
 
 /// Play args shared by kit details green Play and Sources panel.
@@ -55,9 +56,12 @@ String? playbackLoadingEpisodeSubtitle({
 }) {
   if (episode == null) return null;
   final label = (seasonLabel ?? '').trim();
-  if (label.isNotEmpty) return '$label · Episode $episode';
-  if (season != null) return 'Season $season · Episode $episode';
-  return 'Episode $episode';
+  final l10n = shellAmbientL10n;
+  if (label.isNotEmpty) {
+    return l10n.sharedPlaybackLabelEpisode(label, episode);
+  }
+  if (season != null) return l10n.sharedPlaybackSeasonEpisode(season, episode);
+  return l10n.sharedPlaybackEpisodeNumber(episode);
 }
 
 final _seasonLabelCode = RegExp(

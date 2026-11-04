@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:forja/l10n/l10n.dart';
 import 'package:forja/shared/engine/portals/models.dart';
 import 'package:forja/shared/engine/runtime/actions/category_bar/category_bar_action_host.dart';
 import 'package:forja/shared/engine/runtime/actions/schedule/live_schedule_progressive.dart';
@@ -110,7 +111,9 @@ import 'package:forja_foundation/widgets/feedback/catalog_loading_ticker.dart';
       placeholder: catalogContinueRowSkeleton(
         context: context,
         compact: compact,
-        title: title.isEmpty ? 'Continue Watching' : title,
+        title: title.isEmpty
+            ? context.l10n.engineRuntimeContinueWatching
+            : title,
         shimmer: shimmer,
       ),
       height: catalogContinueRowSkeletonHeight(
@@ -187,7 +190,10 @@ import 'package:forja_foundation/widgets/feedback/catalog_loading_ticker.dart';
       final t = (keyed['title'] ?? '').toString().trim();
       final detail = (keyed['detail'] ?? '').toString().trim();
       if (t.isNotEmpty) {
-        return (t, detail.isEmpty ? 'Fetching catalog…' : detail);
+        return (
+          t,
+          detail.isEmpty ? context.l10n.engineRuntimeFetchingCatalog : detail,
+        );
       }
     }
   }
@@ -195,7 +201,10 @@ import 'package:forja_foundation/widgets/feedback/catalog_loading_ticker.dart';
   final t = (spec['loadingTitle'] ?? '').toString().trim();
   if (t.isEmpty) return null;
   final detail = (spec['loadingDetail'] ?? '').toString().trim();
-  return (t, detail.isEmpty ? 'Fetching catalog…' : detail);
+  return (
+    t,
+    detail.isEmpty ? context.l10n.engineRuntimeFetchingCatalog : detail,
+  );
 }
 
 /// Bubbles from [PackLoadedPaint] → composition roots (`columnsHeader`).
@@ -686,12 +695,11 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
         : (scope?.selectedId(kindMenu) ?? '').trim();
     final data = <String, dynamic>{'items': <dynamic>[]};
     if (kind == PortalLiveCatalog.favoritesId || kind == 'favorites') {
-      data['emptyTitle'] = 'No favorites';
-      data['emptyDescription'] = 'Star a live channel to keep it here.';
+      data['emptyTitle'] = context.l10n.engineRuntimeNoFavorites;
+      data['emptyDescription'] = context.l10n.engineRuntimeNoFavoritesHint;
     } else if (kind == PortalLiveCatalog.watchedId || kind == 'watched') {
-      data['emptyTitle'] = 'Nothing watched yet';
-      data['emptyDescription'] =
-          'Channels you play on Live land here (last 30).';
+      data['emptyTitle'] = context.l10n.engineRuntimeNothingWatched;
+      data['emptyDescription'] = context.l10n.engineRuntimeNothingWatchedHint;
     } else {
       // Portal group — blank body, not "Choose a portal" / loading cover.
       data['emptyTitle'] = '';
@@ -1490,7 +1498,7 @@ class _PackLoadedPaintState extends State<PackLoadedPaint> {
         child: Text(
           userFacingCatalogError(
             env.error,
-            fallback: 'Could not load this section.',
+            fallback: context.l10n.engineRuntimeSectionLoadFailed,
           ),
           textAlign: TextAlign.center,
           style: const TextStyle(color: ForjaShellColors.textSecondary),

@@ -25,6 +25,7 @@ import 'package:forja_foundation/widgets/feedback/card_play_overlay.dart';
 import 'package:forja_foundation/widgets/focus/list_letter_jump_scope.dart';
 import 'package:forja_foundation/widgets/guide/guide_chrome_style.dart';
 import 'package:forja_foundation/widgets/guide/guide_epg_programme.dart';
+import 'package:forja_foundation/l10n/foundation_strings.dart';
 
 /// Props map from a pack list `items[]` entry (`paint.props` or flat).
 ///
@@ -124,7 +125,7 @@ class CatalogCardsGrid extends StatelessWidget {
     required this.items,
     this.onItemTap,
     this.onItemLongPress,
-    this.emptyTitle = 'Nothing here',
+    this.emptyTitle,
     this.emptyDescription,
     this.emptyAction,
     this.cardKind = 'poster',
@@ -163,7 +164,7 @@ class CatalogCardsGrid extends StatelessWidget {
 
   /// Desktop secondary-click / touch long-press / TV hold (~2s) on posters.
   final void Function(Map<String, dynamic> item)? onItemLongPress;
-  final String emptyTitle;
+  final String? emptyTitle;
   final String? emptyDescription;
 
   /// Optional CTA under the empty copy (e.g. Open portal).
@@ -279,7 +280,7 @@ class CatalogCardsGrid extends StatelessWidget {
   Widget build(BuildContext context) {
     if (items.isEmpty) {
       return Empty(
-        title: emptyTitle,
+        title: emptyTitle ?? ForjaFoundationStrings.of(context).nothingHere,
         description: emptyDescription,
         icon: Icons.inbox_outlined,
         action: emptyAction,
@@ -337,7 +338,7 @@ class CatalogCardsGrid extends StatelessWidget {
     return CatalogEpgGuide(
       channels: channels,
       highlightChannelId: selectedItemId,
-      emptyTitle: emptyTitle,
+      emptyTitle: emptyTitle ?? ForjaFoundationStrings.of(context).nothingHere,
       loadProgrammes: loadEpgProgrammes == null
           ? null
           : (ch) {
@@ -1583,7 +1584,10 @@ class CatalogSideRail extends StatelessWidget {
     if (items.isEmpty) {
       return SizedBox(
         width: railW,
-        child: const Empty(title: 'No categories', size: EmptySize.sm),
+        child: Empty(
+          title: ForjaFoundationStrings.of(context).noCategories,
+          size: EmptySize.sm,
+        ),
       );
     }
     return ColoredBox(

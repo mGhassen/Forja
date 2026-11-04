@@ -7,6 +7,7 @@ import 'dart:async';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:forja/l10n/l10n.dart';
 import 'package:forja/shared/engine/runtime/open/catalog_open.dart';
 import 'package:forja/shared/engine/runtime/nav/chrome_filters.dart';
 import 'package:forja/shared/engine/runtime/open/meta_movie.dart';
@@ -282,9 +283,9 @@ class KitSearchFilterLens extends StatelessWidget {
       filters: filters,
       onFiltersChanged: onFiltersChanged,
       onSubmit: onSubmit,
-      allLabel: 'All',
-      movieLabel: 'Films',
-      seriesLabel: 'Series',
+      allLabel: context.l10n.addonsPackSelectAll,
+      movieLabel: context.l10n.engineRuntimeFilms,
+      seriesLabel: context.l10n.engineRuntimeSeries,
       firstFocusNode: firstFocusNode,
       onUpFromFirst: onUpFromFirst,
       tvLeanback: _searchFilterTvLeanback(context),
@@ -854,7 +855,7 @@ class _KitSearchPageState extends State<KitSearchPage> {
       setState(() {
         _isSearching = false;
         _canLoadMore = false;
-        _error = 'Search failed';
+        _error = context.l10n.engineRuntimeSearchFailed;
       });
     }
   }
@@ -1308,7 +1309,7 @@ class _KitSearchPageState extends State<KitSearchPage> {
             color: (_filtersOpen || _filters.isActive)
                 ? ForjaShellColors.textPrimary
                 : ForjaShellColors.textSecondary,
-            tooltip: 'Filters',
+            tooltip: context.l10n.engineRuntimeFilters,
             onKeyEvent: _searchFilterTuneKeyEvent,
             onPressed: _toggleFiltersOpen,
           ),
@@ -1543,7 +1544,7 @@ class _KitSearchPageState extends State<KitSearchPage> {
           color: (_filtersOpen || _filters.isActive)
               ? ForjaShellColors.textPrimary
               : ForjaShellColors.textSecondary,
-          tooltip: 'Filters',
+          tooltip: context.l10n.engineRuntimeFilters,
           onKeyEvent: _searchFilterTuneKeyEvent,
           onPressed: _toggleFiltersOpen,
         ),
@@ -1801,11 +1802,11 @@ class _KitSearchPageState extends State<KitSearchPage> {
   }
 
   String _submitSearchHint() {
-    if (_filtersOpen) return 'Set filters, then tap Search';
+    if (_filtersOpen) return context.l10n.engineRuntimeSearchHintFilters;
     if (ShellScope.inputPolicyOf(context).leanbackOnly) {
-      return 'Press OK to search';
+      return context.l10n.engineRuntimeSearchHintOk;
     }
-    return 'Press Enter to search';
+    return context.l10n.engineRuntimeSearchHintEnter;
   }
 
   Widget _buildResultsColumn(BuildContext context) {
@@ -1830,7 +1831,7 @@ class _KitSearchPageState extends State<KitSearchPage> {
     if (_results.isEmpty) {
       return Align(
         alignment: Alignment.topLeft,
-        child: _buildEmpty(hint: 'No results found'),
+        child: _buildEmpty(hint: context.l10n.engineRuntimeNoResults),
       );
     }
 
@@ -1942,7 +1943,7 @@ class _KitSearchPageState extends State<KitSearchPage> {
       );
     }
     if (_results.isEmpty) {
-      return _buildEmpty(hint: 'No results found');
+      return _buildEmpty(hint: context.l10n.engineRuntimeNoResults);
     }
 
     final dens = CatalogSearchDensity.maybeOf(context);
@@ -2013,8 +2014,8 @@ class _KitSearchPageState extends State<KitSearchPage> {
           Text(
             hint ??
                 (_activeSearchQuery.trim().isEmpty
-                    ? 'Search for your favorite content'
-                    : 'No results found'),
+                    ? context.l10n.engineRuntimeSearchPrompt
+                    : context.l10n.engineRuntimeNoResults),
             style: const TextStyle(color: Colors.white38),
           ),
         ],
@@ -2050,7 +2051,7 @@ class KitSearchScreen extends StatefulWidget {
     super.key,
     required this.pluginId,
     required this.tabId,
-    this.hintText = 'Search…',
+    this.hintText,
     this.structuredSearch = false,
     this.applyChromeFilters = false,
     this.searchHelpers = false,
@@ -2058,7 +2059,7 @@ class KitSearchScreen extends StatefulWidget {
 
   final String pluginId;
   final String tabId;
-  final String hintText;
+  final String? hintText;
   final bool structuredSearch;
   final bool applyChromeFilters;
 
@@ -2280,7 +2281,7 @@ class _KitSearchScreenState extends State<KitSearchScreen> {
   Widget build(BuildContext context) {
     return PlayerSurfaceChromeStub(
       builder: (context) => CatalogSearchScreen(
-        hintText: widget.hintText,
+        hintText: widget.hintText ?? context.l10n.engineRuntimeSearchHint,
         structuredSearch: widget.structuredSearch,
         onSearch: _packSearch,
         loadRecommendations: _packRecommendations,

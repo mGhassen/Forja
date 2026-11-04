@@ -438,6 +438,7 @@ mixin _PtPlayerUi on ConsumerState<PtPlayerScreen> {
   }
 
   Future<void> _loadOnlineSubtitle(Map<String, dynamic> s) async {
+    final l10n = context.l10n;
     final url = (s['url'] ?? '').toString();
     if (url.isEmpty) return;
     if (_s._exoBackend) {
@@ -479,7 +480,7 @@ mixin _PtPlayerUi on ConsumerState<PtPlayerScreen> {
       } catch (_) {
         if (mounted) {
           setState(() => _s._selectedExternalSubUrl = null);
-          ForjaToast.warning('Subtitle failed');
+          ForjaToast.warning(l10n.playerLiveSubtitleFailed);
         }
       }
       return;
@@ -504,7 +505,7 @@ mixin _PtPlayerUi on ConsumerState<PtPlayerScreen> {
       if (!mounted) return;
       if (res.statusCode != 200) {
         setState(() => _s._selectedExternalSubUrl = null);
-        ForjaToast.warning('Subtitle failed');
+        ForjaToast.warning(l10n.playerLiveSubtitleFailed);
         return;
       }
       final dir = await getTemporaryDirectory();
@@ -523,7 +524,7 @@ mixin _PtPlayerUi on ConsumerState<PtPlayerScreen> {
       debugPrint('[IPTV Player] subtitle download failed: $e');
       if (!mounted) return;
       setState(() => _s._selectedExternalSubUrl = null);
-      ForjaToast.warning('Subtitle failed');
+      ForjaToast.warning(l10n.playerLiveSubtitleFailed);
     }
   }
 
@@ -531,6 +532,7 @@ mixin _PtPlayerUi on ConsumerState<PtPlayerScreen> {
     Map<String, dynamic> s,
     String url,
   ) async {
+    final l10n = context.l10n;
     final id = _s._exoViewId;
     if (id == null) return;
     final lang = (s['language'] ?? s['lang'] ?? 'und').toString();
@@ -564,7 +566,7 @@ mixin _PtPlayerUi on ConsumerState<PtPlayerScreen> {
               .timeout(Duration(minutes: isTranslated ? 5 : 1));
           if (!mounted) return;
           if (res.statusCode != 200) {
-            ForjaToast.warning('Subtitle failed');
+            ForjaToast.warning(l10n.playerLiveSubtitleFailed);
             return;
           }
           final dir = await getTemporaryDirectory();
@@ -591,7 +593,7 @@ mixin _PtPlayerUi on ConsumerState<PtPlayerScreen> {
       setState(() => _s._selectedExternalSubUrl = url);
     } catch (e) {
       debugPrint('[IPTV Player] Exo subtitle load failed: $e');
-      if (mounted) ForjaToast.warning('Subtitle failed');
+      if (mounted) ForjaToast.warning(l10n.playerLiveSubtitleFailed);
     }
   }
 
@@ -628,7 +630,7 @@ mixin _PtPlayerUi on ConsumerState<PtPlayerScreen> {
           AlertDialog(
             backgroundColor: const Color(0xFF141414),
             title: Text(
-              'Search subtitles',
+              ctx.l10n.playerLiveSearchSubtitles,
               style: TextStyle(color: Colors.white, fontSize: titleSize),
             ),
             content: SizedBox(
@@ -641,7 +643,7 @@ mixin _PtPlayerUi on ConsumerState<PtPlayerScreen> {
                     autofocus: true,
                     style: fieldStyle,
                     decoration: InputDecoration(
-                      labelText: 'Film or series name',
+                      labelText: ctx.l10n.playerLiveFilmOrSeriesName,
                       labelStyle: labelStyle,
                       floatingLabelStyle: labelStyle,
                       enabledBorder: const UnderlineInputBorder(
@@ -656,7 +658,7 @@ mixin _PtPlayerUi on ConsumerState<PtPlayerScreen> {
                     style: fieldStyle,
                     keyboardType: TextInputType.number,
                     decoration: InputDecoration(
-                      labelText: 'Year (optional)',
+                      labelText: ctx.l10n.playerLiveYearOptional,
                       labelStyle: labelStyle,
                       floatingLabelStyle: labelStyle,
                       enabledBorder: const UnderlineInputBorder(
@@ -673,7 +675,7 @@ mixin _PtPlayerUi on ConsumerState<PtPlayerScreen> {
                           style: fieldStyle,
                           keyboardType: TextInputType.number,
                           decoration: InputDecoration(
-                            labelText: 'Season',
+                            labelText: ctx.l10n.playerLiveSeasonLabel,
                             labelStyle: labelStyle,
                             floatingLabelStyle: labelStyle,
                             enabledBorder: const UnderlineInputBorder(
@@ -689,7 +691,7 @@ mixin _PtPlayerUi on ConsumerState<PtPlayerScreen> {
                           style: fieldStyle,
                           keyboardType: TextInputType.number,
                           decoration: InputDecoration(
-                            labelText: 'Episode',
+                            labelText: ctx.l10n.playerLiveEpisodeLabel,
                             labelStyle: labelStyle,
                             floatingLabelStyle: labelStyle,
                             enabledBorder: const UnderlineInputBorder(
@@ -706,16 +708,16 @@ mixin _PtPlayerUi on ConsumerState<PtPlayerScreen> {
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(ctx, false),
-                child: const Text(
-                  'Cancel',
-                  style: TextStyle(color: Colors.white54),
+                child: Text(
+                  ctx.l10n.settingsUiCancel,
+                  style: const TextStyle(color: Colors.white54),
                 ),
               ),
               TextButton(
                 onPressed: () => Navigator.pop(ctx, true),
-                child: const Text(
-                  'Search',
-                  style: TextStyle(color: Colors.white),
+                child: Text(
+                  ctx.l10n.playerSourceSearchHint,
+                  style: const TextStyle(color: Colors.white),
                 ),
               ),
             ],
@@ -1170,7 +1172,7 @@ mixin _PtPlayerUi on ConsumerState<PtPlayerScreen> {
             if (banner != null) ...[
               const SizedBox(height: 16),
               Text(
-                banner,
+                iptvLocalizedStatusBanner(context.l10n, banner),
                 style: TextStyle(
                   color: Colors.white70,
                   fontSize: ShellPaintScope.usesTvDensityOf(context)
@@ -1198,7 +1200,7 @@ mixin _PtPlayerUi on ConsumerState<PtPlayerScreen> {
             if (banner != null) ...[
               const SizedBox(height: 16),
               Text(
-                banner,
+                iptvLocalizedStatusBanner(context.l10n, banner),
                 style: TextStyle(
                   color: Colors.white70,
                   fontSize: ShellPaintScope.usesTvDensityOf(context)
@@ -1656,7 +1658,10 @@ mixin _PtPlayerUi on ConsumerState<PtPlayerScreen> {
               ),
               SizedBox(width: ShellTokens.chromeScale(12, tv: tv)),
               Text(
-                _s._statusBanner ?? 'Buffering…',
+                iptvLocalizedStatusBanner(
+                  context.l10n,
+                  _s._statusBanner ?? 'Buffering…',
+                ),
                 style: GoogleFonts.plusJakartaSans(
                   color: Colors.white,
                   fontSize: tv ? ShellTokens.playerChromeStatusFontSizeTv : 14,
@@ -1737,6 +1742,7 @@ mixin _PtPlayerUi on ConsumerState<PtPlayerScreen> {
   Future<void> _showPlayerMenu(BuildContext anchorContext) async {
     _scheduleHideControls();
     if (!anchorContext.mounted) return;
+    final l10n = context.l10n;
     PlayerAppMenu.show(
       context,
       anchorContext: anchorContext,
@@ -1769,7 +1775,9 @@ mixin _PtPlayerUi on ConsumerState<PtPlayerScreen> {
         );
         if (!mounted) return;
         if (!ok) {
-          ForjaToast.warning('$externalPlayer not found.');
+          ForjaToast.warning(
+            l10n.playerLiveExternalPlayerNotFound(externalPlayer),
+          );
           _s._userPlayWhenReady = true;
           await _s._enginePlay();
         }
@@ -1948,7 +1956,7 @@ mixin _PtPlayerUi on ConsumerState<PtPlayerScreen> {
             const SizedBox(width: 4),
             _topBarFlatAction(
               icon: Icons.smart_display_outlined,
-              tooltip: 'Player',
+              tooltip: context.l10n.playerTrailerPlayerMenuTitle,
               tvFocusOrder: playerOrder,
               focusNode: _s._playerMenuFocus,
               onPressedWithContext: (ctx) => unawaited(_showPlayerMenu(ctx)),
@@ -1958,7 +1966,7 @@ mixin _PtPlayerUi on ConsumerState<PtPlayerScreen> {
             ),
             _topBarFlatAction(
               icon: Icons.monitor_heart_outlined,
-              tooltip: 'Stream stats',
+              tooltip: context.l10n.playerLiveStreamStats,
               tvFocusOrder: statsOrder,
               focusNode: _s._statsFocus,
               onPressedWithContext: _showStatsMenu,
@@ -1968,7 +1976,7 @@ mixin _PtPlayerUi on ConsumerState<PtPlayerScreen> {
             if (showInAppMini)
               _topBarFlatAction(
                 icon: Icons.branding_watermark_outlined,
-                tooltip: 'In-app mini player',
+                tooltip: context.l10n.playerLiveInAppMiniPlayer,
                 tvFocusOrder: miniOrder,
                 onPressed: () =>
                     unawaited(InAppMiniPlayerController.instance.enter()),
@@ -1979,7 +1987,7 @@ mixin _PtPlayerUi on ConsumerState<PtPlayerScreen> {
                 icon: PipService.instance.isDesktopActive
                     ? Icons.picture_in_picture_alt_rounded
                     : Icons.picture_in_picture_rounded,
-                tooltip: 'Picture in Picture',
+                tooltip: context.l10n.playerLivePictureInPicture,
                 tvFocusOrder: pipOrder,
                 onPressed: () => unawaited(_togglePip()),
                 onDownEdge: downFromTop,
@@ -2140,7 +2148,7 @@ mixin _PtPlayerUi on ConsumerState<PtPlayerScreen> {
             ),
             SizedBox(width: ShellTokens.chromeScale(8, tv: tv)),
             Text(
-              'LIVE',
+              context.l10n.playerLiveBadge,
               style: GoogleFonts.plusJakartaSans(
                 color: Colors.white,
                 fontSize: fontSize,
@@ -2201,7 +2209,10 @@ mixin _PtPlayerUi on ConsumerState<PtPlayerScreen> {
             SizedBox(
               width: ShellTokens.chromeScale(compact ? 84 : 100, tv: tv),
               child: future == null
-                  ? _liveProgressTimeLabel('LIVE', compact)
+                  ? _liveProgressTimeLabel(
+                      context.l10n.playerLiveBadge,
+                      compact,
+                    )
                   : FutureBuilder<List<EpgEntry>>(
                       future: future,
                       builder: (context, snap) {
@@ -2214,7 +2225,10 @@ mixin _PtPlayerUi on ConsumerState<PtPlayerScreen> {
                           );
                         }
                         if (nowEntry == null || !nowEntry.isNow) {
-                          return _liveProgressTimeLabel('LIVE', compact);
+                          return _liveProgressTimeLabel(
+                            context.l10n.playerLiveBadge,
+                            compact,
+                          );
                         }
                         final elapsed = DateTime.now().difference(
                           nowEntry.start,
@@ -2911,7 +2925,7 @@ mixin _PtPlayerUi on ConsumerState<PtPlayerScreen> {
         PlayerKitEpisode(
           number: _hubEpisodeKey(e),
           title: e.title.trim().isEmpty
-              ? 'Episode ${e.episode}'
+              ? context.l10n.playerLiveEpisodeFallback(e.episode)
               : e.title.trim(),
           overview: e.plot.trim().isEmpty ? null : e.plot.trim(),
           thumbnailUrl: e.image.trim().isEmpty ? null : e.image.trim(),
@@ -2943,19 +2957,20 @@ mixin _PtPlayerUi on ConsumerState<PtPlayerScreen> {
     PortalEpisode episode,
     Portal portal,
   ) async {
+    final l10n = context.l10n;
     final url = await PortalClient.resolveEpisodeUrl(portal, episode);
     if (!mounted || url == null || url.isEmpty) return;
     final show = (_s.widget.seriesShowTitle ?? _s._subQueryTitle).trim();
     final epTitle = episode.title.trim().isEmpty
-        ? 'Episode ${episode.episode}'
+        ? l10n.playerLiveEpisodeFallback(episode.episode)
         : episode.title.trim();
     setState(() {
       _s._sources = [LivePlaySource(url: url, label: _s._sources.first.label)];
       _s._sourceIdx = 0;
-      _s._title = 'Ep ${episode.episode} · $epTitle';
+      _s._title = l10n.playerSourceVodEpisodeTitle(episode.episode, epTitle);
       _s._subtitle = show.isEmpty
-          ? 'Season ${episode.season}'
-          : '$show · Season ${episode.season}';
+          ? l10n.playerLiveSeasonTitle(episode.season)
+          : l10n.playerLiveShowSeasonTitle(show, episode.season);
       _s._logoUrl = episode.image.trim().isNotEmpty
           ? episode.image
           : _s._logoUrl;
@@ -3067,7 +3082,7 @@ mixin _PtPlayerUi on ConsumerState<PtPlayerScreen> {
     final sportsProbe = iptvUseLiveSportsSourcePicker(_s.widget);
     PlayerPopupPanel.show(
       context: context,
-      title: 'Source',
+      title: context.l10n.playerLiveSourceTitle,
       leadingIcon: Icons.swap_horiz_rounded,
       anchorContext: anchorContext,
       alignment: Alignment.bottomRight,

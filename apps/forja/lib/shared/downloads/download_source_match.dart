@@ -214,13 +214,13 @@ Future<OfflineLocalPlay?> offlineLocalPlayForTask({
   if (task == null || !task.isCompleted) return null;
   final path = task.targetFilePath.trim();
   if (path.isEmpty) {
-    return const OfflineLocalPlay._(error: kOfflineDownloadMissingMessage);
+    return OfflineLocalPlay._(error: kOfflineDownloadMissingMessage);
   }
   final file = File(
     path.startsWith('file://') ? Uri.parse(path).toFilePath() : path,
   );
   if (!await file.exists()) {
-    return const OfflineLocalPlay._(error: kOfflineDownloadMissingMessage);
+    return OfflineLocalPlay._(error: kOfflineDownloadMissingMessage);
   }
   final blocked = await offlineFilePlayError(file);
   if (blocked != null) {
@@ -278,7 +278,7 @@ Map<String, dynamic>? offlinePinnedStream(DownloadTask task) {
     '_addonName': name,
     '_downloadTaskId': task.id,
     kOfflinePinnedStreamKey: true,
-    if (task.totalBytes > 0) 'size': DownloadTask.formatBytes(task.totalBytes),
+    if (task.totalBytes > 0) 'size': DownloadTask.formatBytes(task.totalBytes, localized: false),
   };
 }
 

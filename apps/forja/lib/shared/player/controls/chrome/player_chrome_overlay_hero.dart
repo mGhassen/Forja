@@ -82,10 +82,10 @@ class PlayerPausedHero extends StatelessWidget {
   final String? episodeLine;
   final String? episodeOverview;
 
-  String? get _episodeLine {
+  String? _episodeLineFor(AppLocalizations l10n) {
     if (episodeLine != null && episodeLine!.isNotEmpty) return episodeLine;
     if (episode == null) return null;
-    if (season == null) return 'Episode $episode';
+    if (season == null) return l10n.playerControlEpisodeNumber(episode!);
     return 'S$season E$episode';
   }
 
@@ -96,9 +96,12 @@ class PlayerPausedHero extends StatelessWidget {
         : movie.overview;
     // Hub callers sometimes pass "Episode N" as overview — same string as
     // [_episodeLine] — which stacked two identical lines under the title.
-    final episode = _episodeLine;
+    final episode = _episodeLineFor(context.l10n);
+    final rawKey = rawOverview.trim().toLowerCase();
+    // Hubs write the English "Episode N", so match that as well as the localized line.
     final overview = (episode != null &&
-            rawOverview.trim().toLowerCase() == episode.trim().toLowerCase())
+            (rawKey == episode.trim().toLowerCase() ||
+                rawKey == 'episode ${this.episode}'))
         ? ''
         : rawOverview;
     final tv = ShellScope.metricsOf(context).usesTvDensity;
@@ -496,7 +499,9 @@ class _PlayerVolumeControlState extends State<PlayerVolumeControl> {
                   onLongPress: _toggleSliderPinned,
                   child: PlayerFlatIconButton(
                     icon: _iconFor(widget.volume),
-                    tooltip: widget.volume > 0 ? 'Mute' : 'Unmute',
+                    tooltip: widget.volume > 0
+                        ? context.l10n.playerControlMute
+                        : context.l10n.playerControlUnmute,
                     size: widget.size,
                     iconSize: widget.iconSize,
                     tvFocusable: widget.tvFocusable,

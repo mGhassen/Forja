@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'package:forja/l10n/l10n.dart';
 import 'package:forja/shared/engine/models/models.dart';
 import 'package:forja/shared/engine/packs/install/plugin_install_coordinator.dart';
 import 'package:forja/shell/tv/tv_focus_graph.dart';
@@ -110,6 +111,7 @@ class _PluginPackUpdateBodyState extends State<_PluginPackUpdateBody> {
 
   Future<void> _submit() async {
     if (_busy || widget.updates.isEmpty) return;
+    final l10n = context.l10n;
     setState(() => _busy = true);
     try {
       final ok = await PluginInstallCoordinator.instance.updatePacks(
@@ -117,9 +119,7 @@ class _PluginPackUpdateBodyState extends State<_PluginPackUpdateBody> {
       );
       if (!mounted) return;
       if (ok > 0) {
-        ForjaToast.success(
-          ok == 1 ? '1 plugin pack updated' : '$ok plugin packs updated',
-        );
+        ForjaToast.success(l10n.enginePacksUpdatedToast(ok));
       }
       widget.onDone();
     } finally {
@@ -130,9 +130,8 @@ class _PluginPackUpdateBodyState extends State<_PluginPackUpdateBody> {
   @override
   Widget build(BuildContext context) {
     final count = widget.updates.length;
-    final title = count == 1
-        ? 'Update plugin pack?'
-        : 'Update $count plugin packs?';
+    final l10n = context.l10n;
+    final title = l10n.enginePacksUpdateTitle(count);
     // Density only — desktop hybrid also has focusable mood chips; do not
     // treat that as TV sizing.
     final tv = ShellPaintScope.usesTvDensityOf(context);
@@ -172,9 +171,7 @@ class _PluginPackUpdateBodyState extends State<_PluginPackUpdateBody> {
               ),
               SizedBox(height: tv ? 6 : 10),
               Text(
-                count == 1
-                    ? 'Download and install the newer version of this pack.'
-                    : 'Download and install newer versions of these packs.',
+                l10n.enginePacksUpdateBody(count),
                 style: TextStyle(
                   color: ForjaShellColors.textSecondary,
                   fontSize: tv ? ShellTokens.tvBodyFontSize : null,
@@ -236,8 +233,11 @@ class _PluginPackUpdateBodyState extends State<_PluginPackUpdateBody> {
               SizedBox(height: tv ? 14 : 24),
               Button(
                 variant: ButtonVariant.primary,
-                label:
-                    _busy ? 'Updating…' : (count == 1 ? 'Update' : 'Update all'),
+                label: _busy
+                    ? l10n.packsUpdateUpdating
+                    : (count == 1
+                        ? l10n.enginePacksUpdateButton
+                        : l10n.packsUpdateAll),
                 expand: true,
                 autofocus: tv,
                 focusNode: _confirmFocus,
@@ -247,7 +247,7 @@ class _PluginPackUpdateBodyState extends State<_PluginPackUpdateBody> {
               Center(
                 child: Button(
                   variant: ButtonVariant.ghost,
-                  label: 'Cancel',
+                  label: l10n.settingsUiCancel,
                   focusNode: _cancelFocus,
                   onPressed: _busy ? null : widget.onCancel,
                 ),

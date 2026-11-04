@@ -6,7 +6,10 @@ class TmdbApi {
   static const String _imageBaseUrl = 'https://tmdb.forjahq.xyz/t/p/w500';
 
   static Future<dynamic> _fetch(String resourcePath, {int timeoutSecs = 15}) async {
-    final raw = await runTmdbGetJson(resourcePath, timeoutSecs: timeoutSecs);
+    final raw = await runTmdbGetJson(
+      TmdbLanguage.applyTo(resourcePath),
+      timeoutSecs: timeoutSecs,
+    );
     final decoded = jsonDecode(raw);
     if (decoded is Map<String, dynamic> && decoded['error'] != null) {
       throw Exception(decoded['error']);
@@ -147,19 +150,24 @@ class TmdbApi {
     }
   }
 
-  /// Fetch the English clear logo for a movie or TV show.
-  /// Returns the logo file_path or empty string if none found.
+  /// Fetch the clear logo for a movie or TV show: in the app language when TMDB
+  /// has one, else English. Returns the logo file_path or empty string if none found.
   Future<String> getLogoPath(int id, {String mediaType = 'movie'}) async {
     try {
       final type = mediaType == 'tv' ? 'tv' : 'movie';
-      final decoded = await _fetchMap('$type/$id/images?include_image_language=en,null');
+      final decoded = await _fetchMap(
+        '$type/$id/images?include_image_language=${TmdbLanguage.imageLanguages}',
+      );
       final logos = decoded['logos'] as List? ?? [];
       if (logos.isEmpty) return '';
-      final enLogo = logos.firstWhere(
-        (e) => e['iso_639_1'] == 'en',
-        orElse: () => logos.first,
+      final logo = logos.firstWhere(
+        (e) => e['iso_639_1'] == TmdbLanguage.code,
+        orElse: () => logos.firstWhere(
+          (e) => e['iso_639_1'] == 'en',
+          orElse: () => logos.first,
+        ),
       );
-      return enLogo['file_path'] as String? ?? '';
+      return logo['file_path'] as String? ?? '';
     } catch (_) {}
     return '';
   }

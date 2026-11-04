@@ -6,6 +6,7 @@ import 'package:flutter/material.dart' hide Checkbox;
 import 'package:flutter/services.dart';
 import 'package:forja_foundation/components/button.dart';
 import 'package:forja_foundation/components/checkbox.dart';
+import 'package:forja/l10n/l10n.dart';
 import 'package:forja/shared/engine/store/list_follow.dart';
 import 'package:forja/shared/engine/store/list_open_bind_chrome.dart';
 import 'package:forja/shared/engine/store/list_open_binding.dart';
@@ -373,7 +374,7 @@ class _ListOpenBindSheetState extends State<_ListOpenBindSheet> {
     }
     if (!hub.hasSearch) {
       setState(() {
-        _error = '${hub.label} has no search';
+        _error = context.l10n.engineStoreNoSearch(hub.label);
         _hits = const [];
       });
       return;
@@ -394,7 +395,7 @@ class _ListOpenBindSheetState extends State<_ListOpenBindSheet> {
         _fitHitFocus(0);
         _hits = const [];
         _searching = false;
-        _error = 'Type a title to search';
+        _error = context.l10n.engineStoreTypeToSearch;
       });
       return;
     }
@@ -414,7 +415,9 @@ class _ListOpenBindSheetState extends State<_ListOpenBindSheet> {
       _searching = false;
       _fitHitFocus(hits.length);
       _hits = hits;
-      _error = hits.isEmpty ? 'No matches in ${hub.label}' : null;
+      _error = hits.isEmpty
+          ? context.l10n.engineStoreNoMatches(hub.label)
+          : null;
     });
   }
 
@@ -552,7 +555,7 @@ class _ListOpenBindSheetState extends State<_ListOpenBindSheet> {
                     color: ForjaShellColors.iconMuted,
                     iconSize: px(18),
                     height: px(32),
-                    tooltip: 'Close',
+                    tooltip: context.l10n.settingsUiClose,
                     onPressed: () => Navigator.of(context).pop(),
                   ),
                 ],
@@ -569,7 +572,7 @@ class _ListOpenBindSheetState extends State<_ListOpenBindSheet> {
                       children: [
                         Text(
                           _headerMeta.name.trim().isEmpty
-                              ? 'Untitled'
+                              ? context.l10n.engineStoreUntitled
                               : _headerMeta.name.trim(),
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
@@ -644,7 +647,7 @@ class _ListOpenBindSheetState extends State<_ListOpenBindSheet> {
               if (!_trackerMode) ...[
                 SizedBox(height: px(14)),
                 Text(
-                  'Hub',
+                  context.l10n.engineStoreHubLabel,
                   style: TextStyle(
                     color: ForjaShellColors.textSecondary,
                     fontSize: type(11),
@@ -689,7 +692,9 @@ class _ListOpenBindSheetState extends State<_ListOpenBindSheet> {
               ] else ...[
                 SizedBox(height: px(14)),
                 Text(
-                  'Search ${widget.trackerSearchCandidate!.label}',
+                  context.l10n.engineStoreSearchHub(
+                    widget.trackerSearchCandidate!.label,
+                  ),
                   style: TextStyle(
                     color: ForjaShellColors.textSecondary,
                     fontSize: type(11),
@@ -851,7 +856,9 @@ class _FilmCheckRow extends StatelessWidget {
     final year = meta.releaseInfo.trim().isNotEmpty
         ? meta.releaseInfo.trim()
         : meta.premiereDate.trim();
-    final name = meta.name.trim().isEmpty ? 'Untitled' : meta.name.trim();
+    final name = meta.name.trim().isEmpty
+        ? context.l10n.engineStoreUntitled
+        : meta.name.trim();
     final row = Padding(
       padding: EdgeInsets.symmetric(vertical: px(8), horizontal: px(6)),
       child: Row(
@@ -962,7 +969,7 @@ class _CompatibleOpenBody extends StatelessWidget {
           SizedBox(width: px(10)),
           Expanded(
             child: Text(
-              'Open in $hubLabel',
+              context.l10n.engineStoreOpenInHub(hubLabel),
               style: GoogleFonts.plusJakartaSans(
                 color: ForjaShellColors.textPrimary,
                 fontSize: type,
@@ -1038,7 +1045,7 @@ class _SearchField extends StatelessWidget {
       fontSize: fontSize,
     );
     final decoration = InputDecoration(
-      hintText: 'Search title',
+      hintText: context.l10n.engineStoreSearchTitle,
       hintStyle: TextStyle(
         color: ForjaShellColors.textSecondary,
         fontSize: tv
@@ -1090,7 +1097,7 @@ class _SearchField extends StatelessWidget {
         onKeyEvent: onKeyEvent,
         decoration: decoration,
         style: style,
-        browsePlaceholder: 'Search title — OK to type',
+        browsePlaceholder: context.l10n.engineStoreSearchTitleTv,
         caretHeight: fontSize,
       );
     }
@@ -1204,7 +1211,7 @@ class _HitsBody extends StatelessWidget {
                     Padding(
                       padding: EdgeInsets.only(bottom: px(2)),
                       child: Text(
-                        'Best match',
+                        context.l10n.engineStoreBestMatch,
                         style: TextStyle(
                           color: ForjaShellColors.brandGreen,
                           fontSize: type(10),
@@ -1410,6 +1417,7 @@ class _BindSheetActionPillsState extends State<_BindSheetActionPills> {
   Future<void> _setPinStatus(String to) async {
     final target = widget.listPinTarget;
     if (target == null || _pinBusy) return;
+    final l10n = context.l10n;
     setState(() => _pinBusy = true);
     _pinMenu?.markNeedsBuild();
     ProviderContainer? container;
@@ -1423,11 +1431,11 @@ class _BindSheetActionPillsState extends State<_BindSheetActionPills> {
     if (to.isEmpty) {
       if (ok) {
         ForjaToast.success(
-          'Removed from My List',
+          l10n.engineStoreRemovedFromList,
           duration: const Duration(seconds: 1),
         );
       } else {
-        ForjaToast.error('Removed locally · Simkl failed');
+        ForjaToast.error(l10n.engineStoreRemovedLocalFailed);
       }
       return;
     }
@@ -1435,7 +1443,7 @@ class _BindSheetActionPillsState extends State<_BindSheetActionPills> {
     if (ok) {
       ForjaToast.success(label, duration: const Duration(seconds: 1));
     } else {
-      ForjaToast.error('Saved locally · Simkl failed');
+      ForjaToast.error(l10n.engineStoreSavedLocalFailed);
     }
   }
 

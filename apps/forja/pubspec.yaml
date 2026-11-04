@@ -9,6 +9,9 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+  intl: any
   http: ^1.6.0
   cached_network_image: ^3.4.1
   flutter_cache_manager: ^3.4.1
@@ -128,6 +131,7 @@ flutter_native_splash:
 
 flutter:
   uses-material-design: true
+  generate: true
   shaders:
     - shaders/fractal_glass.frag
   assets:

@@ -55,7 +55,7 @@ mixin _DesktopPlayerTracks
       if (showFailureToast) {
         _s._statusController.upsert(
           'subtitle',
-          'Subtitle failed',
+          context.l10n.playerScreenSubtitleFailed,
           kind: StatusRouletteKind.failed,
           dismissAfter: const Duration(seconds: 2),
         );

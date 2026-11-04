@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:forja/l10n/l10n.dart';
 import 'package:forja/shared/downloads/download_page_store.dart';
 import 'package:forja/shared/downloads/download_play.dart';
 import 'package:forja/shared/downloads/download_service.dart';
@@ -1030,7 +1031,7 @@ class _PackDetailsHostState extends ConsumerState<PackDetailsHost> {
             notReady ??
             userFacingCatalogError(
               env.error,
-              fallback: 'Couldn’t load details. Try again.',
+              fallback: context.l10n.engineDetailsLoadFailed,
             );
       });
       return;
@@ -1222,7 +1223,7 @@ class _PackDetailsHostState extends ConsumerState<PackDetailsHost> {
       mediaId,
     );
     if (task == null) {
-      ForjaToast.info('No saved file');
+      ForjaToast.info(context.l10n.engineDetailsNoSavedFile);
       return;
     }
     if (!mounted) return;
@@ -1476,13 +1477,14 @@ class _PackDetailsHostState extends ConsumerState<PackDetailsHost> {
 
     final canResume = _canResumeSelected;
     final progress = _watchProgress;
+    final l10n = context.l10n;
     final playLabel = _isMovie
-        ? (canResume ? 'Resume' : 'Play')
+        ? (canResume ? l10n.downloadsResume : l10n.engineDetailsPlay)
         : (videos.isEmpty
-              ? (canResume ? 'Resume' : 'Play')
+              ? (canResume ? l10n.downloadsResume : l10n.engineDetailsPlay)
               : (canResume
-                    ? 'Resume Ep $_selectedEpisode'
-                    : 'Play Ep $_selectedEpisode'));
+                    ? l10n.engineDetailsResumeEpisode(_selectedEpisode)
+                    : l10n.engineDetailsPlayEpisode(_selectedEpisode)));
     final heroPosMs = canResume
         ? (progress?['positionMs'] as num?)?.toInt()
         : null;
@@ -1523,7 +1525,9 @@ class _PackDetailsHostState extends ConsumerState<PackDetailsHost> {
     final castSection = hasCast && mountBelow
         ? MediaDetailsCastSection(
             cast: castMaps,
-            title: isAnime ? 'Characters' : 'Cast',
+            title: isAnime
+                ? l10n.engineDetailsCharacters
+                : l10n.engineDetailsCast,
             tvTabId: tvFocus ? MediaDetailsTv.tabId : null,
             tvRowId: tvFocus ? 'cast' : null,
             tvRowOrder: protocolOrder,
@@ -1534,7 +1538,7 @@ class _PackDetailsHostState extends ConsumerState<PackDetailsHost> {
     final crewSection = hasCrew && mountBelow
         ? MediaDetailsCastSection(
             cast: crewMaps,
-            title: 'Crew',
+            title: l10n.engineDetailsCrew,
             tvTabId: tvFocus ? MediaDetailsTv.tabId : null,
             tvRowId: tvFocus ? 'crew' : null,
             tvRowOrder: protocolOrder,
@@ -1701,8 +1705,8 @@ class _PackDetailsHostState extends ConsumerState<PackDetailsHost> {
                   slots: [
                     HeroPillIconSlot(
                       icon: Icons.delete_outline_rounded,
-                      label: 'Clear',
-                      tooltip: 'Clear progress & stream cache',
+                      label: l10n.dataClear,
+                      tooltip: l10n.engineDetailsClearTooltip,
                       onTap: () => unawaited(_clearProgress()),
                     ),
                   ],
@@ -1711,7 +1715,7 @@ class _PackDetailsHostState extends ConsumerState<PackDetailsHost> {
               if (hasTrailers) ...[
                 const SizedBox(width: 10),
                 HeroPillPlayButton(
-                  label: 'Trailer',
+                  label: l10n.engineDetailsTrailer,
                   icon: Icons.smart_display_outlined,
                   tone: HeroPillPlayTone.secondary,
                   onTap: _openBestTrailer,

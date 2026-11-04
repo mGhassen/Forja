@@ -1,6 +1,8 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:forja/l10n/l10n.dart';
+import 'package:forja/shared/utils/byte_units.dart';
 import 'package:media_kit/media_kit.dart';
 
 import 'package:forja/shared/player/controls/menus/player_popup_panel.dart';
@@ -39,7 +41,7 @@ class PlayerStatsPanel {
     }
     PlayerPopupPanel.show(
       context: context,
-      title: 'Stream stats',
+      title: context.l10n.playerLiveStreamStats,
       leadingIcon: Icons.monitor_heart_outlined,
       width: 320,
       maxHeight: 440,
@@ -142,9 +144,9 @@ class _IptvMediaKitStatsBodyState extends State<_IptvMediaKitStatsBody> {
     if (raw == '-') return raw;
     final n = double.tryParse(raw);
     if (n == null || n <= 0) return raw;
-    if (n < 1024) return '${n.round()} B';
-    if (n < 1024 * 1024) return '${(n / 1024).toStringAsFixed(1)} KB';
-    return '${(n / (1024 * 1024)).toStringAsFixed(1)} MB';
+    if (n < 1024) return ByteUnits.format(n.roundToDouble(), 0, 0);
+    if (n < 1024 * 1024) return ByteUnits.format(n / 1024, 1, 1);
+    return ByteUnits.format(n / (1024 * 1024), 2, 1);
   }
 
   /// demuxer-cache-duration in seconds — hide PTS discontinuity spikes.
@@ -183,47 +185,48 @@ class _IptvMediaKitStatsBodyState extends State<_IptvMediaKitStatsBody> {
     final h = _mpv['height'] ?? '-';
     final resolution = (w != '-' && h != '-') ? '$w×$h' : '-';
 
+    final l10n = context.l10n;
     final rows = <PlayerStatsRow>[
       PlayerStatsRow(
-        'Status',
+        l10n.playerLiveStatsStatus,
         snap.buffering
-            ? 'Buffering'
+            ? l10n.playerLiveStatsBuffering
             : snap.playing
-                ? 'Playing'
-                : 'Paused',
+                ? l10n.playerSourcePlaying
+                : l10n.playerLiveStatsPaused,
       ),
-      PlayerStatsRow('Engine', 'MediaKit'),
-      PlayerStatsRow('Source', snap.sourceLabel),
-      if (snap.retryAttempt > 0) PlayerStatsRow('Recoveries', '${snap.retryAttempt}'),
-      PlayerStatsRow('Resolution', resolution),
-      PlayerStatsRow('Video', _mpv['videoCodec'] ?? '-'),
-      PlayerStatsRow('Video bitrate', _fmtBitrate(_mpv['videoBitrate'] ?? '-')),
+      PlayerStatsRow(l10n.playerLiveStatsEngine, 'MediaKit'),
+      PlayerStatsRow(l10n.playerLiveSourceTitle, snap.sourceLabel),
+      if (snap.retryAttempt > 0) PlayerStatsRow(l10n.playerLiveStatsRecoveries, '${snap.retryAttempt}'),
+      PlayerStatsRow(l10n.playerLiveStatsResolution, resolution),
+      PlayerStatsRow(l10n.playerLiveStatsVideo, _mpv['videoCodec'] ?? '-'),
+      PlayerStatsRow(l10n.playerLiveStatsVideoBitrate, _fmtBitrate(_mpv['videoBitrate'] ?? '-')),
       PlayerStatsRow('FPS', _mpv['fps'] ?? '-'),
-      PlayerStatsRow('Display FPS', _mpv['displayFps'] ?? '-'),
-      PlayerStatsRow('Audio', _mpv['audioCodec'] ?? '-'),
+      PlayerStatsRow(l10n.playerLiveStatsDisplayFps, _mpv['displayFps'] ?? '-'),
+      PlayerStatsRow(l10n.playerSourceFilterAudio, _mpv['audioCodec'] ?? '-'),
       PlayerStatsRow(
-        'Audio track',
+        l10n.playerLiveStatsAudioTrack,
         audio.id == 'no' ? '-' : (audio.title ?? audio.language ?? audio.id),
       ),
-      PlayerStatsRow('Audio bitrate', _fmtBitrate(_mpv['audioBitrate'] ?? '-')),
+      PlayerStatsRow(l10n.playerLiveStatsAudioBitrate, _fmtBitrate(_mpv['audioBitrate'] ?? '-')),
       PlayerStatsRow(
-        'Subtitle',
+        l10n.playerLiveStatsSubtitle,
         subtitle.id == 'no'
-            ? 'Off'
+            ? l10n.playerLiveStatsOff
             : (subtitle.title ?? subtitle.language ?? subtitle.id),
       ),
-      PlayerStatsRow('Cache', _fmtCacheAhead(_mpv['cacheDuration'] ?? '-')),
-      PlayerStatsRow('Cache used', _fmtBytes(_mpv['cacheBytes'] ?? '-')),
-      if (bufferedAhead != null) PlayerStatsRow('Buffered ahead', bufferedAhead),
-      PlayerStatsRow('Volume', '${snap.volume.round()}%'),
-      PlayerStatsRow('Speed', _mpv['speed'] ?? '-'),
+      PlayerStatsRow(l10n.playerLiveStatsCache, _fmtCacheAhead(_mpv['cacheDuration'] ?? '-')),
+      PlayerStatsRow(l10n.playerLiveStatsCacheUsed, _fmtBytes(_mpv['cacheBytes'] ?? '-')),
+      if (bufferedAhead != null) PlayerStatsRow(l10n.playerLiveStatsBufferedAhead, bufferedAhead),
+      PlayerStatsRow(l10n.playerLiveStatsVolume, '${snap.volume.round()}%'),
+      PlayerStatsRow(l10n.playerLiveStatsSpeed, _mpv['speed'] ?? '-'),
       if ((_mpv['drops'] ?? '-') != '-' && _mpv['drops'] != '0')
-        PlayerStatsRow('Dropped frames', _mpv['drops']!),
+        PlayerStatsRow(l10n.playerLiveStatsDroppedFrames, _mpv['drops']!),
       if ((_mpv['decoderDrops'] ?? '-') != '-' &&
           _mpv['decoderDrops'] != '0')
-        PlayerStatsRow('Decoder drops', _mpv['decoderDrops']!),
+        PlayerStatsRow(l10n.playerLiveStatsDecoderDrops, _mpv['decoderDrops']!),
       if (video.id != 'auto' && video.id != 'no')
-        PlayerStatsRow('Video track', video.id),
+        PlayerStatsRow(l10n.playerLiveStatsVideoTrack, video.id),
     ];
 
     return PlayerStatsList(rows: rows);
@@ -332,46 +335,47 @@ class _IptvExoStatsBodyState extends State<_IptvExoStatsBody> {
       return video?.label ?? '-';
     }();
 
+    final l10n = context.l10n;
     final rows = <PlayerStatsRow>[
       PlayerStatsRow(
-        'Status',
+        l10n.playerLiveStatsStatus,
         snap.buffering
-            ? 'Buffering'
+            ? l10n.playerLiveStatsBuffering
             : snap.playing
-                ? 'Playing'
-                : 'Paused',
+                ? l10n.playerSourcePlaying
+                : l10n.playerLiveStatsPaused,
       ),
-      PlayerStatsRow('Engine', 'ExoPlayer'),
-      PlayerStatsRow('Source', snap.sourceLabel),
-      if (snap.retryAttempt > 0) PlayerStatsRow('Recoveries', '${snap.retryAttempt}'),
-      PlayerStatsRow('Resolution', resolution),
-      PlayerStatsRow('Video', videoLabel),
-      PlayerStatsRow('Video bitrate', _fmtBitrate(videoBitrate)),
+      PlayerStatsRow(l10n.playerLiveStatsEngine, 'ExoPlayer'),
+      PlayerStatsRow(l10n.playerLiveSourceTitle, snap.sourceLabel),
+      if (snap.retryAttempt > 0) PlayerStatsRow(l10n.playerLiveStatsRecoveries, '${snap.retryAttempt}'),
+      PlayerStatsRow(l10n.playerLiveStatsResolution, resolution),
+      PlayerStatsRow(l10n.playerLiveStatsVideo, videoLabel),
+      PlayerStatsRow(l10n.playerLiveStatsVideoBitrate, _fmtBitrate(videoBitrate)),
       if (pb.fps > 0) PlayerStatsRow('FPS', pb.fps.toStringAsFixed(2)),
       PlayerStatsRow(
-        'Audio',
+        l10n.playerSourceFilterAudio,
         pb.audioCodec.isNotEmpty ? pb.audioCodec : '-',
       ),
       PlayerStatsRow(
-        'Audio track',
+        l10n.playerLiveStatsAudioTrack,
         audio == null
             ? '-'
             : (audio.language.isNotEmpty
                 ? '${audio.label} (${audio.language})'
                 : audio.label),
       ),
-      PlayerStatsRow('Audio bitrate', _fmtBitrate(audioBitrate)),
+      PlayerStatsRow(l10n.playerLiveStatsAudioBitrate, _fmtBitrate(audioBitrate)),
       PlayerStatsRow(
-        'Subtitle',
+        l10n.playerLiveStatsSubtitle,
         _tracks.textOff
-            ? 'Off'
+            ? l10n.playerLiveStatsOff
             : (text?.label ?? '-'),
       ),
-      if (bufferedAhead != null) PlayerStatsRow('Buffered ahead', bufferedAhead),
-      PlayerStatsRow('Volume', '${snap.volume.round()}%'),
-      PlayerStatsRow('Speed', '${_tracks.rate.toStringAsFixed(2)}x'),
+      if (bufferedAhead != null) PlayerStatsRow(l10n.playerLiveStatsBufferedAhead, bufferedAhead),
+      PlayerStatsRow(l10n.playerLiveStatsVolume, '${snap.volume.round()}%'),
+      PlayerStatsRow(l10n.playerLiveStatsSpeed, '${_tracks.rate.toStringAsFixed(2)}x'),
       if (pb.droppedFrames > 0)
-        PlayerStatsRow('Dropped frames', '${pb.droppedFrames}'),
+        PlayerStatsRow(l10n.playerLiveStatsDroppedFrames, '${pb.droppedFrames}'),
     ];
 
     return PlayerStatsList(rows: rows);
@@ -422,15 +426,16 @@ class _IptvNativeSnapshotStatsBodyState
   @override
   Widget build(BuildContext context) {
     final snap = widget.snapshot();
+    final l10n = context.l10n;
     return PlayerStatsList(
       rows: [
-        PlayerStatsRow('Engine', widget.engineLabel),
-        PlayerStatsRow('Playing', snap.playing ? 'yes' : 'no'),
-        PlayerStatsRow('Buffering', snap.buffering ? 'yes' : 'no'),
-        PlayerStatsRow('Source', snap.sourceLabel),
-        PlayerStatsRow('Volume', '${snap.volume.round()}%'),
+        PlayerStatsRow(l10n.playerLiveStatsEngine, widget.engineLabel),
+        PlayerStatsRow(l10n.playerSourcePlaying, snap.playing ? l10n.playerLiveStatsYes : l10n.playerLiveStatsNo),
+        PlayerStatsRow(l10n.playerLiveStatsBuffering, snap.buffering ? l10n.playerLiveStatsYes : l10n.playerLiveStatsNo),
+        PlayerStatsRow(l10n.playerLiveSourceTitle, snap.sourceLabel),
+        PlayerStatsRow(l10n.playerLiveStatsVolume, '${snap.volume.round()}%'),
         if (snap.retryAttempt > 0)
-          PlayerStatsRow('Retries', '${snap.retryAttempt}'),
+          PlayerStatsRow(l10n.playerLiveStatsRetries, '${snap.retryAttempt}'),
       ],
     );
   }

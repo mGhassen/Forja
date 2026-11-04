@@ -45,7 +45,7 @@
 
 | # | ID | Description | Status |
 |--:|----|-------------|--------|
-| 1 | R37-A09 | Flutter app adopts same key names for UI locale | ⏭️ |
+| 1 | R37-A09 | Flutter app adopts same key names for UI locale — tracked in [RFC-123](123-[open]-flutter-app-localization.md) | ⏭️ |
 
 ---
 
@@ -66,7 +66,7 @@ Localize the web portal UI into English (default), French, and Arabic using web-
 - Path-prefixed routes (`/fr/...`)
 - Supabase Auth email HTML templates
 - Changelog markdown release-note bodies
-- Flutter `MaterialApp` locale wiring (R37-A09)
+- Flutter `MaterialApp` locale wiring (R37-A09) — see [RFC-123](123-[open]-flutter-app-localization.md)
 
 ## Related
 

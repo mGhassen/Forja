@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:forja/l10n/l10n.dart';
 import 'package:forja_foundation/components/forja_image_cache.dart';
 import 'package:rust/rust.dart';
 import 'package:forja/shell/desktop/desktop_window_chrome.dart';
@@ -222,8 +223,8 @@ class LoadingOverlay extends StatefulWidget {
 
   /// Mid-resolve reload strip (anime stale cache). Prefer friendly labels.
   final bool showReloadButton;
-  final String reloadLabel;
-  final String reloadHint;
+  final String? reloadLabel;
+  final String? reloadHint;
   final VoidCallback? onReload;
   final VoidCallback? onCancel;
 
@@ -244,8 +245,8 @@ class LoadingOverlay extends StatefulWidget {
     this.subtitle,
     this.recheckBanner,
     this.showReloadButton = false,
-    this.reloadLabel = 'Search again',
-    this.reloadHint = 'That saved link is no longer working',
+    this.reloadLabel,
+    this.reloadHint,
     this.onReload,
     this.onCancel,
     this.onManualCheckProvider,
@@ -584,13 +585,15 @@ class _LoadingOverlayState extends State<LoadingOverlay>
   }
 
   String _probeStatusLabel(StreamProviderProbeStatus status) {
-    return switch (status) {
-      StreamProviderProbeStatus.pending => 'WAITING',
-      StreamProviderProbeStatus.trying => 'CHECKING',
-      StreamProviderProbeStatus.success => 'UP',
-      StreamProviderProbeStatus.failed => 'DOWN',
-      StreamProviderProbeStatus.skippedOnTv => 'SKIPPED',
+    final l10n = context.l10n;
+    final label = switch (status) {
+      StreamProviderProbeStatus.pending => l10n.sharedPlaybackProbeWaiting,
+      StreamProviderProbeStatus.trying => l10n.sharedPlaybackProbeChecking,
+      StreamProviderProbeStatus.success => l10n.sharedPlaybackProbeUp,
+      StreamProviderProbeStatus.failed => l10n.sharedPlaybackProbeDown,
+      StreamProviderProbeStatus.skippedOnTv => l10n.sharedPlaybackProbeSkipped,
     };
+    return label.toUpperCase();
   }
 
   Color _probeStatusColor(StreamProviderProbeStatus status) {
@@ -685,7 +688,7 @@ class _LoadingOverlayState extends State<LoadingOverlay>
         ],
         if (widget.showReloadButton) ...[
           Text(
-            widget.reloadHint,
+            widget.reloadHint ?? context.l10n.sharedPlaybackSavedLinkBroken,
             textAlign: TextAlign.center,
             style: TextStyle(
               color: Colors.white.withValues(alpha: 0.62),
@@ -702,7 +705,9 @@ class _LoadingOverlayState extends State<LoadingOverlay>
               Icons.refresh_rounded,
               size: ShellPaintScope.iconOf(context, 16),
             ),
-            label: Text(widget.reloadLabel),
+            label: Text(
+              widget.reloadLabel ?? context.l10n.sharedPlaybackSearchAgain,
+            ),
             style: OutlinedButton.styleFrom(
               foregroundColor: Colors.white,
               side: BorderSide(color: Colors.white.withValues(alpha: 0.35)),
@@ -871,7 +876,7 @@ class _LoadingOverlayState extends State<LoadingOverlay>
       radius: radius,
       padding: EdgeInsets.symmetric(horizontal: padH, vertical: padV),
       child: Text(
-        'CANCEL',
+        context.l10n.settingsUiCancel.toUpperCase(),
         style: TextStyle(
           color: active
               ? ForjaShellColors.brandGreen
@@ -975,7 +980,9 @@ class _LoadingOverlayState extends State<LoadingOverlay>
     if (!showListToggle) return cancelButton;
 
     final listButton = Tooltip(
-      message: _providerListOpen ? 'Hide servers' : 'Show servers',
+      message: _providerListOpen
+          ? context.l10n.sharedPlaybackHideServers
+          : context.l10n.sharedPlaybackShowServers,
       child: _LoadingGreenChip(
         focusNode: _providersButtonFocus,
         onTap: _toggleProviderList,
@@ -999,7 +1006,7 @@ class _LoadingOverlayState extends State<LoadingOverlay>
           SizedBox(height: listGap),
           if (widget.onManualCheckProvider != null)
             Text(
-              'TAP A SERVER TO CHECK IT FIRST',
+              context.l10n.sharedPlaybackTapServerFirst.toUpperCase(),
               style: TextStyle(
                 color: Colors.white.withValues(alpha: 0.4),
                 fontSize: tipSize,
@@ -1255,7 +1262,7 @@ class LoadingOverlayBackHint extends StatelessWidget {
     return Padding(
       padding: EdgeInsets.only(top: gap),
       child: Text(
-        copy,
+        context.l10n.sharedPlaybackPressBackToCancel,
         textAlign: TextAlign.center,
         style: TextStyle(
           color: ForjaShellColors.cinematic.textSecondary,

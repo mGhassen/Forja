@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:forja/l10n/l10n.dart';
 import 'package:forja/shell/focus/shell_focusable_tap.dart';
 import 'package:forja/shell/core/forja_shell_input_policy.dart';
 import 'package:forja/shell/core/forja_shell_scope.dart';
@@ -103,7 +104,12 @@ class _ShellBackIconButtonState extends State<ShellBackIconButton> {
       ),
     );
 
-    if (widget.tooltip == null) return button;
-    return Tooltip(message: widget.tooltip!, child: button);
+    final tooltip = widget.tooltip;
+    if (tooltip == null) return button;
+    // The constructor default is English "Back"; swap in the localized label.
+    return Tooltip(
+      message: tooltip == 'Back' ? context.l10n.sharedMiscBack : tooltip,
+      child: button,
+    );
   }
 }

@@ -12,7 +12,7 @@ Widget settingsFocusableToggle(
   bool adminOnly = false,
   bool? leadingCheckValue,
   ValueChanged<bool>? onLeadingCheckChanged,
-  String leadingCheckLabel = 'Auto',
+  String? leadingCheckLabel,
 }) {
   return SettingsToggleRow(
     title: title,

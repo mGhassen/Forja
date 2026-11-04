@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import 'package:forja/l10n/l10n.dart';
 import 'package:forja/shared/platform/platform_info.dart';
 import 'package:forja/shared/sync/sync.dart';
 import 'package:forja/shared/theme/app_theme.dart';
@@ -106,6 +107,7 @@ class _DeviceLinkConnectViewState extends State<DeviceLinkConnectView> {
 
   Future<void> _pollOnce(TvDeviceLinkSession session) async {
     if (!mounted || _linking) return;
+    final l10n = context.l10n;
     final result = await TvDeviceLinkAuth.poll(session.deviceCode);
     if (!mounted) return;
 
@@ -117,8 +119,8 @@ class _DeviceLinkConnectViewState extends State<DeviceLinkConnectView> {
         _pollTimer?.cancel();
         setState(() {
           _error = result.status == TvDeviceLinkPollStatus.expired
-              ? 'This code expired. Start again to get a new one.'
-              : 'Linking was cancelled. Start again to get a new code.';
+              ? l10n.accountLinkExpired
+              : l10n.accountLinkCancelled;
           _session = null;
         });
         return;
@@ -205,6 +207,7 @@ class _DeviceLinkLinkingIndicator extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -218,7 +221,7 @@ class _DeviceLinkLinkingIndicator extends StatelessWidget {
         ),
         const SizedBox(height: 16),
         Text(
-          'Signing you in',
+          l10n.accountLinkSigningIn,
           style: GoogleFonts.dmSans(
             color: ForjaShellColors.textPrimary,
             fontSize: 20,
@@ -227,7 +230,7 @@ class _DeviceLinkLinkingIndicator extends StatelessWidget {
         ),
         const SizedBox(height: 6),
         Text(
-          'Creating a secure session for this device.',
+          l10n.accountLinkCreatingSession,
           style: GoogleFonts.dmSans(
             color: ForjaShellColors.textSecondary,
             fontSize: 14,
@@ -259,11 +262,12 @@ class _CompactConnectLayout extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Text(
-          'LINK THIS DEVICE',
+          l10n.accountLinkThisDevice,
           style: GoogleFonts.dmMono(
             color: ForjaShellColors.brandGreen,
             fontSize: 11,
@@ -280,7 +284,7 @@ class _CompactConnectLayout extends StatelessWidget {
               height: 1.45,
             ),
             children: [
-              const TextSpan(text: 'Open '),
+              TextSpan(text: l10n.accountLinkOpen),
               TextSpan(
                 text: '$hostLabel/connect',
                 style: const TextStyle(
@@ -292,9 +296,9 @@ class _CompactConnectLayout extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 6),
-        const Text(
-          'Enter the code or scan the QR from your phone.',
-          style: TextStyle(
+        Text(
+          l10n.accountLinkEnterCode,
+          style: const TextStyle(
             color: ForjaShellColors.textSecondary,
             fontSize: 13,
             height: 1.45,
@@ -316,7 +320,7 @@ class _CompactConnectLayout extends StatelessWidget {
               if (onBack != null) ...[
                 const SizedBox(height: 16),
                 Button(
-                  label: 'Cancel',
+                  label: l10n.settingsUiCancel,
                   icon: Icons.close_rounded,
                   onPressed: onBack,
                 ),
@@ -337,7 +341,7 @@ class _CompactConnectLayout extends StatelessWidget {
           if (onRetry != null) ...[
             const SizedBox(height: 12),
             Button(
-              label: 'Get a new code',
+              label: l10n.accountGetNewCode,
               icon: Icons.refresh_rounded,
               onPressed: onRetry,
             ),
@@ -373,6 +377,7 @@ class _TvConnectLayout extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -386,7 +391,7 @@ class _TvConnectLayout extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'LINK THIS TV',
+                    l10n.accountLinkThisTv,
                     style: GoogleFonts.dmMono(
                       color: ForjaShellColors.brandGreen,
                       fontSize: 13,
@@ -404,7 +409,7 @@ class _TvConnectLayout extends StatelessWidget {
                         height: 1.35,
                       ),
                       children: [
-                        const TextSpan(text: 'Open '),
+                        TextSpan(text: l10n.accountLinkOpen),
                         TextSpan(
                           text: '$hostLabel/connect',
                           style: const TextStyle(
@@ -417,7 +422,7 @@ class _TvConnectLayout extends StatelessWidget {
                   ),
                   const SizedBox(height: 10),
                   Text(
-                    'Enter the code or scan the QR from your phone.',
+                    l10n.accountLinkEnterCode,
                     style: GoogleFonts.dmSans(
                       color: ForjaShellColors.textSecondary,
                       fontSize: 16,
@@ -438,7 +443,7 @@ class _TvConnectLayout extends StatelessWidget {
                     if (onRetry != null) ...[
                       const SizedBox(height: 20),
                       Button(
-                        label: 'Get a new code',
+                        label: l10n.accountGetNewCode,
                         icon: Icons.refresh_rounded,
                         onPressed: onRetry,
                       ),
@@ -449,7 +454,7 @@ class _TvConnectLayout extends StatelessWidget {
                     _TvFlatAction(
                       focusNode: backFocusNode!,
                       autofocus: autofocusBack,
-                      label: 'Back',
+                      label: l10n.accountBack,
                       onTap: onBack!,
                     ),
                   ],
@@ -494,6 +499,7 @@ class DeviceLinkQrWithCode extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     const spinner = SizedBox(
       width: 28,
       height: 28,
@@ -546,7 +552,7 @@ class DeviceLinkQrWithCode extends StatelessWidget {
         ? MouseRegion(
             cursor: SystemMouseCursors.click,
             child: Tooltip(
-              message: 'Open link page in browser',
+              message: l10n.accountLinkOpenInBrowser,
               child: GestureDetector(
                 onTap: () => unawaited(_openUri()),
                 child: qr,

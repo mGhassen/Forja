@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja/features/account/profile_chooser_metrics.dart';
 import 'package:forja/features/account/profile_switch_splash.dart';
 import 'package:forja/features/settings/ui/settings_ui.dart';
+import 'package:forja/l10n/l10n.dart';
 import 'package:forja/shell/bus/shell_bus.dart';
 
 import 'package:forja/shared/navigation/shell_back_icon_button.dart';
@@ -124,6 +125,7 @@ class _ProfileChooserScreenState extends ConsumerState<ProfileChooserScreen> {
       ref.read(syncProfilesProvider).valueOrNull?.activeProfileId;
 
   Future<void> _select(SyncProfile profile, {Rect? originRect}) async {
+    final l10n = context.l10n;
     if (_busy) return;
     if (widget.closeIfAlreadyActive && profile.id == _activeProfileId) {
       widget.onProfileSelected(profile);
@@ -172,7 +174,7 @@ class _ProfileChooserScreenState extends ConsumerState<ProfileChooserScreen> {
     }
     setState(() {
       _busy = false;
-      _error = 'Could not open this profile. Check your connection and retry.';
+      _error = l10n.accountProfileOpenFailed;
     });
   }
 
@@ -191,9 +193,10 @@ class _ProfileChooserScreenState extends ConsumerState<ProfileChooserScreen> {
   }
 
   void _beginCreate() {
+    final l10n = context.l10n;
     if (_profiles.length >= SyncService.maxProfilesPerAccount) {
       setState(() {
-        _error = 'Maximum of 5 profiles per account.';
+        _error = l10n.accountProfileMaxProfiles;
       });
       return;
     }
@@ -219,6 +222,7 @@ class _ProfileChooserScreenState extends ConsumerState<ProfileChooserScreen> {
   }
 
   Future<void> _saveEditor() async {
+    final l10n = context.l10n;
     if (_busy) return;
     final creatingFirst = _screen == _Screen.create && _profiles.isEmpty;
     setState(() {
@@ -270,12 +274,13 @@ class _ProfileChooserScreenState extends ConsumerState<ProfileChooserScreen> {
       if (!mounted) return;
       setState(() {
         _busy = false;
-        _error = 'Could not save profile.';
+        _error = l10n.accountProfileSaveFailed;
       });
     }
   }
 
   Future<void> _deleteEditing() async {
+    final l10n = context.l10n;
     if (_busy || _editingId == null) return;
     final deletedId = _editingId!;
     final wasActive = deletedId == _activeProfileId;
@@ -308,7 +313,7 @@ class _ProfileChooserScreenState extends ConsumerState<ProfileChooserScreen> {
       if (!mounted) return;
       setState(() {
         _busy = false;
-        _error = 'Could not delete profile.';
+        _error = l10n.accountProfileDeleteFailed;
       });
     }
   }
@@ -322,6 +327,7 @@ class _ProfileChooserScreenState extends ConsumerState<ProfileChooserScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     final profilesAsync = ref.watch(syncProfilesProvider);
     final snap = profilesAsync.valueOrNull;
     final profiles = snap?.profiles ?? const <SyncProfile>[];
@@ -333,7 +339,7 @@ class _ProfileChooserScreenState extends ConsumerState<ProfileChooserScreen> {
     final loadError = profilesAsync.hasError
         ? (profilesAsync.error is SyncProfileFetchException
               ? (profilesAsync.error as SyncProfileFetchException).message
-              : 'Could not load profiles. Check your connection and retry.')
+              : l10n.accountProfileLoadFailed)
         : null;
     final error = _error ?? loadError;
 
@@ -372,9 +378,9 @@ class _ProfileChooserScreenState extends ConsumerState<ProfileChooserScreen> {
                 ? _ProfileEditor(
                     title: _screen == _Screen.create
                         ? (profiles.isEmpty
-                              ? 'Create your profile'
-                              : 'Add profile')
-                        : 'Edit profile',
+                              ? l10n.accountProfileCreateTitle
+                              : l10n.accountProfileAdd)
+                        : l10n.accountProfileEditTitle,
                     nameController: _nameCtrl,
                     avatarKey: _avatarKey,
                     saving: _busy,
@@ -402,7 +408,7 @@ class _ProfileChooserScreenState extends ConsumerState<ProfileChooserScreen> {
               child: ShellBackIconButton(
                 icon: Icons.arrow_back_rounded,
                 size: 28,
-                tooltip: 'Back',
+                tooltip: l10n.accountBack,
                 onTap: () {
                   if (_busy) return;
                   Navigator.of(context).maybePop();
@@ -420,6 +426,7 @@ class _ProfileChooserScreenState extends ConsumerState<ProfileChooserScreen> {
     bool loading,
     String? error,
   ) {
+    final l10n = context.l10n;
     final managing = _screen == _Screen.manage;
     final activeIndex = profiles.indexWhere((p) => p.id == activeProfileId);
     final autofocusIndex = activeIndex >= 0 ? activeIndex : 0;
@@ -456,7 +463,7 @@ class _ProfileChooserScreenState extends ConsumerState<ProfileChooserScreen> {
                       if (SyncService.instance.userEmail case final email?
                           when email.isNotEmpty) ...[
                         Text(
-                          'ACCOUNT',
+                          l10n.accountProfileAccountTag,
                           textAlign: TextAlign.center,
                           style: TextStyle(
                             color: ForjaShellColors.brandGreen,
@@ -480,7 +487,9 @@ class _ProfileChooserScreenState extends ConsumerState<ProfileChooserScreen> {
                         SizedBox(height: metrics.isTv ? 18 : 22),
                       ],
                       Text(
-                        managing ? 'Manage profiles' : 'Who’s watching?',
+                        managing
+                            ? l10n.accountProfileManage
+                            : l10n.accountProfileWhosWatching,
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           color: ForjaShellColors.textPrimary,
@@ -491,14 +500,14 @@ class _ProfileChooserScreenState extends ConsumerState<ProfileChooserScreen> {
                       SizedBox(height: metrics.isTv ? 8 : 12),
                       Text(
                         loading
-                            ? 'Loading profiles…'
+                            ? l10n.accountProfileLoadingProfiles
                             : error != null
-                            ? 'Could not load who’s watching right now.'
+                            ? l10n.accountProfileLoadWhosWatchingFailed
                             : profiles.isEmpty
-                            ? 'Create a profile to sync settings on this device.'
+                            ? l10n.accountProfileCreateHint
                             : managing
-                            ? 'Edit a profile or add a new one.'
-                            : 'Choose the profile whose settings you want on this device.',
+                            ? l10n.accountProfileManageHint
+                            : l10n.accountProfileChooseHint,
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           color: ForjaShellColors.textSecondary,
@@ -527,7 +536,7 @@ class _ProfileChooserScreenState extends ConsumerState<ProfileChooserScreen> {
                               const SizedBox(height: 12),
                               _ChooserAction(
                                 autofocus: true,
-                                label: 'Retry',
+                                label: l10n.profileRetryTitle,
                                 primary: true,
                                 onTap: _busy
                                     ? null
@@ -538,7 +547,7 @@ class _ProfileChooserScreenState extends ConsumerState<ProfileChooserScreen> {
                               if (widget.onSignOut != null) ...[
                                 const SizedBox(height: 8),
                                 _ChooserAction(
-                                  label: 'Use another account',
+                                  label: l10n.accountProfileUseAnotherAccount,
                                   onTap: _busy ? null : _signOut,
                                 ),
                               ],
@@ -590,7 +599,7 @@ class _ProfileChooserScreenState extends ConsumerState<ProfileChooserScreen> {
                         ),
                         const SizedBox(height: 8),
                         _ChooserAction(
-                          label: 'Retry',
+                          label: l10n.profileRetryTitle,
                           primary: true,
                           onTap: _busy
                               ? null
@@ -607,7 +616,9 @@ class _ProfileChooserScreenState extends ConsumerState<ProfileChooserScreen> {
                         children: [
                           if (profiles.isNotEmpty)
                             _ChooserAction(
-                              label: managing ? 'Done' : 'Manage profiles',
+                              label: managing
+                                  ? l10n.accountProfileDone
+                                  : l10n.accountProfileManage,
                               onTap: _busy
                                   ? null
                                   : () => setState(() {
@@ -619,7 +630,7 @@ class _ProfileChooserScreenState extends ConsumerState<ProfileChooserScreen> {
                             ),
                           if (widget.showBack && profiles.isNotEmpty)
                             _ChooserAction(
-                              label: 'Account settings',
+                              label: l10n.accountProfileAccountSettings,
                               onTap: _busy
                                   ? null
                                   : () {
@@ -629,7 +640,7 @@ class _ProfileChooserScreenState extends ConsumerState<ProfileChooserScreen> {
                             ),
                           if (widget.onSignOut != null)
                             _ChooserAction(
-                              label: 'Use another account',
+                              label: l10n.accountProfileUseAnotherAccount,
                               onTap: _busy ? null : _signOut,
                             ),
                         ],
@@ -767,6 +778,7 @@ class _AddProfileTileState extends State<_AddProfileTile> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     final m = widget.metrics;
     return IgnorePointer(
       ignoring: widget.ignorePointer,
@@ -815,7 +827,7 @@ class _AddProfileTileState extends State<_AddProfileTile> {
                   ),
                   const SizedBox(height: 12),
                   Text(
-                    'Add profile',
+                    l10n.accountProfileAdd,
                     style: TextStyle(
                       color: highlighted
                           ? ForjaShellColors.textPrimary
@@ -951,6 +963,16 @@ class _ProfileChoiceState extends State<_ProfileChoice> {
   }
 }
 
+/// The package names its avatar categories in English; the host shows them in the app language.
+String _avatarCategoryLabel(AppLocalizations l10n, String label) =>
+    switch (label) {
+      'Characters' => l10n.accountAvatarCategoryCharacters,
+      'Creatures' => l10n.accountAvatarCategoryCreatures,
+      'Space' => l10n.accountAvatarCategorySpace,
+      'Retro' => l10n.accountAvatarCategoryRetro,
+      _ => label,
+    };
+
 class _ProfileEditor extends StatefulWidget {
   const _ProfileEditor({
     required this.title,
@@ -1062,6 +1084,7 @@ class _ProfileEditorState extends State<_ProfileEditor> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     final name = widget.nameController.text.trim();
     return Center(
       child: ConstrainedBox(
@@ -1087,7 +1110,7 @@ class _ProfileEditorState extends State<_ProfileEditor> {
                 children: [
                   ForjaProfileAvatar(
                     avatarKey: widget.avatarKey,
-                    name: name.isEmpty ? 'New profile' : name,
+                    name: name.isEmpty ? l10n.accountProfileNewName : name,
                     size: 140,
                     selected: true,
                   ),
@@ -1100,15 +1123,15 @@ class _ProfileEditorState extends State<_ProfileEditor> {
                         // opened IME and trapped ↓ away from avatars.
                         SettingsTextField(
                           controller: widget.nameController,
-                          label: 'Profile name',
+                          label: l10n.accountProfileNameLabel,
                           maxLength: 40,
                           enabled: !widget.saving,
                           autofocus: true,
                         ),
                         const SizedBox(height: 20),
-                        const Text(
-                          'CHOOSE AN AVATAR',
-                          style: TextStyle(
+                        Text(
+                          l10n.accountProfileChooseAvatar,
+                          style: const TextStyle(
                             color: ForjaShellColors.textSecondary,
                             fontSize: 11,
                             fontWeight: FontWeight.w700,
@@ -1119,7 +1142,7 @@ class _ProfileEditorState extends State<_ProfileEditor> {
                         for (final category
                             in forjaProfileAvatarCategories) ...[
                           Text(
-                            category.label,
+                            _avatarCategoryLabel(l10n, category.label),
                             style: const TextStyle(
                               color: ForjaShellColors.textPrimary,
                               fontSize: 14,
@@ -1157,7 +1180,9 @@ class _ProfileEditorState extends State<_ProfileEditor> {
                   children: [
                     Button(
                       variant: ButtonVariant.primary,
-                      label: widget.saving ? 'Saving…' : 'Save profile',
+                      label: widget.saving
+                          ? l10n.accountProfileSaving
+                          : l10n.accountProfileSave,
                       onPressed: widget.saving || name.isEmpty
                           ? null
                           : widget.onSave,
@@ -1167,7 +1192,7 @@ class _ProfileEditorState extends State<_ProfileEditor> {
                     ),
                     if (widget.canCancel)
                       Button(
-                        label: 'Cancel',
+                        label: l10n.settingsUiCancel,
                         onPressed: widget.saving ? null : widget.onCancel,
                         focusNode: _cancelFocus,
                         onKeyEvent: _actionKey,
@@ -1175,7 +1200,7 @@ class _ProfileEditorState extends State<_ProfileEditor> {
                     if (widget.canDelete)
                       Button(
                         variant: ButtonVariant.destructive,
-                        label: 'Delete profile',
+                        label: l10n.accountProfileDelete,
                         onPressed: widget.saving ? null : widget.onDelete,
                         focusNode: _deleteFocus,
                         onKeyEvent: _actionKey,

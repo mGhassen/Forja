@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja/features/settings/providers/settings_panel_providers.dart';
 import 'package:forja/features/settings/ui/focus_controls.dart';
 import 'package:forja/features/settings/ui/settings_ui.dart';
+import 'package:forja/l10n/l10n.dart';
 import 'package:forja/shared/playback/sources/debrid_js_resolve.dart';
 import 'package:rust/rust.dart';
 
@@ -127,19 +128,19 @@ class _SettingsDebridSectionState extends ConsumerState<SettingsDebridSection> {
     ];
 
     return SettingsGroup(
-      label: 'Debrid',
+      label: context.l10n.addonsHostDebridGroupLabel,
       children: [
         settingsFocusableToggle(
           context,
-          'Resolve magnets with debrid',
-          'Use an installed debrid pack plugin for torrent magnets.',
+          context.l10n.addonsHostDebridResolveTitle,
+          context.l10n.addonsHostDebridResolveSubtitle,
           snap.enabled,
           (val) => _setEnabled(val, snap),
         ),
         settingsFocusableDropdown(
           context,
-          'Magnet resolve plugin',
-          'Only one debrid plugin can be active.',
+          context.l10n.addonsHostDebridPluginTitle,
+          context.l10n.addonsHostDebridPluginSubtitle,
           dropdownValue,
           options,
           (val) => _setPluginByLabel(val, snap),

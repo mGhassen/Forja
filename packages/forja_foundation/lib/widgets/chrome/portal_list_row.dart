@@ -1,3 +1,4 @@
+import 'package:forja_foundation/l10n/foundation_strings.dart';
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -816,7 +817,9 @@ class _PortalListRowState extends State<PortalListRow>
                         ),
                       )
                     : IconButton(
-                        tooltip: isFav ? 'Unfavorite' : 'Favorite',
+                        tooltip: ForjaFoundationStrings.current.t(
+                          isFav ? 'Unfavorite' : 'Favorite',
+                        ),
                         padding: const EdgeInsets.all(4),
                         constraints: const BoxConstraints(
                           minWidth: 28,
@@ -883,7 +886,7 @@ class _PortalListRowState extends State<PortalListRow>
         mainAxisAlignment: MainAxisAlignment.end,
         children: [
           _RailAction(
-            tooltip: 'Yes',
+            tooltip: ForjaFoundationStrings.current.t('Yes'),
             icon: Icons.check_rounded,
             color: const Color(0xFFEF4444),
             onTap: () {
@@ -899,7 +902,7 @@ class _PortalListRowState extends State<PortalListRow>
             onDownEdge: widget.onDownEdge,
           ),
           _RailAction(
-            tooltip: 'No',
+            tooltip: ForjaFoundationStrings.current.t('No'),
             icon: Icons.close_rounded,
             color: Colors.white60,
             onTap: () => setState(() => _confirmingDelete = false),
@@ -918,7 +921,7 @@ class _PortalListRowState extends State<PortalListRow>
       children: [
         if (widget.onCopyShareCode != null)
           _RailAction(
-            tooltip: 'Copy share code',
+            tooltip: ForjaFoundationStrings.current.t('Copy share code'),
             icon: _sharing
                 ? Icons.hourglass_top_rounded
                 : Icons.copy_rounded,
@@ -934,7 +937,7 @@ class _PortalListRowState extends State<PortalListRow>
           ),
         if (widget.onEdit != null)
           _RailAction(
-            tooltip: 'Edit',
+            tooltip: ForjaFoundationStrings.current.t('Edit'),
             icon: Icons.edit_rounded,
             color: Colors.white60,
             onTap: widget.onEdit,
@@ -948,7 +951,7 @@ class _PortalListRowState extends State<PortalListRow>
           ),
         if (widget.onDelete != null)
           _RailAction(
-            tooltip: 'Delete',
+            tooltip: ForjaFoundationStrings.current.t('Delete'),
             icon: Icons.delete_rounded,
             color: const Color(0xFFEF4444),
             onTap: () => setState(() => _confirmingDelete = true),

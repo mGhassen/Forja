@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:forja/l10n/l10n.dart';
 import 'package:forja/shell/feedback/forja_toast.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
@@ -77,9 +78,10 @@ class _UpdateProgressBanner extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final style = forjaToastStyle(ForjaToastKind.info);
+    final l10n = context.l10n;
     final title = version == null
-        ? 'Downloading update…'
-        : 'Downloading Forja $version…';
+        ? l10n.shellUpdateDownloading
+        : l10n.shellUpdateDownloadingVersion(version!);
     final tv = ShellPaintScope.usesTvDensityOf(context);
     final titleFont = tv
         ? ShellTokens.tvTypeSize(ShellTokens.toastMessageFontSize)

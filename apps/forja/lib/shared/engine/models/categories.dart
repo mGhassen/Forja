@@ -1,3 +1,6 @@
+import 'package:forja/l10n/app_localizations.dart';
+import 'package:forja/l10n/app_localizations_en.dart';
+
 import 'models.dart';
 
 /// Plugin `types` + structural buckets — all labels from manifest tokens, not
@@ -29,26 +32,27 @@ abstract final class EngineCategories {
     'other',
   };
 
-  static String typeLabel(String id) {
+  static String typeLabel(String id, [AppLocalizations? l]) {
+    final loc = l ?? AppLocalizationsEn();
     switch (id) {
       case 'movie_tv':
-        return 'Movie & TV';
+        return loc.engineModelsMovieAndTv;
       case movie:
-        return 'Movie';
+        return loc.engineModelsMovie;
       case tv:
         return 'TV';
       case livePlugin:
-        return 'Live';
+        return loc.engineModelsLive;
       case liveCatalog:
-        return 'Catalog';
+        return loc.packsLiveTabCatalog;
       case iptv:
         return 'IPTV';
       case hubCatalog:
-        return 'Hubs';
+        return loc.engineModelsHubs;
       case 'debrid':
-        return 'Debrid';
+        return loc.addonsHostDebridGroupLabel;
       case 'other':
-        return 'Other';
+        return loc.downloadsLegendOther;
       default:
         return id
             .split('_')
@@ -133,7 +137,8 @@ abstract final class EngineCategories {
     return 'other';
   }
 
-  static String groupLabel(String key) => typeLabel(key);
+  static String groupLabel(String key, [AppLocalizations? l]) =>
+      typeLabel(key, l);
 
   /// Structural order first, then manifest VOD types present in [plugins].
   static List<String> groupOrderFor(Iterable<EnginePlugin> plugins) {
@@ -162,11 +167,14 @@ abstract final class EngineCategories {
     return livePlugin;
   }
 
-  static String liveSourceGroupLabel(String key) => switch (key) {
-    livePlugin => 'Plugins',
-    liveCatalog => 'Catalog',
-    _ => 'Other',
-  };
+  static String liveSourceGroupLabel(String key, [AppLocalizations? l]) {
+    final loc = l ?? AppLocalizationsEn();
+    return switch (key) {
+      livePlugin => loc.engineModelsPlugins,
+      liveCatalog => loc.packsLiveTabCatalog,
+      _ => loc.downloadsLegendOther,
+    };
+  }
 
   static const liveSourceGroupOrder = [livePlugin];
 

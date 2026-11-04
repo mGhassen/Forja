@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:forja/l10n/app_localizations_en.dart';
+import 'package:forja/l10n/l10n.dart';
 import 'package:forja/shared/engine/runtime/kit/paint_artifact.dart';
 import 'package:forja/shared/engine/runtime/nav/plugin_nav.dart';
 import 'package:forja/shared/engine/runtime/open/catalog_open.dart';
@@ -131,6 +133,7 @@ Future<void> openListItemWithBinding(
   bool forcePick = false,
   bool simklLinkMode = false,
 }) async {
+  final l10n = context.l10n;
   final row = Map<String, dynamic>.from(item);
   var meta = metaItemFromLegacyListItem(row);
 
@@ -217,7 +220,7 @@ Future<void> openListItemWithBinding(
 
   if (candidates.isEmpty) {
     if (context.mounted) {
-      ForjaToast.info('No hub available to open this title');
+      ForjaToast.info(l10n.engineStoreNoHub);
     }
     return;
   }
@@ -287,6 +290,7 @@ Future<void> openListItemWithBinding(
           meta: meta,
           bound: bound,
           sourceItem: sourceItem,
+          l: l10n,
         );
         if (saved == null) return false;
         invalidateFeeds();
@@ -342,6 +346,7 @@ Future<void> openListItemWithBinding(
     meta: meta,
     bound: bound,
     sourceItem: sourceItem,
+    l: l10n,
   );
   if (saved == null || !context.mounted) return;
   await openMetaItem(
@@ -418,7 +423,9 @@ Future<MetaItem?> persistListOpenBinding({
   required MetaItem meta,
   required ListOpenBindResult bound,
   Map<String, dynamic>? sourceItem,
+  AppLocalizations? l,
 }) async {
+  final t = l ?? AppLocalizationsEn();
   final candidate = bound.candidate;
   MetaOpen? open;
   MetaItem next = meta;
@@ -427,7 +434,7 @@ Future<MetaItem?> persistListOpenBinding({
     final hit = bound.hit!;
     final hitOpen = hit.open;
     if (hitOpen == null || hitOpen.id.trim().isEmpty) {
-      ForjaToast.info('That match has no open handoff');
+      ForjaToast.info(t.engineStoreNoHandoff);
       return null;
     }
     open = hitOpen;
@@ -448,7 +455,7 @@ Future<MetaItem?> persistListOpenBinding({
         ListOpenBinding.metaOpenForCandidate(row, meta, candidate.types) ??
         meta.open;
     if (open == null || open.id.trim().isEmpty) {
-      ForjaToast.info('No open handoff for ${candidate.label}');
+      ForjaToast.info(t.engineStoreNoHandoffFor(candidate.label));
       return null;
     }
     next = meta.copyWith(open: open);

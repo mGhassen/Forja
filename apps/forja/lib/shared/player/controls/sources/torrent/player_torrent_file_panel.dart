@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import 'package:flutter/services.dart';
+import 'package:forja/l10n/l10n.dart';
 import 'package:forja/shared/player/controls/chrome/player_chrome_overlays.dart';
 import 'package:forja/shared/player/controls/menus/player_popup_panel.dart';
 import 'package:forja/shell/tv/shell_tv_coordinator.dart';
@@ -174,6 +175,7 @@ class _TorrentFilePanelBodyState extends State<_TorrentFilePanelBody> {
   }
 
   Future<void> _loadFiles() async {
+    final l10n = context.l10n;
     setState(() {
       _loading = true;
       _error = null;
@@ -185,7 +187,7 @@ class _TorrentFilePanelBodyState extends State<_TorrentFilePanelBody> {
       if (files == null || files.isEmpty) {
         setState(() {
           _loading = false;
-          _error = 'No files found in this torrent.';
+          _error = l10n.playerControlNoTorrentFiles;
         });
         return;
       }
@@ -248,7 +250,7 @@ class _TorrentFilePanelBodyState extends State<_TorrentFilePanelBody> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         PlayerSidePanelHeader(
-          title: 'Torrent files',
+          title: context.l10n.playerControlTorrentFiles,
           onClose: widget.onClose,
           badge: count?.toString(),
           closeFocusNode: tv ? _closeFocus : null,
@@ -296,7 +298,7 @@ class _TorrentFilePanelBodyState extends State<_TorrentFilePanelBody> {
               const SizedBox(height: 12),
               TextButton(
                 onPressed: _loadFiles,
-                child: const Text('Retry'),
+                child: Text(context.l10n.downloadsRetry),
               ),
             ],
           ),

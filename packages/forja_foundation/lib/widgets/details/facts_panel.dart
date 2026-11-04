@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:forja_foundation/l10n/foundation_strings.dart';
 import 'package:forja_foundation/tokens/forja_details_tokens.dart';
+import 'package:forja_foundation/widgets/catalog/catalog_search_filters.dart';
 import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 import 'package:forja_foundation/widgets/details/meta_line.dart';
 
@@ -68,8 +70,15 @@ class FactsPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final strings = ForjaFoundationStrings.of(context);
     final visible = rows
         .where((r) => r.label.trim().isNotEmpty && r.value.trim().isNotEmpty)
+        .map(
+          (r) => (
+            label: strings.factLabels[r.label] ?? r.label,
+            value: _localizedValue(strings, r.label, r.value),
+          ),
+        )
         .toList(growable: false);
     if (visible.isEmpty) return const SizedBox.shrink();
 
@@ -119,6 +128,28 @@ class FactsPanel extends StatelessWidget {
   }
 }
 
+final RegExp _englishDate = RegExp(
+  r'^(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec) (\d{1,2}), (\d{4})$',
+);
+const List<String> _englishMonths = [
+  'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+  'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+];
+
+/// Rows are built with English words; the app's strings translate them here.
+String _localizedValue(ForjaFoundationStrings s, String label, String value) {
+  if (label == 'Status') return s.statusLabels[value] ?? value;
+  final m = _englishDate.firstMatch(value);
+  if (m != null && s.shortMonths.length == 12) {
+    final month = s.shortMonths[_englishMonths.indexOf(m.group(1)!)];
+    return s.datePattern
+        .replaceAll('{day}', m.group(2)!)
+        .replaceAll('{month}', month)
+        .replaceAll('{year}', m.group(3)!);
+  }
+  return value;
+}
+
 List<({String label, String value})> factsRowsFromFields({
   required String title,
   String mediaType = '',
@@ -145,7 +176,7 @@ List<({String label, String value})> factsRowsFromFields({
   final statusLabel = status?.trim() ?? '';
   final languageLabel = () {
     final code = languageCode?.trim();
-    if (code != null && code.isNotEmpty) return code.toUpperCase();
+    if (code != null && code.isNotEmpty) return _languageName(code);
     if (spokenLanguages.isNotEmpty) {
       return spokenLanguages.first.length <= 3
           ? spokenLanguages.first.toUpperCase()
@@ -207,13 +238,27 @@ String _runtimeWithEnds(
       : null;
   if (remainingMs != null && remainingMs > 0) {
     final ends = DateTime.now().add(Duration(milliseconds: remainingMs));
-    final hour =
-        ends.hour > 12 ? ends.hour - 12 : (ends.hour == 0 ? 12 : ends.hour);
+    final strings = ForjaFoundationStrings.current;
     final minute = ends.minute.toString().padLeft(2, '0');
-    final period = ends.hour >= 12 ? 'PM' : 'AM';
-    return '$runtime • Ends $hour:$minute $period';
+    final ends24 = strings.tOr('clock', '12h') == '24h';
+    final hour = ends24
+        ? ends.hour.toString().padLeft(2, '0')
+        : '${ends.hour > 12 ? ends.hour - 12 : (ends.hour == 0 ? 12 : ends.hour)}';
+    final period = ends24 ? '' : (ends.hour >= 12 ? ' PM' : ' AM');
+    return '$runtime • ${strings.t('Ends')} $hour:$minute$period';
   }
   return runtime;
+}
+
+/// The code ("fr") as a language name when the app asks for names, else "FR".
+String _languageName(String code) {
+  final strings = ForjaFoundationStrings.current;
+  if (strings.tOr('language names', 'off') == 'on') {
+    for (final (label, token) in kSearchFilterLanguages) {
+      if (token == 'lang:${code.toLowerCase()}') return strings.t(label);
+    }
+  }
+  return code.toUpperCase();
 }
 
 String _formatReleaseDate(String iso) {
@@ -232,13 +277,19 @@ String _formatReleaseDate(String iso) {
 
 String _formatMoney(int? amount) {
   if (amount == null || amount <= 0) return '';
+  final strings = ForjaFoundationStrings.current;
+  final sep =
+      strings.tOr('thousands separator', 'comma') == 'space' ? '\u00a0' : ',';
   final s = amount.toString();
   final buf = StringBuffer();
   for (var i = 0; i < s.length; i++) {
-    if (i > 0 && (s.length - i) % 3 == 0) buf.write(',');
+    if (i > 0 && (s.length - i) % 3 == 0) buf.write(sep);
     buf.write(s[i]);
   }
-  return '\$${buf.toString()}';
+  final symbol = strings.tOr('money symbol', '\$');
+  return strings.tOr('money symbol place', 'before') == 'after'
+      ? '$buf$symbol'
+      : '$symbol$buf';
 }
 
 class _FactRow extends StatelessWidget {

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:forja_foundation/l10n/foundation_strings.dart';
 import 'package:forja_foundation/tokens/forja_details_tokens.dart';
 import 'package:forja_foundation/tokens/forja_motion_theme.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
@@ -93,7 +94,7 @@ IconData listStatusPinIcon(String? status) {
 
 String listStatusLabel(String? status, {String fallback = 'My List'}) {
   for (final s in kListStatusOptions) {
-    if (s.id == status) return s.label;
+    if (s.id == status) return ForjaFoundationStrings.current.t(s.label);
   }
   return fallback;
 }
@@ -276,7 +277,7 @@ class ListStatusPopupPanel extends StatelessWidget {
                   ListStatusMenuRow(
                     selected: s.id == currentStatus,
                     icon: s.id == currentStatus ? s.selectedIcon : s.icon,
-                    label: s.label,
+                    label: ForjaFoundationStrings.current.t(s.label),
                     statusColor: s.color,
                     onTap: busy
                         ? null

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:forja_foundation/blocks/catalog/catalog_chrome.dart';
 import 'package:forja_foundation/blocks/props_map.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
+import 'package:forja_foundation/l10n/foundation_strings.dart';
 
 /// Prebuilt Live Sports-style screen: top chrome + kind chips + event grid.
 ///
@@ -35,7 +36,7 @@ class TopBodyBlock extends StatelessWidget {
     this.cardKind = 'event',
     this.backgroundColor,
     this.title,
-    this.emptyTitle = 'No matches',
+    this.emptyTitle,
     this.emptyDescription,
     this.onActionSelect,
     this.onKindSelect,
@@ -76,7 +77,7 @@ class TopBodyBlock extends StatelessWidget {
       cardKind: propsStringOr(props, 'cardKind', 'event'),
       backgroundColor: propsColor(props, 'backgroundColor'),
       title: propsString(props, 'title'),
-      emptyTitle: propsStringOr(props, 'emptyTitle', 'No matches'),
+      emptyTitle: propsString(props, 'emptyTitle'),
       emptyDescription: propsString(props, 'emptyDescription'),
       onActionSelect: onActionSelect,
       onKindSelect: onKindSelect,
@@ -104,7 +105,7 @@ class TopBodyBlock extends StatelessWidget {
   final String cardKind;
   final Color? backgroundColor;
   final String? title;
-  final String emptyTitle;
+  final String? emptyTitle;
   final String? emptyDescription;
   final void Function(String actionId, String value)? onActionSelect;
   final ValueChanged<String>? onKindSelect;
@@ -144,7 +145,7 @@ class TopBodyBlock extends StatelessWidget {
         CatalogCardsGrid(
           items: items,
           onItemTap: onItemTap,
-          emptyTitle: emptyTitle,
+          emptyTitle: emptyTitle ?? ForjaFoundationStrings.of(context).noMatches,
           emptyDescription: emptyDescription,
           cardKind: cardKind,
         );

@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:forja/l10n/l10n.dart';
 import 'package:forja/shared/engine/cache/engine_cache.dart';
 import 'package:forja/shared/engine/portals/guide/portal_channel_guide_open.dart';
 import 'package:forja/shared/engine/portals/models.dart';
@@ -155,9 +156,10 @@ class _PortalsPanelViewState extends ConsumerState<PortalsPanelView> {
   /// On IPTV: warm the live SQLite shelf **before** bumping the feed so
   /// `catalog_page` hits a filled shelf (no race / empty flash).
   Future<void> _selectPortal(String portalKey) async {
+    final l10n = context.l10n;
     final pluginId = await _pluginId();
     if (pluginId == null || pluginId.isEmpty) {
-      ForjaToast.error('No portals pack installed');
+      ForjaToast.error(l10n.engineRuntimePortalsNoPack);
       return;
     }
     if (!mounted) return;
@@ -214,7 +216,7 @@ class _PortalsPanelViewState extends ConsumerState<PortalsPanelView> {
           );
           if (!mounted) return;
           if (!env.ok) {
-            ForjaToast.error(env.error?.message ?? 'Could not select portal');
+            ForjaToast.error(env.error?.message ?? l10n.engineRuntimePortalSelectFailed);
             if (portalScopedHub) {
               PackChromeScope.maybeOf(
                 context,
@@ -338,9 +340,10 @@ class _PortalsPanelViewState extends ConsumerState<PortalsPanelView> {
     bool refresh = true,
     bool reloadCatalog = false,
   }) async {
+    final l10n = context.l10n;
     final pluginId = await _pluginId();
     if (pluginId == null || pluginId.isEmpty) {
-      ForjaToast.error('No portals pack installed');
+      ForjaToast.error(l10n.engineRuntimePortalsNoPack);
       return false;
     }
     setState(() => _busy = true);
@@ -348,7 +351,7 @@ class _PortalsPanelViewState extends ConsumerState<PortalsPanelView> {
       final env = await action(pluginId);
       if (!mounted) return false;
       if (!env.ok) {
-        ForjaToast.error(env.error?.message ?? 'Action failed');
+        ForjaToast.error(env.error?.message ?? l10n.engineRuntimeActionFailed);
         return false;
       }
       if (toastOk != null) ForjaToast.success(toastOk);
@@ -373,9 +376,10 @@ class _PortalsPanelViewState extends ConsumerState<PortalsPanelView> {
   }
 
   Future<void> _openPortalForm({VerifiedPortal? existing}) async {
+    final l10n = context.l10n;
     final pluginId = await _pluginId();
     if (pluginId == null || pluginId.isEmpty) {
-      ForjaToast.error('No portals pack installed');
+      ForjaToast.error(l10n.engineRuntimePortalsNoPack);
       return;
     }
     if (!mounted) return;
@@ -390,7 +394,7 @@ class _PortalsPanelViewState extends ConsumerState<PortalsPanelView> {
               0,
         )) {
       ForjaToast.warning(
-        AccountFeatures.instance.iptvPortalLimitReachedMessage(),
+        AccountFeatures.instance.iptvPortalLimitReachedMessage(l10n),
       );
       return;
     }
@@ -414,6 +418,7 @@ class _PortalsPanelViewState extends ConsumerState<PortalsPanelView> {
   }
 
   Future<void> _editPortal(String portalKey) async {
+    final l10n = context.l10n;
     VerifiedPortal? verified;
     for (final v in await PortalsHost.loadVaultVerifiedPortals()) {
       if (!PortalsHost.samePortalKey(v.key, portalKey)) continue;
@@ -421,7 +426,7 @@ class _PortalsPanelViewState extends ConsumerState<PortalsPanelView> {
       break;
     }
     if (verified == null) {
-      ForjaToast.error('Portal not found');
+      ForjaToast.error(l10n.engineRuntimePortalNotFound);
       return;
     }
     if (!mounted) return;
@@ -456,8 +461,9 @@ class _PortalsPanelViewState extends ConsumerState<PortalsPanelView> {
   }
 
   Future<void> _dealPortals() async {
+    final l10n = context.l10n;
     if (!AccountFeatures.instance.isDealPortalEnabled) {
-      ForjaToast.error('Deal is not enabled on this account');
+      ForjaToast.error(l10n.engineRuntimeDealDisabled);
       return;
     }
     setState(() => _busy = true);
@@ -465,23 +471,18 @@ class _PortalsPanelViewState extends ConsumerState<PortalsPanelView> {
       final profile = await SyncService.instance.activeProfile();
       final profileId = profile?.id.trim() ?? '';
       if (profileId.isEmpty) {
-        ForjaToast.error('Sign in and pick a profile to Deal');
+        ForjaToast.error(l10n.engineRuntimeDealSignIn);
         return;
       }
       final result = await PortalsHost.deal(profileId: profileId);
       if (!mounted) return;
       final ids = result.ids;
       if (ids.isEmpty) {
-        ForjaToast.show('No portals dealt — pool may be empty');
+        ForjaToast.show(l10n.engineRuntimeDealNone);
       } else if (!result.synced) {
-        ForjaToast.error(
-          'Dealt ${ids.length} portal${ids.length == 1 ? '' : 's'} '
-          'but the list could not refresh — reopen Portals',
-        );
+        ForjaToast.error(l10n.engineRuntimeDealRefreshFailed(ids.length));
       } else {
-        ForjaToast.success(
-          'Dealt ${ids.length} portal${ids.length == 1 ? '' : 's'}',
-        );
+        ForjaToast.success(l10n.engineRuntimeDealDone(ids.length));
         final pluginId = await _pluginId();
         if (pluginId != null && pluginId.isNotEmpty && mounted) {
           PortalChannelGuideOpen.invalidateLiveCatalog();
@@ -520,19 +521,21 @@ class _PortalsPanelViewState extends ConsumerState<PortalsPanelView> {
   }
 
   Future<String?> _shareCodeFor(String portalKey) async {
+    final l10n = context.l10n;
     final code = await PortalsHost.createShareCode(portalKey);
     if (code == null) {
-      ForjaToast.error('Could not create share code');
+      ForjaToast.error(l10n.engineRuntimeShareCodeFailed);
       return null;
     }
     ForjaToast.success(
-      'Share code copied',
+      l10n.engineRuntimeShareCodeCopied,
       duration: const Duration(seconds: 2),
     );
     return code;
   }
 
   Future<void> _deletePortal(String portalKey) async {
+    final l10n = context.l10n;
     setState(() => _deletingKeys.add(portalKey));
     try {
       final inv = ref
@@ -548,7 +551,7 @@ class _PortalsPanelViewState extends ConsumerState<PortalsPanelView> {
       }
       await _runAction(
         (id) => PortalsHost.remove(pluginId: id, key: portalKey),
-        toastOk: 'Removed',
+        toastOk: l10n.engineRuntimeRemoved,
         reloadCatalog: true,
       );
     } finally {
@@ -605,11 +608,11 @@ class _PortalsPanelViewState extends ConsumerState<PortalsPanelView> {
             label: a.label,
             icon: a.icon,
             enabled: !_busy && credits >= 1,
-            hoverLabel: '$credits cr',
+            hoverLabel: context.l10n.engineRuntimeCreditsShort(credits),
             hoverLabelMuted: credits < 1,
             tooltip: credits > 0
-                ? '${a.label} ($credits credits)'
-                : '${a.label} (no credits)',
+                ? context.l10n.engineRuntimeDealTooltipCredits(a.label, credits)
+                : context.l10n.engineRuntimeDealTooltipNoCredits(a.label),
             onPressed: () => unawaited(_dispatchPanelAction(a)),
           ),
         );
@@ -627,9 +630,9 @@ class _PortalsPanelViewState extends ConsumerState<PortalsPanelView> {
     }
 
     final statusText = _busy
-        ? 'Working…'
+        ? context.l10n.packsPromptWorking
         : (asyncInv.isLoading && inv == null)
-        ? 'Loading…'
+        ? context.l10n.engineRuntimeLoading
         : '';
 
     final currentKeys = {for (final p in items) p.id};
@@ -661,7 +664,7 @@ class _PortalsPanelViewState extends ConsumerState<PortalsPanelView> {
       tabId: widget.tabId,
       child: PortalListView(
         width: widget.width,
-        title: (inv?.title.trim().isNotEmpty ?? false) ? inv!.title : 'Portals',
+        title: (inv?.title.trim().isNotEmpty ?? false) ? inv!.title : context.l10n.engineRuntimePortals,
         items: items,
         headerActions: headerActions,
         searchPlaceholder: inv?.searchPlaceholder ?? '',

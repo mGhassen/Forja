@@ -1,6 +1,8 @@
 /// VOD offline download task model (Phase 1 — HTTP / HLS only).
 library;
 
+import 'package:forja/shared/utils/byte_units.dart';
+
 enum DownloadStatus { queued, downloading, paused, completed, failed, canceled }
 
 /// Phase 1 supports direct HTTP(S) only. Debrid / P2P land in later phases.
@@ -109,16 +111,27 @@ class DownloadTask {
     return '${formatBytes(receivedBytes)} / ${formatBytes(totalBytes)}';
   }
 
-  static String formatBytes(int bytes) {
-    if (bytes <= 0) return '0 B';
-    const suffixes = ['B', 'KB', 'MB', 'GB', 'TB'];
+  /// [localized] false keeps English units, for sizes that are parsed back.
+  static String formatBytes(int bytes, {bool localized = true}) {
+    if (!localized) {
+      if (bytes <= 0) return '0 B';
+      const suffixes = ['B', 'KB', 'MB', 'GB', 'TB'];
+      var i = 0;
+      var count = bytes.toDouble();
+      while (count >= 1024 && i < suffixes.length - 1) {
+        count /= 1024;
+        i++;
+      }
+      return '${count.toStringAsFixed(i == 0 ? 0 : 2)} ${suffixes[i]}';
+    }
+    if (bytes <= 0) return ByteUnits.format(0, 0, 0);
     var i = 0;
     var count = bytes.toDouble();
-    while (count >= 1024 && i < suffixes.length - 1) {
+    while (count >= 1024 && i < ByteUnits.suffixes.length - 1) {
       count /= 1024;
       i++;
     }
-    return '${count.toStringAsFixed(i == 0 ? 0 : 2)} ${suffixes[i]}';
+    return ByteUnits.format(count, i, i == 0 ? 0 : 2);
   }
 
   DownloadTask copyWith({

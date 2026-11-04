@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:forja/l10n/l10n.dart';
 import 'package:forja/shell/focus/shell_focusable_tap.dart';
 import 'package:forja/shell/tv/shell_tv_focus.dart';
 import 'package:forja/shell/tv/tv_focus_graph.dart';
@@ -12,7 +13,7 @@ class MediaDetailsCastSection extends StatelessWidget {
   const MediaDetailsCastSection({
     super.key,
     required this.cast,
-    this.title = 'Cast',
+    this.title,
     this.outdentHorizontal = 0,
     this.tvTabId,
     this.tvRowId,
@@ -21,7 +22,7 @@ class MediaDetailsCastSection extends StatelessWidget {
   });
 
   final List<Map<String, String>> cast;
-  final String title;
+  final String? title;
   final double outdentHorizontal;
   final String? tvTabId;
   final String? tvRowId;
@@ -43,7 +44,7 @@ class MediaDetailsCastSection extends StatelessWidget {
 
     final paint = DetailsCastSection(
       cast: cast,
-      title: title,
+      title: title ?? context.l10n.engineDetailsCast,
       outdentHorizontal: outdentHorizontal,
       itemBuilder: (context, {required index, required child}) {
         return shellFocusableTap(

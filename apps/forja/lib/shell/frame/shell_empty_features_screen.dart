@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja/features/settings/shell/visibility_provider.dart';
+import 'package:forja/l10n/l10n.dart';
 
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shell/tv/shell_tv_coordinator.dart';
@@ -120,34 +121,35 @@ class _ShellEmptyFeaturesScreenState
     final showPlugins = visibility?.showSourcesCategory ?? true;
     final showAddons = showPlugins && widget.onOpenAddons != null;
     final profile = ShellScope.profileOf(context);
+    final l10n = context.l10n;
 
     final specs = <_CardSpec>[
       if (showPlugins && widget.onInstallPlugins != null)
         _CardSpec(
           icon: Icons.inventory_2_outlined,
-          title: 'Plugins',
+          title: l10n.shellEmptyPluginsTitle,
           body: tv
-              ? 'Install hub and stream packs from a URL or profile.'
-              : 'Install hub and stream packs from a manifest URL, or sync packs from your profile.',
+              ? l10n.shellEmptyPluginsBodyTv
+              : l10n.shellEmptyPluginsBody,
           accent: const Color(0xFFFBBF24),
           onAction: widget.onInstallPlugins!,
         ),
       if (showAddons)
         _CardSpec(
           icon: Icons.extension_rounded,
-          title: 'Addons',
+          title: l10n.settingsCategoryAddonsTitle,
           body: tv
-              ? 'IPTV, Live Sports, torrent, Stremio, Nuvio, and more.'
-              : 'Turn on IPTV, Live Sports, torrent, Stremio, Nuvio, and other playback surfaces.',
+              ? l10n.shellEmptyAddonsBodyTv
+              : l10n.shellEmptyAddonsBody,
           accent: const Color(0xFF22D3EE),
           onAction: widget.onOpenAddons!,
         ),
       _CardSpec(
         icon: Icons.tab_rounded,
-        title: 'Features',
+        title: l10n.settingsCategoryFeaturesTitle,
         body: tv
-            ? 'Choose which tabs appear in the rail.'
-            : 'Choose which tabs appear: Home, Anime, IPTV, Live Sports, Lists, and more.',
+            ? l10n.shellEmptyFeaturesBodyTv
+            : l10n.shellEmptyFeaturesBody,
         accent: const Color(0xFF34D399),
         onAction: widget.onOpenFeatures,
       ),
@@ -229,7 +231,7 @@ class _ShellEmptyFeaturesScreenState
                             : ShellTokens.emptyFeaturesTitleGapDesktop,
                       ),
                       Text(
-                        'Turn on a feature to get started',
+                        l10n.shellEmptyTitle,
                         textAlign: TextAlign.center,
                         style: GoogleFonts.plusJakartaSans(
                           color: ForjaShellColors.textPrimary,
@@ -245,7 +247,7 @@ class _ShellEmptyFeaturesScreenState
                             : ShellTokens.emptyFeaturesBodyGapDesktop,
                       ),
                       Text(
-                        'Pick Plugins, Addons, or Features.',
+                        l10n.shellEmptyHint,
                         textAlign: TextAlign.center,
                         style: GoogleFonts.plusJakartaSans(
                           color: ForjaShellColors.textPrimary.withValues(

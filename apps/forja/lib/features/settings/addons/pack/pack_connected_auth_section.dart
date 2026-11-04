@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:forja/features/settings/addons/pack/pack_auth_browser_dialog.dart';
 import 'package:forja/features/settings/ui/settings_ui.dart';
+import 'package:forja/l10n/l10n.dart';
 
 import 'package:forja/shared/engine/packs/settings/pack_connected_auth_service.dart';
 import 'package:forja/shared/engine/packs/settings/pack_connected_auth_spec.dart';
@@ -53,9 +54,7 @@ class _PackConnectedAuthSectionState extends State<PackConnectedAuthSection> {
       if (!mounted) return;
       final flow = (begin?['flow'] ?? 'form').toString();
       if (flow == 'pin') {
-        ForjaToast.error(
-          'PIN login for ${spec.label} is not available in this build',
-        );
+        ForjaToast.error(context.l10n.addonsPackAuthPinUnavailable(spec.label));
         return;
       }
       final methods = _methodsFromBegin(begin);
@@ -65,7 +64,7 @@ class _PackConnectedAuthSectionState extends State<PackConnectedAuthSection> {
         return;
       }
       if (methods.isEmpty) {
-        ForjaToast.error('No login methods from ${spec.label}');
+        ForjaToast.error(context.l10n.addonsPackAuthNoMethods(spec.label));
         return;
       }
       final submitted =
@@ -81,7 +80,7 @@ class _PackConnectedAuthSectionState extends State<PackConnectedAuthSection> {
         fields: submitted.fields,
       );
       if (!mounted) return;
-      ForjaToast.success('Connected to ${spec.label}');
+      ForjaToast.success(context.l10n.addonsPackAuthConnectedTo(spec.label));
       await _reload();
     } catch (e) {
       if (mounted) {
@@ -107,7 +106,7 @@ class _PackConnectedAuthSectionState extends State<PackConnectedAuthSection> {
   ) async {
     final url = (begin['url'] ?? '').toString().trim();
     if (url.isEmpty) {
-      ForjaToast.error('No login URL from ${spec.label}');
+      ForjaToast.error(context.l10n.addonsPackAuthNoUrl(spec.label));
       return;
     }
     final methodsRaw = begin['methods'];
@@ -121,7 +120,8 @@ class _PackConnectedAuthSectionState extends State<PackConnectedAuthSection> {
           context: context,
           barrierDismissible: false,
           builder: (ctx) => PackAuthBrowserDialog(
-            title: (begin['title'] ?? 'Sign in to ${spec.label}').toString(),
+            title: (begin['title'] ?? ctx.l10n.addonsPackAuthSignInTo(spec.label))
+                .toString(),
             url: url,
             hint: (begin['hint'] ?? '').toString(),
             methods: methods,
@@ -134,7 +134,7 @@ class _PackConnectedAuthSectionState extends State<PackConnectedAuthSection> {
       fields: submitted.fields,
     );
     if (!mounted) return;
-    ForjaToast.success('Connected to ${spec.label}');
+    ForjaToast.success(context.l10n.addonsPackAuthConnectedTo(spec.label));
     await _reload();
   }
 
@@ -143,7 +143,7 @@ class _PackConnectedAuthSectionState extends State<PackConnectedAuthSection> {
     try {
       await PackConnectedAuthService.logout(spec);
       if (!mounted) return;
-      ForjaToast.success('Signed out of ${spec.label}');
+      ForjaToast.success(context.l10n.addonsPackAuthSignedOutOf(spec.label));
       await _reload();
     } catch (e) {
       if (mounted) {
@@ -184,15 +184,15 @@ class _PackConnectedAuthSectionState extends State<PackConnectedAuthSection> {
                         title: () {
                           final who = _status[spec.pluginId]?.label?.trim();
                           if (who != null && who.isNotEmpty) {
-                            return 'Connected as $who';
+                            return context.l10n.addonsPackAuthConnectedAs(who);
                           }
-                          return 'Connected';
+                          return context.l10n.addonsPackAuthConnected;
                         }(),
                         subtitle: spec.label,
                       ),
                       const SizedBox(height: 10),
                       SettingsFilledButton(
-                        label: 'Logout from ${spec.label}',
+                        label: context.l10n.addonsPackAuthLogoutFrom(spec.label),
                         icon: Icons.logout,
                         secondary: true,
                         busy: _busy.contains(spec.pluginId),
@@ -202,7 +202,7 @@ class _PackConnectedAuthSectionState extends State<PackConnectedAuthSection> {
                       ),
                     ] else
                       SettingsFilledButton(
-                        label: 'Login with ${spec.label}',
+                        label: context.l10n.addonsPackAuthLoginWith(spec.label),
                         icon: Icons.login,
                         busy: _busy.contains(spec.pluginId),
                         onPressed: _busy.contains(spec.pluginId)
@@ -282,7 +282,7 @@ class _PackAuthLoginDialogState extends State<_PackAuthLoginDialog> {
       titlePadding: SettingsTokens.dialogTitlePaddingOf(context),
       contentPadding: SettingsTokens.dialogContentPaddingOf(context),
       title: Text(
-        'Login · ${widget.title}',
+        context.l10n.addonsPackAuthLoginDialogTitle(widget.title),
         style: TextStyle(
           fontSize: SettingsTokens.pageTitleSizeOf(context),
           fontWeight: FontWeight.w700,
@@ -336,7 +336,7 @@ class _PackAuthLoginDialogState extends State<_PackAuthLoginDialog> {
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context),
-          child: const Text('Cancel'),
+          child: Text(context.l10n.addonsPackCancel),
         ),
         FilledButton(
           onPressed: () {
@@ -348,7 +348,7 @@ class _PackAuthLoginDialogState extends State<_PackAuthLoginDialog> {
             }
             Navigator.pop(context, (method: _methodId, fields: fields));
           },
-          child: const Text('Login'),
+          child: Text(context.l10n.addonsPackAuthLoginButton),
         ),
       ],
     );

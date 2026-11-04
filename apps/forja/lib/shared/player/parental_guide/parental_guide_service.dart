@@ -1,5 +1,7 @@
 import 'dart:convert';
 
+import 'package:forja/l10n/app_localizations.dart';
+import 'package:forja/l10n/app_localizations_en.dart';
 import 'package:http/http.dart' as http;
 
 const _kBaseUrl = 'https://api.tiffara.com';
@@ -128,14 +130,19 @@ String? resolveParentalGuideSeverity(Map<String, dynamic>? category) {
   return dominant['severityLevel']?.toString().toLowerCase();
 }
 
-List<ParentalWarning> buildParentalWarnings(ParentalGuideResult guide) {
+/// [l10n] defaults to English for callers with no [BuildContext] to hand.
+List<ParentalWarning> buildParentalWarnings(
+  ParentalGuideResult guide, [
+  AppLocalizations? l10n,
+]) {
+  final l = l10n ?? AppLocalizationsEn();
   const severityOrder = {'severe': 0, 'moderate': 1, 'mild': 2};
-  const labels = {
-    'nudity': 'Nudity',
-    'violence': 'Violence',
-    'profanity': 'Profanity',
-    'alcohol': 'Alcohol/Drugs',
-    'frightening': 'Frightening',
+  final labels = {
+    'nudity': l.playerControlParentalNudity,
+    'violence': l.playerControlParentalViolence,
+    'profanity': l.playerControlParentalProfanity,
+    'alcohol': l.playerControlParentalAlcoholDrugs,
+    'frightening': l.playerControlParentalFrightening,
   };
   final rows = <(String, String)>[
     if (guide.nudity != null) ('nudity', guide.nudity!),

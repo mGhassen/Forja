@@ -450,7 +450,7 @@ mixin _DesktopPlayerSources
       return (label: provider, server: null);
     }
     if (sourceTitle != null) return splitSourceButtonLines(sourceTitle);
-    return (label: 'Stream', server: null);
+    return (label: context.l10n.playerScreenStream, server: null);
   }
 
   ({String label, String? server}) _catalogSourcesButtonLabels() {
@@ -748,7 +748,7 @@ mixin _DesktopPlayerSources
       if (!mounted || _s._disposed) return;
       ref
           .read(playerResolveStatusProvider.notifier)
-          .setError('Failed: ${source.title}');
+          .setError(context.l10n.playerScreenSourceFailed(source.title));
       _s._statusController.upsert(
         statusId,
         source.title,

@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:forja/app/boot_needs.dart';
 import 'package:forja/app/hub_boot_prefetch.dart';
+import 'package:forja/l10n/app_localizations_en.dart';
+import 'package:forja/l10n/l10n.dart';
 import 'package:forja/shared/engine/packs/install/plugin_install_coordinator.dart';
 import 'package:forja/shared/lan/lan.dart';
 import 'package:forja/shared/sync/api/sync_service.dart';
@@ -31,7 +33,10 @@ class ProfileEngineWarm {
     bool prefetchDefaultHub = false,
     String reason = 'boot',
     void Function(String status)? onStatus,
+    // English when omitted, so existing callers keep compiling.
+    AppLocalizations? l10n,
   }) async {
+    final l = l10n ?? AppLocalizationsEn();
     debugPrint('[Init] warm ($reason): $needs');
 
     await SyncService.instance.ensurePluginDiskScopeForCurrentSession();
@@ -44,7 +49,7 @@ class ProfileEngineWarm {
         awaitOfficialPacks && (needs.needsForjaPluginWarm || forceCloudLean);
 
     if (shouldWarmPacks) {
-      onStatus?.call('Loading plugins…');
+      onStatus?.call(l.appBootLoadingPlugins);
       debugPrint(
         '[Init] PluginInstallCoordinator (await)'
         '${forceCloudLean && !needs.needsForjaPluginWarm ? ' forceCloudLean' : ''}',
@@ -87,7 +92,7 @@ class ProfileEngineWarm {
     }
 
     if (prefetchDefaultHub && needs.catalogTab) {
-      onStatus?.call(needs.openingStatusLabel);
+      onStatus?.call(needs.openingStatus(l));
       await prefetchDefaultHubLayout(needs);
     } else if (prefetchDefaultHub) {
       debugPrint('[Init] Hub prefetch skip (no catalog tab)');
@@ -97,7 +102,7 @@ class ProfileEngineWarm {
       debugPrint('[Init] LocalServer / Nuvio skip (deferred)');
     } else {
       if (needs.engine) {
-        onStatus?.call('Starting stream proxy…');
+        onStatus?.call(l.appBootStartingProxy);
         debugPrint('[Init] LocalServer start (engine VOD)');
         await LocalServerService().start().catchError((e) {
           debugPrint('[Init] LocalServer error: $e');
@@ -119,7 +124,7 @@ class ProfileEngineWarm {
 
     if (needs.torrent) {
       if (startTorrent && PlatformPlayback.capabilities.localTorrentEngine) {
-        onStatus?.call('Starting torrent engine…');
+        onStatus?.call(l.appBootStartingTorrent);
         debugPrint('[Init] TorrentStream start (direct torrent)');
         final ok = await TorrentStreamService()
             .start()

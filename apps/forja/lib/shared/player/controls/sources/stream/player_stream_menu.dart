@@ -4,6 +4,8 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import 'package:forja/l10n/app_localizations_en.dart';
+import 'package:forja/l10n/l10n.dart';
 import 'package:forja/shared/player/controls/chrome/player_chrome_overlays.dart';
 import 'package:forja/shared/player/controls/episodes/player_episode_panel.dart';
 import 'package:forja/shared/player/controls/menus/player_popup_panel.dart';
@@ -111,7 +113,7 @@ class PlayerStreamMenu {
 
     if (!hasProviders && !hasSources) {
       ForjaToast.warning(
-        'No streams available',
+        context.l10n.playerControlNoStreamsAvailable,
         duration: const Duration(seconds: 1),
       );
       return;
@@ -187,7 +189,7 @@ class PlayerStreamMenu {
       children: [
         for (final entry in ordered)
           Builder(
-            builder: (_) {
+            builder: (context) {
               final matched = _isCurrentSource(
                 entry.value,
                 state,
@@ -228,7 +230,7 @@ class PlayerStreamMenu {
               if (saved != null && saved.isCompleted) {
                 final named = offlineDownloadRowLabel(saved);
                 if (named.isNotEmpty) label = named;
-                offlineCaption = 'Offline';
+                offlineCaption = context.l10n.downloadsLegendOffline;
               }
               return _FlatMenuRow(
                 label: label,
@@ -781,15 +783,17 @@ class PlayerStreamMenu {
     bool isFailed = false,
     int? checkingOrdinal,
     int? checkingTotal,
+    AppLocalizations? l10n,
   }) {
-    if (isPlaying) return 'Playing now';
+    final l = l10n ?? AppLocalizationsEn();
+    if (isPlaying) return l.playerControlPlayingNow;
     if (checkingOrdinal != null && checkingTotal != null && checkingTotal > 1) {
-      return 'Checking $checkingOrdinal/$checkingTotal…';
+      return l.playerControlCheckingOrdinal(checkingOrdinal, checkingTotal);
     }
     if (sourceCount > 0) {
-      return '$sourceCount stream${sourceCount == 1 ? '' : 's'}';
+      return l.playerControlStreamCount(sourceCount);
     }
-    if (isFailed) return PlayerProviderMenu.unavailableSubtitle;
+    if (isFailed) return l.playerControlStatusUnavailable;
     return null;
   }
 

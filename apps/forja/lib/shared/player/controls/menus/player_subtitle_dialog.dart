@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 
+import 'package:forja/l10n/l10n.dart';
 import 'package:forja/shared/player/controls/chrome/player_chrome_overlays.dart';
 import 'package:forja/shared/player/controls/episodes/player_episode_panel.dart';
 import 'package:forja/shared/player/controls/menus/player_popup_panel.dart';
@@ -256,7 +257,7 @@ class _SubtitleDialogOverlayState extends State<_SubtitleDialogOverlay> {
     if (onSettings == null) return const SizedBox.shrink();
     return PlayerPopupChromeButton(
       icon: Icons.tune_rounded,
-      tooltip: 'Subtitle settings',
+      tooltip: context.l10n.playerControlSubtitleSettings,
       focusNode: _settingsFocus,
       onTap: () {
         PlayerSubtitleDialog.dismiss();
@@ -270,7 +271,7 @@ class _SubtitleDialogOverlayState extends State<_SubtitleDialogOverlay> {
   Widget _closeChip({required bool autoFocus}) {
     return PlayerPopupChromeButton(
       icon: Icons.close_rounded,
-      tooltip: 'Close',
+      tooltip: context.l10n.settingsUiClose,
       focusNode: _closeFocus,
       autoFocus: autoFocus,
       onTap: widget.onClose,
@@ -297,10 +298,10 @@ class _SubtitleDialogOverlayState extends State<_SubtitleDialogOverlay> {
 
   Widget _buildGroupsColumn() {
     if (_groups.isEmpty) {
-      return const Center(
+      return Center(
         child: Text(
-          'No subtitles',
-          style: TextStyle(color: Colors.white54, fontSize: 13),
+          context.l10n.playerControlNoSubtitles,
+          style: const TextStyle(color: Colors.white54, fontSize: 13),
         ),
       );
     }
@@ -331,10 +332,10 @@ class _SubtitleDialogOverlayState extends State<_SubtitleDialogOverlay> {
   Widget _buildTracksColumn() {
     final group = _selectedGroup;
     if (group == null) {
-      return const Center(
+      return Center(
         child: Text(
-          'No tracks',
-          style: TextStyle(color: Colors.white54, fontSize: 13),
+          context.l10n.playerControlNoTracks,
+          style: const TextStyle(color: Colors.white54, fontSize: 13),
         ),
       );
     }
@@ -344,11 +345,11 @@ class _SubtitleDialogOverlayState extends State<_SubtitleDialogOverlay> {
     final online = _byLangOnline[langKey] ?? const <Map<String, dynamic>>[];
 
     if (widget.isFetchingSubs && embedded.isEmpty && online.isEmpty) {
-      return const Center(
+      return Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            SizedBox(
+            const SizedBox(
               width: 22,
               height: 22,
               child: CircularProgressIndicator(
@@ -356,10 +357,10 @@ class _SubtitleDialogOverlayState extends State<_SubtitleDialogOverlay> {
                 color: PlayerPopupTokens.accent,
               ),
             ),
-            SizedBox(height: 10),
+            const SizedBox(height: 10),
             Text(
-              'Searching subtitles…',
-              style: TextStyle(color: Colors.white54, fontSize: 12),
+              context.l10n.playerControlSearchingSubtitles,
+              style: const TextStyle(color: Colors.white54, fontSize: 12),
             ),
           ],
         ),
@@ -367,10 +368,10 @@ class _SubtitleDialogOverlayState extends State<_SubtitleDialogOverlay> {
     }
 
     if (embedded.isEmpty && online.isEmpty) {
-      return const Center(
+      return Center(
         child: Text(
-          'No tracks',
-          style: TextStyle(color: Colors.white54, fontSize: 13),
+          context.l10n.playerControlNoTracks,
+          style: const TextStyle(color: Colors.white54, fontSize: 13),
         ),
       );
     }
@@ -385,7 +386,7 @@ class _SubtitleDialogOverlayState extends State<_SubtitleDialogOverlay> {
               title: embedded[i].label,
               language: embedded[i].language,
             ),
-            subtitle: 'In-stream',
+            subtitle: context.l10n.playerControlInStream,
             selected: widget.selectedExternalSubUrl == null &&
                 !widget.tracks.textOff &&
                 embedded[i].selected,
@@ -399,8 +400,11 @@ class _SubtitleDialogOverlayState extends State<_SubtitleDialogOverlay> {
           PlayerPopupListTile(
             label: online[i]['display']?.toString() ??
                 languageDisplayName(langKey),
-            subtitle: (online[i]['translated'] == true ? 'Translated · ' : '') +
-                (online[i]['sourceName']?.toString() ?? 'opensubtitles'),
+            subtitle: online[i]['translated'] == true
+                ? context.l10n.playerControlTranslatedFrom(
+                    online[i]['sourceName']?.toString() ?? 'opensubtitles',
+                  )
+                : (online[i]['sourceName']?.toString() ?? 'opensubtitles'),
             selected: online[i]['url'] == widget.selectedExternalSubUrl,
             onUpEdge:
                 i == 0 && embedded.isEmpty && _tvFocus ? _focusClose : null,
@@ -415,8 +419,9 @@ class _SubtitleDialogOverlayState extends State<_SubtitleDialogOverlay> {
 
   Widget _buildBody() {
     final group = _selectedGroup;
-    final tracksTitle =
-        group == null ? 'Tracks' : 'Tracks · ${group.label}';
+    final tracksTitle = group == null
+        ? context.l10n.playerControlTracks
+        : context.l10n.playerControlTracksGroup(group.label);
     final tv = _tvFocus;
     // Close claims open focus on TV (not Off / selected track).
     final closeAutoFocus =
@@ -426,14 +431,14 @@ class _SubtitleDialogOverlayState extends State<_SubtitleDialogOverlay> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         PlayerSidePanelHeader(
-          title: 'Subtitles',
+          title: context.l10n.playerControlSubtitles,
           onClose: widget.onClose,
           showClose: !tv,
           trailing: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
               PlayerPopupHeaderChip(
-                label: 'Off',
+                label: context.l10n.playerControlOff,
                 selected: _textOff,
                 // TV opens on Close X — Off only autofocuses on non-TV.
                 autoFocus: !tv &&
@@ -452,7 +457,7 @@ class _SubtitleDialogOverlayState extends State<_SubtitleDialogOverlay> {
               if (!_hideLoadFile) ...[
                 const SizedBox(width: 6),
                 PlayerPopupHeaderChip(
-                  label: 'File',
+                  label: context.l10n.playerControlFile,
                   icon: Icons.upload_file_rounded,
                   selected: false,
                   onTap: () => unawaited(_pickFile()),
@@ -491,7 +496,7 @@ class _SubtitleDialogOverlayState extends State<_SubtitleDialogOverlay> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
-                        _sectionLabel('Languages'),
+                        _sectionLabel(context.l10n.playerControlLanguages),
                         Expanded(child: _buildGroupsColumn()),
                       ],
                     ),

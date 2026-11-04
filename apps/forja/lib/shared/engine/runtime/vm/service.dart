@@ -18,6 +18,7 @@ import 'package:forja/shared/engine/packs/settings/pack_addon_settings_spec.dart
 import 'package:forja/shared/engine/packs/settings/pack_connected_auth_service.dart';
 import 'package:forja/shared/playback/open/playback_start_trace.dart';
 import 'package:forja/shared/playback/probe/playback_stream_guards.dart';
+import 'package:forja/shared/services/app/app_locale.dart';
 import 'package:rust/rust.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -483,6 +484,9 @@ class EngineService {
     // `--dart-define=TMDB_API_KEY`; fall back to the Rust-baked key so release
     // builds still work if CI forgot the dart-define.
     _injectCatalogTmdbApiKey(config);
+    // App language (BCP 47, e.g. fr-FR) so packs can ask APIs for titles and
+    // overviews in it. Travels in config: the engine forwards that object as is.
+    config['uiLocale'] = AppLocale.contentLocale;
 
     // First-class catalog request (both EngineJS + flutter_js invokers).
     final catalogCtx = <String, dynamic>{

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:forja/l10n/l10n.dart';
 import 'package:forja/shared/player/controls/menus/player_popup_panel.dart';
 import 'package:rust/rust.dart';
 import 'package:forja/shell/feedback/forja_toast.dart';
@@ -16,13 +17,16 @@ class StreamSourcePanel {
     BuildContext? anchorContext,
   }) {
     if (sources.isEmpty) {
-      ForjaToast.info('No sources available', duration: const Duration(seconds: 1));
+      ForjaToast.info(
+        context.l10n.playerControlNoSourcesAvailable,
+        duration: const Duration(seconds: 1),
+      );
       return;
     }
 
     PlayerPopupPanel.show(
       context: context,
-      title: 'Sources',
+      title: context.l10n.addonsHostProvSourcesChip,
       leadingIcon: Icons.dns_outlined,
       alignment: alignment,
       margin: margin,

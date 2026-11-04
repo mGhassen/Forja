@@ -6,6 +6,7 @@ import 'package:forja/features/account/device_link_connect_view.dart';
 import 'package:forja/features/account/profile_chooser_screen.dart';
 import 'package:forja/features/account/tv_account_link_screen.dart';
 import 'package:forja/features/settings/ui/settings_ui.dart';
+import 'package:forja/l10n/l10n.dart';
 
 import 'package:forja/shared/platform/platform_info.dart';
 import 'package:forja/shared/supabase/forja_supabase.dart';
@@ -128,7 +129,7 @@ class _SettingsForjaAccountPanelState extends State<SettingsForjaAccountPanel> {
       }
       final message = e is SyncProfileFetchException
           ? e.message
-          : 'Could not load profile. Check your connection and retry.';
+          : context.l10n.profileLoadFailed;
       setState(() {
         // Do not keep a stale Synced hero after a failed refresh.
         _profileReady = false;
@@ -151,7 +152,7 @@ class _SettingsForjaAccountPanelState extends State<SettingsForjaAccountPanel> {
     );
     if (!mounted) return;
     if (switched) {
-      ForjaToast.success('Profile ready');
+      ForjaToast.success(context.l10n.profileToastProfileReady);
     }
     await _refreshRemote();
     setState(() {});
@@ -172,7 +173,7 @@ class _SettingsForjaAccountPanelState extends State<SettingsForjaAccountPanel> {
         );
       }
       if (!mounted) return;
-      ForjaToast.success('Account ready');
+      ForjaToast.success(context.l10n.profileToastAccountReady);
     }
     await _refreshRemote();
     setState(() {});
@@ -191,7 +192,7 @@ class _SettingsForjaAccountPanelState extends State<SettingsForjaAccountPanel> {
     setState(() => _busy = false);
     if (!ok) {
       setState(() {
-        _error = 'Sign-in failed. Check email/password or Supabase config.';
+        _error = context.l10n.profileSignInFailed;
       });
       return;
     }
@@ -242,7 +243,7 @@ class _SettingsForjaAccountPanelState extends State<SettingsForjaAccountPanel> {
       );
       if (!mounted) return;
       if (response.session == null) {
-        setState(() => _error = 'Web login did not complete.');
+        setState(() => _error = context.l10n.profileWebLoginIncomplete);
         return;
       }
       await presentProfileChooser(context, prepareCurrentOnSwitch: false);
@@ -258,10 +259,7 @@ class _SettingsForjaAccountPanelState extends State<SettingsForjaAccountPanel> {
       setState(() => _error = e.message);
     } catch (_) {
       if (!mounted) return;
-      setState(
-        () => _error =
-            'Could not finish web login. Check that the portal is reachable.',
-      );
+      setState(() => _error = context.l10n.profileWebLoginFailed);
     } finally {
       _webCancel = null;
       if (mounted) setState(() => _webBusy = false);
@@ -278,7 +276,7 @@ class _SettingsForjaAccountPanelState extends State<SettingsForjaAccountPanel> {
     final uri = DesktopBrowserAuth.signupUri();
     final ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
     if (!ok && mounted) {
-      setState(() => _error = 'Could not open the signup page.');
+      setState(() => _error = context.l10n.profileSignupOpenFailed);
     }
   }
 
@@ -313,8 +311,7 @@ class _SettingsForjaAccountPanelState extends State<SettingsForjaAccountPanel> {
       return Padding(
         padding: EdgeInsets.fromLTRB(2, 8, 2, 8),
         child: Text(
-          'Cloud account is not configured in this build. '
-          'Pass SUPABASE_URL and SUPABASE_PUBLISHABLE_KEY via --dart-define.',
+          context.l10n.profileCloudNotConfigured,
           style: TextStyle(
             color: ForjaShellColors.textSecondary,
             fontSize: SettingsTokens.typeSizeOf(context, 13),
@@ -346,18 +343,16 @@ class _SettingsForjaAccountPanelState extends State<SettingsForjaAccountPanel> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               SettingsGroup(
-                label: 'Account',
+                label: context.l10n.profileAccountLabel,
                 children: [
                   SettingsStatusRow(
-                    title: email ?? 'Signed in',
+                    title: email ?? context.l10n.profileSignedIn,
                     subtitle: loading
-                        ? 'Loading cloud profile…'
+                        ? context.l10n.profileCloudProfileLoading
                         : SyncService.instance.authStatus ==
                               SyncAuthStatus.offlineWithCache
-                        ? 'Working offline — cloud profile unavailable. Retry '
-                              'when online, or sign out on this device.'
-                        : 'Cloud profile could not load. Retry, or sign out to '
-                              'clear this session on the device.',
+                        ? context.l10n.profileCloudProfileOffline
+                        : context.l10n.profileCloudProfileLoadFailed,
                     icon: loading
                         ? Icons.cloud_sync_rounded
                         : Icons.cloud_off_rounded,
@@ -389,8 +384,8 @@ class _SettingsForjaAccountPanelState extends State<SettingsForjaAccountPanel> {
                     ),
                   if (!loading)
                     SettingsActionRow(
-                      title: 'Retry',
-                      subtitle: 'Reload profiles from the cloud',
+                      title: context.l10n.profileRetryTitle,
+                      subtitle: context.l10n.profileRetrySubtitle,
                       leading: Icon(
                         Icons.refresh_rounded,
                         color: ForjaShellColors.iconMuted,
@@ -400,10 +395,8 @@ class _SettingsForjaAccountPanelState extends State<SettingsForjaAccountPanel> {
                       trailing: const SizedBox.shrink(),
                     ),
                   SettingsActionRow(
-                    title: 'Sign out',
-                    subtitle:
-                        'Clear the session on this device even if the network '
-                        'is down',
+                    title: context.l10n.profileSignOutTitle,
+                    subtitle: context.l10n.profileSignOutSubtitle,
                     leading: Icon(
                       Icons.logout_rounded,
                       color: Color(0xFFF87171),
@@ -475,15 +468,16 @@ class _SignedInAccountBody extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     final syncSubtitle = domains == 0
-        ? 'No cloud settings synced yet - changes will upload as you use Forja'
-        : '$domains setting section${domains == 1 ? '' : 's'} synced to this profile';
+        ? l10n.profileSyncNoneYet
+        : l10n.profileSyncSections(domains);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         _ActiveAccountStage(
-          email: email ?? 'Signed in',
+          email: email ?? l10n.profileSignedIn,
           onTap: busy ? null : onOpenAccountChooser,
         ),
         const SizedBox(height: 4),
@@ -506,10 +500,12 @@ class _SignedInAccountBody extends StatelessWidget {
           ),
         const SizedBox(height: 8),
         SettingsGroup(
-          label: 'Cloud sync',
+          label: l10n.profileCloudSyncLabel,
           children: [
             SettingsStatusRow(
-              title: domains == 0 ? 'Signed in · waiting for sync' : 'Synced',
+              title: domains == 0
+                  ? l10n.profileSignedInWaitingSync
+                  : l10n.profileSynced,
               subtitle: syncSubtitle,
               icon: domains == 0
                   ? Icons.cloud_queue_rounded
@@ -595,7 +591,7 @@ class _ActiveAccountStage extends StatelessWidget {
                     ),
                   ),
                   child: Text(
-                    'ACCOUNT',
+                    context.l10n.profileAccountLabel.toUpperCase(),
                     style: TextStyle(
                       color: ForjaShellColors.brandGreen,
                       fontSize: SettingsTokens.typeSizeOf(context, 10),
@@ -626,8 +622,8 @@ class _ActiveAccountStage extends StatelessWidget {
                 ),
                 Text(
                   onTap == null
-                      ? 'Active Forja cloud account'
-                      : 'Tap to switch or add accounts',
+                      ? context.l10n.profileAccountActiveHint
+                      : context.l10n.profileAccountSwitchHint,
                   style: TextStyle(
                     color: ForjaShellColors.textSecondary,
                     fontSize: SettingsTokens.typeSizeOf(context, 13),
@@ -731,7 +727,7 @@ class _ActiveProfileStage extends StatelessWidget {
                     ),
                   ),
                   child: Text(
-                    'WATCHING NOW',
+                    context.l10n.profileWatchingNow.toUpperCase(),
                     style: TextStyle(
                       color: ForjaShellColors.brandGreen,
                       fontSize: SettingsTokens.typeSizeOf(context, 10),
@@ -762,8 +758,8 @@ class _ActiveProfileStage extends StatelessWidget {
                 ),
                 Text(
                   onTap == null
-                      ? 'Active profile on this device'
-                      : 'Tap to switch who’s watching',
+                      ? context.l10n.profileActiveHint
+                      : context.l10n.profileSwitchHint,
                   style: TextStyle(
                     color: ForjaShellColors.textSecondary,
                     fontSize: SettingsTokens.typeSizeOf(context, 13),
@@ -851,8 +847,7 @@ class _SignedOutAccountBody extends StatelessWidget {
           Padding(
             padding: EdgeInsets.fromLTRB(2, 4, 2, 4),
             child: Text(
-              'Link your Forja account with a code or QR on the portal. '
-              'You can keep using Forja without an account.',
+              context.l10n.profileLinkIntroTv,
               style: TextStyle(
                 color: ForjaShellColors.textSecondary,
                 fontSize: SettingsTokens.typeSizeOf(context, 13),
@@ -861,7 +856,7 @@ class _SignedOutAccountBody extends StatelessWidget {
             ),
           ),
           SettingsGroup(
-            label: 'Sign in',
+            label: context.l10n.profileSignIn,
             children: [
               Padding(
                 padding: const EdgeInsets.fromLTRB(2, 4, 2, 8),
@@ -881,7 +876,7 @@ class _SignedOutAccountBody extends StatelessWidget {
                     ],
                     Button(
                       variant: ButtonVariant.primary,
-                      label: 'Link with code or QR',
+                      label: context.l10n.profileLinkWithCodeOrQr,
                       icon: Icons.tv_rounded,
                       onPressed: formLocked ? null : onTvDeviceLink,
                     ),
@@ -891,11 +886,11 @@ class _SignedOutAccountBody extends StatelessWidget {
             ],
           ),
           SettingsGroup(
-            label: 'New here?',
+            label: context.l10n.profileNewHere,
             children: [
               SettingsActionRow(
-                title: 'Create an account on the web',
-                subtitle: 'Use a phone or computer - then link this TV',
+                title: context.l10n.profileCreateAccountWeb,
+                subtitle: context.l10n.profileCreateAccountTvHint,
                 leading: Icon(
                   Icons.person_add_alt_1_rounded,
                   color: ForjaShellColors.iconMuted,
@@ -916,8 +911,7 @@ class _SignedOutAccountBody extends StatelessWidget {
           Padding(
             padding: EdgeInsets.fromLTRB(2, 4, 2, 4),
             child: Text(
-              'Sign in to sync profiles and settings across devices. '
-              'You can keep using Forja without an account.',
+              context.l10n.profileSignInIntro,
               style: TextStyle(
                 color: ForjaShellColors.textSecondary,
                 fontSize: SettingsTokens.typeSizeOf(context, 13),
@@ -926,7 +920,7 @@ class _SignedOutAccountBody extends StatelessWidget {
             ),
           ),
           SettingsGroup(
-            label: 'Sign in',
+            label: context.l10n.profileSignIn,
             children: [
               Padding(
                 padding: const EdgeInsets.fromLTRB(2, 4, 2, 8),
@@ -935,7 +929,7 @@ class _SignedOutAccountBody extends StatelessWidget {
                   children: [
                     if (!deviceLinkActive) ...[
                       Text(
-                        'Sign in with your phone or computer in under a minute.',
+                        context.l10n.profileSignInQuick,
                         style: TextStyle(
                           color: ForjaShellColors.textSecondary.withValues(
                             alpha: 0.95,
@@ -947,7 +941,7 @@ class _SignedOutAccountBody extends StatelessWidget {
                       const SizedBox(height: 16),
                       Button(
                         variant: ButtonVariant.primary,
-                        label: 'Sign in',
+                        label: context.l10n.profileSignIn,
                         icon: Icons.link_rounded,
                         onPressed: formLocked ? null : onStartDeviceLink,
                       ),
@@ -963,11 +957,11 @@ class _SignedOutAccountBody extends StatelessWidget {
             ],
           ),
           SettingsGroup(
-            label: 'New here?',
+            label: context.l10n.profileNewHere,
             children: [
               SettingsActionRow(
-                title: 'Create an account on the web',
-                subtitle: 'Opens the Forja portal in your browser',
+                title: context.l10n.profileCreateAccountWeb,
+                subtitle: context.l10n.profileOpensPortal,
                 leading: Icon(
                   Icons.person_add_alt_1_rounded,
                   color: ForjaShellColors.iconMuted,
@@ -987,8 +981,7 @@ class _SignedOutAccountBody extends StatelessWidget {
         Padding(
           padding: EdgeInsets.fromLTRB(2, 4, 2, 4),
           child: Text(
-            'Sign in to sync profiles and settings across devices. '
-            'You can keep using Forja without an account.',
+            context.l10n.profileSignInIntro,
             style: TextStyle(
               color: ForjaShellColors.textSecondary,
               fontSize: SettingsTokens.typeSizeOf(context, 13),
@@ -997,7 +990,7 @@ class _SignedOutAccountBody extends StatelessWidget {
           ),
         ),
         SettingsGroup(
-          label: 'Sign in',
+          label: context.l10n.profileSignIn,
           children: [
             Padding(
               padding: const EdgeInsets.fromLTRB(2, 4, 2, 8),
@@ -1006,14 +999,14 @@ class _SignedOutAccountBody extends StatelessWidget {
                 children: [
                   SettingsTextField(
                     controller: emailCtrl,
-                    label: 'Email',
+                    label: context.l10n.profileEmailLabel,
                     hint: 'you@example.com',
                     enabled: !formLocked,
                   ),
                   const SizedBox(height: 4),
                   SettingsTextField(
                     controller: passwordCtrl,
-                    label: 'Password',
+                    label: context.l10n.profilePasswordLabel,
                     obscureText: true,
                     enabled: !formLocked,
                     onSubmitted: canSubmitPassword ? (_) => onSignIn() : null,
@@ -1036,13 +1029,17 @@ class _SignedOutAccountBody extends StatelessWidget {
                     children: [
                       Button(
                         variant: ButtonVariant.primary,
-                        label: busy ? 'Signing in…' : 'Sign in',
+                        label: busy
+                            ? context.l10n.profileSigningIn
+                            : context.l10n.profileSignIn,
                         icon: Icons.login_rounded,
                         loading: busy,
                         onPressed: canSubmitPassword ? onSignIn : null,
                       ),
                       Button(
-                        label: webBusy ? 'Cancel web login' : 'Web login',
+                        label: webBusy
+                            ? context.l10n.profileCancelWebLogin
+                            : context.l10n.profileWebLogin,
                         icon: webBusy
                             ? Icons.close_rounded
                             : Icons.language_rounded,
@@ -1058,11 +1055,11 @@ class _SignedOutAccountBody extends StatelessWidget {
           ],
         ),
         SettingsGroup(
-          label: 'New here?',
+          label: context.l10n.profileNewHere,
           children: [
             SettingsActionRow(
-              title: 'Create an account on the web',
-              subtitle: 'Opens the Forja portal in your browser',
+              title: context.l10n.profileCreateAccountWeb,
+              subtitle: context.l10n.profileOpensPortal,
               leading: Icon(
                 Icons.person_add_alt_1_rounded,
                 color: ForjaShellColors.iconMuted,

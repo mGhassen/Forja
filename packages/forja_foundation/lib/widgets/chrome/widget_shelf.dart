@@ -1,3 +1,4 @@
+import 'package:forja_foundation/l10n/foundation_strings.dart';
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -542,7 +543,7 @@ class _WidgetShelfTabState extends State<_WidgetShelfTab> {
                         child: Padding(
                           padding: const EdgeInsets.only(right: 8),
                           child: Tooltip(
-                            message: 'Reload ${widget.item.label}',
+                            message: '${ForjaFoundationStrings.current.t('Reload')} ${widget.item.label}',
                             child: Icon(
                               Icons.refresh_rounded,
                               size: widget.iconSize,

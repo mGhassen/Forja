@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:forja/l10n/l10n.dart';
 import 'package:forja/shared/casting/casting.dart';
 import 'package:forja/shared/player/controls/chrome/player_status_roulette.dart';
 import 'package:forja/shared/player/controls/menus/player_popup_panel.dart';
@@ -504,9 +505,11 @@ class _PlayerStreamPickerButtonState extends State<PlayerStreamPickerButton> {
           );
     final server = widget.server?.trim();
     final base = server != null && server.isNotEmpty
-        ? 'Source: ${widget.label} · $server'
-        : 'Source: ${widget.label}';
-    final tip = widget.offline ? '$base · Offline' : base;
+        ? context.l10n.playerControlSourceTipWithServer(widget.label, server)
+        : context.l10n.playerControlSourceTip(widget.label);
+    final tip = widget.offline
+        ? context.l10n.playerControlTipOffline(base)
+        : base;
     return Tooltip(message: tip, child: button);
   }
 }
@@ -689,9 +692,11 @@ class _PlayerSourcesPanelButtonState extends State<PlayerSourcesPanelButton> {
           );
     final server = widget.server?.trim();
     final base = server != null && server.isNotEmpty
-        ? 'Sources: ${widget.label} · $server'
-        : 'Sources: ${widget.label}';
-    final tip = widget.offline ? '$base · Offline' : base;
+        ? context.l10n.playerControlSourcesTipWithServer(widget.label, server)
+        : context.l10n.playerControlSourcesTip(widget.label);
+    final tip = widget.offline
+        ? context.l10n.playerControlTipOffline(base)
+        : base;
     return Tooltip(message: tip, child: button);
   }
 }
@@ -961,10 +966,10 @@ class PlayerTopBar extends StatelessWidget {
   /// TV: D-pad ↓ from Back (seek bar or transport — geometry often fails).
   final VoidCallback? backOnDownEdge;
 
-  String? get _episodeLine {
+  String? _episodeLineFor(AppLocalizations l10n) {
     if (episodeLine != null && episodeLine!.isNotEmpty) return episodeLine;
     if (episode == null) return null;
-    if (season == null) return 'Episode $episode';
+    if (season == null) return l10n.playerControlEpisodeNumber(episode!);
     return 'S$season E$episode';
   }
 
@@ -1012,6 +1017,7 @@ class PlayerTopBar extends StatelessWidget {
             : ShellTokens.playerChromeMetaFontSize;
         final padH = playerChromeScale(context, 16);
         final padBottom = playerChromeScale(context, 6);
+        final episodeText = _episodeLineFor(context.l10n);
         // opaque:false — default MouseRegion eats the mac title-inset zone and
         // blocks [DragToMoveArea] / overlay drag strip underneath.
         return DesktopWindowChrome.wrapDragMove(
@@ -1048,10 +1054,10 @@ class PlayerTopBar extends StatelessWidget {
                                 fontWeight: FontWeight.w600,
                               ),
                             ),
-                            if (_episodeLine != null) ...[
+                            if (episodeText != null) ...[
                               SizedBox(height: playerChromeScale(context, 2)),
                               Text(
-                                _episodeLine!,
+                                episodeText,
                                 textAlign: TextAlign.center,
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
@@ -1149,7 +1155,7 @@ class PlayerTopStatusActions extends StatelessWidget {
       runSpacing: 4,
       children: [
         _link(
-          'Retry',
+          context.l10n.downloadsRetry,
           onRetry,
           focusNode: retryFocusNode,
           onLeftEdge: onRetryLeftEdge,
@@ -1157,7 +1163,7 @@ class PlayerTopStatusActions extends StatelessWidget {
         ),
         if (onStream != null)
           _link(
-            'Stream',
+            context.l10n.playerControlStream,
             streamEnabled ? onStream! : () {},
             focusNode: streamFocusNode,
             onLeftEdge: onStreamLeftEdge,
@@ -1252,7 +1258,7 @@ class PlayerTopBarActions extends StatelessWidget {
         if (showPlayer && onPlayer != null)
           PlayerFlatIconButton(
             icon: Icons.smart_display_outlined,
-            tooltip: 'Player',
+            tooltip: context.l10n.playerControlPlayer,
             onPressedWithContext: onPlayer!,
             size: size,
             iconSize: iconSize,
@@ -1266,7 +1272,9 @@ class PlayerTopBarActions extends StatelessWidget {
             valueListenable: CastingService.instance.airPlayActive,
             builder: (context, casting, _) => PlayerFlatIconButton(
               icon: casting ? Icons.cast_connected_rounded : Icons.cast_rounded,
-              tooltip: casting ? 'Playing on AirPlay' : 'Cast',
+              tooltip: casting
+                  ? context.l10n.playerControlPlayingOnAirPlay
+                  : context.l10n.playerControlCast,
               active: casting,
               onPressed: onCast!,
               size: size,
@@ -1277,7 +1285,7 @@ class PlayerTopBarActions extends StatelessWidget {
         if (showInAppMini && onInAppMini != null)
           PlayerFlatIconButton(
             icon: Icons.branding_watermark_outlined,
-            tooltip: 'In-app mini player',
+            tooltip: context.l10n.playerControlInAppMiniPlayer,
             onPressed: onInAppMini!,
             size: size,
             iconSize: iconSize,
@@ -1288,7 +1296,7 @@ class PlayerTopBarActions extends StatelessWidget {
             icon: pipActive
                 ? Icons.picture_in_picture_alt_rounded
                 : Icons.picture_in_picture_rounded,
-            tooltip: 'Picture in Picture',
+            tooltip: context.l10n.playerControlPictureInPicture,
             onPressed: onPip!,
             size: size,
             iconSize: iconSize,
@@ -1348,7 +1356,7 @@ Future<CastTarget?> _pickCastTarget(BuildContext context) async {
   CastTarget? picked;
   await PlayerPopupPanel.show(
     context: context,
-    title: 'Cast to',
+    title: context.l10n.playerControlCastTo,
     leadingIcon: Icons.cast_rounded,
     centered: true,
     width: 280,
@@ -1388,13 +1396,14 @@ Future<void> showPlayerCastPicker(
   Future<CastSubtitle?> Function()? subtitle,
   CastHandoff? handoff,
 }) async {
+  final l10n = context.l10n;
   final casting = CastingService.instance;
   final canCast = casting.isAirPlayAvailable || casting.isChromecastAvailable;
   if (!canCast) {
     _showCastFeedback(
       context,
       statusController: statusController,
-      message: 'Casting is not supported on this device',
+      message: l10n.playerControlCastUnsupported,
       kind: StatusRouletteKind.failed,
     );
     return;
@@ -1404,7 +1413,7 @@ Future<void> showPlayerCastPicker(
     _showCastFeedback(
       context,
       statusController: statusController,
-      message: 'No stream to cast',
+      message: l10n.playerControlNoStreamToCast,
       kind: StatusRouletteKind.failed,
     );
     return;
@@ -1446,7 +1455,7 @@ Future<void> showPlayerCastPicker(
                 _showCastFeedback(
                   context,
                   statusController: statusController,
-                  message: 'AirPlay ended',
+                  message: l10n.playerControlAirPlayEnded,
                 );
               },
               onFailed: (message) {
@@ -1465,7 +1474,7 @@ Future<void> showPlayerCastPicker(
                 _showCastFeedback(
                   context,
                   statusController: statusController,
-                  message: "Subtitles can't play on AirPlay for this stream",
+                  message: l10n.playerControlAirPlaySubtitlesUnavailable,
                   kind: StatusRouletteKind.failed,
                   key: 'cast-subtitle',
                 );
@@ -1478,7 +1487,7 @@ Future<void> showPlayerCastPicker(
     _showCastFeedback(
       context,
       statusController: statusController,
-      message: "Couldn't open AirPlay",
+      message: l10n.playerControlAirPlayOpenFailed,
       kind: StatusRouletteKind.failed,
     );
     return;
@@ -1487,7 +1496,7 @@ Future<void> showPlayerCastPicker(
   _showCastFeedback(
     context,
     statusController: statusController,
-    message: 'Starting $label…',
+    message: l10n.playerControlCastStarting(label),
     kind: StatusRouletteKind.loading,
   );
 
@@ -1504,7 +1513,7 @@ Future<void> showPlayerCastPicker(
     _showCastFeedback(
       context,
       statusController: statusController,
-      message: 'Casting to $label',
+      message: l10n.playerControlCastingTo(label),
       kind: StatusRouletteKind.success,
     );
     return;
@@ -1513,7 +1522,7 @@ Future<void> showPlayerCastPicker(
   _showCastFeedback(
     context,
     statusController: statusController,
-    message: '$label is not available yet',
+    message: l10n.playerControlCastTargetUnavailable(label),
     kind: StatusRouletteKind.failed,
   );
 }

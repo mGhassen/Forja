@@ -307,7 +307,7 @@ mixin _DesktopPlayerEpisodes
   Widget _buildTransportBackButton() {
     return PlayerFlatIconButton(
       icon: Icons.replay_10_rounded,
-      tooltip: 'Back 10s',
+      tooltip: context.l10n.playerScreenBack10s,
       onPressed: _seekBack10Seconds,
     );
   }
@@ -315,7 +315,7 @@ mixin _DesktopPlayerEpisodes
   Widget _buildTransportForwardButton() {
     return PlayerFlatIconButton(
       icon: Icons.forward_10_rounded,
-      tooltip: 'Forward 10s',
+      tooltip: context.l10n.playerScreenForward10s,
       onPressed: _seekForward10Seconds,
     );
   }
@@ -324,7 +324,7 @@ mixin _DesktopPlayerEpisodes
     if (!_s._hasPrevEpisodeAdjacent) return null;
     return PlayerFlatIconButton(
       icon: Icons.skip_previous_rounded,
-      tooltip: 'Previous Episode',
+      tooltip: context.l10n.playerScreenPreviousEpisodeButton,
       onPressed: () {
         if (_s._isLoadingNextEp) return;
         unawaited(_previousEpisode());
@@ -336,7 +336,7 @@ mixin _DesktopPlayerEpisodes
     if (!_s._hasNextEpisodeAdjacent) return null;
     return PlayerFlatIconButton(
       icon: Icons.skip_next_rounded,
-      tooltip: 'Next Episode',
+      tooltip: context.l10n.playerScreenNextEpisodeButton,
       onPressed: () {
         if (_s._isLoadingNextEp) return;
         unawaited(_nextEpisode());
@@ -372,7 +372,7 @@ mixin _DesktopPlayerEpisodes
         if (!silent && mounted) {
           _s._statusController.upsert(
             'episode',
-            'No more episodes',
+            context.l10n.playerScreenNoMoreEpisodes,
             kind: StatusRouletteKind.info,
             dismissAfter: const Duration(seconds: 2),
           );
@@ -398,7 +398,7 @@ mixin _DesktopPlayerEpisodes
       if (next == null && !silent && mounted) {
         _s._statusController.upsert(
           'episode',
-          'No more episodes',
+          context.l10n.playerScreenNoMoreEpisodes,
           kind: StatusRouletteKind.info,
           dismissAfter: const Duration(seconds: 2),
         );
@@ -529,6 +529,7 @@ mixin _DesktopPlayerEpisodes
 
   Future<void> _switchToEpisode(int season, int episode) async {
     if (widget.movie == null) return;
+    final l10n = context.l10n;
     _s._resetEofSessionGuards();
     final enginePid = _s._currentProvider ?? widget.activeProvider;
     if (isEnginePlayerSession(enginePid)) {
@@ -566,8 +567,8 @@ mixin _DesktopPlayerEpisodes
       context,
       movie: widget.movie!,
       kind: StreamLoadingKind.direct,
-      initialMessage: 'Loading episode info…',
-      subtitle: 'Season $season · Episode $episode',
+      initialMessage: l10n.playerScreenLoadingEpisodeInfo,
+      subtitle: l10n.playerScreenSeasonEpisode(season, episode),
       onCancel: () => cancelled = true,
     );
     setState(() => _s._isLoadingNextEp = true);
@@ -583,7 +584,7 @@ mixin _DesktopPlayerEpisodes
     try {
       debugPrint('[EpSwitch] Playing S${season}E$episode');
       _s._saveWatchHistory();
-      session.messageNotifier.value = 'Checking sources…';
+      session.messageNotifier.value = l10n.playerScreenCheckingSourcesProgress;
 
       final chain = episodeProviderChain(
         providers: widget.providers,
@@ -603,9 +604,9 @@ mixin _DesktopPlayerEpisodes
               : StreamLoadingKind.direct,
         );
         session.messageNotifier.value = switch (key) {
-          'torrent' => 'Resolving torrent…',
-          'stremio_direct' => 'Checking Stremio…',
-          _ => 'Checking sources…',
+          'torrent' => l10n.playerScreenResolvingTorrent,
+          'stremio_direct' => l10n.playerScreenCheckingStremio,
+          _ => l10n.playerScreenCheckingSourcesProgress,
         };
         resolved = await resolveEpisodeForProvider(
           providerKey: key,
@@ -631,7 +632,7 @@ mixin _DesktopPlayerEpisodes
         _endEpisodeLoading();
         return;
       }
-      session.messageNotifier.value = 'Opening stream…';
+      session.messageNotifier.value = l10n.playerScreenOpeningStream;
 
       final nextTitle = '${widget.movie!.title} - S$season E$episode';
       final catalog = isCatalogSourcesMode(resolved.activeProvider);
@@ -676,7 +677,7 @@ mixin _DesktopPlayerEpisodes
       finishStreamLoadingSession(session);
       await _resumeAfterFailedEpisodeHandoff();
       if (mounted) {
-        ForjaToast.info('Could not find a stream for this episode');
+        ForjaToast.info(l10n.playerScreenCouldNotFindStreamForEpisode);
       }
       _endEpisodeLoading();
     }
@@ -786,8 +787,11 @@ mixin _DesktopPlayerEpisodes
       return;
     }
 
-    final title = (stream['title'] ?? stream['name'] ?? 'Stremio stream')
-        .toString();
+    final title =
+        (stream['title'] ??
+                stream['name'] ??
+                context.l10n.playerScreenStremioStream)
+            .toString();
     // This row is the user's pick. A failure stays here — no other stream.
     _s._sourcePinned = true;
     unawaited(SettingsService().setPlayerAutoSource(false));
@@ -959,6 +963,7 @@ mixin _DesktopPlayerEpisodes
 
   Future<void> _switchStremioMagnetSource(Map<String, dynamic> stream) async {
     if (!mounted) return;
+    final l10n = context.l10n;
     if (!await ensureLanP2pPlayback(context)) {
       return;
     }
@@ -1019,7 +1024,7 @@ mixin _DesktopPlayerEpisodes
         final msg =
             resolved is StremioResolveFailure && resolved.message.isNotEmpty
             ? resolved.message
-            : 'Failed to resolve stream';
+            : l10n.playerScreenFailedToResolveStream;
         debugPrint(
           '[Player] ${catalogStreamKindLabel(stream)} switch failed: $msg',
         );
@@ -1029,7 +1034,7 @@ mixin _DesktopPlayerEpisodes
         return;
       }
 
-      session.messageNotifier.value = 'Opening stream…';
+      session.messageNotifier.value = l10n.playerScreenOpeningStream;
       TorrentStreamService().retainForExternalHandoff = true;
 
       final season = widget.selectedSeason;
@@ -1078,12 +1083,13 @@ mixin _DesktopPlayerEpisodes
       );
       dismissStreamLoading(session);
       finishStreamLoadingSession(session);
-      if (mounted) ForjaToast.info('Failed to resolve stream');
+      if (mounted) ForjaToast.info(l10n.playerScreenFailedToResolveStream);
     }
   }
 
   Future<void> _switchTorrentSource(TorrentResult result) async {
     if (!mounted) return;
+    final l10n = context.l10n;
     if (!await ensureLanP2pPlayback(context)) {
       return;
     }
@@ -1139,11 +1145,13 @@ mixin _DesktopPlayerEpisodes
       if (playback == null || playback.url.isEmpty) {
         dismissStreamLoading(session);
         finishStreamLoadingSession(session);
-        if (mounted) ForjaToast.info('Torrent stream failed to start');
+        if (mounted) {
+          ForjaToast.info(l10n.playerScreenTorrentStreamFailedToStart);
+        }
         return;
       }
 
-      session.messageNotifier.value = 'Opening stream…';
+      session.messageNotifier.value = l10n.playerScreenOpeningStream;
       TorrentStreamService().retainForExternalHandoff = true;
 
       final season = widget.selectedSeason;
@@ -1187,7 +1195,7 @@ mixin _DesktopPlayerEpisodes
       debugPrint('[Player] Torrent switch failed: $e');
       dismissStreamLoading(session);
       finishStreamLoadingSession(session);
-      if (mounted) ForjaToast.info('Torrent stream failed to start');
+      if (mounted) ForjaToast.info(l10n.playerScreenTorrentStreamFailedToStart);
     }
   }
 
@@ -1326,6 +1334,7 @@ mixin _DesktopPlayerEpisodes
   }
 
   void _showSettingsMenu(BuildContext anchorContext) {
+    final l10n = context.l10n;
     final hasProviders =
         widget.providers != null &&
         widget.providers!.isNotEmpty &&
@@ -1341,14 +1350,14 @@ mixin _DesktopPlayerEpisodes
       return [
         PlayerSettingsEntry(
           icon: Icons.auto_awesome_rounded,
-          title: 'Auto selection',
-          subtitle: 'Servers, tracks, skip intro',
+          title: l10n.playerScreenAutoSelection,
+          subtitle: l10n.playerScreenAutoSelectionSubtitle,
           pageBuilder: (_) => StatefulBuilder(
             builder: (context, setPage) => Column(
               children: [
                 if (hasProviders) ...[
                   PlayerPopupToggleRow(
-                    label: 'Auto server',
+                    label: l10n.playerScreenAutoServer,
                     value: !_s._providerPinned,
                     onChanged: (on) async {
                       final settings = SettingsService();
@@ -1368,7 +1377,7 @@ mixin _DesktopPlayerEpisodes
                 ],
                 if (hasSources) ...[
                   PlayerPopupToggleRow(
-                    label: 'Auto source',
+                    label: l10n.playerScreenAutoSource,
                     value: !_s._sourcePinned,
                     onChanged: (on) async {
                       final settings = SettingsService();
@@ -1387,7 +1396,7 @@ mixin _DesktopPlayerEpisodes
                   const SizedBox(height: 12),
                 ],
                 PlayerPopupToggleRow(
-                  label: 'Auto audio',
+                  label: l10n.playerScreenAutoAudio,
                   value: !_s._audioPinned,
                   onChanged: (on) async {
                     final settings = SettingsService();
@@ -1406,7 +1415,7 @@ mixin _DesktopPlayerEpisodes
                 ),
                 const SizedBox(height: 12),
                 PlayerPopupToggleRow(
-                  label: 'Auto subtitles',
+                  label: l10n.playerScreenAutoSubtitles,
                   value: !_s._subtitlePinned,
                   onChanged: (on) async {
                     final settings = SettingsService();
@@ -1424,7 +1433,7 @@ mixin _DesktopPlayerEpisodes
                 ),
                 const SizedBox(height: 12),
                 PlayerPopupToggleRow(
-                  label: 'Auto skip intro',
+                  label: l10n.playerScreenAutoSkipIntro,
                   value: SettingsService.autoSkipIntroNotifier.value,
                   onChanged: (on) async {
                     await SettingsService().setAutoSkipIntro(on);
@@ -1434,7 +1443,7 @@ mixin _DesktopPlayerEpisodes
                 ),
                 const SizedBox(height: 12),
                 PlayerPopupToggleRow(
-                  label: 'Auto next episode',
+                  label: l10n.playerScreenAutoNextEpisode,
                   value: SettingsService.autoNextEpisodeNotifier.value,
                   onChanged: (on) async {
                     await SettingsService().setAutoNextEpisode(on);
@@ -1444,7 +1453,7 @@ mixin _DesktopPlayerEpisodes
                 ),
                 const SizedBox(height: 12),
                 PlayerPopupToggleRow(
-                  label: 'Content warnings',
+                  label: l10n.addonsHostPlaybackContentWarningsTitle,
                   value: SettingsService.contentWarningsNotifier.value,
                   onChanged: (on) async {
                     await SettingsService().setContentWarnings(on);
@@ -1458,8 +1467,8 @@ mixin _DesktopPlayerEpisodes
         ),
         PlayerSettingsEntry(
           icon: Icons.memory_rounded,
-          title: 'Video decode',
-          subtitle: _s._hwDecMode.description,
+          title: l10n.playerScreenVideoDecode,
+          subtitle: _s._hwDecMode.description(l10n),
           value: _s._hwDecMode.label,
           pageBuilder: (_) => StatefulBuilder(
             builder: (context, setPage) => playerPopupChipRow([
@@ -1480,9 +1489,9 @@ mixin _DesktopPlayerEpisodes
         ),
         PlayerSettingsEntry(
           icon: Icons.speed_rounded,
-          title: 'Playback speed',
-          subtitle: 'How fast playback runs',
-          value: speed == 1.0 ? 'Normal' : '${speed}x',
+          title: l10n.playerScreenPlaybackSpeed,
+          subtitle: l10n.playerScreenPlaybackSpeedSubtitle,
+          value: speed == 1.0 ? l10n.playerScreenSpeedNormal : '${speed}x',
           pageBuilder: (_) => StatefulBuilder(
             builder: (context, setPage) {
               final current = _s._player.state.rate;
@@ -1500,7 +1509,7 @@ mixin _DesktopPlayerEpisodes
                     2.0,
                   ])
                     PlayerPopupOptionChip(
-                      label: s == 1.0 ? 'Normal' : '${s}x',
+                      label: s == 1.0 ? l10n.playerScreenSpeedNormal : '${s}x',
                       selected: s == current,
                       expanded: true,
                       onTap: () {
@@ -1515,15 +1524,15 @@ mixin _DesktopPlayerEpisodes
         ),
         PlayerSettingsEntry(
           icon: Icons.aspect_ratio_rounded,
-          title: 'Aspect ratio',
-          subtitle: 'Fit video in the frame',
+          title: l10n.playerScreenAspectRatio,
+          subtitle: l10n.playerScreenAspectRatioSubtitle,
           value: _s._videoFitLabel,
           pageBuilder: (_) => StatefulBuilder(
             builder: (context, setPage) => playerPopupChipRow([
-              for (final entry in const [
-                (BoxFit.contain, 'FIT'),
-                (BoxFit.cover, 'CROP'),
-                (BoxFit.fill, 'FILL'),
+              for (final entry in [
+                (BoxFit.contain, l10n.playerScreenFitFit),
+                (BoxFit.cover, l10n.playerScreenFitCrop),
+                (BoxFit.fill, l10n.playerScreenFitFill),
               ])
                 PlayerPopupOptionChip(
                   label: entry.$2,
@@ -1540,9 +1549,9 @@ mixin _DesktopPlayerEpisodes
         ),
         PlayerSettingsEntry(
           icon: Icons.loop_rounded,
-          title: 'Loop',
-          subtitle: 'Repeat the current title',
-          value: _s._loopEnabled ? 'On' : 'Off',
+          title: l10n.playerScreenLoop,
+          subtitle: l10n.playerScreenLoopSubtitle,
+          value: _s._loopEnabled ? l10n.playerScreenOn : l10n.playerScreenOff,
           pageBuilder: (_) => StatefulBuilder(
             builder: (context, setPage) => playerPopupOnOffChips(
               value: _s._loopEnabled,
@@ -1557,9 +1566,11 @@ mixin _DesktopPlayerEpisodes
         if (hasTorrent)
           PlayerSettingsEntry(
             icon: Icons.graphic_eq_rounded,
-            title: 'Torrent stats',
-            subtitle: 'Show live transfer overlay',
-            value: _s._showTorrentStatsOverlay ? 'On' : 'Off',
+            title: l10n.playerScreenTorrentStats,
+            subtitle: l10n.playerScreenTorrentStatsSubtitle,
+            value: _s._showTorrentStatsOverlay
+                ? l10n.playerScreenOn
+                : l10n.playerScreenOff,
             pageBuilder: (_) => StatefulBuilder(
               builder: (context, setPage) => playerPopupOnOffChips(
                 value: _s._showTorrentStatsOverlay,
@@ -1706,6 +1717,7 @@ mixin _DesktopPlayerEpisodes
   }
 
   Future<List<StreamSource>?> _switchProvider(String newProvider) async {
+    final l10n = context.l10n;
     _s._providerPinned = true;
     _s._sourcePinned = false;
     unawaited(SettingsService().setPlayerAutoServer(false));
@@ -1808,7 +1820,11 @@ mixin _DesktopPlayerEpisodes
               dismissAfter: const Duration(seconds: 2),
             );
             ForjaToast.warning(
-              PlayerProviderMenu.unavailableMessage(newProvider, provider),
+              PlayerProviderMenu.unavailableMessage(
+                newProvider,
+                provider,
+                l10n,
+              ),
               duration: const Duration(seconds: 2),
             );
             setState(() => _s._hasError = true);
@@ -1832,7 +1848,11 @@ mixin _DesktopPlayerEpisodes
               dismissAfter: const Duration(seconds: 2),
             );
             ForjaToast.warning(
-              PlayerProviderMenu.unavailableMessage(newProvider, provider),
+              PlayerProviderMenu.unavailableMessage(
+                newProvider,
+                provider,
+                l10n,
+              ),
               duration: const Duration(seconds: 2),
             );
             setState(() => _s._hasError = true);
@@ -1920,7 +1940,7 @@ mixin _DesktopPlayerEpisodes
             dismissAfter: const Duration(seconds: 2),
           );
           ForjaToast.warning(
-            PlayerProviderMenu.unavailableMessage(newProvider, provider),
+            PlayerProviderMenu.unavailableMessage(newProvider, provider, l10n),
             duration: const Duration(seconds: 2),
           );
           setState(() => _s._hasError = true);
@@ -1935,7 +1955,7 @@ mixin _DesktopPlayerEpisodes
           dismissAfter: const Duration(seconds: 2),
         );
         ForjaToast.warning(
-          PlayerProviderMenu.unavailableMessage(newProvider, provider),
+          PlayerProviderMenu.unavailableMessage(newProvider, provider, l10n),
           duration: const Duration(seconds: 2),
         );
         setState(() => _s._hasError = true);

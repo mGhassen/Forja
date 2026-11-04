@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:flutter/widgets.dart';
+import 'package:forja/l10n/l10n.dart';
 import 'package:forja/shared/engine/vault/engine_vault.dart';
 import 'package:forja/shared/playback/play_context.dart';
 import 'package:forja/shared/player/live/hooks/live_play.dart';
@@ -166,9 +167,10 @@ abstract final class PackStreamPlayHooks {
   }) async {
     final meta = ctx.metaItem;
     if (meta == null) return;
+    final l10n = context.l10n;
     final portalRaw = await _resolvePortal(meta);
     if (portalRaw is! Map<String, dynamic> || !context.mounted) {
-      ForjaToast.error('Portal not found');
+      ForjaToast.error(l10n.playerSourcePortalNotFound);
       return;
     }
     final open = meta.open;
@@ -195,7 +197,7 @@ abstract final class PackStreamPlayHooks {
       );
       if (!context.mounted) return;
       if (url.isEmpty) {
-        ForjaToast.error('Could not open stream');
+        ForjaToast.error(l10n.playerSourceOpenStreamFailed);
         return;
       }
       await _openVod(
@@ -227,7 +229,7 @@ abstract final class PackStreamPlayHooks {
     }();
     selected ??= videos.isEmpty ? null : videos.first;
     if (selected == null) {
-      ForjaToast.error('No episode selected');
+      ForjaToast.error(l10n.playerSourceNoEpisodeSelected);
       return;
     }
     final url = _streamUrl(
@@ -241,13 +243,16 @@ abstract final class PackStreamPlayHooks {
     );
     if (!context.mounted) return;
     if (url.isEmpty) {
-      ForjaToast.error('Could not open episode');
+      ForjaToast.error(l10n.playerSourceOpenEpisodeFailed);
       return;
     }
     await _openVod(
       context: context,
       url: url,
-      title: 'Ep ${selected.episode ?? epNum} · ${selected.title}',
+      title: l10n.playerSourceVodEpisodeTitle(
+        selected.episode ?? epNum,
+        selected.title,
+      ),
       liveSourceKind: liveSourceKind,
       logoUrl: logo,
       subtitle: portalName.isEmpty ? meta.name : '$portalName · ${meta.name}',

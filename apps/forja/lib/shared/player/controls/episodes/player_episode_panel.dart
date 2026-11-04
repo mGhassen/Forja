@@ -5,6 +5,7 @@ import 'package:forja_foundation/components/forja_image_cache.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import 'package:forja/l10n/l10n.dart';
 import 'package:forja/shared/player/controls/chrome/player_chrome_overlays.dart';
 import 'package:forja/shared/player/controls/episodes/catalog_episode.dart';
 import 'package:forja_foundation/widgets/details/episode_air_date.dart';
@@ -517,8 +518,8 @@ class _EpisodePanelBodyState extends State<_EpisodePanelBody> {
               ? Center(
                   child: Text(
                     _searchQuery.trim().isEmpty
-                        ? 'No episodes found'
-                        : 'No matching episodes',
+                        ? context.l10n.playerControlNoEpisodesFound
+                        : context.l10n.playerControlNoMatchingEpisodes,
                     style: TextStyle(
                       color: ForjaShellColors.cinematic.textSecondary,
                     ),
@@ -532,7 +533,7 @@ class _EpisodePanelBodyState extends State<_EpisodePanelBody> {
                   itemBuilder: (_, i) {
                     final ep = visible[i];
                     final num = ep['episode_number'] as int? ?? 0;
-                    final name = ep['name']?.toString() ?? 'Episode $num';
+                    final name = ep['name']?.toString() ?? context.l10n.playerControlEpisodeNumber(num);
                     final overview = (ep['overview'] ?? '').toString();
                     final runtime = ep['runtime'] as int? ?? 0;
                     final thumbnail = ep['still_path'];
@@ -673,7 +674,7 @@ class _SeasonDropdown extends StatelessWidget {
                     ),
                   ),
                 ),
-            child: Text('Season $n'),
+            child: Text(context.l10n.playerControlSeasonNumber(n)),
           ),
       ],
       builder: (context, controller, child) {
@@ -703,7 +704,7 @@ class _SeasonDropdown extends StatelessWidget {
               child: Padding(
                 padding: EdgeInsets.symmetric(horizontal: padH, vertical: padV),
                 child: Text(
-                  'Season $selectedSeason',
+                  context.l10n.playerControlSeasonNumber(selectedSeason),
                   style: TextStyle(
                     color: ForjaShellColors.brandGreen,
                     fontSize: triggerFs,
@@ -1188,7 +1189,7 @@ class _HubEpisodePanelBodyState extends State<_HubEpisodePanelBody> {
           child: widget.episodes.isEmpty
               ? Center(
                   child: Text(
-                    'No episodes found',
+                    context.l10n.playerControlNoEpisodesFound,
                     style: TextStyle(
                       color: ForjaShellColors.cinematic.textSecondary,
                     ),
@@ -1198,8 +1199,8 @@ class _HubEpisodePanelBodyState extends State<_HubEpisodePanelBody> {
               ? Center(
                   child: Text(
                     _searchQuery.trim().isEmpty
-                        ? 'No episodes found'
-                        : 'No matching episodes',
+                        ? context.l10n.playerControlNoEpisodesFound
+                        : context.l10n.playerControlNoMatchingEpisodes,
                     style: TextStyle(
                       color: ForjaShellColors.cinematic.textSecondary,
                     ),
@@ -1793,7 +1794,7 @@ class _EpisodeSearchBarState extends State<_EpisodeSearchBar> {
     );
     if (!tvFocus) {
       return Tooltip(
-        message: 'Search',
+        message: context.l10n.playerControlSearch,
         child: Material(
           color: Colors.transparent,
           shape: const CircleBorder(),
@@ -1832,7 +1833,7 @@ class _EpisodeSearchBarState extends State<_EpisodeSearchBar> {
         ? ShellTokens.torrentPanelSearchPadVTv
         : ShellTokens.torrentPanelSearchPadV;
     final fieldDecoration = InputDecoration(
-      hintText: 'Search',
+      hintText: context.l10n.playerControlSearch,
       hintStyle: TextStyle(
         color: secondary.withValues(alpha: 0.75),
         fontSize: fontSize,

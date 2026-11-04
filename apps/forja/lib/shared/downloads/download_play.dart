@@ -1,4 +1,5 @@
 import 'package:flutter/widgets.dart';
+import 'package:forja/l10n/l10n.dart';
 import 'package:forja/shared/downloads/download_enqueue.dart';
 import 'package:forja/shared/downloads/download_guards.dart';
 import 'package:forja/shared/downloads/download_source_match.dart';
@@ -98,7 +99,7 @@ Future<void> playDownloadRemoteStream(
 }) async {
   final url = task.rawUrl?.trim() ?? '';
   if (!downloadTaskHasRemoteStream(task)) {
-    ForjaToast.error('No online stream');
+    ForjaToast.error(context.l10n.sharedDownloadsNoOnlineStream);
     return;
   }
   if (!context.mounted) return;

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:forja/l10n/l10n.dart';
 import 'package:forja/shared/engine/runtime/nav/chrome_menu_item.dart';
 import 'package:forja/shared/engine/runtime/nav/vertical_filters.dart';
 import 'package:forja/shared/services/tracker/simkl_service.dart';
@@ -128,7 +129,7 @@ class _KitChromeTopBarState extends State<KitChromeTopBar> {
     final picked = await showGeneralDialog<String>(
       context: context,
       barrierDismissible: true,
-      barrierLabel: 'Dismiss categories',
+      barrierLabel: context.l10n.shellDismissCategories,
       barrierColor: Colors.transparent,
       transitionDuration: Duration.zero,
       pageBuilder: (dialogContext, _, _) {
@@ -181,7 +182,7 @@ class _KitChromeTopBarState extends State<KitChromeTopBar> {
                               crossAxisAlignment: CrossAxisAlignment.stretch,
                               children: [
                                 _FlatMenuRow(
-                                  label: 'All',
+                                  label: dialogContext.l10n.addonsPackSelectAll,
                                   selected: selectedId == null,
                                   listIndex: 0,
                                   tvFocus: tvFocus,
@@ -388,7 +389,7 @@ class _KitChromeTopBarState extends State<KitChromeTopBar> {
                       valueListenable: widget.selectedCategoryId,
                       builder: (context, categoryId, _) {
                         final categoriesLabel =
-                            _categoryLabel(categoryId) ?? 'Categories';
+                            _categoryLabel(categoryId) ?? context.l10n.shellCategories;
                         final categoriesActive =
                             _categoriesOpen || categoryId != null;
                         final tabGap = usesTv
@@ -457,7 +458,7 @@ class _KitChromeTopBarState extends State<KitChromeTopBar> {
                               ],
                               if (hasSearch) ...[
                                 _CategoryTab(
-                                  label: 'Search',
+                                  label: context.l10n.addonsPackGreenPlaySearchLabel,
                                   icon: Icons.search_rounded,
                                   isActive: false,
                                   onTap: widget.onSearch!,
@@ -562,7 +563,7 @@ class _KitChromeTopBarState extends State<KitChromeTopBar> {
                                       start: tabGap,
                                     ),
                                     child: ForjaBusyLabel(
-                                      label: 'Updating',
+                                      label: context.l10n.shellUpdating,
                                       color: ForjaShellColors.brandGreen,
                                       fontSize: usesTv
                                           ? LoadingStateTokens

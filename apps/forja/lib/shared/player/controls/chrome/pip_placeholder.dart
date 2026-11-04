@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:forja/l10n/l10n.dart';
 import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
 
 /// Corner notice while desktop PiP plays in the separate float window.
@@ -32,9 +33,9 @@ class PipPlaceholder extends StatelessWidget {
                   color: Colors.white70,
                 ),
                 const SizedBox(width: 12),
-                const Text(
-                  'Playing in picture-in-picture',
-                  style: TextStyle(
+                Text(
+                  context.l10n.playerControlPlayingInPip,
+                  style: const TextStyle(
                     color: Colors.white,
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
@@ -43,9 +44,9 @@ class PipPlaceholder extends StatelessWidget {
                 const SizedBox(width: 12),
                 TextButton(
                   onPressed: onExpand,
-                  child: const Text(
-                    'Expand',
-                    style: TextStyle(color: Colors.white),
+                  child: Text(
+                    context.l10n.playerControlExpand,
+                    style: const TextStyle(color: Colors.white),
                   ),
                 ),
               ],

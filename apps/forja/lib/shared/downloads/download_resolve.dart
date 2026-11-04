@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:forja/l10n/l10n.dart';
 import 'package:forja/shared/downloads/download_guards.dart';
 import 'package:forja/shared/playback/open/engine_auto_play.dart';
 import 'package:forja/shared/player/controls/episodes/catalog_episode.dart';
@@ -31,7 +32,7 @@ Future<EngineAutoPlayPick?> resolveEngineStreamForDownload({
     episode: episode,
     malId: malId,
     audioCategory: audioCategory,
-    loadingSubtitle: loadingSubtitle ?? 'Finding a stream…',
+    loadingSubtitle: loadingSubtitle ?? context.l10n.sharedDownloadsFindingStream,
     playSession: playSession,
     preferredPluginId: preferredPluginId,
     savedStreamUrl: savedStreamUrl,

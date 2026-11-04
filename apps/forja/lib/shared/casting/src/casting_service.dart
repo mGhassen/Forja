@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
 import 'package:forja/shared/utils/redact_url.dart';
+import 'package:forja/shell/routing/shell_ambient_l10n.dart';
 
 import 'cast_subtitle.dart';
 
@@ -309,7 +310,7 @@ class CastingService {
         _handoff = null;
         playing.value = false;
         debugPrint('[Casting] AirPlay error: ${raw['message']}');
-        handoff?.onFailed?.call("AirPlay can't play this stream");
+        handoff?.onFailed?.call(shellAmbientL10n.sharedMiscAirPlayCantPlay);
         if (wasActive) handoff?.onEnded(at);
       case 'subtitles':
         if (raw['status'] == 'unavailable') handoff?.onSubtitlesUnavailable?.call();

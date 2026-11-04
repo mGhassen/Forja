@@ -97,9 +97,9 @@ void registerLiveScheduleChromeHooks() {
     if (key.isEmpty) return 'all';
     return ref.watch(kitFeedCatalogFilterProvider(key));
   };
-  KitTopBarHostHooks.catalogChipLabel = (filter, options) {
+  KitTopBarHostHooks.catalogChipLabel = (filter, options, l10n) {
     final id = (filter ?? 'all').trim();
-    if (id.isEmpty || id == 'all') return 'All';
+    if (id.isEmpty || id == 'all') return l10n.addonsPackSelectAll;
     for (final o in options) {
       if (o.id == id) return o.label;
     }
@@ -141,10 +141,11 @@ void registerLiveScheduleChromeHooks() {
       },
     );
   };
-  KitTopBarHostHooks.scheduleChipLabel = (pref) {
+  KitTopBarHostHooks.scheduleChipLabel = (pref, l10n) {
     final window =
         kitScheduleWindowFromPref(pref) ?? kKitScheduleDefaultWindow;
     return kitScheduleChipLabel(
+      l10n: l10n,
       status: window.status,
       horizon: window.horizon,
     );

@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:forja_foundation/brand/forja_logo.dart';
+import 'package:forja/l10n/l10n.dart';
 import 'package:forja/shell/focus/forja_interactive.dart';
 import 'package:forja/shell/feedback/forja_toast.dart';
 import 'package:forja/shell/core/forja_shell_platform.dart';
@@ -204,7 +205,7 @@ class UpdateDialog extends StatefulWidget {
         context: hostContext,
         barrierDismissible: false,
         barrierColor: AppTheme.bgDark,
-        barrierLabel: 'Software update',
+        barrierLabel: hostContext.l10n.shellUpdateSoftwareUpdate,
         transitionDuration: UpdateDialogTokens.pageTransition,
         pageBuilder: (dialogContext, _, _) =>
             _scopeHost(hostContext, UpdateDialog(updateInfo: updateInfo)),
@@ -645,6 +646,7 @@ class _UpdateDialogState extends State<UpdateDialog> {
   }
 
   Widget _buildOfferHeader(_UpdateLayout layout) {
+    final l10n = context.l10n;
     final published = _formatPublishedDate(widget.updateInfo.publishedAt);
 
     return Column(
@@ -673,7 +675,7 @@ class _UpdateDialogState extends State<UpdateDialog> {
         FittedBox(
           fit: BoxFit.scaleDown,
           child: Text(
-            'A new version is ready',
+            l10n.shellUpdateNewVersionReady,
             maxLines: 1,
             textAlign: TextAlign.center,
             style: GoogleFonts.plusJakartaSans(
@@ -698,7 +700,7 @@ class _UpdateDialogState extends State<UpdateDialog> {
         ),
         SizedBox(height: layout.metaGap),
         Text(
-          'You’re on v${widget.updateInfo.currentVersion}'
+          '${l10n.shellUpdateYouAreOn(widget.updateInfo.currentVersion)}'
           '${published != null ? '  ·  $published' : ''}',
           textAlign: TextAlign.center,
           style: GoogleFonts.plusJakartaSans(
@@ -723,7 +725,7 @@ class _UpdateDialogState extends State<UpdateDialog> {
         Divider(height: 1, color: ForjaShellColors.borderSubtle),
         SizedBox(height: layout.dividerAfterGap),
         Text(
-          'What’s new',
+          l10n.shellUpdateWhatsNew,
           style: GoogleFonts.plusJakartaSans(
             fontSize: layout.sectionSize,
             fontWeight: FontWeight.w700,
@@ -739,6 +741,7 @@ class _UpdateDialogState extends State<UpdateDialog> {
   }
 
   Widget _buildReleaseNotes(_UpdateLayout layout) {
+    final l10n = context.l10n;
     final changelogs = widget.updateInfo.changelogs;
     final showRail = changelogs.length > 1;
     final railWidth = layout.isTv
@@ -801,12 +804,12 @@ class _UpdateDialogState extends State<UpdateDialog> {
     final multi = showRail;
     final hint = layout.isTv && _changelogFocus.hasFocus
         ? (!_changelogActive
-              ? 'OK to browse'
+              ? l10n.shellUpdateHintOkBrowse
               : _changelogOnRail && multi
-              ? '↑↓ versions  ·  → notes  ·  OK to exit'
+              ? l10n.shellUpdateHintRailNotes
               : multi
-              ? '↑↓ scroll  ·  ← versions  ·  OK to exit'
-              : '↑↓ scroll  ·  OK to exit')
+              ? l10n.shellUpdateHintScrollVersions
+              : l10n.shellUpdateHintScroll)
         : null;
 
     return Column(
@@ -845,9 +848,10 @@ class _UpdateDialogState extends State<UpdateDialog> {
     _UpdateLayout layout,
     List<VersionChangelog> changelogs,
   ) {
+    final l10n = context.l10n;
     if (changelogs.isEmpty) {
       return Text(
-        'No release notes were published for this update.',
+        l10n.shellUpdateNoNotes,
         style: GoogleFonts.plusJakartaSans(
           fontSize: layout.bodySize,
           height: 1.6,
@@ -858,11 +862,14 @@ class _UpdateDialogState extends State<UpdateDialog> {
 
     final index = _selectedChangelog.clamp(0, changelogs.length - 1);
     final selected = changelogs[index];
-    final sections = _ReleaseNotesParser.parseSections(selected.body);
+    final sections = _ReleaseNotesParser.parseSections(
+      selected.body,
+      linkLabel: l10n.shellUpdateViewFullChangelog,
+    );
 
     if (sections.isEmpty) {
       return Text(
-        'No release notes were published for v${selected.version}.',
+        l10n.shellUpdateNoNotesVersion(selected.version),
         style: GoogleFonts.plusJakartaSans(
           fontSize: layout.bodySize,
           height: 1.6,
@@ -902,6 +909,7 @@ class _UpdateDialogState extends State<UpdateDialog> {
   }
 
   Widget _buildDownloadingBody(_UpdateLayout layout) {
+    final l10n = context.l10n;
     final percent = (_downloadProgress * 100).clamp(0, 100).round();
     final logoWidth = layout.downloadLogoWidth;
     final logoHeight = logoWidth / forjaLogoAspectRatio;
@@ -932,7 +940,7 @@ class _UpdateDialogState extends State<UpdateDialog> {
         ),
         SizedBox(height: layout.downloadGapSmall),
         Text(
-          'Downloading update…',
+          l10n.shellUpdateDownloading,
           style: GoogleFonts.plusJakartaSans(
             fontSize: layout.bodySize,
             color: ForjaShellColors.textSecondary,
@@ -965,7 +973,7 @@ class _UpdateDialogState extends State<UpdateDialog> {
         SizedBox(height: layout.isTv ? 18 : 28),
         _UpdateTextAction(
           layout: layout,
-          label: 'Continue in background',
+          label: l10n.shellUpdateContinueInBackground,
           autoFocus: true,
           focusNode: _downloadFocus,
           onTap: () {
@@ -980,10 +988,11 @@ class _UpdateDialogState extends State<UpdateDialog> {
   String? get _platformNotice => null;
 
   String? _formatPublishedDate(DateTime publishedAt) {
+    final l10n = context.l10n;
     final diff = DateTime.now().difference(publishedAt);
-    if (diff.inDays == 0) return 'released today';
-    if (diff.inDays == 1) return 'released yesterday';
-    if (diff.inDays < 14) return 'released ${diff.inDays} days ago';
+    if (diff.inDays == 0) return l10n.shellUpdateReleasedToday;
+    if (diff.inDays == 1) return l10n.shellUpdateReleasedYesterday;
+    if (diff.inDays < 14) return l10n.shellUpdateReleasedDaysAgo(diff.inDays);
     const months = [
       'Jan',
       'Feb',
@@ -1013,6 +1022,7 @@ class _UpdateDialogState extends State<UpdateDialog> {
   }
 
   Future<void> _downloadAndInstallAndroid() async {
+    final l10n = context.l10n;
     setState(() {
       _isDownloading = true;
       _downloadProgress = 0.0;
@@ -1044,7 +1054,7 @@ class _UpdateDialogState extends State<UpdateDialog> {
                   case OtaStatus.INTERNAL_ERROR:
                   case OtaStatus.DOWNLOAD_ERROR:
                   case OtaStatus.CHECKSUM_ERROR:
-                    ForjaToast.error('Update failed: ${event.status}');
+                    ForjaToast.error(l10n.shellUpdateFailed('${event.status}'));
                     Navigator.of(context).pop();
                     break;
                   default:
@@ -1055,14 +1065,14 @@ class _UpdateDialogState extends State<UpdateDialog> {
             onError: (error) {
               if (mounted) {
                 setState(() => _isDownloading = false);
-                ForjaToast.error('Download failed: $error');
+                ForjaToast.error(l10n.shellUpdateDownloadFailed('$error'));
               }
             },
           );
     } catch (e) {
       if (mounted) {
         setState(() => _isDownloading = false);
-        ForjaToast.error('Update failed: $e');
+        ForjaToast.error(l10n.shellUpdateFailed('$e'));
       }
     }
   }
@@ -1089,9 +1099,10 @@ class _UpdateFooter extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     final install = _UpdatePrimaryAction(
       layout: layout,
-      label: 'Install update',
+      label: l10n.shellUpdateInstall,
       autoFocus: true,
       focusNode: installFocus,
       onTap: onUpdate,
@@ -1100,7 +1111,7 @@ class _UpdateFooter extends StatelessWidget {
 
     final skip = _UpdateTextAction(
       layout: layout,
-      label: 'Skip for now',
+      label: l10n.shellUpdateSkipForNow,
       focusNode: skipFocus,
       onTap: onSkip,
       onKeyEvent: onSkipKey,
@@ -1280,7 +1291,7 @@ class _FullChangelogLink extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'See full changelog on the web',
+                context.l10n.shellUpdateSeeFullChangelog,
                 style: GoogleFonts.plusJakartaSans(
                   fontSize: layout.metaSize,
                   fontWeight: FontWeight.w600,
@@ -1739,7 +1750,10 @@ abstract final class _ReleaseNotesParser {
     caseSensitive: false,
   );
 
-  static List<_ReleaseNoteSection> parseSections(String raw) {
+  static List<_ReleaseNoteSection> parseSections(
+    String raw, {
+    required String linkLabel,
+  }) {
     final sections = <_ReleaseNoteSection>[];
     String? currentTitle;
     var currentIsVersion = false;
@@ -1799,7 +1813,7 @@ abstract final class _ReleaseNotesParser {
       if (!_bulletPattern.hasMatch(line)) continue;
 
       flushPendingVersion();
-      currentItems.add(_parseBullet(line));
+      currentItems.add(_parseBullet(line, linkLabel));
     }
 
     flushGroup();
@@ -1807,7 +1821,7 @@ abstract final class _ReleaseNotesParser {
     return sections;
   }
 
-  static _ReleaseNoteItem _parseBullet(String line) {
+  static _ReleaseNoteItem _parseBullet(String line, String linkLabel) {
     var text = line.replaceFirst(_bulletPattern, '').trim();
 
     String? prefix;
@@ -1833,7 +1847,7 @@ abstract final class _ReleaseNotesParser {
     final url = urlMatch.group(0)!;
     var label = text.replaceFirst(url, '').trim();
     label = label.replaceAll(RegExp(r'[:：]\s*$'), '').trim();
-    if (label.isEmpty) label = 'View full changelog';
+    if (label.isEmpty) label = linkLabel;
 
     return _ReleaseNoteItem(text: label, url: url);
   }
@@ -1860,7 +1874,7 @@ class _DownloadCompleteScreen extends StatelessWidget {
       context: context,
       barrierDismissible: false,
       barrierColor: AppTheme.bgDark,
-      barrierLabel: 'Download complete',
+      barrierLabel: context.l10n.shellUpdateDownloadComplete,
       transitionDuration: const Duration(milliseconds: 320),
       pageBuilder: (_, _, _) => UpdateDialog._scopeHost(
         context,
@@ -1886,6 +1900,7 @@ class _DownloadCompleteScreen extends StatelessWidget {
         child: SafeArea(
           child: LayoutBuilder(
             builder: (context, constraints) {
+              final l10n = context.l10n;
               final layout = _UpdateLayout.of(
                 context,
                 width: constraints.maxWidth,
@@ -1909,7 +1924,7 @@ class _DownloadCompleteScreen extends StatelessWidget {
                       children: [
                         const Spacer(),
                         Text(
-                          'Download\ncomplete',
+                          l10n.shellUpdateDownloadCompleteTitle,
                           style: GoogleFonts.plusJakartaSans(
                             fontSize: layout.headlineSize,
                             fontWeight: FontWeight.w800,
@@ -1930,11 +1945,10 @@ class _DownloadCompleteScreen extends StatelessWidget {
                         SizedBox(height: layout.isTv ? 16 : 24),
                         Text(
                           Platform.isWindows
-                              ? 'Forja must close before you install the update. Choose Install to close Forja and launch the installer, or skip for now.'
+                              ? l10n.shellUpdateMustCloseWindows
                               : Platform.isMacOS
-                              ? 'Forja must close before you install the update. Choose Install to close Forja and open the disk image, or skip for now.'
-                              : 'Make the file executable, then run it:\n'
-                                    'chmod +x "$fileName"\n./$fileName',
+                              ? l10n.shellUpdateMustCloseMac
+                              : l10n.shellUpdateMakeExecutable(fileName),
                           style: GoogleFonts.plusJakartaSans(
                             fontSize: layout.bodySize,
                             height: 1.55,
@@ -1945,8 +1959,8 @@ class _DownloadCompleteScreen extends StatelessWidget {
                         _UpdatePrimaryAction(
                           layout: layout,
                           label: Platform.isMacOS || Platform.isWindows
-                              ? 'Install and close Forja'
-                              : 'Done',
+                              ? l10n.shellUpdateInstallAndClose
+                              : l10n.shellUpdateDone,
                           autoFocus: true,
                           onTap: Platform.isMacOS || Platform.isWindows
                               ? () => _installDesktopUpdate(context)
@@ -1957,8 +1971,8 @@ class _DownloadCompleteScreen extends StatelessWidget {
                           child: _UpdateTextAction(
                             layout: layout,
                             label: Platform.isMacOS || Platform.isWindows
-                                ? 'Skip for now'
-                                : 'Open downloads folder',
+                                ? l10n.shellUpdateSkipForNow
+                                : l10n.shellUpdateOpenDownloads,
                             onTap: Platform.isMacOS || Platform.isWindows
                                 ? () => Navigator.of(context).pop()
                                 : () async {
@@ -1985,6 +1999,7 @@ class _DownloadCompleteScreen extends StatelessWidget {
   }
 
   Future<void> _installDesktopUpdate(BuildContext context) async {
+    final l10n = context.l10n;
     try {
       if (Platform.isMacOS) {
         await Process.start('open', [
@@ -2000,7 +2015,7 @@ class _DownloadCompleteScreen extends StatelessWidget {
       exit(0);
     } catch (error) {
       if (context.mounted) {
-        ForjaToast.error('Could not open the update: $error');
+        ForjaToast.error(l10n.shellUpdateCouldNotOpen('$error'));
       }
     }
   }

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:forja/l10n/l10n.dart';
 import 'package:forja/shared/engine/runtime/actions/schedule/kit_schedule_window.dart';
 import 'package:forja/shell/core/forja_shell_scope.dart';
 import 'package:forja/shell/focus/shell_focusable_tap.dart';
@@ -183,8 +184,8 @@ class _LiveScheduleSheetState extends State<_LiveScheduleSheet> {
       children: [
         for (var i = 0; i < statuses.length; i++)
           _option(
-            label: statuses[i].label,
-            subtitle: statuses[i].subtitle,
+            label: statuses[i].label(context.l10n),
+            subtitle: statuses[i].subtitle(context.l10n),
             selected: statuses[i] == _status,
             icon: Icons.sensors_rounded,
             onSelected: () => _pickStatus(statuses[i]),
@@ -214,7 +215,7 @@ class _LiveScheduleSheetState extends State<_LiveScheduleSheet> {
           for (var i = 0; i < horizons.length; i++)
             _option(
               label: horizons[i].label,
-              subtitle: horizons[i].subtitle,
+              subtitle: horizons[i].subtitle(context.l10n),
               selected: horizons[i] == _horizon,
               icon: Icons.schedule_rounded,
               onSelected: () => _pickHorizon(horizons[i]),
@@ -272,7 +273,7 @@ class _LiveScheduleSheetState extends State<_LiveScheduleSheet> {
                     : ShellTokens.filterSheetTitleGap,
               ),
               Text(
-                'Schedule',
+                context.l10n.engineRuntimeSchedule,
                 style: TextStyle(
                   color: Colors.white,
                   fontSize: titleSize,
@@ -285,7 +286,7 @@ class _LiveScheduleSheetState extends State<_LiveScheduleSheet> {
                     : ShellTokens.filterSheetSubtitleGap,
               ),
               Text(
-                'What to show, and how far ahead to load upcoming:',
+                context.l10n.engineRuntimeScheduleIntro,
                 style: TextStyle(color: Colors.white54, fontSize: subtitleSize),
               ),
               SizedBox(
@@ -294,7 +295,7 @@ class _LiveScheduleSheetState extends State<_LiveScheduleSheet> {
                     : 18,
               ),
               Text(
-                'Status',
+                context.l10n.engineRuntimeScheduleStatus,
                 style: TextStyle(
                   color: Colors.white70,
                   fontSize: sectionSize,
@@ -306,7 +307,7 @@ class _LiveScheduleSheetState extends State<_LiveScheduleSheet> {
               if (horizonSection != null) ...[
                 SizedBox(height: tvDensity ? 10 : 16),
                 Text(
-                  'Horizon',
+                  context.l10n.engineRuntimeScheduleHorizon,
                   style: TextStyle(
                     color: Colors.white70,
                     fontSize: sectionSize,

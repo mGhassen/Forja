@@ -1,5 +1,9 @@
 import 'package:flutter/foundation.dart';
+import 'package:forja/l10n/app_localizations.dart';
+import 'package:forja/l10n/app_localizations_en.dart';
+import 'package:forja/shared/engine/packs/manifest_i18n.dart';
 import 'package:forja/shared/platform/platform_info.dart';
+import 'package:forja/shared/services/app/app_locale.dart';
 import 'package:forja/shared/utils/torrent_meta_parser.dart';
 
 import 'ids.dart';
@@ -17,8 +21,11 @@ class PluginLanguage {
   /// Stable selection key stored in Settings (`sub:fr`).
   String get key => '$kind:$code';
 
+  /// English label for callers with no [AppLocalizations] to hand.
+  String get label => labelFor(AppLocalizationsEn());
+
   /// User-facing label for chips / dropdown.
-  String get label {
+  String labelFor(AppLocalizations l10n) {
     if (kind == 'sub') {
       if (code == 'en') return 'VOST';
       return 'VOST${code.toUpperCase()}';
@@ -27,21 +34,21 @@ class PluginLanguage {
     return switch (code) {
       'en' => 'VO',
       'fr' => 'VF',
-      'it' => 'Italian',
+      'it' => l10n.engineModelsLanguageItalian,
       'es' => 'Castellano',
       'lat' => 'Latino',
       'ca' => 'Catalán',
-      'de' => 'German',
-      'pt' => 'Portuguese',
-      'ar' => 'Arabic',
-      'hi' => 'Hindi',
-      'tr' => 'Turkish',
-      'ja' => 'Japanese',
-      'ko' => 'Korean',
-      'zh' => 'Chinese',
-      'nl' => 'Dutch',
-      'pl' => 'Polish',
-      'ru' => 'Russian',
+      'de' => l10n.engineModelsLanguageGerman,
+      'pt' => l10n.engineModelsLanguagePortuguese,
+      'ar' => l10n.engineModelsLanguageArabic,
+      'hi' => l10n.engineModelsLanguageHindi,
+      'tr' => l10n.engineModelsLanguageTurkish,
+      'ja' => l10n.engineModelsLanguageJapanese,
+      'ko' => l10n.engineModelsLanguageKorean,
+      'zh' => l10n.engineModelsLanguageChinese,
+      'nl' => l10n.engineModelsLanguageDutch,
+      'pl' => l10n.engineModelsLanguagePolish,
+      'ru' => l10n.engineModelsLanguageRussian,
       _ => code.toUpperCase(),
     };
   }
@@ -98,6 +105,8 @@ class EnginePlugin {
     this.liveLegacyIds,
     this.platforms = const [],
     this.languages = const [],
+    this.i18n,
+    this.sourceText,
   });
 
   final String id;
@@ -105,6 +114,15 @@ class EnginePlugin {
   final String entry;
   final String? description;
   final List<String> types;
+
+  /// Manifest `i18n` table (`{ "fr": { "<English>": "<French>" } }`). [name],
+  /// [description], [nav] and [settings] are already in the app language.
+  final Map<String, dynamic>? i18n;
+
+  /// The manifest's own (untranslated) [name], [description], `nav` and
+  /// `settings`, so what is saved to disk stays in the manifest's language and
+  /// a later language change still translates it.
+  final Map<String, dynamic>? sourceText;
 
   /// Catalog keys this plugin reads from `extract(ctx)`:
   /// `title`, `tmdb`, `imdb`, `mal`, `anilist`.
@@ -268,6 +286,17 @@ class EnginePlugin {
   }
 
   factory EnginePlugin.fromJson(Map<String, dynamic> j) {
+    final i18n = j['i18n'] is Map
+        ? Map<String, dynamic>.from(j['i18n'] as Map)
+        : null;
+    final translated = localizeManifestText(j, i18n, AppLocale.activeCode);
+    final sourceText = translated.isEmpty
+        ? null
+        : {
+            for (final k in manifestTextKeys)
+              if (j[k] != null) k: j[k],
+          };
+    if (translated.isNotEmpty) j = {...j, ...translated};
     final id = (j['id'] ?? '').toString().trim();
     if (id.isEmpty) {
       throw const FormatException('engine plugin missing id');
@@ -316,14 +345,17 @@ class EnginePlugin {
       liveLegacyIds: LiveSportLegacyIds.fromJson(j['legacyIds']),
       platforms: packPlatformIds(j['platforms']),
       languages: _pluginLanguages(j['languages']),
+      i18n: i18n,
+      sourceText: sourceText,
     );
   }
 
   Map<String, dynamic> toJson() => {
     'id': id,
-    'name': name,
+    'name': sourceText?['name'] ?? name,
     'entry': entry,
-    if (description != null) 'description': description,
+    if ((sourceText?['description'] ?? description) != null)
+      'description': sourceText?['description'] ?? description,
     'types': types,
     if (ids.isNotEmpty) 'ids': ids,
     'kind': kind,
@@ -336,8 +368,10 @@ class EnginePlugin {
     if (protocol != null) 'protocol': protocol,
     if (kit != null) 'kit': kit,
     if (capabilities.isNotEmpty) 'capabilities': capabilities,
-    if (nav != null) 'nav': nav,
-    if (settings != null) 'settings': settings,
+    if ((sourceText?['nav'] ?? nav) != null) 'nav': sourceText?['nav'] ?? nav,
+    if ((sourceText?['settings'] ?? settings) != null)
+      'settings': sourceText?['settings'] ?? settings,
+    if (i18n != null) 'i18n': i18n,
     if (enrich != null && enrich!.isNotEmpty) 'enrich': enrich,
     if (ctxConfigMap.isNotEmpty) 'ctxConfigMap': ctxConfigMap,
     if (defaultCapabilities.isNotEmpty)
@@ -378,6 +412,8 @@ class EnginePlugin {
     liveLegacyIds: liveLegacyIds,
     platforms: platforms,
     languages: languages ?? this.languages,
+    i18n: i18n,
+    sourceText: sourceText,
   );
 }
 
@@ -579,6 +615,7 @@ class EnginePack {
             _pluginFromManifestEntry(
               Map<String, dynamic>.from(raw),
               packPrelude: packPrelude,
+              packI18n: j['i18n'],
             ),
       ];
     } else if ((j['id'] ?? '').toString().trim().isNotEmpty &&
@@ -625,8 +662,12 @@ class EnginePack {
   static EnginePlugin _pluginFromManifestEntry(
     Map<String, dynamic> j, {
     required String packPrelude,
+    Object? packI18n,
   }) {
-    final plugin = EnginePlugin.fromJson(j);
+    final plugin = EnginePlugin.fromJson({
+      if (packI18n is Map && j['i18n'] == null) 'i18n': packI18n,
+      ...j,
+    });
     if (plugin.prelude.isNotEmpty || packPrelude.isEmpty) return plugin;
     return plugin.copyWith(prelude: packPrelude);
   }

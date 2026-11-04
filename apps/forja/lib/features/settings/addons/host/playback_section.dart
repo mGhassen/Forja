@@ -10,6 +10,7 @@ import 'package:forja/features/settings/shell/visibility_provider.dart';
 import 'package:forja/features/settings/shell/visibility.dart';
 import 'package:forja/features/settings/ui/focus_controls.dart';
 import 'package:forja/features/settings/ui/settings_ui.dart';
+import 'package:forja/l10n/l10n.dart';
 import 'package:forja/shared/player/resolvers/track_auto_select.dart';
 import 'package:forja/shared/sync/sync.dart';
 
@@ -74,13 +75,13 @@ class _SettingsPlaybackSectionState
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         SettingsGroup(
-          label: 'Player',
+          label: context.l10n.addonsHostPlayerGroupLabel,
           children: [
             if (Platform.isAndroid)
               settingsFocusableDropdown(
                 context,
-                'Movies & series engine',
-                'Used for Home, Search, Anime, Asian Drama, and IPTV Movies/Series. Live IPTV has its own setting under IPTV.',
+                context.l10n.addonsHostPlaybackEngineTitle,
+                context.l10n.addonsHostPlaybackEngineSubtitle,
                 snap.builtInEngine.displayName,
                 builtInPlayerEngineOptionsForUi
                     .map((e) => e.displayName)
@@ -102,8 +103,8 @@ class _SettingsPlaybackSectionState
               ),
             settingsFocusableDropdown(
               context,
-              'Preferred Audio Language',
-              'Switch to a matching audio track when playback starts. Pick "None" to keep the stream default.',
+              context.l10n.addonsHostPlaybackAudioLangTitle,
+              context.l10n.addonsHostPlaybackAudioLangSubtitle,
               snap.preferredAudioLang,
               kTrackLanguageDisplayNames,
               (val) async {
@@ -118,8 +119,8 @@ class _SettingsPlaybackSectionState
             ),
             settingsFocusableDropdown(
               context,
-              'Preferred Subtitle Language',
-              'Prefer this language for in-stream or online subtitles. In-stream tracks win when they match. Pick "None" to start with subs off.',
+              context.l10n.addonsHostPlaybackSubtitleLangTitle,
+              context.l10n.addonsHostPlaybackSubtitleLangSubtitle,
               snap.preferredSubtitleLang,
               kTrackLanguageDisplayNames,
               (val) async {
@@ -134,8 +135,8 @@ class _SettingsPlaybackSectionState
             ),
             settingsFocusableToggle(
               context,
-              'Avoid unsupported audio (Atmos / TrueHD / 7.1)',
-              'Fall back to AC-3, E-AC-3, or AAC when Atmos, TrueHD, or 7.1 is not supported.',
+              context.l10n.addonsHostPlaybackAvoidAudioTitle,
+              context.l10n.addonsHostPlaybackAvoidAudioSubtitle,
               snap.avoidUnsupportedAudio,
               (val) async {
                 await _settings.setAvoidUnsupportedAudio(val);
@@ -148,8 +149,8 @@ class _SettingsPlaybackSectionState
             if (widget.visibility.showVodPlayerExtras) ...[
               settingsFocusableToggle(
                 context,
-                'Auto next episode',
-                'Start the next episode when one ends. Also available in the player Episodes panel.',
+                context.l10n.addonsHostPlaybackAutoNextTitle,
+                context.l10n.addonsHostPlaybackAutoNextSubtitle,
                 snap.autoNextEpisode,
                 (val) async {
                   await _settings.setAutoNextEpisode(val);
@@ -161,8 +162,8 @@ class _SettingsPlaybackSectionState
               ),
             settingsFocusableToggle(
               context,
-              'Auto skip intro',
-              'Skip intro and recap segments automatically when timestamps are available.',
+              context.l10n.addonsHostPlaybackAutoSkipIntroTitle,
+              context.l10n.addonsHostPlaybackAutoSkipIntroSubtitle,
               snap.autoSkipIntro,
               (val) async {
                 await _settings.setAutoSkipIntro(val);
@@ -172,8 +173,8 @@ class _SettingsPlaybackSectionState
             ),
             settingsFocusableToggle(
               context,
-              'Content warnings',
-              'Show IMDb content ratings (nudity, violence, and similar) when playback starts.',
+              context.l10n.addonsHostPlaybackContentWarningsTitle,
+              context.l10n.addonsHostPlaybackContentWarningsSubtitle,
               snap.contentWarnings,
               (val) async {
                 await _settings.setContentWarnings(val);
@@ -186,10 +187,10 @@ class _SettingsPlaybackSectionState
             if (SettingsService.platformProfile != PlatformProfile.androidTv)
               settingsFocusableToggle(
                 context,
-                'Play in background',
+                context.l10n.addonsHostPlaybackBackgroundTitle,
                 SettingsService.platformProfile == PlatformProfile.desktop
-                    ? 'Keep movies, series, and IPTV playing when Forja is in the background.'
-                    : 'Keep movies, series, and IPTV playing when Forja is in the background. (playback pauses until you return).',
+                    ? context.l10n.addonsHostPlaybackBackgroundDesktopSubtitle
+                    : context.l10n.addonsHostPlaybackBackgroundMobileSubtitle,
                 snap.playInBackground,
                 (val) async {
                   await _settings.setPlayInBackground(val);
@@ -201,8 +202,8 @@ class _SettingsPlaybackSectionState
             if (SettingsService.platformProfile == PlatformProfile.androidTv)
               settingsFocusableToggle(
                 context,
-                'Remote click sounds',
-                'Play a short system click when you move D-pad focus or press OK. Off while a video is playing.',
+                context.l10n.addonsHostPlaybackRemoteSoundsTitle,
+                context.l10n.addonsHostPlaybackRemoteSoundsSubtitle,
                 snap.tvNavSound,
                 (val) async {
                   await _settings.setTvNavSound(val);
@@ -213,8 +214,8 @@ class _SettingsPlaybackSectionState
                 SettingsService.platformProfile == PlatformProfile.desktop)
               settingsFocusableToggle(
                 context,
-                'Auto picture-in-picture',
-                'Enter picture-in-picture when you switch Space (macOS) or virtual desktop (Windows) while playing. You can still use the player PiP button anytime.',
+                context.l10n.addonsHostPlaybackAutoPipTitle,
+                context.l10n.addonsHostPlaybackAutoPipSubtitle,
                 snap.autoPipOnDesktopSwitch,
                 (val) async {
                   await _settings.setAutoPipOnDesktopSwitch(val);
@@ -229,8 +230,8 @@ class _SettingsPlaybackSectionState
                 SettingsService.platformProfile == PlatformProfile.desktop)
               settingsFocusableToggle(
                 context,
-                'Escape to mini player',
-                'When Escape would leave the player, demote to the in-app mini instead. Off by default. The top-right mini button always works. Distinct from picture-in-picture.',
+                context.l10n.addonsHostPlaybackMiniPlayerTitle,
+                context.l10n.addonsHostPlaybackMiniPlayerSubtitle,
                 snap.inAppMiniPlayer,
                 (val) async {
                   await _settings.setInAppMiniPlayer(val);
@@ -243,8 +244,8 @@ class _SettingsPlaybackSectionState
             if (widget.visibility.vodTab)
               settingsFocusableDropdown(
                 context,
-                'Max stream quality',
-                'Limit Auto stream quality and HLS start bitrate. Auto aims for a faster first frame. Pick 4K for the highest ladder.',
+                context.l10n.addonsHostPlaybackMaxQualityTitle,
+                context.l10n.addonsHostPlaybackMaxQualitySubtitle,
                 snap.maxPlaybackHeightLabel,
                 SettingsService.maxPlaybackHeightOptions.keys.toList(),
                 (val) async {

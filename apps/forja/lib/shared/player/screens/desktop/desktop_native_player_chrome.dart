@@ -59,7 +59,7 @@ mixin _DesktopNativeChrome on State<DesktopNativePlayerScreen> {
       return (label: provider, server: null);
     }
     if (sourceTitle != null) return splitSourceButtonLines(sourceTitle);
-    return (label: 'Sources', server: null);
+    return (label: context.l10n.playerScreenSources, server: null);
   }
 
   ({String label, String? server}) _catalogSourcesButtonLabels() {
@@ -144,7 +144,7 @@ mixin _DesktopNativeChrome on State<DesktopNativePlayerScreen> {
                 showPip: PipService.instance.isSupported,
                 pipActive: false,
                 onPip: () {
-                  ForjaToast.info('Desktop PiP needs MediaKit for now');
+                  ForjaToast.info(context.l10n.playerScreenPipNeedsMediaKit);
                   _n._bumpControls();
                 },
               ),
@@ -253,7 +253,9 @@ mixin _DesktopNativeChrome on State<DesktopNativePlayerScreen> {
                                     icon: _n._playing
                                         ? Icons.pause_rounded
                                         : Icons.play_arrow_rounded,
-                                    tooltip: _n._playing ? 'Pause' : 'Play',
+                                    tooltip: _n._playing
+                                        ? context.l10n.downloadsPause
+                                        : context.l10n.playerScreenPlay,
                                     onPressed: () => unawaited(_n._playPause()),
                                   ),
                                   const SizedBox(width: 2),
@@ -280,7 +282,9 @@ mixin _DesktopNativeChrome on State<DesktopNativePlayerScreen> {
                                     const SizedBox(width: 2),
                                     PlayerFlatIconButton(
                                       icon: Icons.skip_previous_rounded,
-                                      tooltip: 'Previous episode',
+                                      tooltip: context
+                                          .l10n
+                                          .playerScreenPreviousEpisodeTooltip,
                                       onPressed: () =>
                                           unawaited(_n._previousEpisode()),
                                     ),
@@ -289,7 +293,9 @@ mixin _DesktopNativeChrome on State<DesktopNativePlayerScreen> {
                                     const SizedBox(width: 2),
                                     PlayerFlatIconButton(
                                       icon: Icons.skip_next_rounded,
-                                      tooltip: 'Next episode',
+                                      tooltip: context
+                                          .l10n
+                                          .playerScreenNextEpisodeTooltip,
                                       onPressed: () =>
                                           unawaited(_n._nextEpisode()),
                                     ),
@@ -333,7 +339,8 @@ mixin _DesktopNativeChrome on State<DesktopNativePlayerScreen> {
                                   if (_n._hasEpisodePicker) ...[
                                     PlayerFlatIconButton(
                                       icon: Icons.video_library_outlined,
-                                      tooltip: 'Episodes',
+                                      tooltip:
+                                          context.l10n.playerScreenEpisodes,
                                       onPressedWithContext: (ctx) =>
                                           unawaited(_n._showEpisodesMenu(ctx)),
                                     ),
@@ -341,7 +348,7 @@ mixin _DesktopNativeChrome on State<DesktopNativePlayerScreen> {
                                   ],
                                   PlayerFlatIconButton(
                                     icon: Icons.audiotrack_rounded,
-                                    tooltip: 'Audio',
+                                    tooltip: context.l10n.playerScreenAudio,
                                     onPressed: () {
                                       ForjaToast.info(
                                         'Audio tracks need MediaKit or Exo for now',
@@ -352,7 +359,7 @@ mixin _DesktopNativeChrome on State<DesktopNativePlayerScreen> {
                                   const SizedBox(width: 2),
                                   PlayerFlatIconButton(
                                     icon: Icons.subtitles_outlined,
-                                    tooltip: 'Subtitles',
+                                    tooltip: context.l10n.playerScreenSubtitles,
                                     onPressed: () {
                                       ForjaToast.info(
                                         'Subtitles need MediaKit or Exo for now',
@@ -363,7 +370,7 @@ mixin _DesktopNativeChrome on State<DesktopNativePlayerScreen> {
                                   const SizedBox(width: 2),
                                   PlayerFlatIconButton(
                                     icon: Icons.hd_outlined,
-                                    tooltip: 'Quality',
+                                    tooltip: context.l10n.playerScreenQuality,
                                     onPressed: () {
                                       ForjaToast.info(
                                         'Quality needs MediaKit or Exo for now',
@@ -374,7 +381,7 @@ mixin _DesktopNativeChrome on State<DesktopNativePlayerScreen> {
                                   const SizedBox(width: 2),
                                   PlayerFlatIconButton(
                                     icon: Icons.settings_outlined,
-                                    tooltip: 'Settings',
+                                    tooltip: context.l10n.settingsTitle,
                                     onPressedWithContext: _n._showSettingsMenu,
                                   ),
                                   const SizedBox(width: 2),
@@ -382,7 +389,8 @@ mixin _DesktopNativeChrome on State<DesktopNativePlayerScreen> {
                                     icon: _n._isFullscreen
                                         ? Icons.fullscreen_exit_rounded
                                         : Icons.fullscreen_rounded,
-                                    tooltip: 'Fullscreen',
+                                    tooltip:
+                                        context.l10n.playerScreenFullscreen,
                                     onPressed: () =>
                                         unawaited(_n._toggleFullscreen()),
                                   ),

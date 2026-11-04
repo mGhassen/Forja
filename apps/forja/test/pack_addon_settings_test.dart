@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:forja/features/settings/addons/catalog.dart';
+import 'package:forja/l10n/app_localizations_en.dart';
 import 'package:forja/shared/engine/models/models.dart';
 import 'package:forja/shared/engine/packs/settings/pack_addon_settings_spec.dart';
 import 'package:forja/shared/engine/packs/settings/pack_settings_store.dart';
@@ -351,7 +352,10 @@ void main() {
       expect(metas.length, 1);
       expect(metas.single.id, 'cloud_resolve');
       expect(metas.single.title, 'Cloud Resolve');
-      expect(metas.single.subtitle, '2 pack settings');
+      expect(
+        metas.single.subtitleFor(AppLocalizationsEn()),
+        '2 pack settings',
+      );
       expect(metas.single.packContributed, isTrue);
       expect(metas.single.hasToggle, isFalse);
     });

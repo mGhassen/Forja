@@ -1,3 +1,4 @@
+import 'package:forja/shell/routing/shell_ambient_l10n.dart';
 import 'package:rust/rust.dart';
 
 import 'lan_client_service.dart';
@@ -75,9 +76,9 @@ class LanPlaybackRouter {
 
   static String unavailableMessage({required bool neverPaired}) {
     if (neverPaired) {
-      return 'Pair with a desktop Forja server in Settings → LAN.';
+      return shellAmbientL10n.sharedLanPairWithDesktop;
     }
-    return 'Desktop server is offline. Direct streams still work.';
+    return shellAmbientL10n.sharedLanDesktopOffline;
   }
 
   static bool needsProxyRelay(String url) {

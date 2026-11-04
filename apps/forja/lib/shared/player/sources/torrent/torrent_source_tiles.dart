@@ -3,9 +3,11 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import 'package:forja/l10n/l10n.dart';
 import 'package:forja/shared/downloads/download_enqueue.dart';
 import 'package:forja/shared/downloads/download_source_match.dart';
 import 'package:forja/shared/engine/details/sources_panel_tv.dart';
+import 'package:forja/shared/utils/byte_units.dart';
 import 'package:forja/shared/utils/torrent_meta_parser.dart';
 import 'package:rust/rust.dart';
 import 'package:forja/shell/feedback/forja_toast.dart';
@@ -263,14 +265,12 @@ class TorrentFileSourceTile extends StatelessWidget {
   final VoidCallback? onDownEdge;
 
   String _formatSize(int bytes) {
-    if (bytes < 1024) return '$bytes B';
-    if (bytes < 1024 * 1024) {
-      return '${(bytes / 1024).toStringAsFixed(1)} KB';
-    }
+    if (bytes < 1024) return ByteUnits.format(bytes.toDouble(), 0, 0);
+    if (bytes < 1024 * 1024) return ByteUnits.format(bytes / 1024, 1, 1);
     if (bytes < 1024 * 1024 * 1024) {
-      return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
+      return ByteUnits.format(bytes / (1024 * 1024), 2, 1);
     }
-    return '${(bytes / (1024 * 1024 * 1024)).toStringAsFixed(2)} GB';
+    return ByteUnits.format(bytes / (1024 * 1024 * 1024), 3, 2);
   }
 
   @override
@@ -279,7 +279,7 @@ class TorrentFileSourceTile extends StatelessWidget {
       title: fileName,
       subtitle: _formatSize(sizeBytes),
       highlightStart: isCurrent,
-      provider: isCurrent ? 'Playing' : null,
+      provider: isCurrent ? context.l10n.playerSourcePlaying : null,
       onPlay: onPlay,
       tvItemIndex: tvItemIndex,
       onUpEdge: onUpEdge,
@@ -829,11 +829,11 @@ class _SourceBadgeCardState extends State<_SourceBadgeCard>
         ? const Color(0xFFF87171)
         : ForjaShellColors.brandGreen;
     final sizeText = probing
-        ? 'Checking size…'
-        : (prep?.sizeLabel ?? 'Size unknown');
+        ? context.l10n.playerSourceCheckingSize
+        : (prep?.sizeLabel ?? context.l10n.playerSourceSizeUnknown);
     final detail = prep?.detailLine;
     final spaceWarn = prep?.blockReason == 'space'
-        ? 'Not enough free space'
+        ? context.l10n.playerSourceNotEnoughSpace
         : null;
 
     return Align(
@@ -843,7 +843,9 @@ class _SourceBadgeCardState extends State<_SourceBadgeCard>
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            probing ? 'DOWNLOAD' : 'DOWNLOAD OFFLINE?',
+            probing
+                ? context.l10n.playerSourceDownloadHeading
+                : context.l10n.playerSourceDownloadOfflineHeading,
             style: TextStyle(
               color: ForjaShellColors.textSecondary,
               fontSize: _sourcesLeanback(context)
@@ -1072,7 +1074,7 @@ class _SourceBadgeCardState extends State<_SourceBadgeCard>
               if (selected) ...[
                 const SizedBox(height: 2),
                 Text(
-                  'Playing',
+                  context.l10n.playerSourcePlaying,
                   style: TextStyle(
                     color: accentFg,
                     fontSize: metaSize,
@@ -1170,7 +1172,7 @@ class _SourceBadgeCardState extends State<_SourceBadgeCard>
                               .isEmpty)) ...[
                     if (hasProvider || selected) const SizedBox(height: 2),
                     Text(
-                      'Offline',
+                      context.l10n.downloadsLegendOffline,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       textAlign: TextAlign.right,
@@ -1270,7 +1272,7 @@ class _SourceBadgeCardState extends State<_SourceBadgeCard>
           children: [
             if (widget.onPauseDownload != null)
               _SourceRailIcon(
-                tooltip: 'Pause',
+                tooltip: context.l10n.downloadsPause,
                 icon: Icons.pause_rounded,
                 idle: Colors.white60,
                 hit: hit,
@@ -1279,7 +1281,7 @@ class _SourceBadgeCardState extends State<_SourceBadgeCard>
               ),
             if (widget.onResumeDownload != null)
               _SourceRailIcon(
-                tooltip: 'Resume',
+                tooltip: context.l10n.downloadsResume,
                 icon: Icons.play_arrow_rounded,
                 idle: Colors.white60,
                 hit: hit,
@@ -1288,7 +1290,7 @@ class _SourceBadgeCardState extends State<_SourceBadgeCard>
               ),
             if (widget.onDeleteDownload != null)
               _SourceRailIcon(
-                tooltip: 'Delete',
+                tooltip: context.l10n.downloadsDelete,
                 icon: Icons.close_rounded,
                 idle: Colors.white60,
                 hit: hit,
@@ -1306,7 +1308,7 @@ class _SourceBadgeCardState extends State<_SourceBadgeCard>
           children: [
             if (canEnqueueDownload)
               _SourceRailIcon(
-                tooltip: 'Download',
+                tooltip: context.l10n.playerSourceDownloadTooltip,
                 icon: Icons.download_rounded,
                 idle: Colors.white60,
                 hit: hit,
@@ -1315,7 +1317,7 @@ class _SourceBadgeCardState extends State<_SourceBadgeCard>
               ),
             if (canPlayCloud)
               _SourceRailIcon(
-                tooltip: 'Play online',
+                tooltip: context.l10n.playerSourcePlayOnline,
                 icon: Icons.cloud_outlined,
                 idle: Colors.white60,
                 hit: hit,
@@ -1324,7 +1326,7 @@ class _SourceBadgeCardState extends State<_SourceBadgeCard>
               ),
             if (canDropOffline)
               _SourceRailIcon(
-                tooltip: 'Delete',
+                tooltip: context.l10n.downloadsDelete,
                 icon: Icons.delete_outline_rounded,
                 idle: Colors.white60,
                 hit: hit,
@@ -1333,15 +1335,16 @@ class _SourceBadgeCardState extends State<_SourceBadgeCard>
               ),
             if (hasMagnet)
               _SourceRailIcon(
-                tooltip: 'Copy magnet',
+                tooltip: context.l10n.playerSourceCopyMagnet,
                 icon: Icons.content_copy_rounded,
                 idle: Colors.white60,
                 hit: hit,
                 iconSize: iconSize,
                 onTap: () async {
+                  final l10n = context.l10n;
                   await Clipboard.setData(ClipboardData(text: magnet));
                   ForjaToast.success(
-                    'Magnet copied',
+                    l10n.playerSourceMagnetCopied,
                     duration: const Duration(seconds: 2),
                   );
                 },

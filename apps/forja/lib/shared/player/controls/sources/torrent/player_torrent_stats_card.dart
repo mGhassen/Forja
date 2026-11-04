@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:forja/l10n/l10n.dart';
 import 'package:rust/rust.dart';
 
 /// Compact transparent torrent stats chip for the desktop player overlay.
@@ -14,6 +15,7 @@ class PlayerTorrentStatsCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     final seederText = indexerSeeders != null ? '$indexerSeeders' : '-';
     return IgnorePointer(
       child: DecoratedBox(
@@ -39,14 +41,19 @@ class PlayerTorrentStatsCard extends StatelessWidget {
                 const SizedBox(height: 3),
                 _row(Icons.upload_rounded, stats.uploadLabel),
                 const SizedBox(height: 3),
-                _row(Icons.people_outline_rounded,
-                    '${stats.activePeers} live · ${stats.totalPeers} seen'),
+                _row(
+                  Icons.people_outline_rounded,
+                  l10n.playerControlTorrentPeers(
+                    stats.activePeers,
+                    stats.totalPeers,
+                  ),
+                ),
                 const SizedBox(height: 3),
-                _row(Icons.eco_outlined, '$seederText seeders'),
+                _row(Icons.eco_outlined, l10n.playerControlTorrentSeeders(seederText)),
                 const SizedBox(height: 3),
                 _row(Icons.storage_outlined, '${stats.sizeLabel} · ${stats.cacheLabel}'),
                 const SizedBox(height: 3),
-                _row(Icons.timer_outlined, 'ETA ${stats.etaLabel}'),
+                _row(Icons.timer_outlined, l10n.playerControlTorrentEta(stats.etaLabel)),
               ],
             ),
           ),

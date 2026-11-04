@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:forja/l10n/l10n.dart';
 import 'package:rust/rust.dart';
 import 'package:forja/shared/casting/casting.dart';
 import 'package:forja/shared/engine/details/pack_details_host.dart';
@@ -229,12 +230,13 @@ class AppRouter {
     final pluginId = await PluginNavRegistry.resolveKitPluginId(tabId: tabId);
     if (pluginId == null || !context.mounted) return null;
     final label =
-        PluginNavRegistry.destinations[tabId]?.label ?? 'Search';
+        PluginNavRegistry.destinations[tabId]?.label ??
+        context.l10n.addonsPackGreenPlaySearchLabel;
     await openCatalogSearch(
       context,
       pluginId: pluginId,
       tabId: tabId,
-      hintText: 'Search $label…',
+      hintText: context.l10n.shellSearchHintNamed(label),
     );
     return null;
   }

@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:forja/features/account/tv_account_link_screen.dart';
 import 'package:forja/features/settings/ui/settings_ui.dart';
+import 'package:forja/l10n/l10n.dart';
 import 'package:forja/shared/navigation/shell_back_icon_button.dart';
 import 'package:forja/shared/sync/sync.dart';
 import 'package:forja/shared/theme/app_theme.dart';
@@ -35,7 +36,8 @@ class AccountChooserScreen extends StatefulWidget {
 class _AccountChooserScreenState extends State<AccountChooserScreen> {
   List<DeviceAccountSession> _accounts = const [];
   bool _busy = false;
-  String? _error;
+  // Resolved in build: _reload runs from initState, before l10n is readable.
+  String Function(AppLocalizations)? _error;
 
   /// Portal-style two-step remove: first tap arms, Yes commits.
   String? _confirmRemoveUserId;
@@ -58,7 +60,7 @@ class _AccountChooserScreenState extends State<AccountChooserScreen> {
       });
     } catch (e) {
       if (!mounted) return;
-      setState(() => _error = 'Could not load saved accounts.');
+      setState(() => _error = (l) => l.accountChooserLoadFailed);
     }
   }
 
@@ -80,7 +82,7 @@ class _AccountChooserScreenState extends State<AccountChooserScreen> {
       if (!mounted) return;
       if (!ok) {
         setState(() {
-          _error = 'Could not switch account. Sign in again for that user.';
+          _error = (l) => l.accountChooserSwitchFailed;
           _busy = false;
         });
         return;
@@ -95,8 +97,8 @@ class _AccountChooserScreenState extends State<AccountChooserScreen> {
     if (_busy) return;
     if (_accounts.length >= SyncService.maxDeviceAccounts) {
       setState(() {
-        _error =
-            'Maximum of ${SyncService.maxDeviceAccounts} accounts on this device.';
+        _error = (l) =>
+            l.accountChooserMaxAccounts(SyncService.maxDeviceAccounts);
       });
       return;
     }
@@ -142,7 +144,7 @@ class _AccountChooserScreenState extends State<AccountChooserScreen> {
         success: false,
       );
       if (!mounted) return;
-      setState(() => _error = 'Could not add account. Try again.');
+      setState(() => _error = (l) => l.accountChooserAddFailed);
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -196,6 +198,7 @@ class _AccountChooserScreenState extends State<AccountChooserScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     final activeId = _activeUserId;
     final atCap = _accounts.length >= SyncService.maxDeviceAccounts;
     DeviceAccountSession? active;
@@ -209,7 +212,7 @@ class _AccountChooserScreenState extends State<AccountChooserScreen> {
     }
     final activeEmail = active?.email.isNotEmpty == true
         ? active!.email
-        : (SyncService.instance.userEmail ?? 'Signed in');
+        : (SyncService.instance.userEmail ?? l10n.profileSignedIn);
     final addEnabled = !_busy && !atCap;
 
     return Scaffold(
@@ -220,11 +223,11 @@ class _AccountChooserScreenState extends State<AccountChooserScreen> {
         leading: ShellBackIconButton(
           icon: Icons.arrow_back_rounded,
           size: 28,
-          tooltip: 'Back',
+          tooltip: l10n.accountBack,
           onTap: _busy ? null : () => Navigator.of(context).pop(false),
         ),
         title: Text(
-          'Accounts',
+          l10n.accountChooserTitle,
           style: TextStyle(
             color: ForjaShellColors.textPrimary,
             fontSize: SettingsTokens.typeSizeOf(context, 18),
@@ -248,7 +251,7 @@ class _AccountChooserScreenState extends State<AccountChooserScreen> {
                   padding: const EdgeInsets.fromLTRB(0, 8, 0, 48),
                   children: [
                     Text(
-                      'Who’s signed in?',
+                      l10n.accountChooserHeading,
                       style: TextStyle(
                         color: ForjaShellColors.textPrimary,
                         fontSize: SettingsTokens.typeSizeOf(context, 28),
@@ -258,7 +261,7 @@ class _AccountChooserScreenState extends State<AccountChooserScreen> {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      'Switch accounts on this device, or add another with QR / code.',
+                      l10n.accountChooserSubtitle,
                       style: TextStyle(
                         color: ForjaShellColors.textSecondary,
                         fontSize: SettingsTokens.typeSizeOf(context, 14),
@@ -270,7 +273,7 @@ class _AccountChooserScreenState extends State<AccountChooserScreen> {
                       Padding(
                         padding: const EdgeInsets.only(bottom: 16),
                         child: Text(
-                          _error!,
+                          _error!(l10n),
                           style: TextStyle(
                             color: const Color(0xFFF87171),
                             fontSize: SettingsTokens.typeSizeOf(context, 13),
@@ -278,11 +281,11 @@ class _AccountChooserScreenState extends State<AccountChooserScreen> {
                         ),
                       ),
                     SettingsGroup(
-                      label: 'Active',
+                      label: l10n.accountChooserActiveGroup,
                       children: [
                         SettingsStatusRow(
                           title: activeEmail,
-                          subtitle: 'Active now',
+                          subtitle: l10n.accountChooserActiveNow,
                           icon: Icons.check_circle_rounded,
                           iconColor: ForjaShellColors.brandGreen,
                         ),
@@ -290,7 +293,7 @@ class _AccountChooserScreenState extends State<AccountChooserScreen> {
                     ),
                     if (others.isNotEmpty)
                       SettingsGroup(
-                        label: 'Other accounts',
+                        label: l10n.accountChooserOtherGroup,
                         children: [
                           for (final account in others)
                             _OtherAccountFocusRow(
@@ -314,7 +317,7 @@ class _AccountChooserScreenState extends State<AccountChooserScreen> {
                       children: [
                         Expanded(
                           child: _ChooserCta(
-                            label: 'Add account',
+                            label: l10n.accountChooserAdd,
                             icon: Icons.qr_code_2_rounded,
                             autofocus: true,
                             enabled: addEnabled,
@@ -325,7 +328,7 @@ class _AccountChooserScreenState extends State<AccountChooserScreen> {
                         const SizedBox(width: 14),
                         Expanded(
                           child: _ChooserCta(
-                            label: 'Sign out',
+                            label: l10n.profileSignOutTitle,
                             icon: Icons.logout_rounded,
                             enabled: !_busy,
                             tone: _ChooserCtaTone.danger,
@@ -337,7 +340,9 @@ class _AccountChooserScreenState extends State<AccountChooserScreen> {
                     if (atCap) ...[
                       const SizedBox(height: 12),
                       Text(
-                        'Maximum of ${SyncService.maxDeviceAccounts} accounts on this device.',
+                        l10n.accountChooserMaxAccounts(
+                          SyncService.maxDeviceAccounts,
+                        ),
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           color: ForjaShellColors.textSecondary,
@@ -552,9 +557,14 @@ class _OtherAccountFocusRowState extends State<_OtherAccountFocusRow> {
 
   @override
   Widget build(BuildContext context) {
+    final l10n = context.l10n;
     final iconSize = SettingsTokens.iconButtonIconSizeOf(context);
-    final title = widget.confirming ? 'Remove this account?' : widget.email;
-    final subtitle = widget.confirming ? widget.email : 'Tap to switch';
+    final title = widget.confirming
+        ? l10n.accountChooserRemoveQuestion
+        : widget.email;
+    final subtitle = widget.confirming
+        ? widget.email
+        : l10n.accountChooserTapToSwitch;
     final titleColor = widget.confirming
         ? const Color(0xFFF87171)
         : ForjaShellColors.textPrimary;
@@ -625,7 +635,7 @@ class _OtherAccountFocusRowState extends State<_OtherAccountFocusRow> {
                 focusNode: _yesFocus,
                 icon: Icons.check_rounded,
                 restColor: const Color(0xFFEF4444),
-                tooltip: 'Yes',
+                tooltip: l10n.packsPendingYes,
                 onTap: widget.onConfirmRemove,
                 onLeftEdge: () => _focusAction(_rowFocus),
                 onRightEdge: () => _focusAction(_noFocus),
@@ -634,7 +644,7 @@ class _OtherAccountFocusRowState extends State<_OtherAccountFocusRow> {
                 focusNode: _noFocus,
                 icon: Icons.close_rounded,
                 restColor: ForjaShellColors.iconMuted,
-                tooltip: 'No',
+                tooltip: l10n.packsPendingNo,
                 onTap: widget.onCancelRemove,
                 onLeftEdge: () => _focusAction(_yesFocus),
               ),
@@ -643,7 +653,7 @@ class _OtherAccountFocusRowState extends State<_OtherAccountFocusRow> {
                 focusNode: _removeFocus,
                 icon: Icons.close_rounded,
                 restColor: ForjaShellColors.iconMuted,
-                tooltip: 'Remove from this device',
+                tooltip: l10n.accountChooserRemoveTooltip,
                 onTap: widget.onArmRemove,
                 onLeftEdge: () => _focusAction(_rowFocus),
               ),

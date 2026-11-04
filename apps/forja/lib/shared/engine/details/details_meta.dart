@@ -61,7 +61,14 @@ String? hubMetaPremiereDateLabel(
   Iterable<MetaVideo> videos = const [],
 }) {
   final label = item.premiereLabel.trim();
-  return label.isEmpty ? null : label;
+  if (label.isEmpty) return null;
+  // Packs write the date in English; show it in the app language when it is
+  // exactly their English rendering of premiereDate. Other text is left alone.
+  final iso = item.premiereDate.trim();
+  if (iso.isNotEmpty && label == formatEpisodeDisplayDate(iso, english: true)) {
+    return formatEpisodeDisplayDate(iso);
+  }
+  return label;
 }
 
 bool hubVideoNotAiredYet(MetaVideo video) =>

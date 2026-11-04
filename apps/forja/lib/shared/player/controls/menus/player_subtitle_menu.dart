@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 
+import 'package:forja/l10n/l10n.dart';
 import 'package:forja/shared/player/controls/menus/hls_instream_subtitles.dart';
 import 'package:forja/shared/player/controls/menus/player_popup_panel.dart';
 import 'package:forja/shared/player/screens/utils.dart';
@@ -130,6 +131,7 @@ class PlayerSubtitleMenu {
     required EdgeInsets margin,
     BuildContext? anchorContext,
   }) async {
+    final l10n = context.l10n;
     final current = player.state.track.subtitle;
     final subtitlesOff = current.id == 'no' && selectedExternalSubUrl == null;
 
@@ -148,7 +150,7 @@ class PlayerSubtitleMenu {
 
     await PlayerPopupPanel.show(
       context: context,
-      title: 'Subtitles',
+      title: l10n.playerControlSubtitles,
       leadingIcon: Icons.subtitles_outlined,
       alignment: Alignment.bottomLeft,
       margin: margin,
@@ -396,7 +398,7 @@ class _MkSubtitleFoldersState extends State<_MkSubtitleFolders> {
           Padding(
             padding: const EdgeInsets.only(bottom: 10),
             child: Text(
-              'Searching: ${widget.titleSearchHint}',
+              context.l10n.playerControlSearchingHint(widget.titleSearchHint!),
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
               style: const TextStyle(color: Colors.white54, fontSize: 12),
@@ -408,7 +410,7 @@ class _MkSubtitleFoldersState extends State<_MkSubtitleFolders> {
           Padding(
             padding: const EdgeInsets.only(bottom: 8),
             child: Text(
-              'No online subtitles yet. Tap Search to type the film or series name.',
+              context.l10n.playerControlNoOnlineSubtitles,
               style: TextStyle(
                 color: Colors.white.withValues(alpha: 0.55),
                 fontSize: 12,
@@ -600,7 +602,7 @@ class _MkSubtitleLanguageState extends State<_MkSubtitleLanguage> {
               title: t.title,
               language: t.language,
             ),
-            subtitle: 'In-stream',
+            subtitle: context.l10n.playerControlInStream,
             selected:
                 _selectedId != null &&
                 widget.selectedExternalSubUrl == null &&
@@ -654,7 +656,7 @@ class _MkSubtitleLanguageState extends State<_MkSubtitleLanguage> {
                     title: s.name,
                     language: s.language,
                   ),
-            subtitle: 'In-stream',
+            subtitle: context.l10n.playerControlInStream,
             selected: hlsInStreamSubtitleSelected(active, s),
             onTap: () => unawaited(_pickHls(s)),
           ),
@@ -662,9 +664,11 @@ class _MkSubtitleLanguageState extends State<_MkSubtitleLanguage> {
           PlayerPopupListTile(
             label:
                 s['display']?.toString() ?? languageDisplayName(widget.langKey),
-            subtitle:
-                (s['translated'] == true ? 'Translated · ' : '') +
-                (s['sourceName']?.toString() ?? 'opensubtitles'),
+            subtitle: s['translated'] == true
+                ? context.l10n.playerControlTranslatedFrom(
+                    s['sourceName']?.toString() ?? 'opensubtitles',
+                  )
+                : (s['sourceName']?.toString() ?? 'opensubtitles'),
             selected: s['url'] == widget.selectedExternalSubUrl,
             onTap: () async {
               final ok = await widget.loadOnlineSubtitle(s);
@@ -741,7 +745,7 @@ class _SubtitleHeaderTrailingState extends State<_SubtitleHeaderTrailing> {
       mainAxisSize: MainAxisSize.min,
       children: [
         PlayerPopupHeaderChip(
-          label: 'Off',
+          label: context.l10n.playerControlOff,
           selected: widget.subtitlesOff,
           autoFocus: !widget.tv && widget.subtitlesOff,
           onTap: widget.onOff,
@@ -750,7 +754,7 @@ class _SubtitleHeaderTrailingState extends State<_SubtitleHeaderTrailing> {
         if (widget.showFile) ...[
           const SizedBox(width: 6),
           PlayerPopupHeaderChip(
-            label: 'File',
+            label: context.l10n.playerControlFile,
             icon: Icons.upload_file_rounded,
             selected: false,
             focusNode: _fileFocus,
@@ -761,7 +765,7 @@ class _SubtitleHeaderTrailingState extends State<_SubtitleHeaderTrailing> {
         if (widget.onTitleSearch != null) ...[
           const SizedBox(width: 6),
           PlayerPopupHeaderChip(
-            label: 'Search',
+            label: context.l10n.playerControlSearch,
             icon: Icons.search_rounded,
             selected: false,
             focusNode: _searchFocus,
@@ -775,7 +779,7 @@ class _SubtitleHeaderTrailingState extends State<_SubtitleHeaderTrailing> {
         const SizedBox(width: 6),
         PlayerPopupChromeButton(
           icon: Icons.tune_rounded,
-          tooltip: 'Subtitle settings',
+          tooltip: context.l10n.playerControlSubtitleSettings,
           focusNode: _tuneFocus,
           onTap: () {
             PlayerPopupPanel.dismiss();

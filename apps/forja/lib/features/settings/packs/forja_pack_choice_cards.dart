@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import 'package:forja/l10n/l10n.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja/shell/tv/shell_tv_coordinator.dart';
 import 'package:forja_foundation/tokens/forja_settings_tokens.dart';
@@ -73,6 +74,7 @@ class _ForjaPackChoiceCardsState extends State<ForjaPackChoiceCards> {
 
   @override
   Widget build(BuildContext context) {
+    final l = context.l10n;
     final gap = SettingsTokens.packChoiceGapOf(
       context,
       compact: widget.compact,
@@ -89,8 +91,8 @@ class _ForjaPackChoiceCardsState extends State<ForjaPackChoiceCards> {
             ? () => _browseNode.requestFocus()
             : null,
         icon: Icons.inventory_2_rounded,
-        title: 'Official packs',
-        subtitle: 'Choose which ForjaHQ packs to install',
+        title: l.packsChoiceOfficialTitle,
+        subtitle: l.packsChoiceOfficialSubtitle,
         accent: true,
         onTap: widget.onInstallOfficial!,
       );
@@ -104,12 +106,12 @@ class _ForjaPackChoiceCardsState extends State<ForjaPackChoiceCards> {
         tvItemIndex: widget.showOfficial ? 1 : 0,
         // ← exits to the Settings category rail (same as Official / Back).
         icon: Icons.public_rounded,
-        title: 'Community Packs',
+        title: l.packsChoiceCommunityTitle,
         subtitle:
             widget.communitySubtitle ??
             (widget.compact
-                ? 'Browse packs on the web'
-                : 'Browse and pick packs on the web'),
+                ? l.packsChoiceCommunitySubtitleCompact
+                : l.packsChoiceCommunitySubtitle),
         onTap: widget.onBrowseCommunity!,
       );
     }

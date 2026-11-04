@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:forja/l10n/l10n.dart';
 import 'package:forja/shared/engine/engine.dart';
 import 'package:forja/shared/engine/runtime/nav/open_catalog_search.dart';
 import 'package:forja/shared/engine/runtime/kit/hub_menu_clearance.dart';
@@ -115,7 +116,8 @@ class _PluginKitTopBarState extends State<PluginKitTopBar> {
     final canSearch =
         plugin?.hasCapability(PackCapabilities.search) ?? false;
     final label =
-        PluginNavRegistry.destinations[widget.tabId]?.label ?? 'Search';
+        PluginNavRegistry.destinations[widget.tabId]?.label ??
+        context.l10n.addonsPackGreenPlaySearchLabel;
     final categories = PackFiltersRegistry.categoriesFor(pluginId);
     final menus = PackFiltersRegistry.menusFor(pluginId);
     final selectedMenu = ShellBus.hubSelectedMenuIdFor(widget.tabId);
@@ -147,7 +149,7 @@ class _PluginKitTopBarState extends State<PluginKitTopBar> {
                   context,
                   pluginId: pluginId,
                   tabId: widget.tabId,
-                  hintText: 'Search $label…',
+                  hintText: context.l10n.shellSearchHintNamed(label),
                 ),
               );
             }

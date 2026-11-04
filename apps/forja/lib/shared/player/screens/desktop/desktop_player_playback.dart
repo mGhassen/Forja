@@ -15,6 +15,8 @@ mixin _DesktopPlayerPlayback
     Duration? seekAfterOpen,
   }) async {
     if (_s._currentSources == null || _s._currentSources!.isEmpty) return false;
+    if (!mounted) return false;
+    final l10n = context.l10n;
 
     final triedUrls = <String>{};
     _s._currentFallbackSourceIndex = startIndex;
@@ -223,6 +225,7 @@ mixin _DesktopPlayerPlayback
           upsertStreamOpenStatus(
             _s._statusController,
             StreamOpenStatusStage.checking,
+            l10n,
           );
           final pipeline = await StreamOpenPipeline.start(
             catalogUrl: catalogUrl,
@@ -239,6 +242,7 @@ mixin _DesktopPlayerPlayback
             upsertStreamOpenStatus(
               _s._statusController,
               StreamOpenStatusStage.preparing,
+              l10n,
             );
             await resetPlayerForOpen(_s._player);
             openUrl = await openPlayerStream(
@@ -304,7 +308,7 @@ mixin _DesktopPlayerPlayback
             debugPrint('[OpenPipeline] all branches failed source $i');
             _s._statusController.upsert(
               kStreamOpenStatusId,
-              'Stream failed',
+              l10n.playerScreenStreamFailed,
               kind: StatusRouletteKind.failed,
               dismissAfter: const Duration(milliseconds: 1200),
             );
@@ -435,6 +439,7 @@ mixin _DesktopPlayerPlayback
     if (_s._isInitPlaybackRunning) {
       return; // Prevent re-entrant calls during async extraction
     }
+    final l10n = context.l10n;
     _s._isInitPlaybackRunning = true;
     final initGen = _s._fallbackGen;
     final resumeAt = seekOverride ?? widget.startPosition;
@@ -555,7 +560,7 @@ mixin _DesktopPlayerPlayback
         if (!hostOwnsReload &&
             (widget.streamsPrevalidated || _s._providerPinned)) {
           await _failPlaybackNoFailover(
-            message: 'Playback failed. Open Sources and choose another stream.',
+            message: l10n.playerScreenPlaybackFailedOpenSources,
           );
         } else {
           final recovered = await _reresolveLikeFirstPlay(
@@ -564,7 +569,7 @@ mixin _DesktopPlayerPlayback
           );
           if (!recovered && !_fallbackAborted(initGen)) {
             await _failPlaybackNoFailover(
-              message: 'Could not find any working stream from any provider.',
+              message: l10n.playerScreenNoWorkingStream,
             );
           }
         }
@@ -594,7 +599,7 @@ mixin _DesktopPlayerPlayback
               });
             }
             await _failPlaybackNoFailover(
-              message: 'Torrent stream failed to open.',
+              message: l10n.playerScreenTorrentStreamFailedToOpen,
             );
             return;
           }
@@ -691,10 +696,10 @@ mixin _DesktopPlayerPlayback
                   isLocalFile) {
                 await _failPlaybackNoFailover(
                   message: isLocalFile
-                      ? 'Downloaded file can’t be played'
+                      ? l10n.playerScreenDownloadedFileCantPlay
                       : isTorrent
-                      ? 'Torrent stream failed to open.'
-                      : 'Playback failed.',
+                      ? l10n.playerScreenTorrentStreamFailedToOpen
+                      : l10n.playerScreenPlaybackFailed,
                 );
               } else {
                 await _autoFallbackToNextProvider();
@@ -758,7 +763,7 @@ mixin _DesktopPlayerPlayback
     debugPrint('[Player] Dead sources - full Auto re-resolve like first Play');
     _s._statusController.upsert(
       'reresolve',
-      'Finding servers…',
+      context.l10n.playerScreenFindingServers,
       kind: StatusRouletteKind.loading,
     );
 
@@ -851,6 +856,7 @@ mixin _DesktopPlayerPlayback
   /// seeking back to the watch position. Pin / Auto Off: stop for Retry.
   Future<void> _showPlaybackFailureOnWatch({String? reason}) async {
     if (_s._hasError || _s._disposed || _s._isInitPlaybackRunning) return;
+    final l10n = context.l10n;
 
     final pinned = _s._providerPinned || _s._sourcePinned || widget.pinSource;
     // Prevalidated streams skip re-probing, not re-resolving: a host reload
@@ -879,7 +885,7 @@ mixin _DesktopPlayerPlayback
       _s._finalizeProbeStatusesAfterPlayback();
       _s._statusController.upsert(
         'playback-failed',
-        'Failed to stream',
+        l10n.playerScreenFailedToStream,
         kind: StatusRouletteKind.failed,
       );
       setState(() {
@@ -914,7 +920,7 @@ mixin _DesktopPlayerPlayback
 
       _s._statusController.upsert(
         'mid-watch-hop',
-        'Finding another stream…',
+        l10n.playerScreenFindingAnotherStream,
         kind: StatusRouletteKind.loading,
       );
       setState(() {
@@ -945,7 +951,7 @@ mixin _DesktopPlayerPlayback
       );
       if (!recovered && !_fallbackAborted(chainGen)) {
         await _failPlaybackNoFailover(
-          message: 'Could not find any working stream from any provider.',
+          message: l10n.playerScreenNoWorkingStream,
         );
       }
     } finally {
@@ -1001,7 +1007,7 @@ mixin _DesktopPlayerPlayback
     final resumeAt = _s._recoveryResumePosition();
     _s._statusController.upsert(
       'network-remount',
-      'Reconnecting…',
+      context.l10n.playerScreenReconnecting,
       kind: StatusRouletteKind.loading,
     );
     debugPrint('[Player] Network remount @${resumeAt.inSeconds}s ($err)');
@@ -1055,7 +1061,7 @@ mixin _DesktopPlayerPlayback
     if (showReconnectingStatus) {
       _s._statusController.upsert(
         'post-seek-remount',
-        'Reconnecting…',
+        context.l10n.playerScreenReconnecting,
         kind: StatusRouletteKind.loading,
       );
     }
@@ -1160,7 +1166,7 @@ mixin _DesktopPlayerPlayback
     _s._finalizeProbeStatusesAfterPlayback();
     _s._statusController.upsert(
       'playback-failed',
-      message.trim().isEmpty ? 'Failed to stream' : message,
+      message.trim().isEmpty ? context.l10n.playerScreenFailedToStream : message,
       kind: StatusRouletteKind.failed,
     );
     setState(() {
@@ -1171,10 +1177,12 @@ mixin _DesktopPlayerPlayback
   }
 
   Future<void> _autoFallbackToNextProvider() async {
+    if (!mounted) return;
+    final l10n = context.l10n;
     if (widget.providers == null || widget.providers!.isEmpty) {
       _s._statusController.upsert(
         'playback-failed',
-        'Failed to stream',
+        l10n.playerScreenFailedToStream,
         kind: StatusRouletteKind.failed,
       );
       setState(() {
@@ -1204,7 +1212,7 @@ mixin _DesktopPlayerPlayback
       _s._finalizeProbeStatusesAfterPlayback();
       _s._statusController.upsert(
         'playback-failed',
-        'Failed to stream',
+        l10n.playerScreenFailedToStream,
         kind: StatusRouletteKind.failed,
       );
       setState(() {

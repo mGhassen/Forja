@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:forja/features/settings/ui/settings_ui.dart';
+import 'package:forja/l10n/l10n.dart';
 import 'package:forja/shared/engine/engine.dart';
 import 'package:forja/shared/engine/models/plugin_language.dart';
 import 'package:forja/shared/engine/packs/settings/pack_addon_settings_spec.dart';
@@ -573,7 +574,7 @@ class _ActionListFieldState extends State<_ActionListField> {
               ? message
               : err.isNotEmpty
               ? err
-              : 'Could not ${row.actionId} ${row.title}',
+              : context.l10n.addonsPackActionFailed(row.actionId, row.title),
         );
       }
     } finally {
@@ -709,12 +710,12 @@ class _MultiSelectChipsField extends StatelessWidget {
             children: [
               _allNoneButton(
                 context,
-                label: 'All',
+                label: context.l10n.addonsPackSelectAll,
                 onPressed: () => onChanged([for (final o in options) o.id]),
               ),
               _allNoneButton(
                 context,
-                label: 'None',
+                label: context.l10n.addonsPackSelectNone,
                 onPressed: () => onChanged(const []),
               ),
             ],
@@ -846,7 +847,8 @@ class _HubSelectFieldState extends State<_HubSelectField> {
     final id = widget.value;
     final labelById = {for (final o in _options) o.id: o.label};
     final idByLabel = {for (final o in _options) o.label: o.id};
-    final shown = labelById[id] ?? (id.isEmpty ? 'Auto' : id);
+    final shown =
+        labelById[id] ?? (id.isEmpty ? context.l10n.addonsPackAutoOption : id);
     return SettingsSelectRow(
       title: widget.field.label,
       subtitle: widget.field.subtitle,

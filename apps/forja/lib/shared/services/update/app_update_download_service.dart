@@ -7,6 +7,7 @@ import 'package:forja/shared/services/update/app_updater_service.dart';
 import 'package:http/http.dart' as http;
 import 'package:path/path.dart' as path;
 import 'package:forja/shell/feedback/forja_toast.dart';
+import 'package:forja/shell/routing/shell_ambient_l10n.dart';
 
 enum AppUpdateDownloadPhase { idle, downloading, completed, failed }
 
@@ -196,9 +197,11 @@ class AppUpdateDownloadService {
       );
       if (completedInBackground) {
         ForjaToast.success(
-          'Forja ${updateInfo.latestVersion} is ready to install.',
+          shellAmbientL10n.sharedServicesUpdateReadyToInstall(
+            updateInfo.latestVersion,
+          ),
           duration: const Duration(seconds: 15),
-          actionLabel: 'Install',
+          actionLabel: shellAmbientL10n.packsInstall,
           onAction: installCompletedUpdate,
         );
       }
@@ -216,11 +219,13 @@ class AppUpdateDownloadService {
       );
       final canOpenDirectUrl = Platform.isWindows || Platform.isMacOS;
       ForjaToast.error(
-        'Download failed: $error',
+        shellAmbientL10n.shellUpdateDownloadFailed('$error'),
         duration: canOpenDirectUrl
             ? const Duration(seconds: 12)
             : const Duration(seconds: 4),
-        actionLabel: canOpenDirectUrl ? 'Open download URL' : null,
+        actionLabel: canOpenDirectUrl
+            ? shellAmbientL10n.sharedServicesOpenDownloadUrl
+            : null,
         onAction: canOpenDirectUrl
             ? () => AppUpdaterService().openDownloadPage(updateInfo.downloadUrl)
             : null,
@@ -231,7 +236,7 @@ class AppUpdateDownloadService {
   Future<void> installCompletedUpdate() async {
     final filePath = state.value.filePath;
     if (filePath == null || !await File(filePath).exists()) {
-      ForjaToast.error('The downloaded update file is no longer available.');
+      ForjaToast.error(shellAmbientL10n.sharedServicesUpdateFileGone);
       return;
     }
 
@@ -254,7 +259,7 @@ class AppUpdateDownloadService {
         ], mode: ProcessStartMode.detached);
       }
     } catch (error) {
-      ForjaToast.error('Could not open the update: $error');
+      ForjaToast.error(shellAmbientL10n.shellUpdateCouldNotOpen('$error'));
     }
   }
 }

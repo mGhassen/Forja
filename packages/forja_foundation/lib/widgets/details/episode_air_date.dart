@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:forja_foundation/l10n/foundation_strings.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
 
 /// Parsed air-date metadata for an episode list row.
@@ -26,8 +27,7 @@ const _monthLabels = <String>[
 
 /// Reads [air_date] / [release_date] and optional [aired] from a season episode map.
 EpisodeAirDateInfo episodeAirDateInfo(Map<String, dynamic> ep) {
-  final raw =
-      (ep['air_date'] ?? ep['release_date'] ?? '').toString().trim();
+  final raw = (ep['air_date'] ?? ep['release_date'] ?? '').toString().trim();
   final aired = ep['aired'];
   if (aired == false) {
     return EpisodeAirDateInfo(
@@ -52,13 +52,23 @@ bool isFutureIsoDate(String iso) {
   return airDay.isAfter(todayDay);
 }
 
-/// Formats `YYYY-MM-DD` (or longer ISO) as `Mon D, YYYY`.
-String formatEpisodeDisplayDate(String iso) {
+/// Formats `YYYY-MM-DD` (or longer ISO) as `Mon D, YYYY`, or in the app
+/// language unless [english] is set.
+String formatEpisodeDisplayDate(String iso, {bool english = false}) {
   final parsed = _parseIsoDate(iso);
   if (parsed == null) {
     return iso.length >= 10 ? iso.substring(0, 10) : iso;
   }
-  return '${_monthLabels[parsed.month - 1]} ${parsed.day}, ${parsed.year}';
+  final strings = english
+      ? ForjaFoundationStrings.english
+      : ForjaFoundationStrings.current;
+  final months = strings.shortMonths.length == _monthLabels.length
+      ? strings.shortMonths
+      : _monthLabels;
+  return strings.datePattern
+      .replaceAll('{month}', months[parsed.month - 1])
+      .replaceAll('{day}', '${parsed.day}')
+      .replaceAll('{year}', '${parsed.year}');
 }
 
 DateTime? _parseIsoDate(String iso) {
@@ -73,9 +83,6 @@ DateTime? _parseIsoDate(String iso) {
   return DateTime(year, month, day);
 }
 
-Color episodeDateColor({
-  required bool notShippedYet,
-  required Color normal,
-}) {
+Color episodeDateColor({required bool notShippedYet, required Color normal}) {
   return notShippedYet ? ForjaShellColors.upcomingMuted : normal;
 }

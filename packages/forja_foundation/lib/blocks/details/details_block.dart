@@ -7,6 +7,7 @@ import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 import 'package:forja_foundation/widgets/details/details_body.dart';
 import 'package:forja_foundation/widgets/details/details_hero.dart';
 import 'package:forja_foundation/widgets/details/play_row.dart';
+import 'package:forja_foundation/l10n/foundation_strings.dart';
 
 /// Prebuilt media-details page: [DetailsHero] + body sections from props.
 ///
@@ -227,7 +228,10 @@ class DetailsScreen extends StatelessWidget {
                   ),
                   if (onRetry != null) ...[
                     SizedBox(height: theme.spaceMd),
-                    TextButton(onPressed: onRetry, child: const Text('Retry')),
+                    TextButton(
+                      onPressed: onRetry,
+                      child: Text(ForjaFoundationStrings.of(context).retry),
+                    ),
                   ],
                 ],
               ),
@@ -350,7 +354,7 @@ class EntryDetailsChrome extends StatelessWidget {
               child: Row(
                 children: [
                   IconButton(
-                    tooltip: 'Back',
+                    tooltip: ForjaFoundationStrings.of(context).back,
                     onPressed: onBack,
                     icon: const Icon(Icons.arrow_back),
                     color: ForjaShellColors.textPrimary,

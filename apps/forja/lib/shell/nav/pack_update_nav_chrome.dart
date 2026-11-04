@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:forja/features/settings/packs/engine_pack_update.dart';
+import 'package:forja/l10n/l10n.dart';
 import 'package:forja/features/settings/shell/catalog.dart';
 import 'package:forja/shared/engine/packs/install/plugin_install_coordinator.dart';
 import 'package:forja/shell/bus/shell_bus.dart';
@@ -215,7 +216,7 @@ class _PackUpdateFlyout extends StatelessWidget {
                       const SizedBox(width: ShellTokens.packUpdateFlyoutGap),
                       Flexible(
                         child: Text(
-                          EnginePackUpdateCopy.available(count),
+                          EnginePackUpdateCopy.availableOf(context.l10n, count),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: GoogleFonts.plusJakartaSans(

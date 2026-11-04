@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:forja/l10n/l10n.dart';
 import 'package:forja/shared/player/providers/player_resolve_providers.dart';
 import 'package:forja/shared/player/providers/player_prefs_providers.dart';
 
@@ -416,9 +417,7 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
     if (widget.audioUrl != null && widget.audioUrl!.isNotEmpty) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
-        ForjaToast.info(
-          'Separate audio track not supported in ExoPlayer - use MediaKit in Settings.',
-        );
+        ForjaToast.info(context.l10n.playerScreenExoSeparateAudioUnsupported);
       });
     }
     unawaited(_boot());
@@ -742,7 +741,7 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
     final resumeAt = _position;
     _statusController.upsert(
       'network-remount',
-      'Reconnecting…',
+      context.l10n.playerScreenReconnecting,
       kind: StatusRouletteKind.loading,
     );
     debugPrint('[ExoPlayer] Network remount @${resumeAt.inSeconds}s ($err)');
@@ -1134,11 +1133,12 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
       return false;
     }
     final remountGen = _fallbackGen;
+    final l10n = context.l10n;
     _opening = true;
     _exoReady = false;
     _statusController.upsert(
       'post-seek-remount',
-      'Reconnecting…',
+      l10n.playerScreenReconnecting,
       kind: StatusRouletteKind.loading,
     );
     try {
@@ -1180,7 +1180,7 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
       if (!_disposed && mounted && remountGen == _fallbackGen) {
         _statusController.upsert(
           'post-seek-remount',
-          'Reconnect failed',
+          l10n.playerScreenReconnectFailed,
           kind: StatusRouletteKind.failed,
           dismissAfter: const Duration(milliseconds: 1500),
         );
@@ -2481,7 +2481,7 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
     final season = widget.selectedSeason;
     if (season != null) return 'S$season E$ep';
     if (widget.hubEpisodeNumber != null || widget.episodes != null) {
-      return 'Episode $ep';
+      return context.l10n.playerScreenEpisodeNumber('$ep');
     }
     return null;
   }
@@ -2941,7 +2941,7 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
                                 icon: Icons.skip_previous_rounded,
                                 size: btnSize,
                                 iconSize: iconSz,
-                                tooltip: 'Previous Episode',
+                                tooltip: context.l10n.playerScreenPreviousEpisodeButton,
                                 onPressed: () {
                                   if (_loadingNextEp) return;
                                   unawaited(_previousEpisode());
@@ -2952,7 +2952,7 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
                                 icon: Icons.skip_next_rounded,
                                 size: btnSize,
                                 iconSize: iconSz,
-                                tooltip: 'Next Episode',
+                                tooltip: context.l10n.playerScreenNextEpisodeButton,
                                 onPressed: () {
                                   if (_loadingNextEp) return;
                                   unawaited(_nextEpisode());
@@ -3005,7 +3005,7 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
                               icon: Icons.audiotrack_rounded,
                               size: btnSize,
                               iconSize: iconSz,
-                              tooltip: 'Audio',
+                              tooltip: context.l10n.playerScreenAudio,
                               onPressedWithContext: (ctx) =>
                                   unawaited(_showAudioMenu(ctx)),
                             ),
@@ -3020,7 +3020,7 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
                               icon: Icons.hd_outlined,
                               size: btnSize,
                               iconSize: iconSz,
-                              tooltip: 'Quality',
+                              tooltip: context.l10n.playerScreenQuality,
                               onPressedWithContext: (ctx) =>
                                   unawaited(_showQualityMenu(ctx)),
                             ),
@@ -3062,7 +3062,7 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
         case PlayerResolveStatus.loading:
           _statusController.upsert(
             'resolve',
-            'Loading sources…',
+            context.l10n.playerScreenLoadingSources,
             kind: StatusRouletteKind.loading,
           );
         case PlayerResolveStatus.ready:
@@ -3070,7 +3070,7 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
         case PlayerResolveStatus.error:
           _statusController.upsert(
             'resolve',
-            next.message ?? 'Failed to load sources',
+            next.message ?? context.l10n.playerScreenFailedToLoadSources,
             kind: StatusRouletteKind.failed,
             dismissAfter: const Duration(seconds: 2),
           );
@@ -3199,7 +3199,7 @@ class _ExoPlayerScreenState extends ConsumerState<ExoPlayerScreen>
                 PlayerStatusOverlay(
                   controller: _statusController,
                   bufferingListenable: _isBufferingNotifier,
-                  header: 'Checking sources',
+                  header: context.l10n.playerScreenCheckingSources,
                   // Centered indicator until the first frame; centered
                   // Retry / Back on a terminal failure (top-bar Retry stays).
                   playbackStarted: _playbackStartedNotified,

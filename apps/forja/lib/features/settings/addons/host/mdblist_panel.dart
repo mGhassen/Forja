@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:forja/features/settings/providers/settings_panel_providers.dart';
 import 'package:forja/features/settings/ui/settings_ui.dart';
+import 'package:forja/l10n/l10n.dart';
 import 'package:forja/shell/feedback/forja_toast.dart';
 import 'package:rust/rust.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
@@ -35,7 +36,7 @@ class _SettingsMdblistPanelState extends ConsumerState<SettingsMdblistPanel> {
     final key = _apiKeyController.text.trim();
     if (key.isEmpty) {
       if (mounted) {
-        ForjaToast.warning('Please enter an API key');
+        ForjaToast.warning(context.l10n.addonsHostMdblistEnterKeyWarning);
       }
       return;
     }
@@ -49,14 +50,16 @@ class _SettingsMdblistPanelState extends ConsumerState<SettingsMdblistPanel> {
       if (mounted) {
         final username = info['name']?.toString();
         ForjaToast.success(
-          'MDBlist connected${username != null ? " as $username" : ""}!',
+          username != null
+              ? context.l10n.addonsHostMdblistConnectedAsToast(username)
+              : context.l10n.addonsHostMdblistConnectedToast,
         );
       }
     } else {
       await _service.logout();
       ref.invalidate(mdblistStatusProvider);
       if (mounted) {
-        ForjaToast.error('Invalid MDBlist API key');
+        ForjaToast.error(context.l10n.addonsHostMdblistInvalidKeyError);
       }
     }
   }
@@ -66,7 +69,7 @@ class _SettingsMdblistPanelState extends ConsumerState<SettingsMdblistPanel> {
     _apiKeyController.clear();
     ref.invalidate(mdblistStatusProvider);
     if (mounted) {
-      ForjaToast.success('MDBlist API key removed');
+      ForjaToast.success(context.l10n.addonsHostMdblistKeyRemovedToast);
     }
   }
 
@@ -83,7 +86,7 @@ class _SettingsMdblistPanelState extends ConsumerState<SettingsMdblistPanel> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Text(
-            'Aggregated ratings from IMDb, TMDB, Trakt, Letterboxd, RT, and more',
+            context.l10n.addonsHostMdblistIntro,
             style: TextStyle(
               fontSize: SettingsTokens.typeSizeOf(context, 13),
               color: ForjaShellColors.textSecondary,
@@ -93,12 +96,14 @@ class _SettingsMdblistPanelState extends ConsumerState<SettingsMdblistPanel> {
 
           if (isConfigured) ...[
             SettingsStatusRow(
-              title: 'Connected${username != null ? " as $username" : ""}',
+              title: username != null
+                  ? context.l10n.addonsHostMdblistConnectedAsStatus(username)
+                  : context.l10n.addonsHostMdblistConnectedStatus,
               subtitle: 'MDBlist',
             ),
             const SizedBox(height: 12),
             SettingsFilledButton(
-              label: 'Remove API Key',
+              label: context.l10n.addonsHostMdblistRemoveKeyButton,
               icon: Icons.logout,
               secondary: true,
               onPressed: _logout,
@@ -106,14 +111,14 @@ class _SettingsMdblistPanelState extends ConsumerState<SettingsMdblistPanel> {
           ] else ...[
             SettingsTextField(
               controller: _apiKeyController,
-              label: 'MDBlist API Key',
-              hint: 'Paste your API key from mdblist.com',
+              label: context.l10n.addonsHostMdblistKeyLabel,
+              hint: context.l10n.addonsHostMdblistKeyHint,
               obscureText: true,
               onSubmitted: (_) => _saveApiKey(),
             ),
             const SizedBox(height: 14),
             SettingsFilledButton(
-              label: 'Save API Key',
+              label: context.l10n.addonsHostMdblistSaveKeyButton,
               icon: Icons.save,
               onPressed: _saveApiKey,
             ),

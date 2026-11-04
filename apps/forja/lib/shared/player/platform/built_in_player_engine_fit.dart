@@ -1,3 +1,5 @@
+import 'package:forja/l10n/app_localizations.dart';
+import 'package:forja/l10n/app_localizations_en.dart';
 import 'package:rust/rust.dart';
 
 /// Where the in-player **Player** menu is shown — used when deciding whether
@@ -21,6 +23,8 @@ enum BuiltInPlayerMenuSurface {
 ///
 /// Soft cases (DASH on AVPlayer, MPEG-TS on AV/VLC) are **not** hard blocks:
 /// user can pick the engine; open failure failovers to MediaKit.
+///
+/// [l10n] defaults to English for callers with no [BuildContext] to hand.
 String? builtInPlayerEngineUnsuitableReason(
   BuiltInPlayerEngine engine, {
   required BuiltInPlayerMenuSurface surface,
@@ -28,22 +32,28 @@ String? builtInPlayerEngineUnsuitableReason(
   bool torrentLocalhost = false,
   bool needsWidevine = false,
   bool separateAudioUrl = false,
+  AppLocalizations? l10n,
 }) {
+  final l = l10n ?? AppLocalizationsEn();
   switch (engine) {
     case BuiltInPlayerEngine.mediaKit:
-      if (needsWidevine) return 'DRM needs ExoPlayer';
+      if (needsWidevine) return l.playerControlEngineDrmNeedsExo;
       return null;
 
     case BuiltInPlayerEngine.exoPlayer:
-      if (torrentLocalhost) return 'Torrent streams need MediaKit';
-      if (separateAudioUrl) return 'Separate audio needs MediaKit';
+      if (torrentLocalhost) return l.playerControlEngineTorrentNeedsMediaKit;
+      if (separateAudioUrl) {
+        return l.playerControlEngineSeparateAudioNeedsMediaKit;
+      }
       return null;
 
     case BuiltInPlayerEngine.avPlayer:
     case BuiltInPlayerEngine.vlc:
-      if (torrentLocalhost) return 'Torrent streams need MediaKit';
-      if (separateAudioUrl) return 'Separate audio needs MediaKit';
-      if (needsWidevine) return 'DRM needs ExoPlayer';
+      if (torrentLocalhost) return l.playerControlEngineTorrentNeedsMediaKit;
+      if (separateAudioUrl) {
+        return l.playerControlEngineSeparateAudioNeedsMediaKit;
+      }
+      if (needsWidevine) return l.playerControlEngineDrmNeedsExo;
       return null;
   }
 }

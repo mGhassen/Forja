@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:forja/l10n/l10n.dart';
 import 'package:forja/shell/nav/nav_complete_reload_hold.dart';
 import 'package:forja/shell/nav/nav_config.dart';
 import 'package:forja/shell/nav/pack_update_nav_chrome.dart';
@@ -203,7 +204,7 @@ class _BottomNavItemState extends State<_BottomNavItem> {
                     ),
                     const SizedBox(height: ShellTokens.bottomNavIconLabelGap),
                     Text(
-                      widget.destination.label,
+                      navDestinationLabel(widget.destination, context.l10n),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(

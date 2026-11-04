@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:forja/l10n/l10n.dart';
 import 'package:forja/shared/player/sources/resolve/resolve_panel_host.dart';
 import 'package:forja/shared/engine/runtime/kit/hosts/kit_list_entry.dart';
 import 'package:forja_foundation/widgets/sources/panel_tabs.dart';
@@ -143,13 +144,13 @@ class _KitMatchDetailsPageState extends State<KitMatchDetailsPage> {
     final m = _paint;
     final parts = <String>[];
     if (m.isLive) {
-      parts.add('Live');
+      parts.add(context.l10n.engineDetailsMatchLive);
     } else {
       final t = m.timeLabel;
       if (t.isNotEmpty) parts.add(t);
     }
     final viewers = _providersViewerTotal ?? m.viewers;
-    if (viewers > 0) parts.add('$viewers viewers');
+    if (viewers > 0) parts.add(context.l10n.engineDetailsMatchViewers(viewers));
     return parts;
   }
 
@@ -340,8 +341,8 @@ class _KitMatchDetailsPageState extends State<KitMatchDetailsPage> {
                       ExcludeFocus(
                         child: Text(
                           browseIds.contains(_tabId)
-                              ? 'Matching Live TV…'
-                              : 'Fetching streams…',
+                              ? context.l10n.engineDetailsMatchingLiveTv
+                              : context.l10n.engineDetailsFetchingStreams,
                           style: TextStyle(
                             color: ForjaShellColors.textSecondary,
                             fontSize: ShellScope.metricsOf(context)
@@ -355,7 +356,7 @@ class _KitMatchDetailsPageState extends State<KitMatchDetailsPage> {
                         variant: ButtonVariant.plainIcon,
                         size: ButtonSize.icon,
                         icon: Icons.refresh_rounded,
-                        tooltip: 'Reload',
+                        tooltip: context.l10n.packsReload,
                         color: ForjaShellColors.textSecondary,
                         iconSize: ShellScope.metricsOf(context)
                             .torrentPanelLeadingIconSize,

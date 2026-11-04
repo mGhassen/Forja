@@ -1,3 +1,4 @@
+import 'package:forja/shared/services/app/app_locale.dart';
 import 'dart:async';
 import 'dart:convert';
 
@@ -641,7 +642,7 @@ class SyncService {
   }) async {
     final client = ForjaSupabase.clientOrNull;
     if (client == null) {
-      throw const AuthException('Supabase is not configured for this build.');
+      throw AuthException(AppLocale.strings.authSupabaseNotConfigured);
     }
     await client.auth.mfa.challengeAndVerify(
       factorId: factorId,
@@ -662,7 +663,7 @@ class SyncService {
     await ForjaSupabase.ensureInitialized();
     final client = ForjaSupabase.clientOrNull;
     if (client == null) {
-      throw const AuthException('Supabase is not configured for this build.');
+      throw AuthException(AppLocale.strings.authSupabaseNotConfigured);
     }
     final response = await client.auth.signInWithPassword(
       email: email,
@@ -684,7 +685,7 @@ class SyncService {
     await ForjaSupabase.ensureInitialized();
     final client = ForjaSupabase.clientOrNull;
     if (client == null) {
-      throw const AuthException('Supabase is not configured for this build.');
+      throw AuthException(AppLocale.strings.authSupabaseNotConfigured);
     }
     final response = await client.auth.signUp(
       email: email,
@@ -831,10 +832,10 @@ class SyncService {
     await ForjaSupabase.ensureInitialized();
     final client = ForjaSupabase.clientOrNull;
     if (client == null) {
-      throw const AuthException('Supabase is not configured for this build.');
+      throw AuthException(AppLocale.strings.authSupabaseNotConfigured);
     }
     if (accessToken.isEmpty || refreshToken.isEmpty) {
-      throw const AuthException('Web login did not return usable tokens.');
+      throw AuthException(AppLocale.strings.authWebLoginNoTokens);
     }
 
     AuthResponse response;
@@ -853,7 +854,7 @@ class SyncService {
     }
 
     if (response.session == null) {
-      throw const AuthException('Web login did not return a usable session.');
+      throw AuthException(AppLocale.strings.authWebLoginNoSession);
     }
     await persistActiveSessionToVault();
     // Android TV: EncryptedSharedPreferences alone can drop the session;
@@ -936,7 +937,7 @@ class SyncService {
       if (session.isExpired) {
         if (_cloudOffline) {
           throw SyncProfileFetchException(
-            'Cloud unreachable. Retry when online, or sign out on this device.',
+            AppLocale.strings.syncCloudUnreachable,
           );
         }
         await _endSessionAfterTerminalRefreshFailure(
@@ -1184,15 +1185,15 @@ class SyncService {
     final client = ForjaSupabase.clientOrNull;
     final userId = client?.auth.currentUser?.id;
     if (client == null || userId == null) {
-      throw const AuthException('Sign in to create a profile.');
+      throw AuthException(AppLocale.strings.authSignInToCreateProfile);
     }
     final cleanName = name.trim();
     if (cleanName.isEmpty) {
-      throw const AuthException('Enter a profile name.');
+      throw AuthException(AppLocale.strings.authEnterProfileName);
     }
     final existing = await listProfiles();
     if (existing.length >= maxProfilesPerAccount) {
-      throw const AuthException('Maximum of 5 profiles per account.');
+      throw AuthException(AppLocale.strings.authMaxProfiles);
     }
     final color = _profileColors[existing.length % _profileColors.length];
     try {
@@ -1221,7 +1222,7 @@ class SyncService {
       return profile;
     } catch (e) {
       debugPrint('[Sync] createProfile error: $e');
-      throw const AuthException('Could not create profile.');
+      throw AuthException(AppLocale.strings.authCouldNotCreateProfile);
     }
   }
 
@@ -1233,11 +1234,11 @@ class SyncService {
     final client = ForjaSupabase.clientOrNull;
     final userId = client?.auth.currentUser?.id;
     if (client == null || userId == null) {
-      throw const AuthException('Sign in to edit a profile.');
+      throw AuthException(AppLocale.strings.authSignInToEditProfile);
     }
     final cleanName = name.trim();
     if (cleanName.isEmpty) {
-      throw const AuthException('Enter a profile name.');
+      throw AuthException(AppLocale.strings.authEnterProfileName);
     }
     try {
       await client
@@ -1252,7 +1253,7 @@ class SyncService {
       _notifyIdentityChanged();
     } catch (e) {
       debugPrint('[Sync] updateProfile error: $e');
-      throw const AuthException('Could not save profile.');
+      throw AuthException(AppLocale.strings.authCouldNotSaveProfile);
     }
   }
 
@@ -1260,11 +1261,11 @@ class SyncService {
     final client = ForjaSupabase.clientOrNull;
     final userId = client?.auth.currentUser?.id;
     if (client == null || userId == null) {
-      throw const AuthException('Sign in to delete a profile.');
+      throw AuthException(AppLocale.strings.authSignInToDeleteProfile);
     }
     final profiles = await listProfiles();
     if (profiles.length <= 1) {
-      throw const AuthException('Every account needs one profile.');
+      throw AuthException(AppLocale.strings.authEveryAccountNeedsProfile);
     }
     final wasActive = (await activeProfile())?.id == profileId;
     try {
@@ -1281,7 +1282,7 @@ class SyncService {
       }
     } catch (e) {
       debugPrint('[Sync] deleteProfile error: $e');
-      throw const AuthException('Could not delete profile.');
+      throw AuthException(AppLocale.strings.authCouldNotDeleteProfile);
     }
   }
 

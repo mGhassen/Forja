@@ -1,5 +1,6 @@
 
 import 'package:flutter/material.dart';
+import 'package:forja/l10n/l10n.dart';
 import 'package:flutter/services.dart';
 
 import 'package:forja/shared/navigation/desktop_trackpad_nav.dart';
@@ -163,11 +164,11 @@ class TorrentSourcesPanelHeader extends StatelessWidget {
   const TorrentSourcesPanelHeader({
     super.key,
     required this.onClose,
-    this.title = 'Sources',
+    this.title,
   });
 
   final VoidCallback onClose;
-  final String title;
+  final String? title;
 
   @override
   Widget build(BuildContext context) {
@@ -175,7 +176,7 @@ class TorrentSourcesPanelHeader extends StatelessWidget {
     return Row(
       children: [
         Text(
-          title,
+          title ?? context.l10n.playerSourceSourcesTitle,
           style: TextStyle(
             color: ForjaShellColors.cinematic.textPrimary,
             fontWeight: FontWeight.w700,

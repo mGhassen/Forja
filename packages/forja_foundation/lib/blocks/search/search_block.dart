@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:forja_foundation/blocks/props_map.dart';
 import 'package:forja_foundation/components/input.dart';
 import 'package:forja_foundation/tokens/forja_theme_extension.dart';
+import 'package:forja_foundation/l10n/foundation_strings.dart';
 
 /// Prebuilt search chrome: field + optional filters + results area.
 ///
@@ -16,7 +17,7 @@ class SearchBlock extends StatelessWidget {
     this.focusNode,
     this.onChanged,
     this.onSubmitted,
-    this.hintText = 'Search',
+    this.hintText,
     this.header,
     this.filters,
     this.field,
@@ -39,7 +40,7 @@ class SearchBlock extends StatelessWidget {
       focusNode: focusNode,
       onChanged: onChanged,
       onSubmitted: onSubmitted,
-      hintText: propsStringOr(props, 'hintText', 'Search'),
+      hintText: propsString(props, 'hintText'),
       header: header,
       filters: filters,
       field: field,
@@ -51,7 +52,7 @@ class SearchBlock extends StatelessWidget {
   final FocusNode? focusNode;
   final ValueChanged<String>? onChanged;
   final ValueChanged<String>? onSubmitted;
-  final String hintText;
+  final String? hintText;
   final Widget? header;
   final Widget? filters;
   final Widget? field;
@@ -76,7 +77,7 @@ class SearchBlock extends StatelessWidget {
                 focusNode: focusNode,
                 onChanged: onChanged,
                 onSubmitted: onSubmitted,
-                hintText: hintText,
+                hintText: hintText ?? ForjaFoundationStrings.of(context).search,
                 variant: InputVariant.search,
                 prefixIcon: const Icon(Icons.search),
               ),

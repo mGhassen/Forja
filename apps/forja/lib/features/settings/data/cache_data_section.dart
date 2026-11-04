@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:forja/features/settings/ui/settings_ui.dart';
+import 'package:forja/l10n/l10n.dart';
 import 'package:forja/shell/feedback/forja_toast.dart';
 import 'package:forja/shared/playback/cache/settings_data_cleaner.dart';
 import 'package:forja/shared/platform/platform_info.dart';
@@ -26,41 +27,35 @@ class _SettingsCacheDataSectionState extends State<SettingsCacheDataSection> {
 
   @override
   Widget build(BuildContext context) {
+    final l = context.l10n;
     final mentionTorrent =
         !PlatformInfo.isAndroidTv &&
         PlatformPlayback.capabilities.localTorrentEngine;
     final streamSubtitle = mentionTorrent
-        ? 'Saved stream provider URLs, torrent temp files, '
-            'and seek buffers. Next play re-resolves. Settings and watch history stay.'
-        : 'Saved stream provider URLs and seek buffers. '
-            'Next play re-resolves. Settings and watch history stay.';
+        ? l.dataStreamSubtitleTorrent
+        : l.dataStreamSubtitle;
     final streamBody = mentionTorrent
-        ? 'Clears saved stream extracts, torrent download cache, and '
-            'temporary seek buffers for the current profile (or Guest).\n\n'
-            'Watch history, provider scores, and settings are not affected. '
-            'Torrent temp files are shared on this device.'
-        : 'Clears saved stream extracts and temporary seek buffers for the '
-            'current profile (or Guest).\n\n'
-            'Watch history, provider scores, and settings are not affected.';
+        ? l.dataStreamBodyTorrent
+        : l.dataStreamBody;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         SettingsGroup(
-          label: 'Safe to clear',
+          label: l.dataGroupSafeToClear,
           children: [
             _ClearTile(
               busy: _busy == _ClearBusy.streams,
               icon: Icons.cached_rounded,
               iconColor: const Color(0xFFFB923C),
-              title: 'Stream cache',
+              title: l.dataStreamCacheTitle,
               subtitle: streamSubtitle,
               onTap: () => _run(
                 kind: _ClearBusy.streams,
-                title: 'Clear stream cache?',
+                title: l.dataStreamClearTitle,
                 body: streamBody,
-                confirmLabel: 'Clear',
-                success: 'Stream cache cleared',
+                confirmLabel: l.dataClear,
+                success: l.dataStreamCleared,
                 action: SettingsDataCleaner.clearStreamCaches,
               ),
             ),
@@ -68,18 +63,14 @@ class _SettingsCacheDataSectionState extends State<SettingsCacheDataSection> {
               busy: _busy == _ClearBusy.images,
               icon: Icons.image_outlined,
               iconColor: const Color(0xFF38BDF8),
-              title: 'Images & WebView',
-              subtitle:
-                  'Poster thumbnails and extractor WebView caches. Frees disk; '
-                  'images download again when needed.',
+              title: l.dataImagesTitle,
+              subtitle: l.dataImagesSubtitle,
               onTap: () => _run(
                 kind: _ClearBusy.images,
-                title: 'Clear images & WebView?',
-                body:
-                    'Clears cached posters and WebView extract data on this device. '
-                    'Your lists and watch history are not affected.',
-                confirmLabel: 'Clear',
-                success: 'Images & WebView cache cleared',
+                title: l.dataImagesClearTitle,
+                body: l.dataImagesClearBody,
+                confirmLabel: l.dataClear,
+                success: l.dataImagesCleared,
                 action: SettingsDataCleaner.clearImageAndWebViewCaches,
               ),
             ),
@@ -88,19 +79,14 @@ class _SettingsCacheDataSectionState extends State<SettingsCacheDataSection> {
                 busy: _busy == _ClearBusy.iptvPortals,
                 icon: Icons.live_tv_outlined,
                 iconColor: const Color(0xFF34D399),
-                title: 'IPTV portal cache',
-                subtitle:
-                    'Catalogs, alive checks, and channel scans. '
-                    'Portals and favorites stay. Re-fetches on next open.',
+                title: l.dataPortalTitle,
+                subtitle: l.dataPortalSubtitle,
                 onTap: () => _run(
                   kind: _ClearBusy.iptvPortals,
-                  title: 'Clear IPTV portal cache?',
-                  body:
-                    'Clears saved catalogs, alive-channel checks, and channel '
-                    'scan hits for IPTV portals on the current profile (or Guest).\n\n'
-                    'Saved portals, favorites, and M3U playlists are not affected.',
-                  confirmLabel: 'Clear',
-                  success: 'IPTV portal cache cleared',
+                  title: l.dataPortalClearTitle,
+                  body: l.dataPortalClearBody,
+                  confirmLabel: l.dataClear,
+                  success: l.dataPortalCleared,
                   action: SettingsDataCleaner.clearPortalCaches,
                 ),
               ),
@@ -109,72 +95,54 @@ class _SettingsCacheDataSectionState extends State<SettingsCacheDataSection> {
                 busy: _busy == _ClearBusy.updates,
                 icon: Icons.system_update_alt_outlined,
                 iconColor: const Color(0xFFA78BFA),
-                title: 'Downloaded updates',
-                subtitle:
-                    'Installer files from in-app update (.dmg, .exe, AppImage). '
-                    'Safe to remove after you install.',
+                title: l.dataUpdatesTitle,
+                subtitle: l.dataUpdatesSubtitle,
                 onTap: () => _run(
                   kind: _ClearBusy.updates,
-                  title: 'Clear downloaded updates?',
-                  body:
-                      'Removes update installers Forja saved in Downloads, app storage, '
-                      'or temp while downloading.\n\n'
-                      'Your installed app version and settings are not affected.',
-                  confirmLabel: 'Clear',
-                  success: 'Downloaded update files cleared',
+                  title: l.dataUpdatesClearTitle,
+                  body: l.dataUpdatesClearBody,
+                  confirmLabel: l.dataClear,
+                  success: l.dataUpdatesCleared,
                   action: SettingsDataCleaner.clearDownloadedUpdates,
                 ),
               ),
           ],
         ),
         SettingsGroup(
-          label: 'Learned',
+          label: l.dataGroupLearned,
           children: [
             _ClearTile(
               busy: _busy == _ClearBusy.scores,
               icon: Icons.insights_outlined,
               iconColor: const Color(0xFFFBBF24),
-              title: 'Provider scores',
-              subtitle:
-                  'Reliability totals for Settings Score and Auto order. '
-                  'Drag order is kept; scores start over.',
+              title: l.dataScoresTitle,
+              subtitle: l.dataScoresSubtitle,
               onTap: () => _run(
                 kind: _ClearBusy.scores,
-                title: 'Reset provider scores?',
-                body:
-                    'Clears learned reliability for all providers on the current '
-                    'profile (or Guest). Settings Score goes back to 0 and Auto '
-                    're-learns from new checks.\n\n'
-                    'Your preferred drag order is not changed.',
-                confirmLabel: 'Reset scores',
-                success: 'Provider scores reset',
+                title: l.dataScoresResetTitle,
+                body: l.dataScoresResetBody,
+                confirmLabel: l.dataScoresResetConfirm,
+                success: l.dataScoresReset,
                 action: SettingsDataCleaner.clearProviderScores,
               ),
             ),
           ],
         ),
         SettingsGroup(
-          label: 'Watch data',
+          label: l.dataGroupWatchData,
           children: [
             _ClearTile(
               busy: _busy == _ClearBusy.continueWatching,
               icon: Icons.history_rounded,
               iconColor: const Color(0xFFF87171),
-              title: 'Continue watching',
-              subtitle:
-                  'Resume rows on Home, Anime, and Asian Drama. '
-                  'Cannot be undone for this profile.',
+              title: l.dataContinueTitle,
+              subtitle: l.dataContinueSubtitle,
               onTap: () => _run(
                 kind: _ClearBusy.continueWatching,
-                title: 'Clear continue watching?',
-                body:
-                    'Removes resume / continue-watching entries for movies, TV, '
-                    'anime, Asian drama, and anime Arabic on the current profile '
-                    '(or Guest).\n\n'
-                    'Other profiles are not affected. Trakt or Simkl cloud history '
-                    'is not deleted. My List and liked items are kept.',
-                confirmLabel: 'Clear history',
-                success: 'Continue watching cleared',
+                title: l.dataContinueClearTitle,
+                body: l.dataContinueClearBody,
+                confirmLabel: l.dataContinueClearConfirm,
+                success: l.dataContinueCleared,
                 action: SettingsDataCleaner.clearContinueWatching,
                 destructive: true,
               ),
@@ -183,20 +151,14 @@ class _SettingsCacheDataSectionState extends State<SettingsCacheDataSection> {
               busy: _busy == _ClearBusy.watched,
               icon: Icons.check_circle_outline_rounded,
               iconColor: const Color(0xFFF87171),
-              title: 'Watched episode marks',
-              subtitle:
-                  'Local watched checkmarks on TV episode lists. '
-                  'Trakt / Simkl online history stays.',
+              title: l.dataWatchedTitle,
+              subtitle: l.dataWatchedSubtitle,
               onTap: () => _run(
                 kind: _ClearBusy.watched,
-                title: 'Clear watched marks?',
-                body:
-                    'Removes local episode watched checkmarks on the current '
-                    'profile (or Guest). Continue watching progress is kept unless '
-                    'you clear it separately.\n\n'
-                    'Trakt / Simkl may show episodes as watched again after sync.',
-                confirmLabel: 'Clear marks',
-                success: 'Watched marks cleared',
+                title: l.dataWatchedClearTitle,
+                body: l.dataWatchedClearBody,
+                confirmLabel: l.dataWatchedClearConfirm,
+                success: l.dataWatchedCleared,
                 action: SettingsDataCleaner.clearWatchedEpisodes,
                 destructive: true,
               ),
@@ -230,7 +192,7 @@ class _SettingsCacheDataSectionState extends State<SettingsCacheDataSection> {
       await action();
       if (mounted) ForjaToast.success(success);
     } catch (e) {
-      if (mounted) ForjaToast.error('Failed: $e');
+      if (mounted) ForjaToast.error(context.l10n.dataFailed('$e'));
     } finally {
       if (mounted) setState(() => _busy = null);
     }

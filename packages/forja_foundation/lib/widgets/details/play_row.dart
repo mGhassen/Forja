@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:forja_foundation/l10n/foundation_strings.dart';
 import 'package:forja_foundation/components/button_group.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 import 'package:forja_foundation/widgets/chrome/shell_paint_scope.dart';
@@ -75,7 +76,8 @@ class DetailsUpcomingNotice extends StatelessWidget {
         tv ? ShellTokens.controlHeightTv : ShellTokens.shellButtonHeight;
     final date = releaseDateLabel?.trim() ?? '';
     final hasDate = date.isNotEmpty;
-    final label = hasDate ? 'Coming soon · $date' : 'Coming soon';
+    final soon = ForjaFoundationStrings.of(context).t('Coming soon');
+    final label = hasDate ? '$soon · $date' : soon;
     final bodyFontSize =
         tv ? ShellTokens.tvBodyFontSize : 14.0;
     final padH = ShellTokens.chromeScale(14, tv: tv);

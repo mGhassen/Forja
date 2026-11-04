@@ -1,3 +1,4 @@
+import 'package:forja/shared/services/app/app_locale.dart';
 import 'dart:async';
 
 import 'package:flutter/foundation.dart';
@@ -79,7 +80,7 @@ class TvDeviceLinkAuth {
     await ForjaSupabase.ensureInitialized();
     final client = ForjaSupabase.clientOrNull;
     if (client == null) {
-      throw const AuthException('Supabase is not configured for this build.');
+      throw AuthException(AppLocale.strings.authSupabaseNotConfigured);
     }
 
     try {
@@ -155,7 +156,7 @@ class TvDeviceLinkAuth {
     final userCode = (data['user_code'] as String?)?.trim() ?? '';
     final deviceCode = (data['device_code'] as String?)?.trim() ?? '';
     if (userCode.isEmpty || deviceCode.isEmpty) {
-      throw const AuthException('TV linking did not return a usable code.');
+      throw AuthException(AppLocale.strings.authTvLinkNoCode);
     }
 
     final verificationUri = '$webUrl/connect';

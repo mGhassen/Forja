@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:forja/shell/routing/shell_ambient_l10n.dart';
 import 'package:forja_foundation/tokens/forja_shell_tokens.dart';
 import 'package:forja/shared/navigation/shell_navigation_levels.dart';
 import 'package:forja/shared/engine/runtime/nav/vertical_filters.dart';
@@ -1062,7 +1063,9 @@ abstract final class ShellTvFocusCoordinator {
         }
         // Settings-only / empty guest: skip the useless lone nav icon.
         if (_navOrder.length <= 1) {
-          ShellTvAppExit.armOrExit(message: 'Press Back again to exit');
+          ShellTvAppExit.armOrExit(
+            message: shellAmbientL10n.shellPressBackAgainToExit,
+          );
           return true;
         }
         _focusActiveNavFromPage();
@@ -1072,7 +1075,9 @@ abstract final class ShellTvFocusCoordinator {
         // Do not set _backStepPending — Android delivers Back twice per press
         // (HardwareKeyboard + didPopRoute); shell debounce + minConfirmGap
         // must swallow the duplicate so we do not quit on the first press.
-        ShellTvAppExit.armOrExit(message: 'Press Back again to exit');
+        ShellTvAppExit.armOrExit(
+          message: shellAmbientL10n.shellPressBackAgainToExit,
+        );
         return true;
     }
   }
@@ -1088,7 +1093,9 @@ abstract final class ShellTvFocusCoordinator {
       return handleShellBackKey();
     }
     // Same double-delivery problem as Back — minConfirmGap absorbs it.
-    ShellTvAppExit.armOrExit(message: 'Press Exit again to exit');
+    ShellTvAppExit.armOrExit(
+      message: shellAmbientL10n.shellPressExitAgainToExit,
+    );
     return true;
   }
 

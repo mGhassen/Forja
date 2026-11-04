@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
+import 'package:forja/l10n/l10n.dart';
 import 'package:forja/shared/downloads/download_enqueue.dart';
 import 'package:forja/shared/playback/probe/playback_stream_guards.dart';
 import 'package:forja/shared/player/controls/chrome/player_chrome_overlays.dart';
@@ -67,7 +68,7 @@ class PlayerServerStreamDialog {
     final hasSources = currentSources != null && currentSources.isNotEmpty;
     if (!hasProviders && !hasSources) {
       ForjaToast.warning(
-        'No streams available',
+        context.l10n.playerControlNoStreamsAvailable,
         duration: const Duration(seconds: 1),
       );
       return;
@@ -284,6 +285,7 @@ class _ServerStreamDialogOverlayState extends State<_ServerStreamDialogOverlay> 
     bool forceRefresh = false,
     bool toastOnFail = false,
   }) async {
+    final l10n = context.l10n;
     if (!forceRefresh && _streamsFor(providerId).isNotEmpty) {
       setState(() {
         _failedServers.remove(providerId);
@@ -321,7 +323,7 @@ class _ServerStreamDialogOverlayState extends State<_ServerStreamDialogOverlay> 
         if (toastOnFail) {
           final provider = widget.providers?[providerId];
           ForjaToast.warning(
-            PlayerProviderMenu.unavailableMessage(providerId, provider),
+            PlayerProviderMenu.unavailableMessage(providerId, provider, l10n),
             duration: const Duration(seconds: 2),
           );
         }
@@ -338,7 +340,7 @@ class _ServerStreamDialogOverlayState extends State<_ServerStreamDialogOverlay> 
       if (toastOnFail) {
         final provider = widget.providers?[providerId];
         ForjaToast.warning(
-          PlayerProviderMenu.unavailableMessage(providerId, provider),
+          PlayerProviderMenu.unavailableMessage(providerId, provider, l10n),
           duration: const Duration(seconds: 2),
         );
       }
@@ -391,10 +393,10 @@ class _ServerStreamDialogOverlayState extends State<_ServerStreamDialogOverlay> 
   Widget _buildServersColumn() {
     final servers = _orderedServers();
     if (servers.isEmpty) {
-      return const Center(
+      return Center(
         child: Text(
-          'No servers',
-          style: TextStyle(color: Colors.white54, fontSize: 13),
+          context.l10n.playerControlNoServers,
+          style: const TextStyle(color: Colors.white54, fontSize: 13),
         ),
       );
     }
@@ -436,19 +438,19 @@ class _ServerStreamDialogOverlayState extends State<_ServerStreamDialogOverlay> 
   Widget _buildStreamsColumn() {
     final serverId = _selectedServerId;
     if (serverId == null || serverId.isEmpty) {
-      return const Center(
+      return Center(
         child: Text(
-          'Select a server',
-          style: TextStyle(color: Colors.white54, fontSize: 13),
+          context.l10n.playerControlSelectServer,
+          style: const TextStyle(color: Colors.white54, fontSize: 13),
         ),
       );
     }
     if (_loadingServers.contains(serverId)) {
-      return const Center(
+      return Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            SizedBox(
+            const SizedBox(
               width: 22,
               height: 22,
               child: CircularProgressIndicator(
@@ -456,10 +458,10 @@ class _ServerStreamDialogOverlayState extends State<_ServerStreamDialogOverlay> 
                 color: PlayerPopupTokens.accent,
               ),
             ),
-            SizedBox(height: 10),
+            const SizedBox(height: 10),
             Text(
-              'Checking server…',
-              style: TextStyle(color: Colors.white54, fontSize: 12),
+              context.l10n.playerControlCheckingServer,
+              style: const TextStyle(color: Colors.white54, fontSize: 12),
             ),
           ],
         ),
@@ -474,8 +476,8 @@ class _ServerStreamDialogOverlayState extends State<_ServerStreamDialogOverlay> 
           children: [
             Text(
               failed
-                  ? PlayerProviderMenu.unavailableSubtitle
-                  : 'Tap the server to check',
+                  ? context.l10n.playerControlStatusUnavailable
+                  : context.l10n.playerControlTapServerToCheck,
               style: const TextStyle(color: Colors.white54, fontSize: 13),
             ),
             const SizedBox(height: 10),
@@ -491,7 +493,9 @@ class _ServerStreamDialogOverlayState extends State<_ServerStreamDialogOverlay> 
                   ),
                 ),
                 child: Text(
-                  failed ? 'Retry' : 'Check',
+                  failed
+                      ? context.l10n.downloadsRetry
+                      : context.l10n.playerControlCheck,
                   style: const TextStyle(color: PlayerPopupTokens.accent),
                 ),
               ),
@@ -523,7 +527,7 @@ class _ServerStreamDialogOverlayState extends State<_ServerStreamDialogOverlay> 
               final label = (saved != null && saved.isNotEmpty)
                   ? saved
                   : (source.title.trim().isEmpty
-                        ? 'Stream ${i + 1}'
+                        ? context.l10n.playerControlStreamNumber(i + 1)
                         : source.title);
               return PlayerPopupListTile(
                 key: ValueKey('stream-${source.url}'),
@@ -553,7 +557,7 @@ class _ServerStreamDialogOverlayState extends State<_ServerStreamDialogOverlay> 
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           PlayerSidePanelHeader(
-            title: 'Sources',
+            title: context.l10n.addonsHostProvSourcesChip,
             onClose: widget.onClose,
             leading: Icon(
               Icons.layers_outlined,
@@ -577,7 +581,7 @@ class _ServerStreamDialogOverlayState extends State<_ServerStreamDialogOverlay> 
                           Padding(
                             padding: const EdgeInsets.fromLTRB(14, 4, 8, 0),
                             child: Text(
-                              'Servers',
+                              context.l10n.playerControlServers,
                               style: TextStyle(
                                 color: ForjaShellColors.cinematic.textSecondary,
                                 fontSize: 11,
@@ -607,8 +611,10 @@ class _ServerStreamDialogOverlayState extends State<_ServerStreamDialogOverlay> 
                             padding: const EdgeInsets.fromLTRB(10, 4, 14, 0),
                             child: Text(
                               _selectedServerId == null
-                                  ? 'Streams'
-                                  : 'Streams · ${_serverLabel(_selectedServerId!)}',
+                                  ? context.l10n.playerControlStreams
+                                  : context.l10n.playerControlStreamsServer(
+                                      _serverLabel(_selectedServerId!),
+                                    ),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: TextStyle(

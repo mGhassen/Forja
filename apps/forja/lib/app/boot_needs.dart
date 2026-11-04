@@ -1,3 +1,5 @@
+import 'package:forja/l10n/app_localizations_en.dart';
+import 'package:forja/l10n/l10n.dart';
 import 'package:forja/shell/nav/nav_config.dart';
 import 'package:forja/shared/engine/runtime/nav/plugin_nav.dart';
 import 'package:forja/shared/engine/packs/registry/plugin_registry.dart';
@@ -87,20 +89,25 @@ class BootNeeds {
     return PluginNavRegistry.isKitTab(id);
   }
 
-  /// Splash hold line after boot work finishes early.
-  String get openingStatusLabel {
+  /// Splash hold line after boot work finishes early (English).
+  String get openingStatusLabel => openingStatus(AppLocalizationsEn());
+
+  /// Same line as [openingStatusLabel], localized.
+  String openingStatus(AppLocalizations l10n) {
     final liveIptv = !vodTab && visibleNavIds.contains('iptv');
-    if (liveIptv) return 'Opening Live & IPTV…';
+    if (liveIptv) return l10n.appBootOpeningLiveIptv;
 
     for (final id in visibleNavIds) {
       if (!isHubNavId(id)) continue;
       final label = PluginNavRegistry.destinations[id]?.label.trim();
-      if (label != null && label.isNotEmpty) return 'Opening $label…';
-      return 'Warming catalog…';
+      if (label != null && label.isNotEmpty) {
+        return l10n.appBootOpeningNamed(label);
+      }
+      return l10n.appBootWarmingCatalog;
     }
-    if (catalogTab) return 'Warming catalog…';
-    if (pendingPackDisk) return 'Loading plugins…';
-    return 'Just a moment…';
+    if (catalogTab) return l10n.appBootWarmingCatalog;
+    if (pendingPackDisk) return l10n.appBootLoadingPlugins;
+    return l10n.appBootJustAMoment;
   }
 
   static Future<bool> anyPackNeedsDiskInstall() async {

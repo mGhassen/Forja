@@ -8,6 +8,7 @@ import 'package:forja/features/settings/providers/settings_panel_providers.dart'
 import 'package:forja/features/settings/shell/visibility_provider.dart';
 import 'package:forja/features/settings/ui/p2p_streaming_ack_dialog.dart';
 import 'package:forja/features/settings/ui/settings_ui.dart';
+import 'package:forja/l10n/l10n.dart';
 
 import 'package:forja/shared/lan/lan.dart';
 import 'package:forja/shared/sync/sync.dart';
@@ -208,15 +209,15 @@ class _LanSettingsSectionState extends ConsumerState<LanSettingsSection> {
         showFocusBorder: true,
         tvTabId: 'settings',
         tvZone: ShellTvZone.settings,
-        child: const Padding(
-          padding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-          child: Text('Unpair'),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          child: Text(context.l10n.addonsHostLanUnpairButton),
         ),
       );
     }
     return TextButton(
       onPressed: () => unawaited(_unpair()),
-      child: const Text('Unpair'),
+      child: Text(context.l10n.addonsHostLanUnpairButton),
     );
   }
 
@@ -264,20 +265,20 @@ class _LanSettingsSectionState extends ConsumerState<LanSettingsSection> {
   Future<void> _removeHistory(String infoHash) async {
     final ok = LanServerService.instance.removeTorrentHistory(infoHash);
     if (!ok) {
-      ForjaToast.error('Could not remove torrent');
+      ForjaToast.error(context.l10n.addonsHostLanRemoveTorrentError);
       return;
     }
-    ForjaToast.success('Removed torrent cache entry');
+    ForjaToast.success(context.l10n.addonsHostLanRemoveTorrentToast);
     await _refreshTorrentPanel();
   }
 
   Future<void> _clearAllTorrents() async {
     final ok = LanServerService.instance.clearTorrentHistory();
     if (!ok) {
-      ForjaToast.error('Could not clear torrent cache');
+      ForjaToast.error(context.l10n.addonsHostLanClearCacheError);
       return;
     }
-    ForjaToast.success('Torrent cache cleared');
+    ForjaToast.success(context.l10n.addonsHostLanClearCacheToast);
     await _refreshTorrentPanel();
   }
 
@@ -288,8 +289,8 @@ class _LanSettingsSectionState extends ConsumerState<LanSettingsSection> {
         final detail = LanServerService.instance.lastStartError();
         ForjaToast.error(
           detail.isEmpty
-              ? 'Failed to start LAN server'
-              : 'Failed to start LAN server: $detail',
+              ? context.l10n.addonsHostLanServerStartFailedError
+              : context.l10n.addonsHostLanServerStartFailedDetailError(detail),
         );
         return;
       }
@@ -312,7 +313,7 @@ class _LanSettingsSectionState extends ConsumerState<LanSettingsSection> {
       });
       if (found.isEmpty) {
         ForjaToast.info(
-          'No desktop found. Enter the IP and port from Settings → LAN on the desktop.',
+          context.l10n.addonsHostLanNoDesktopFoundInfo,
         );
       }
     }
@@ -324,7 +325,7 @@ class _LanSettingsSectionState extends ConsumerState<LanSettingsSection> {
     final p = port ?? int.tryParse(_manualPortController.text.trim()) ?? 0;
     final code = _pairCodeController.text.trim();
     if (h.isEmpty || p <= 0 || code.length < 6) {
-      ForjaToast.info('Enter desktop address, port, and 6-digit code');
+      ForjaToast.info(context.l10n.addonsHostLanEnterPairDetailsInfo);
       return;
     }
     setState(() => _pairing = true);
@@ -338,11 +339,11 @@ class _LanSettingsSectionState extends ConsumerState<LanSettingsSection> {
     setState(() => _pairing = false);
     if (token == null) {
       ForjaToast.error(
-        'Pairing failed. Check the code, IP, and that desktop LAN is on.',
+        context.l10n.addonsHostLanPairFailedError,
       );
       return;
     }
-    ForjaToast.success('Paired. Enable Direct torrent in Settings → Playback.');
+    ForjaToast.success(context.l10n.addonsHostLanPairedToast);
     _pairCodeController.clear();
     await _load();
     _refreshPlaySourceGates();
@@ -409,20 +410,25 @@ class _LanSettingsSectionState extends ConsumerState<LanSettingsSection> {
   void _copyCode() {
     if (_pairingCode.isEmpty) return;
     Clipboard.setData(ClipboardData(text: _pairingCode));
-    ForjaToast.success('Code copied');
+    ForjaToast.success(context.l10n.addonsHostLanCodeCopiedToast);
   }
 
   void _copyAddress(String host) {
     if (_serverPort <= 0) return;
     Clipboard.setData(ClipboardData(text: '$host:$_serverPort'));
-    ForjaToast.success('Address copied');
+    ForjaToast.success(context.l10n.addonsHostLanAddressCopiedToast);
   }
 
   String get _primaryAddressLabel {
     if (_serverPort <= 0) return '';
-    if (_localIps.isEmpty) return 'port $_serverPort';
+    if (_localIps.isEmpty) {
+      return context.l10n.addonsHostLanPortOnlyLabel(_serverPort);
+    }
     if (_localIps.length == 1) return '${_localIps.first}:$_serverPort';
-    return '${_localIps.first}:$_serverPort (+${_localIps.length - 1} more)';
+    return context.l10n.addonsHostLanAddressMoreLabel(
+      '${_localIps.first}:$_serverPort',
+      _localIps.length - 1,
+    );
   }
 
   @override
@@ -448,8 +454,8 @@ class _LanSettingsSectionState extends ConsumerState<LanSettingsSection> {
   Widget _introCard() {
     return Text(
       _isDesktopServer
-          ? 'Turn this PC into a Forja LAN server. Pair TVs and phones once. They pick torrents; this desktop downloads and streams.'
-          : 'Pair once with a desktop Forja on the same Wi‑Fi. After that, torrent sources on this device play through the desktop.',
+          ? context.l10n.addonsHostLanIntroDesktop
+          : context.l10n.addonsHostLanIntroClient,
       style: TextStyle(
         color: ForjaShellColors.textSecondary,
         fontSize: SettingsTokens.typeSizeOf(context, 13),
@@ -465,19 +471,19 @@ class _LanSettingsSectionState extends ConsumerState<LanSettingsSection> {
         _serverPort > 0;
     return [
       SettingsToggleRow(
-        title: 'Enable LAN server',
+        title: context.l10n.addonsHostLanEnableServerTitle,
         subtitle: running
-            ? 'Listening · $_primaryAddressLabel'
-            : 'Off. TVs cannot use this desktop for torrents',
+            ? context.l10n.addonsHostLanListeningSubtitle(_primaryAddressLabel)
+            : context.l10n.addonsHostLanServerOffSubtitle,
         value: running,
         onChanged: (v) => unawaited(_toggleServer(v)),
       ),
       if (running) ...[
         const SizedBox(height: 8),
-        _sectionLabel('DESKTOP ADDRESS'),
+        _sectionLabel(context.l10n.addonsHostLanDesktopAddressHeader),
         const SizedBox(height: 4),
         Text(
-          'On the TV: Settings → LAN → enter this IP and port if Discover does not find this PC.',
+          context.l10n.addonsHostLanDesktopAddressHint,
           style: TextStyle(
             color: ForjaShellColors.textSecondary,
             fontSize: SettingsTokens.typeSizeOf(context, 12),
@@ -487,7 +493,7 @@ class _LanSettingsSectionState extends ConsumerState<LanSettingsSection> {
         const SizedBox(height: 8),
         if (_localIps.isEmpty)
           Text(
-            'Port $_serverPort. Could not detect a LAN IP. Check Wi‑Fi or Ethernet.',
+            context.l10n.addonsHostLanNoIpDetected(_serverPort),
             style: TextStyle(
               color: ForjaShellColors.textSecondary,
               fontSize: SettingsTokens.typeSizeOf(context, 13),
@@ -506,10 +512,10 @@ class _LanSettingsSectionState extends ConsumerState<LanSettingsSection> {
             ),
           ),
         const SizedBox(height: 16),
-        _sectionLabel('PAIRING CODE'),
+        _sectionLabel(context.l10n.addonsHostLanPairingCodeHeader),
         const SizedBox(height: 4),
         Text(
-          'On the TV: Settings → LAN → enter this code (valid ~5 minutes, one use).',
+          context.l10n.addonsHostLanPairingCodeHint,
           style: TextStyle(
             color: ForjaShellColors.textSecondary,
             fontSize: SettingsTokens.typeSizeOf(context, 12),
@@ -537,12 +543,12 @@ class _LanSettingsSectionState extends ConsumerState<LanSettingsSection> {
                 ),
               ),
               IconButton(
-                tooltip: 'Copy',
+                tooltip: context.l10n.addonsHostLanCopyTooltip,
                 onPressed: _copyCode,
                 icon: const Icon(Icons.copy_rounded),
               ),
               IconButton(
-                tooltip: 'New code',
+                tooltip: context.l10n.addonsHostLanNewCodeTooltip,
                 onPressed: () {
                   setState(() {
                     _pairingCode = LanServerService.instance
@@ -557,17 +563,17 @@ class _LanSettingsSectionState extends ConsumerState<LanSettingsSection> {
         const SizedBox(height: 20),
         Row(
           children: [
-            Expanded(child: _sectionLabel('PAIRED DEVICES')),
+            Expanded(child: _sectionLabel(context.l10n.addonsHostLanPairedDevicesHeader)),
             _reloadControl(
-              tooltip: 'Reload paired devices',
+              tooltip: context.l10n.addonsHostLanReloadDevicesTooltip,
               onPressed: _refreshPairedDevices,
             ),
           ],
         ),
         Text(
           _devices.isEmpty
-              ? 'No TVs or phones paired yet.'
-              : 'Revoke to force that device to pair again.',
+              ? context.l10n.addonsHostLanNoDevicesPaired
+              : context.l10n.addonsHostLanRevokeHint,
           style: TextStyle(
             color: ForjaShellColors.textSecondary,
             fontSize: SettingsTokens.typeSizeOf(context, 12),
@@ -589,7 +595,7 @@ class _LanSettingsSectionState extends ConsumerState<LanSettingsSection> {
                 ),
                 const SizedBox(width: 8),
                 Text(
-                  'Waiting for a device to enter the code…',
+                  context.l10n.addonsHostLanWaitingForDevice,
                   style: TextStyle(
                     color: ForjaShellColors.textSecondary.withValues(
                       alpha: 0.8,
@@ -606,7 +612,7 @@ class _LanSettingsSectionState extends ConsumerState<LanSettingsSection> {
             final label = (d['label'] as String?)?.trim();
             final title = (label != null && label.isNotEmpty)
                 ? label
-                : 'Device';
+                : context.l10n.addonsHostLanDeviceFallback;
             final when = _formatPairedAt(d['paired_at']);
             final talk = LanPresence.deviceTalk(
               deviceId: id,
@@ -684,7 +690,7 @@ class _LanSettingsSectionState extends ConsumerState<LanSettingsSection> {
                   ),
                   TextButton(
                     onPressed: id.isEmpty ? null : () => _revoke(id),
-                    child: const Text('Revoke'),
+                    child: Text(context.l10n.addonsHostLanRevokeButton),
                   ),
                 ],
               ),
@@ -710,16 +716,16 @@ class _LanSettingsSectionState extends ConsumerState<LanSettingsSection> {
     return [
       Row(
         children: [
-          Expanded(child: _sectionLabel('TORRENT ACTIVITY')),
+          Expanded(child: _sectionLabel(context.l10n.addonsHostLanTorrentActivityHeader)),
           if (_torrentHistory.isNotEmpty || _torrentCacheBytes > 0)
             TextButton(
               onPressed: _clearAllTorrents,
-              child: const Text('Clear all'),
+              child: Text(context.l10n.addonsHostLanClearAllButton),
             ),
         ],
       ),
       Text(
-        'Torrents opened by paired TVs/phones. Delete removes the cached download.',
+        context.l10n.addonsHostLanTorrentActivityHint,
         style: TextStyle(
           color: ForjaShellColors.textSecondary,
           fontSize: SettingsTokens.typeSizeOf(context, 12),
@@ -727,7 +733,7 @@ class _LanSettingsSectionState extends ConsumerState<LanSettingsSection> {
       ),
       const SizedBox(height: 4),
       Text(
-        'Cache on disk: $cacheLabel',
+        context.l10n.addonsHostLanCacheOnDisk(cacheLabel),
         style: TextStyle(
           color: ForjaShellColors.textSecondary.withValues(alpha: 0.85),
           fontSize: SettingsTokens.typeSizeOf(context, 12),
@@ -738,7 +744,7 @@ class _LanSettingsSectionState extends ConsumerState<LanSettingsSection> {
         _torrentActivityTile(
           title: active['name']?.toString().isNotEmpty == true
               ? active['name'].toString()
-              : 'Active torrent',
+              : context.l10n.addonsHostLanActiveTorrentFallback,
           live: active,
         ),
         const SizedBox(height: 4),
@@ -748,8 +754,8 @@ class _LanSettingsSectionState extends ConsumerState<LanSettingsSection> {
           padding: const EdgeInsets.symmetric(vertical: 8),
           child: Text(
             active == null
-                ? 'No LAN torrents yet. Play one from a paired TV.'
-                : 'Serving now (not yet in history).',
+                ? context.l10n.addonsHostLanNoTorrentsYet
+                : context.l10n.addonsHostLanServingNow,
             style: TextStyle(
               color: ForjaShellColors.textSecondary.withValues(alpha: 0.8),
               fontSize: SettingsTokens.typeSizeOf(context, 13),
@@ -763,7 +769,8 @@ class _LanSettingsSectionState extends ConsumerState<LanSettingsSection> {
           final label = (e['device_label'] as String?)?.trim();
           final device = (label != null && label.isNotEmpty)
               ? label
-              : (e['device_id']?.toString() ?? 'Device');
+              : (e['device_id']?.toString() ??
+                  context.l10n.addonsHostLanDeviceFallback);
           final when = _formatPairedAt(e['opened_at']);
           final bytes = (e['total_bytes'] as num?)?.toInt() ?? 0;
           final size = bytes > 0
@@ -875,7 +882,7 @@ class _LanSettingsSectionState extends ConsumerState<LanSettingsSection> {
                       _torrentMeta(
                         context,
                         Icons.group_outlined,
-                        '$peers peers',
+                        context.l10n.addonsHostLanPeersChip(peers),
                       ),
                     ],
                   ),
@@ -900,7 +907,7 @@ class _LanSettingsSectionState extends ConsumerState<LanSettingsSection> {
           ),
           if (onDelete != null)
             IconButton(
-              tooltip: 'Delete cached download',
+              tooltip: context.l10n.addonsHostLanDeleteCachedTooltip,
               onPressed: onDelete,
               icon: const Icon(Icons.delete_outline_rounded),
             ),
@@ -1013,7 +1020,9 @@ class _LanSettingsSectionState extends ConsumerState<LanSettingsSection> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    _paired ? 'Paired' : 'Not paired',
+                    _paired
+                        ? context.l10n.addonsHostLanPairedStatus
+                        : context.l10n.addonsHostLanNotPairedStatus,
                     style: TextStyle(
                       color: ForjaShellColors.textPrimary,
                       fontSize: SettingsTokens.typeSizeOf(context, 15),
@@ -1025,11 +1034,11 @@ class _LanSettingsSectionState extends ConsumerState<LanSettingsSection> {
                     Text(
                       [
                         if (presence.server == LanServerMark.up)
-                          'Desktop online'
+                          context.l10n.addonsHostLanDesktopOnline
                         else
-                          'Desktop offline',
+                          context.l10n.addonsHostLanDesktopOffline,
                         if (presence.session == LanSessionMark.playing)
-                          'playing',
+                          context.l10n.addonsHostLanPlayingStatus,
                       ].join(' · '),
                       style: TextStyle(
                         color: presence.server == LanServerMark.up
@@ -1041,8 +1050,11 @@ class _LanSettingsSectionState extends ConsumerState<LanSettingsSection> {
                     ),
                   Text(
                     _paired
-                        ? '${_pairedHost ?? '?'}:${_pairedPort ?? '?'}. Torrents play via desktop.'
-                        : 'Pair once. Then open Sources → Torrents on a title.',
+                        ? context.l10n.addonsHostLanPairedAddressNote(
+                            _pairedHost ?? '?',
+                            _pairedPort?.toString() ?? '?',
+                          )
+                        : context.l10n.addonsHostLanPairOnceNote,
                     style: TextStyle(
                       color: ForjaShellColors.textSecondary.withValues(
                         alpha: 0.85,
@@ -1058,7 +1070,7 @@ class _LanSettingsSectionState extends ConsumerState<LanSettingsSection> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 _reloadControl(
-                  tooltip: 'Reload desktop status',
+                  tooltip: context.l10n.addonsHostLanReloadStatusTooltip,
                   onPressed: () => unawaited(_reloadClientStatus()),
                 ),
                 if (_paired) _unpairControl(),
@@ -1069,10 +1081,12 @@ class _LanSettingsSectionState extends ConsumerState<LanSettingsSection> {
       ),
       if (!_paired) ...[
         const SizedBox(height: 8),
-        _sectionLabel('FIND DESKTOP'),
+        _sectionLabel(context.l10n.addonsHostLanFindDesktopHeader),
         const SizedBox(height: 8),
         SettingsFilledButton(
-          label: _discovering ? 'Searching…' : 'Discover on Wi‑Fi',
+          label: _discovering
+              ? context.l10n.addonsHostLanSearchingButton
+              : context.l10n.addonsHostLanDiscoverButton,
           icon: Icons.wifi_find_rounded,
           busy: _discovering,
           secondary: true,
@@ -1090,12 +1104,12 @@ class _LanSettingsSectionState extends ConsumerState<LanSettingsSection> {
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [Text(s.host), Text('Port ${s.port}')],
+                      children: [Text(s.host), Text(context.l10n.addonsHostLanPortValue(s.port))],
                     ),
                   ),
                   _lanTvTextAction(
                     context,
-                    label: 'Use',
+                    label: context.l10n.addonsHostLanUseButton,
                     onPressed: () {
                       setState(() {
                         _manualHostController.text = s.host;
@@ -1109,32 +1123,32 @@ class _LanSettingsSectionState extends ConsumerState<LanSettingsSection> {
           ),
         ],
         const SizedBox(height: 16),
-        _sectionLabel('OR ENTER MANUALLY'),
+        _sectionLabel(context.l10n.addonsHostLanEnterManuallyHeader),
         const SizedBox(height: 8),
         SettingsTextField(
           controller: _manualHostController,
-          label: 'Desktop IP',
+          label: context.l10n.addonsHostLanDesktopIpLabel,
           hint: '192.168.1.10',
         ),
         const SizedBox(height: 8),
         SettingsTextField(
           controller: _manualPortController,
-          label: 'Port',
-          hint: 'Shown under Enable LAN server on desktop',
+          label: context.l10n.addonsHostLanPortLabel,
+          hint: context.l10n.addonsHostLanPortHint,
           keyboardType: TextInputType.number,
         ),
         const SizedBox(height: 8),
         SettingsTextField(
           controller: _pairCodeController,
-          label: '6-digit code',
-          hint: 'From desktop Settings → LAN',
+          label: context.l10n.addonsHostLanCodeLabel,
+          hint: context.l10n.addonsHostLanCodeHint,
           keyboardType: TextInputType.number,
           maxLength: 6,
           inputFormatters: [FilteringTextInputFormatter.digitsOnly],
         ),
         const SizedBox(height: 8),
         SettingsFilledButton(
-          label: 'Pair with desktop',
+          label: context.l10n.addonsHostLanPairButton,
           busy: _pairing,
           onPressed: () => _pairWith(),
         ),
@@ -1144,9 +1158,8 @@ class _LanSettingsSectionState extends ConsumerState<LanSettingsSection> {
         const SizedBox(height: 20),
         const Divider(),
         SettingsToggleRow(
-          title: 'Allow local torrent on this device',
-          subtitle:
-              'Advanced. Use the on-device engine instead of the desktop. Leave off on TV.',
+          title: context.l10n.addonsHostLanLocalTorrentTitle,
+          subtitle: context.l10n.addonsHostLanLocalTorrentSubtitle,
           value: _allowLocalTorrent,
           adminOnly: true,
           onChanged: (v) async {

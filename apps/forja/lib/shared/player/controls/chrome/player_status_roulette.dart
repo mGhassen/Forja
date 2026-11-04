@@ -2,6 +2,8 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:forja/l10n/app_localizations_en.dart';
+import 'package:forja/l10n/l10n.dart';
 import 'package:forja/shell/core/forja_shell_input_policy.dart';
 import 'package:forja/shell/core/forja_shell_scope.dart';
 import 'package:forja/shell/desktop/desktop_window_chrome.dart';
@@ -24,20 +26,28 @@ const kStreamOpenStatusId = 'stream-open';
 
 enum StreamOpenStatusStage { checking, preparing }
 
-String streamOpenStatusLabel(StreamOpenStatusStage stage) => switch (stage) {
-  StreamOpenStatusStage.checking => 'Checking stream…',
-  StreamOpenStatusStage.preparing => 'Preparing stream…',
-};
+/// [l10n] defaults to English for callers with no [BuildContext] to hand.
+String streamOpenStatusLabel(
+  StreamOpenStatusStage stage, [
+  AppLocalizations? l10n,
+]) {
+  final l = l10n ?? AppLocalizationsEn();
+  return switch (stage) {
+    StreamOpenStatusStage.checking => l.playerControlCheckingStream,
+    StreamOpenStatusStage.preparing => l.playerControlPreparingStream,
+  };
+}
 
 void upsertStreamOpenStatus(
   PlayerStatusController controller,
-  StreamOpenStatusStage stage,
-) {
+  StreamOpenStatusStage stage, [
+  AppLocalizations? l10n,
+]) {
   // The stream-loading session stays alive until the player route pops.
   // Skipping updates here hid Checking / Preparing for the whole watch.
   controller.upsert(
     kStreamOpenStatusId,
-    streamOpenStatusLabel(stage),
+    streamOpenStatusLabel(stage, l10n),
     kind: StatusRouletteKind.loading,
   );
 }
@@ -205,11 +215,12 @@ double statusNotificationTop(BuildContext context) {
 
 const kAirPlayCastingStatusId = 'cast-active';
 
-const kAirPlayCastingStatusEntry = StatusRouletteEntry(
-  id: kAirPlayCastingStatusId,
-  label: 'Playing on AirPlay',
-  kind: StatusRouletteKind.success,
-);
+StatusRouletteEntry airPlayCastingStatusEntry(AppLocalizations l10n) =>
+    StatusRouletteEntry(
+      id: kAirPlayCastingStatusId,
+      label: l10n.playerControlPlayingOnAirPlay,
+      kind: StatusRouletteKind.success,
+    );
 
 /// Top-center notice while AirPlay owns playback (no status controller needed).
 class PlayerAirPlayCastingNotice extends StatelessWidget {
@@ -225,11 +236,11 @@ class PlayerAirPlayCastingNotice extends StatelessWidget {
           top: statusNotificationTop(context),
           left: 56,
           right: 56,
-          child: const IgnorePointer(
+          child: IgnorePointer(
             child: Align(
               alignment: Alignment.topCenter,
               child: StatusNotificationView(
-                entries: [kAirPlayCastingStatusEntry],
+                entries: [airPlayCastingStatusEntry(context.l10n)],
               ),
             ),
           ),
@@ -239,7 +250,9 @@ class PlayerAirPlayCastingNotice extends StatelessWidget {
   }
 }
 
-/// Terminal failure copy when the failed roulette row carries none.
+/// Terminal failure row label. The screens upsert this exact English text, so
+/// it is also the key the overlay compares against; the user-facing copy is
+/// `playerControlFailedToStream`.
 const String kPlayerStreamFailedLabel = 'Failed to stream';
 
 /// Active roulette row — the first loading entry, else the last one.
@@ -257,7 +270,7 @@ class PlayerStatusOverlay extends StatelessWidget {
     super.key,
     required this.controller,
     this.bufferingListenable,
-    this.header = 'Checking sources',
+    this.header,
     this.playbackStarted = true,
     this.failed = false,
     this.onRetry,
@@ -269,7 +282,7 @@ class PlayerStatusOverlay extends StatelessWidget {
 
   final PlayerStatusController controller;
   final ValueListenable<bool>? bufferingListenable;
-  final String header;
+  final String? header;
 
   /// False until the first frame: a centered indicator with the active
   /// source label joins the right-side roulette, so a black screen is never
@@ -294,14 +307,17 @@ class PlayerStatusOverlay extends StatelessWidget {
 
   bool get _centerFailure => failed && onRetry != null;
 
-  List<StatusRouletteEntry> _rouletteEntries(bool buffering) {
+  List<StatusRouletteEntry> _rouletteEntries(
+    bool buffering,
+    AppLocalizations l10n,
+  ) {
     final fromController = statusRouletteEntries(controller.entries);
     if (fromController.isNotEmpty) return fromController;
     if (buffering) {
-      return const [
+      return [
         StatusRouletteEntry(
           id: 'buffering',
-          label: 'Buffering…',
+          label: l10n.playerControlBufferingEllipsis,
           kind: StatusRouletteKind.loading,
         ),
       ];
@@ -311,13 +327,14 @@ class PlayerStatusOverlay extends StatelessWidget {
 
   List<StatusRouletteEntry> _notificationEntries({
     required bool airPlayActive,
+    required AppLocalizations l10n,
   }) {
     final fromController = statusNotificationEntries(
       controller.entries,
     ).where((e) => e.id != kAirPlayCastingStatusId && e.id != 'cast').toList();
     if (airPlayActive) {
       // Last wins in [StatusNotificationView] — keep cast notice on top.
-      return [...fromController, kAirPlayCastingStatusEntry];
+      return [...fromController, airPlayCastingStatusEntry(l10n)];
     }
     return fromController;
   }
@@ -325,10 +342,15 @@ class PlayerStatusOverlay extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     Widget buildOverlay(bool buffering, bool airPlayActive) {
+      final l10n = context.l10n;
       // Local mpv keeps buffering while AirPlay owns playback — hide that.
-      final rouletteEntries = _rouletteEntries(buffering && !airPlayActive);
+      final rouletteEntries = _rouletteEntries(
+        buffering && !airPlayActive,
+        l10n,
+      );
       final notificationEntries = _notificationEntries(
         airPlayActive: airPlayActive,
+        l10n: l10n,
       );
       if (rouletteEntries.isEmpty &&
           notificationEntries.isEmpty &&
@@ -337,7 +359,9 @@ class PlayerStatusOverlay extends StatelessWidget {
       }
 
       final hasRouletteProgress = controller.entries.any(isStatusRouletteEntry);
-      final overlayHeader = hasRouletteProgress ? header : 'Buffering';
+      final overlayHeader = hasRouletteProgress
+          ? (header ?? l10n.playerControlCheckingSources)
+          : l10n.playerControlBuffering;
       final tv = ShellPaintScope.usesTvDensityOf(context);
       final edgeInset = tv
           ? ShellTokens.playerStatusEdgeInsetTv
@@ -376,7 +400,7 @@ class PlayerStatusOverlay extends StatelessWidget {
               child: PlayerStreamFailedStage(
                 // Manual source / stream switch aborts upsert the failed row
                 // with the source title — that is the detail, never the title.
-                message: kPlayerStreamFailedLabel,
+                message: l10n.playerControlFailedToStream,
                 detail: failedRow.label == kPlayerStreamFailedLabel
                     ? null
                     : failedRow.label,
@@ -598,7 +622,7 @@ class _PlayerStreamFailedStageState extends State<PlayerStreamFailedStage> {
       children: [
         _action(
           context,
-          PlayerStreamFailedStage.retryLabel,
+          context.l10n.downloadsRetry,
           widget.onRetry,
           primary: true,
           focusNode: _retryFocus,
@@ -610,7 +634,7 @@ class _PlayerStreamFailedStageState extends State<PlayerStreamFailedStage> {
           SizedBox(width: gap),
           _action(
             context,
-            PlayerStreamFailedStage.backLabel,
+            context.l10n.playerControlBack,
             onBack,
             primary: false,
             focusNode: _backFocus,
@@ -625,7 +649,7 @@ class _PlayerStreamFailedStageState extends State<PlayerStreamFailedStage> {
       title: widget.message,
       detail: widget.detail,
       hint: widget.tvFocusable && policy.leanbackOnly && onBack != null
-          ? 'Press Back to leave'
+          ? context.l10n.playerControlPressBackToLeave
           : null,
       actions: actions,
     );

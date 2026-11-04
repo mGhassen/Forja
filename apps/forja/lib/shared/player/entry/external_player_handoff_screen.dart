@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 
+import 'package:forja/l10n/l10n.dart';
 import 'package:forja/shared/navigation/shell_back_icon_button.dart';
 import 'package:forja/shared/player/controls/menus/player_app_menu.dart';
 import 'package:forja/shared/player/controls/menus/player_popup_panel.dart';
@@ -105,7 +106,7 @@ class _ExternalPlayerHandoffScreenState
                   child: ShellBackIconButton(
                     icon: Icons.chevron_left_rounded,
                     size: 28,
-                    tooltip: 'Back',
+                    tooltip: context.l10n.playerControlBack,
                     onTap: exitHandoff,
                   ),
                 ),
@@ -222,7 +223,9 @@ class _StatusBody extends StatelessWidget {
                 const _LaunchingIndicator(),
               const SizedBox(height: 20),
               Text(
-                launched ? title : 'Opening in $playerName…',
+                launched
+                    ? title
+                    : context.l10n.playerControlOpeningInPlayer(playerName),
                 style: titleStyle,
                 textAlign: TextAlign.center,
                 maxLines: 3,
@@ -231,7 +234,7 @@ class _StatusBody extends StatelessWidget {
               if (launched) ...[
                 const SizedBox(height: 8),
                 Text(
-                  'via $playerName',
+                  context.l10n.playerControlViaPlayer(playerName),
                   style: captionStyle.copyWith(
                     fontWeight: FontWeight.w500,
                     color: ForjaShellColors.iconActive,
@@ -240,7 +243,7 @@ class _StatusBody extends StatelessWidget {
                 ),
                 const SizedBox(height: 16),
                 Text(
-                  'Forja keeps the stream alive while you watch externally.',
+                  context.l10n.playerControlKeepsStreamAlive,
                   style: captionStyle,
                   textAlign: TextAlign.center,
                 ),
@@ -266,19 +269,19 @@ class _StatusBody extends StatelessWidget {
               children: [
                 _HandoffActionRow(
                   icon: Icons.refresh_rounded,
-                  label: 'Re-launch in $playerName',
+                  label: context.l10n.playerControlRelaunchInPlayer(playerName),
                   onTap: onRelaunch,
                 ),
                 if (onChangePlayer != null)
                   _HandoffActionRow(
                     icon: Icons.smart_display_outlined,
-                    label: 'Change player',
+                    label: context.l10n.playerControlChangePlayer,
                     onTap: onChangePlayer,
                     showChevron: true,
                   ),
                 _HandoffActionRow(
                   icon: Icons.play_circle_outline_rounded,
-                  label: 'Watch in Forja instead',
+                  label: context.l10n.playerControlWatchInForja,
                   onTap: onSwitchBuiltIn,
                 ),
               ],
@@ -325,7 +328,7 @@ class _PlayerPickerBody extends StatelessWidget {
             children: [
               Expanded(
                 child: Text(
-                  'Choose player',
+                  context.l10n.playerControlChoosePlayer,
                   style: GoogleFonts.plusJakartaSans(
                     color: ForjaShellColors.textPrimary,
                     fontSize: 16,
@@ -377,7 +380,7 @@ class _PlayerPickerBody extends StatelessWidget {
             padding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
             child: _HandoffActionRow(
               icon: Icons.close_rounded,
-              label: 'Cancel',
+              label: context.l10n.settingsUiCancel,
               onTap: onCancel,
             ),
           ),
@@ -427,7 +430,7 @@ class _LiveStatusBadge extends StatelessWidget {
           ),
           const SizedBox(width: 8),
           Text(
-            'Stream active',
+            context.l10n.playerControlStreamActive,
             style: GoogleFonts.plusJakartaSans(
               color: ForjaShellColors.brandGreen,
               fontSize: 12,

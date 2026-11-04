@@ -4,6 +4,8 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:forja/shared/downloads/download_guards.dart';
 import 'package:forja/shared/downloads/hls_download_engine.dart';
+import 'package:forja/shared/utils/byte_units.dart';
+import 'package:forja/shell/routing/shell_ambient_l10n.dart';
 
 /// Result of a pre-download size probe (no file write).
 class DownloadSizeProbeResult {
@@ -29,21 +31,20 @@ class DownloadSizeProbeResult {
   bool get hasSize => bytes > 0;
 
   String get sizeLabel {
-    if (!hasSize) return 'Size unknown';
+    if (!hasSize) return shellAmbientL10n.sharedDownloadsSizeUnknown;
     final formatted = _formatBytes(bytes);
     return estimated ? '~$formatted' : formatted;
   }
 
   static String _formatBytes(int bytes) {
-    if (bytes <= 0) return '0 B';
-    const suffixes = ['B', 'KB', 'MB', 'GB', 'TB'];
+    if (bytes <= 0) return ByteUnits.format(0, 0, 0);
     var i = 0;
     var count = bytes.toDouble();
-    while (count >= 1024 && i < suffixes.length - 1) {
+    while (count >= 1024 && i < ByteUnits.suffixes.length - 1) {
       count /= 1024;
       i++;
     }
-    return '${count.toStringAsFixed(i == 0 ? 0 : 2)} ${suffixes[i]}';
+    return ByteUnits.format(count, i, i == 0 ? 0 : 2);
   }
 }
 

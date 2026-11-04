@@ -1,6 +1,8 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:rust/rust.dart';
+import 'package:forja/l10n/app_localizations_en.dart';
+import 'package:forja/l10n/l10n.dart';
 import 'package:forja/shared/player/platform/android_player_launcher.dart';
 import 'package:forja/shared/player/platform/macos_external_player_launcher.dart';
 
@@ -277,6 +279,8 @@ class ExternalPlayerService {
     String? playerName,
     String? providerId,
   }) async {
+    // Read before the first await; English when the caller has no context.
+    final l10n = context?.l10n ?? AppLocalizationsEn();
     final selectedName =
         playerName ?? await SettingsService().getExternalPlayer();
     if (selectedName == 'Built-in Player') return false;
@@ -336,8 +340,8 @@ class ExternalPlayerService {
       debugPrint('[ExternalPlayer] Error launching ${player.displayName}: $e');
       if (context != null && context.mounted) {
         final hint = e is IOException || e is FileSystemException
-            ? 'Launch failed (${e.runtimeType}). See console for details.'
-            : '${player.displayName} could not be launched. Is it installed?';
+            ? l10n.playerControlLaunchFailed(e.runtimeType.toString())
+            : l10n.playerControlPlayerCouldNotLaunch(player.displayName);
         ForjaToast.error(hint);
       }
       return false;

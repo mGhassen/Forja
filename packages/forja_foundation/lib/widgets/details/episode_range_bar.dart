@@ -1,3 +1,4 @@
+import 'package:forja_foundation/l10n/foundation_strings.dart';
 import 'package:flutter/material.dart';
 import 'package:forja_foundation/components/dialog.dart';
 import 'package:forja_foundation/tokens/forja_details_tokens.dart';
@@ -167,7 +168,7 @@ class EpisodeRangeSelector extends StatelessWidget {
   Future<void> _openTvPicker(BuildContext context) async {
     final picked = await showForjaDialog<int>(
       context: context,
-      title: 'Episode range',
+      title: ForjaFoundationStrings.current.t('Episode range'),
       body: _EpisodeRangePickerBody(
         ranges: ranges,
         selectedIndex: selectedIndex,

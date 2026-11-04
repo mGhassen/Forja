@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:forja/l10n/l10n.dart';
 import 'package:forja/shared/player/controls/chrome/player_chrome_overlay.dart';
 import 'package:forja/shared/player/parental_guide/parental_guide_service.dart';
 import 'package:rust/rust.dart';
@@ -366,7 +367,9 @@ class _ParentalGuideLayerState extends State<ParentalGuideLayer> {
     if (id == null) return;
     final guide = await ParentalGuideService.instance.getParentalGuide(id);
     if (!mounted || id != extractParentalGuideImdbId(widget.imdbId)) return;
-    final warnings = guide == null ? const <ParentalWarning>[] : buildParentalWarnings(guide);
+    final warnings = guide == null
+        ? const <ParentalWarning>[]
+        : buildParentalWarnings(guide, context.l10n);
     setState(() {
       _loadedId = id;
       _warnings = warnings;

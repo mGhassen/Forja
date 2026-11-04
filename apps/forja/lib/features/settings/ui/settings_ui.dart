@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart' hide Switch;
 import 'package:flutter/services.dart';
 
+import 'package:forja/l10n/l10n.dart';
 import 'package:forja/shared/services/update/app_version.dart';
 import 'package:forja/shell/tv/shell_tv_coordinator.dart';
 import 'package:forja/shell/tv/shell_tv_focus.dart';
@@ -1221,7 +1222,7 @@ class SettingsToggleRow extends StatefulWidget {
     this.adminOnly = false,
     this.leadingCheckValue,
     this.onLeadingCheckChanged,
-    this.leadingCheckLabel = 'Auto',
+    this.leadingCheckLabel,
   });
 
   final String title;
@@ -1234,7 +1235,7 @@ class SettingsToggleRow extends StatefulWidget {
   /// Optional checkbox before the switch (e.g. Forja Auto).
   final bool? leadingCheckValue;
   final ValueChanged<bool>? onLeadingCheckChanged;
-  final String leadingCheckLabel;
+  final String? leadingCheckLabel;
 
   @override
   State<SettingsToggleRow> createState() => _SettingsToggleRowState();
@@ -1366,7 +1367,8 @@ class _SettingsToggleRowState extends State<SettingsToggleRow> {
                                 ),
                                 const SizedBox(width: 4),
                                 Text(
-                                  widget.leadingCheckLabel,
+                                  widget.leadingCheckLabel ??
+                                      context.l10n.settingsUiAuto,
                                   style: TextStyle(
                                     color: checkEnabled
                                         ? ForjaShellColors.textPrimary
@@ -2940,7 +2942,7 @@ class SettingsSidebarFooter extends StatelessWidget {
                     color: ForjaShellColors.textSecondary,
                   ),
                   children: [
-                    const TextSpan(text: 'Made with '),
+                    TextSpan(text: context.l10n.settingsUiMadeWith),
                     const WidgetSpan(
                       alignment: PlaceholderAlignment.middle,
                       child: Icon(
@@ -2949,7 +2951,7 @@ class SettingsSidebarFooter extends StatelessWidget {
                         color: _loveAccent,
                       ),
                     ),
-                    const TextSpan(text: ' by '),
+                    TextSpan(text: context.l10n.settingsUiMadeWithBy),
                     TextSpan(
                       text: 'Schmenka',
                       style: TextStyle(
@@ -3118,7 +3120,7 @@ class _SettingsConfirmDialogState extends State<_SettingsConfirmDialog> {
       ),
       actions: [
         action(
-          label: 'Cancel',
+          label: context.l10n.settingsUiCancel,
           color: ForjaShellColors.textSecondary,
           weight: FontWeight.w500,
           focus: _cancelFocus,

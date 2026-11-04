@@ -28,6 +28,7 @@ import 'package:forja/shared/engine/runtime/vm/service.dart';
 import 'package:forja/shared/services/update/app_update_auto_check.dart';
 import 'package:forja/shared/sync/sync.dart';
 import 'package:forja/shared/telemetry/product_analytics.dart';
+import 'package:forja/l10n/l10n.dart';
 import 'package:forja/shell/feedback/forja_toast.dart';
 import 'package:forja/shell/tv/shell_tv_focus.dart';
 import 'package:rust/rust.dart';
@@ -370,13 +371,17 @@ class _MainScreenState extends ConsumerState<MainScreen>
       await _completeNavbarReloadInFlight;
       return;
     }
+    final l10n = context.l10n;
     final run = () async {
       // Name the toast after the held rail item — not the selected tab.
       final tabId = ShellBus.takeCompleteNavbarReloadTabId() ?? _currentTabId;
-      final tabName = (tabId != null ? navDestinationFor(tabId)?.label : null)
+      final tabDest = tabId != null ? navDestinationFor(tabId) : null;
+      final tabName = (tabDest != null
+              ? navDestinationLabel(tabDest, l10n)
+              : null)
           ?.trim();
-      final name = (tabName != null && tabName.isNotEmpty) ? tabName : 'Navbar';
-      ForjaToast.info('Reloading $name…');
+      final name = (tabName != null && tabName.isNotEmpty) ? tabName : l10n.shellNavbarName;
+      ForjaToast.info(l10n.shellReloadingNamed(name));
       // Abort in-flight hub catalog / flutter_js forks before wipe + remount so
       // the new painter's layout is not stuck behind dead Stremio rail work
       // (blank hub after hold-to-reload).
@@ -396,7 +401,7 @@ class _MainScreenState extends ConsumerState<MainScreen>
       _ensureSelectedKitTabMounted(forceRefresh: true);
       PluginRegistry.bumpHubFeedEpoch(all: true);
       if (!mounted) return;
-      ForjaToast.success('$name reloaded');
+      ForjaToast.success(l10n.shellNamedReloaded(name));
     }();
     _completeNavbarReloadInFlight = run;
     try {
@@ -829,7 +834,9 @@ class _MainScreenState extends ConsumerState<MainScreen>
       ctx,
       pluginId: pluginId,
       tabId: tabId,
-      hintText: label == null || label.isEmpty ? 'Search…' : 'Search $label…',
+      hintText: label == null || label.isEmpty
+          ? ctx.l10n.shellSearchHint
+          : ctx.l10n.shellSearchHintNamed(label),
     );
   }
 

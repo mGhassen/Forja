@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:forja/l10n/l10n.dart';
 import 'package:forja/shared/casting/casting.dart';
 import 'package:forja/shared/downloads/download_enqueue.dart';
 import 'package:forja/shared/downloads/download_source_match.dart';
@@ -406,7 +407,8 @@ class _DesktopNativePlayerScreenState extends State<DesktopNativePlayerScreen>
     if (_failoverToMediaKitUsed || _disposed) return;
     final handler = widget.onSwitchPlayer;
     if (handler == null) {
-      if (mounted) ForjaToast.error('Could not open stream');
+      if (mounted)
+        ForjaToast.error(context.l10n.playerScreenCouldNotOpenStream);
       if (!_playbackStartedNotified) {
         widget.onAllSourcesExhausted?.call();
       }
@@ -414,7 +416,7 @@ class _DesktopNativePlayerScreenState extends State<DesktopNativePlayerScreen>
     }
     _failoverToMediaKitUsed = true;
     debugPrint('[DesktopNative] failover → MediaKit ($reason)');
-    if (mounted) ForjaToast.info('Switching to MediaKit…');
+    if (mounted) ForjaToast.info(context.l10n.playerScreenSwitchingToMediaKit);
     await handler(
       _position,
       builtInEngine: BuiltInPlayerEngine.mediaKit,
@@ -674,7 +676,7 @@ class _DesktopNativePlayerScreenState extends State<DesktopNativePlayerScreen>
       }
       if (!_escapeArmed) {
         _escapeArmed = true;
-        ForjaToast.info('Press Esc again to exit');
+        ForjaToast.info(context.l10n.playerScreenPressEscAgain);
         return KeyEventResult.handled;
       }
       unawaited(_exit());

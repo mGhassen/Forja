@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:rust/rust.dart';
+import 'package:forja/l10n/l10n.dart';
 import 'package:forja/shared/playback/open/engine_auto_play.dart';
 import 'package:forja/shared/playback/play_hooks.dart';
 import 'package:forja/shared/player/platform/external_player_service.dart';
@@ -249,6 +250,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
 
   Future<bool> _launchExternal() async {
     if (_externalPlayerName.isEmpty) return false;
+    final l10n = context.l10n;
 
     final bool success;
     try {
@@ -279,7 +281,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
     }
     // Player not found - fall back to built-in player
     ForjaToast.warning(
-      '$_externalPlayerName not found. Using built-in player.',
+      l10n.playerControlPlayerNotFound(_externalPlayerName),
     );
     setState(() {
       _useExternalPlayer = false;
@@ -332,6 +334,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
     String? activeProvider,
     List<StreamSource>? sources,
   }) async {
+    final l10n = context.l10n;
     if (resumePosition > Duration.zero) {
       _resumePosition = resumePosition;
     }
@@ -384,13 +387,13 @@ class _PlayerScreenState extends State<PlayerScreen> {
     if (builtInEngine == BuiltInPlayerEngine.vlc &&
         !await VlcPlayerBridge.isAvailable()) {
       if (mounted) {
-        ForjaToast.info('VLC (libVLC) is not installed');
+        ForjaToast.info(l10n.playerControlVlcNotInstalled);
       }
       return;
     }
     if (builtInEngine == BuiltInPlayerEngine.avPlayer &&
         !AvPlayerBridge.isSupported) {
-      if (mounted) ForjaToast.info('AVPlayer is macOS-only');
+      if (mounted) ForjaToast.info(l10n.playerControlAvPlayerMacOnly);
       return;
     }
 
@@ -402,6 +405,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
       needsWidevine: _sessionNeedsWidevine(),
       separateAudioUrl:
           widget.audioUrl != null && widget.audioUrl!.trim().isNotEmpty,
+      l10n: l10n,
     );
     if (unfit != null) {
       if (mounted) ForjaToast.info(unfit);
@@ -484,7 +488,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
                 if (_switchingBuiltInEngine) ...[
                   const SizedBox(height: 16),
                   Text(
-                    'Switching player…',
+                    context.l10n.playerControlSwitchingPlayer,
                     style: TextStyle(
                       color: ForjaShellColors.textSecondary,
                       fontSize: 14,

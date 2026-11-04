@@ -84,13 +84,42 @@ struct MatchCacheEntry {
 static MATCH_CACHE: LazyLock<Mutex<HashMap<String, MatchCacheEntry>>> =
     LazyLock::new(|| Mutex::new(HashMap::new()));
 
-fn match_cache_key(title: &str, year: Option<i64>, prefer: &str) -> String {
-    format!(
+fn match_cache_key(title: &str, year: Option<i64>, prefer: &str, language: &str) -> String {
+    let key = format!(
         "{}|{}|{}",
         title.to_ascii_lowercase(),
         year.unwrap_or(0),
         prefer
-    )
+    );
+    if language.is_empty() {
+        key
+    } else {
+        format!("{key}|{language}")
+    }
+}
+
+/// App language tag for a match request (`fr-FR`), or `""` for English, which is
+/// what TMDB answers without a `language`. Anything that is not a plain tag is
+/// dropped, so the value is safe to put in the query string.
+fn match_language(raw: &str) -> &str {
+    let tag = raw.trim();
+    let plain = !tag.is_empty()
+        && tag.len() <= 12
+        && tag.chars().all(|c| c.is_ascii_alphanumeric() || c == '-');
+    if !plain || tag.eq_ignore_ascii_case("en-US") || tag.eq_ignore_ascii_case("en") {
+        ""
+    } else {
+        tag
+    }
+}
+
+fn match_search_path(media: &str, encoded_title: &str, language: &str) -> String {
+    let mut path = format!("search/{media}?query={encoded_title}&include_adult=false");
+    if !language.is_empty() {
+        path.push_str("&language=");
+        path.push_str(language);
+    }
+    path
 }
 
 fn match_cache_get(key: &str) -> Option<String> {
@@ -129,7 +158,8 @@ fn match_cache_put(key: String, body: String) {
 /// Process-lifetime cache (30m TTL, 256 entries) so spotlight revalidate and
 /// cross-hub enrich reuse the same hit without re-searching TMDB.
 ///
-/// Request JSON: `{ "title": "...", "year": 2024, "type": "tv"|"movie"|"" }`.
+/// Request JSON: `{ "title": "...", "year": 2024, "type": "tv"|"movie"|"", "language": "fr-FR" }`.
+/// `language` is optional; without it (or with `en-US`) TMDB answers in English.
 /// Response JSON: hit object or `null`. Hit shape:
 /// `{ "id", "mediaType", "name", "year", "poster", "backdrop", "overview", "rating" }`.
 pub fn match_json(request_json: &str) -> String {
@@ -159,7 +189,9 @@ pub fn match_json(request_json: &str) -> String {
         .trim()
         .to_ascii_lowercase();
 
-    let key = match_cache_key(title, year, &prefer);
+    let language = match_language(req.get("language").and_then(|v| v.as_str()).unwrap_or(""));
+
+    let key = match_cache_key(title, year, &prefer, language);
     if let Some(cached) = match_cache_get(&key) {
         return cached;
     }
@@ -168,9 +200,9 @@ pub fn match_json(request_json: &str) -> String {
     let primary = if prefer == "movie" { "movie" } else { "tv" };
     let secondary = if primary == "movie" { "tv" } else { "movie" };
 
-    let mut hit = search_pick(primary, &encoded, year);
+    let mut hit = search_pick(primary, &encoded, year, language);
     if hit.is_none() {
-        hit = search_pick(secondary, &encoded, year);
+        hit = search_pick(secondary, &encoded, year, language);
     }
     let out = match hit {
         Some(v) => v.to_string(),
@@ -180,8 +212,13 @@ pub fn match_json(request_json: &str) -> String {
     out
 }
 
-fn search_pick(media: &str, encoded_title: &str, year: Option<i64>) -> Option<serde_json::Value> {
-    let path = format!("search/{media}?query={encoded_title}&include_adult=false");
+fn search_pick(
+    media: &str,
+    encoded_title: &str,
+    year: Option<i64>,
+    language: &str,
+) -> Option<serde_json::Value> {
+    let path = match_search_path(media, encoded_title, language);
     let body = get_json(&path, 12);
     let Ok(json) = serde_json::from_str::<serde_json::Value>(&body) else {
         return None;
@@ -384,5 +421,51 @@ mod tests {
         let b = match_json(req);
         assert_eq!(a, b);
         assert_ne!(a, "null");
+    }
+
+    #[test]
+    fn match_language_english_and_junk_add_nothing() {
+        for raw in ["", "  ", "en", "en-US", "EN-us", "fr FR", "fr-FR&x=1", "a-very-long-language-tag"] {
+            assert_eq!(match_language(raw), "", "{raw:?}");
+        }
+        assert_eq!(match_language(" fr-FR "), "fr-FR");
+    }
+
+    #[test]
+    fn match_search_path_adds_language_only_when_given() {
+        assert_eq!(
+            match_search_path("tv", "one%20piece", ""),
+            "search/tv?query=one%20piece&include_adult=false"
+        );
+        assert_eq!(
+            match_search_path("tv", "one%20piece", "fr-FR"),
+            "search/tv?query=one%20piece&include_adult=false&language=fr-FR"
+        );
+    }
+
+    #[test]
+    fn match_cache_key_separates_languages_and_keeps_english_key() {
+        let en = match_cache_key("One Piece", Some(1999), "tv", "");
+        assert_eq!(en, "one piece|1999|tv");
+        assert_ne!(en, match_cache_key("One Piece", Some(1999), "tv", "fr-FR"));
+    }
+
+    #[test]
+    fn match_json_live_language() {
+        let base = BASE_URL.trim_end_matches('/');
+        if base_needs_client_api_key(base) && API_KEY.is_empty() {
+            eprintln!("skip match_json_live_language: TMDB_API_KEY not set");
+            return;
+        }
+        let name_of = |raw: String| -> String {
+            let v: serde_json::Value = serde_json::from_str(&raw).unwrap();
+            v.get("name").and_then(|x| x.as_str()).unwrap_or("").to_string()
+        };
+        let english = name_of(match_json(r#"{"title":"The Lion King","year":1994,"type":"movie"}"#));
+        let french = name_of(match_json(
+            r#"{"title":"The Lion King","year":1994,"type":"movie","language":"fr-FR"}"#,
+        ));
+        assert_eq!(english, "The Lion King");
+        assert_eq!(french, "Le Roi lion");
     }
 }

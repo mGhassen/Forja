@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:forja/l10n/l10n.dart';
 import 'package:forja/shared/player/controls/chrome/player_chrome_overlay.dart';
 import 'package:forja/shared/theme/app_theme.dart';
 import 'package:forja_foundation/tokens/forja_shell_colors.dart';
@@ -289,7 +290,7 @@ class _PlayerNextEpisodeChipState extends State<PlayerNextEpisodeChip>
               const SizedBox(width: 10),
             ],
             Text(
-              'Next Episode',
+              context.l10n.playerControlNextEpisode,
               style: TextStyle(
                 color: fg,
                 fontSize: playerChromeTypeSize(

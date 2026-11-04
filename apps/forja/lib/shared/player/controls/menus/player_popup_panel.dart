@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 
+import 'package:forja/l10n/l10n.dart';
 import 'package:forja/shared/navigation/shell_back_icon_button.dart';
 import 'package:forja/shared/player/controls/menus/player_menu_return_focus.dart';
 import 'package:forja/shared/player/controls/chrome/player_seek_scrub_cancel.dart';
@@ -717,7 +718,7 @@ class _PanelShellState extends State<_PanelShell> {
                                             PlayerPopupTokens.chromeIconSizeOf(
                                           context,
                                         ),
-                                        tooltip: 'Back',
+                                        tooltip: context.l10n.playerControlBack,
                                         onTap: widget.onBack,
                                       )
                                     else if (widget.leadingIcon != null)
@@ -759,7 +760,7 @@ class _PanelShellState extends State<_PanelShell> {
                                     ],
                                     PlayerPopupChromeButton(
                                       icon: Icons.close_rounded,
-                                      tooltip: 'Close',
+                                      tooltip: context.l10n.settingsUiClose,
                                       onTap: widget.onClose,
                                       focusNode: _closeFocus,
                                       autoFocus: closeAutoFocus,
@@ -1801,9 +1802,11 @@ class _PlayerPopupListTileState extends State<PlayerPopupListTile> {
                         padding: const EdgeInsets.only(top: 2),
                         child: Text(
                           switch (widget.status!) {
-                            PlayerSourceStatus.active => 'Playing',
-                            PlayerSourceStatus.failed => 'Unavailable',
-                            PlayerSourceStatus.checking => 'Checking…',
+                            PlayerSourceStatus.active => context.l10n.playerControlStatusPlaying,
+                            PlayerSourceStatus.failed =>
+                              context.l10n.playerControlStatusUnavailable,
+                            PlayerSourceStatus.checking =>
+                              context.l10n.playerControlStatusChecking,
                             PlayerSourceStatus.ready ||
                             PlayerSourceStatus.unchecked => '',
                           },

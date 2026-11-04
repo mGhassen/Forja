@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart' hide Switch;
 import 'package:flutter/services.dart';
 
+import 'package:forja/l10n/l10n.dart';
 import 'package:forja/shared/player/controls/menus/player_menu_return_focus.dart';
 import 'package:forja/shared/player/controls/menus/player_popup_panel.dart';
 import 'package:forja/shared/player/controls/chrome/player_seek_scrub_cancel.dart';
@@ -235,7 +236,7 @@ class _SubtitleSettingsOverlayState extends State<_SubtitleSettingsOverlay> {
                       SizedBox(width: _subChrome(context, 8)),
                       Expanded(
                         child: Text(
-                          'Subtitle Settings',
+                          context.l10n.playerControlSubtitleSettingsTitle,
                           style: TextStyle(
                             color: Colors.white,
                             fontSize: _subType(context, 16),
@@ -265,7 +266,7 @@ class _SubtitleSettingsOverlayState extends State<_SubtitleSettingsOverlay> {
                         sortOrder: 0,
                         itemCount: 1,
                         child: _SubSlider(
-                          label: 'Size',
+                          label: context.l10n.playerControlSubSize,
                           value: _values.size,
                           min: 10,
                           max: 80,
@@ -317,7 +318,7 @@ class _SubtitleSettingsOverlayState extends State<_SubtitleSettingsOverlay> {
                       ),
                       SizedBox(height: _subChrome(context, 12)),
                       Text(
-                        'Text Color',
+                        context.l10n.playerControlSubTextColor,
                         style: TextStyle(
                           color: Colors.white70,
                           fontSize: _subType(context, 13),
@@ -374,7 +375,7 @@ class _SubtitleSettingsOverlayState extends State<_SubtitleSettingsOverlay> {
                         sortOrder: 3,
                         itemCount: 1,
                         child: _SubSlider(
-                          label: 'BG Opacity',
+                          label: context.l10n.playerControlSubBgOpacity,
                           value: _values.bgOpacity,
                           min: 0,
                           max: 1,
@@ -402,7 +403,7 @@ class _SubtitleSettingsOverlayState extends State<_SubtitleSettingsOverlay> {
                         sortOrder: 4,
                         itemCount: 1,
                         child: _SubSlider(
-                          label: 'Position',
+                          label: context.l10n.playerControlSubPosition,
                           value: _values.bottomPadding,
                           min: 0,
                           max: 120,
@@ -447,7 +448,7 @@ class _SubtitleSettingsOverlayState extends State<_SubtitleSettingsOverlay> {
                       ),
                       SizedBox(height: _subChrome(context, 8)),
                       Text(
-                        'Font',
+                        context.l10n.playerControlSubFont,
                         style: TextStyle(
                           color: Colors.white70,
                           fontSize: _subType(context, 13),
@@ -827,7 +828,7 @@ class _DelayRow extends StatelessWidget {
     return Row(
       children: [
         Text(
-          'Delay',
+          context.l10n.playerControlSubDelay,
           style: TextStyle(
             color: Colors.white70,
             fontSize: _subType(context, 13),
@@ -935,7 +936,9 @@ class _DelayBumpButtonState extends State<_DelayBumpButton> {
           ),
         ),
         visualDensity: VisualDensity.compact,
-        tooltip: widget.icon == Icons.add ? 'Increase delay' : 'Decrease delay',
+        tooltip: widget.icon == Icons.add
+            ? context.l10n.playerControlSubIncreaseDelay
+            : context.l10n.playerControlSubDecreaseDelay,
         onPressed: () => widget.onStep(1),
       );
     }
@@ -1012,7 +1015,7 @@ class _BoldRow extends StatelessWidget {
     final row = Row(
       children: [
         Text(
-          'Bold',
+          context.l10n.playerControlSubBold,
           style: TextStyle(
             color: Colors.white70,
             fontSize: _subType(context, 13),

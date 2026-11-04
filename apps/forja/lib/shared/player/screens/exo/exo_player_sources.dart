@@ -78,7 +78,7 @@ mixin _ExoPlayerSources on ConsumerState<ExoPlayerScreen> {
       return (label: provider, server: null);
     }
     if (sourceTitle != null) return splitSourceButtonLines(sourceTitle);
-    return (label: 'Sources', server: null);
+    return (label: context.l10n.playerScreenSources, server: null);
   }
 
   ({String label, String? server}) _catalogSourcesButtonLabels() {
@@ -149,6 +149,7 @@ mixin _ExoPlayerSources on ConsumerState<ExoPlayerScreen> {
     String providerId, {
     bool forceRefresh = false,
   }) async {
+    final l10n = context.l10n;
     if (!forceRefresh) {
       final cached = _s._providerSourcesCache.value[providerId];
       if (cached != null && cached.isNotEmpty) return cached;
@@ -194,7 +195,7 @@ mixin _ExoPlayerSources on ConsumerState<ExoPlayerScreen> {
         if (hit.providerId.isNotEmpty && hit.providerId != providerId) {
           _s.ref
               .read(playerResolveStatusProvider.notifier)
-              .setError('No streams found');
+              .setError(l10n.playerScreenNoStreamsFound);
           return null;
         }
         final sources = sourcesOwnedByProvider(
@@ -204,7 +205,7 @@ mixin _ExoPlayerSources on ConsumerState<ExoPlayerScreen> {
         if (sources.isEmpty) {
           _s.ref
               .read(playerResolveStatusProvider.notifier)
-              .setError('No streams found');
+              .setError(l10n.playerScreenNoStreamsFound);
           return null;
         }
         _s._providerSourcesCache.value = {
@@ -221,13 +222,13 @@ mixin _ExoPlayerSources on ConsumerState<ExoPlayerScreen> {
       }
       _s.ref
           .read(playerResolveStatusProvider.notifier)
-          .setError('No streams found');
+          .setError(l10n.playerScreenNoStreamsFound);
       return null;
     } catch (_) {
       if (!_s._disposed && (_s._providerLoadGens[providerId] ?? 0) == gen) {
         _s.ref
             .read(playerResolveStatusProvider.notifier)
-            .setError('Failed to load sources');
+            .setError(l10n.playerScreenFailedToLoadSources);
       }
       return null;
     }
@@ -273,7 +274,9 @@ mixin _ExoPlayerSources on ConsumerState<ExoPlayerScreen> {
     });
     final resumeAt = _s._position;
     final statusId = 'source-switch-$index';
-    final label = source.title.trim().isEmpty ? 'Stream' : source.title;
+    final label = source.title.trim().isEmpty
+        ? context.l10n.playerScreenStream
+        : source.title;
     _s._statusController.clear();
     _s._statusController.upsert(
       statusId,
@@ -491,8 +494,11 @@ mixin _ExoPlayerSources on ConsumerState<ExoPlayerScreen> {
       return;
     }
 
-    final title = (stream['title'] ?? stream['name'] ?? 'Stremio stream')
-        .toString();
+    final title =
+        (stream['title'] ??
+                stream['name'] ??
+                context.l10n.playerScreenStremioStream)
+            .toString();
     final switchGen = ++_s._fallbackGen;
     _s._opening = true;
     final pick = catalogPanelSelectionFromStream(stream);
@@ -638,6 +644,7 @@ mixin _ExoPlayerSources on ConsumerState<ExoPlayerScreen> {
 
   Future<void> _switchStremioMagnetSource(Map<String, dynamic> stream) async {
     if (!mounted) return;
+    final l10n = context.l10n;
     if (!await ensureLanP2pPlayback(context)) {
       return;
     }
@@ -697,7 +704,7 @@ mixin _ExoPlayerSources on ConsumerState<ExoPlayerScreen> {
         final msg =
             resolved is StremioResolveFailure && resolved.message.isNotEmpty
             ? resolved.message
-            : 'Failed to resolve stream';
+            : l10n.playerScreenFailedToResolveStream;
         debugPrint(
           '[ExoPlayer] ${catalogStreamKindLabel(stream)} switch failed: $msg',
         );
@@ -707,7 +714,7 @@ mixin _ExoPlayerSources on ConsumerState<ExoPlayerScreen> {
         return;
       }
 
-      session.messageNotifier.value = 'Opening stream…';
+      session.messageNotifier.value = l10n.playerScreenOpeningStream;
       TorrentStreamService().retainForExternalHandoff = true;
 
       final season = widget.selectedSeason;
@@ -751,12 +758,13 @@ mixin _ExoPlayerSources on ConsumerState<ExoPlayerScreen> {
       );
       dismissStreamLoading(session);
       finishStreamLoadingSession(session);
-      if (mounted) ForjaToast.info('Failed to resolve stream');
+      if (mounted) ForjaToast.info(l10n.playerScreenFailedToResolveStream);
     }
   }
 
   Future<void> _switchTorrentSource(TorrentResult result) async {
     if (!mounted) return;
+    final l10n = context.l10n;
     if (!await ensureLanP2pPlayback(context)) {
       return;
     }
@@ -810,11 +818,13 @@ mixin _ExoPlayerSources on ConsumerState<ExoPlayerScreen> {
       if (playback == null || playback.url.isEmpty) {
         dismissStreamLoading(session);
         finishStreamLoadingSession(session);
-        if (mounted) ForjaToast.info('Torrent stream failed to start');
+        if (mounted) {
+          ForjaToast.info(l10n.playerScreenTorrentStreamFailedToStart);
+        }
         return;
       }
 
-      session.messageNotifier.value = 'Opening stream…';
+      session.messageNotifier.value = l10n.playerScreenOpeningStream;
       TorrentStreamService().retainForExternalHandoff = true;
 
       final season = widget.selectedSeason;
@@ -853,7 +863,7 @@ mixin _ExoPlayerSources on ConsumerState<ExoPlayerScreen> {
       debugPrint('[ExoPlayer] Torrent switch failed: $e');
       dismissStreamLoading(session);
       finishStreamLoadingSession(session);
-      if (mounted) ForjaToast.info('Torrent stream failed to start');
+      if (mounted) ForjaToast.info(l10n.playerScreenTorrentStreamFailedToStart);
     }
   }
 
@@ -901,6 +911,7 @@ mixin _ExoPlayerSources on ConsumerState<ExoPlayerScreen> {
 
   Future<void> _showSourcesDialog(BuildContext anchorContext) async {
     if (!_hasStreamPickerSources) return;
+    final l10n = context.l10n;
     final bottom = MediaQuery.paddingOf(context).bottom + 76;
     await PlayerStreamMenu.show(
       context,
@@ -955,6 +966,7 @@ mixin _ExoPlayerSources on ConsumerState<ExoPlayerScreen> {
             PlayerProviderMenu.unavailableMessage(
               providerId,
               widget.providers?[providerId],
+              l10n,
             ),
             duration: const Duration(seconds: 2),
           );

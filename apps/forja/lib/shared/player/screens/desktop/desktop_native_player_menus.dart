@@ -425,7 +425,7 @@ mixin _DesktopNativeMenus on State<DesktopNativePlayerScreen> {
     } catch (e) {
       debugPrint('[DesktopNative] episode switch failed: $e');
       if (mounted) {
-        ForjaToast.error('Could not open episode');
+        ForjaToast.error(context.l10n.playerSourceOpenEpisodeFailed);
         setState(() => _n._loadingNextEp = false);
       }
     }
@@ -488,7 +488,7 @@ mixin _DesktopNativeMenus on State<DesktopNativePlayerScreen> {
     final torrent =
         isLocalTorrentStreamUrl(url) || url.toLowerCase().startsWith('magnet:');
     if (torrent && target != BuiltInPlayerEngine.mediaKit) {
-      ForjaToast.info('Torrents need MediaKit for now');
+      ForjaToast.info(context.l10n.playerScreenTorrentsNeedMediaKit);
       await handler(
         _n._position,
         builtInEngine: BuiltInPlayerEngine.mediaKit,
@@ -546,7 +546,7 @@ mixin _DesktopNativeMenus on State<DesktopNativePlayerScreen> {
           : null,
       animeAudioCategory: session?.audioCategory,
       onTorrentSelected: (result) async {
-        ForjaToast.info('Torrents need MediaKit for now');
+        ForjaToast.info(context.l10n.playerScreenTorrentsNeedMediaKit);
         await _n._remountPlayable(
           url: result.magnet,
           providerId: 'torrent',
@@ -575,7 +575,7 @@ mixin _DesktopNativeMenus on State<DesktopNativePlayerScreen> {
       return;
     }
     if (precheck == null) {
-      ForjaToast.info('Torrents need MediaKit for now');
+      ForjaToast.info(context.l10n.playerScreenTorrentsNeedMediaKit);
       final magnet =
           stream['infoHash']?.toString() ?? stream['url']?.toString() ?? '';
       if (magnet.isNotEmpty) {
@@ -600,7 +600,7 @@ mixin _DesktopNativeMenus on State<DesktopNativePlayerScreen> {
     if (resolved is! StremioPlayable) {
       final msg = resolved is StremioResolveFailure
           ? resolved.message
-          : 'Failed to resolve stream';
+          : context.l10n.playerScreenFailedToResolveStream;
       ForjaToast.info(msg);
       return;
     }
@@ -799,14 +799,14 @@ mixin _DesktopNativeMenus on State<DesktopNativePlayerScreen> {
       return [
         PlayerSettingsEntry(
           icon: Icons.auto_awesome_rounded,
-          title: 'Auto selection',
-          subtitle: 'Servers, tracks, skip intro',
+          title: context.l10n.playerScreenAutoSelection,
+          subtitle: context.l10n.playerScreenAutoSelectionSubtitle,
           pageBuilder: (_) => StatefulBuilder(
             builder: (context, setPage) => Column(
               children: [
                 if (hasProviders) ...[
                   PlayerPopupToggleRow(
-                    label: 'Auto server',
+                    label: context.l10n.playerScreenAutoServer,
                     value: !_n._providerPinned,
                     onChanged: (on) async {
                       final settings = SettingsService();
@@ -824,7 +824,7 @@ mixin _DesktopNativeMenus on State<DesktopNativePlayerScreen> {
                 ],
                 if (hasSources) ...[
                   PlayerPopupToggleRow(
-                    label: 'Auto source',
+                    label: context.l10n.playerScreenAutoSource,
                     value: !_n._sourcePinned,
                     onChanged: (on) async {
                       final settings = SettingsService();
@@ -841,9 +841,11 @@ mixin _DesktopNativeMenus on State<DesktopNativePlayerScreen> {
                   const SizedBox(height: 12),
                 ],
                 PlayerPopupToggleRow(
-                  label: 'Auto audio',
+                  label: context.l10n.playerScreenAutoAudio,
                   value: !_n._audioPinned,
                   onChanged: (on) async {
+                    final notice =
+                        context.l10n.playerScreenAutoAudioNeedsMediaKitOrExo;
                     final settings = SettingsService();
                     if (on) {
                       await settings.setPlayerAutoAudio(true);
@@ -853,16 +855,16 @@ mixin _DesktopNativeMenus on State<DesktopNativePlayerScreen> {
                       setState(() => _n._audioPinned = true);
                     }
                     setPage(() {});
-                    ForjaToast.info(
-                      'Auto audio track needs MediaKit or Exo for now',
-                    );
+                    ForjaToast.info(notice);
                   },
                 ),
                 const SizedBox(height: 12),
                 PlayerPopupToggleRow(
-                  label: 'Auto subtitles',
+                  label: context.l10n.playerScreenAutoSubtitles,
                   value: !_n._subtitlePinned,
                   onChanged: (on) async {
+                    final notice =
+                        context.l10n.playerScreenAutoSubtitlesNeedMediaKitOrExo;
                     final settings = SettingsService();
                     if (on) {
                       await settings.setPlayerAutoSubtitle(true);
@@ -872,14 +874,12 @@ mixin _DesktopNativeMenus on State<DesktopNativePlayerScreen> {
                       setState(() => _n._subtitlePinned = true);
                     }
                     setPage(() {});
-                    ForjaToast.info(
-                      'Auto subtitles need MediaKit or Exo for now',
-                    );
+                    ForjaToast.info(notice);
                   },
                 ),
                 const SizedBox(height: 12),
                 PlayerPopupToggleRow(
-                  label: 'Auto skip intro',
+                  label: context.l10n.playerScreenAutoSkipIntro,
                   value: SettingsService.autoSkipIntroNotifier.value,
                   onChanged: (on) async {
                     await SettingsService().setAutoSkipIntro(on);
@@ -889,7 +889,7 @@ mixin _DesktopNativeMenus on State<DesktopNativePlayerScreen> {
                 ),
                 const SizedBox(height: 12),
                 PlayerPopupToggleRow(
-                  label: 'Auto next episode',
+                  label: context.l10n.playerScreenAutoNextEpisode,
                   value: SettingsService.autoNextEpisodeNotifier.value,
                   onChanged: (on) async {
                     await SettingsService().setAutoNextEpisode(on);
@@ -903,8 +903,8 @@ mixin _DesktopNativeMenus on State<DesktopNativePlayerScreen> {
         ),
         PlayerSettingsEntry(
           icon: Icons.aspect_ratio_rounded,
-          title: 'Aspect ratio',
-          subtitle: 'Fit video in the frame',
+          title: context.l10n.playerScreenAspectRatio,
+          subtitle: context.l10n.playerScreenAspectRatioSubtitle,
           value: fitLabel(),
           pageBuilder: (_) => StatefulBuilder(
             builder: (context, setPage) => playerPopupChipRow([

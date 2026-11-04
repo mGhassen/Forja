@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:forja/l10n/l10n.dart';
 import 'package:forja/shared/playback/sources/stremio_external_link.dart';
 import 'package:forja/shared/playback/probe/stream_drm_platform.dart';
 import 'package:forja/shell/routing/app_router.dart';
@@ -318,12 +319,12 @@ Future<void> resumePlaybackFromHistory(
         );
         return;
       default:
-        ForjaToast.error('Failed to load video');
+        ForjaToast.error(context.l10n.sharedPlaybackFailedLoadVideo);
     }
   } catch (e) {
     debugPrint('[Resume] Error: $e');
     if (context.mounted) {
-      ForjaToast.error('Error: $e');
+      ForjaToast.error(context.l10n.sharedPlaybackErrorWith('$e'));
     }
   }
 }
