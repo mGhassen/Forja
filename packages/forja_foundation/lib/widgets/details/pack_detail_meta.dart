@@ -165,6 +165,35 @@ List<KitDetailRailSection> parseKitDetailRails(Map<String, dynamic>? data) {
   return out;
 }
 
+/// Reads `data.seasonPosters` from a catalog `details` envelope.
+///
+/// ```json
+/// "seasonPosters": { "1": "https://…/w500/…", "2": "https://…" }
+/// ```
+///
+/// Absolute http(s) URLs only — relative TMDB paths are ignored (packs must
+/// resolve via their image base). Franchise `data.seasons[].poster` stays
+/// separate ([parseKitDetailSeasons]).
+Map<int, String> parseKitDetailSeasonPosters(Map<String, dynamic>? data) {
+  final raw = data?['seasonPosters'];
+  if (raw is! Map) return const {};
+
+  final out = <int, String>{};
+  for (final entry in raw.entries) {
+    final number =
+        int.tryParse(entry.key.toString().trim()) ??
+        (entry.key is num ? (entry.key as num).toInt() : null);
+    if (number == null || number <= 0) continue;
+    final poster = resolveAbsoluteCoverUrl(entry.value.toString().trim());
+    if (poster.isEmpty) continue;
+    if (!(poster.startsWith('http://') || poster.startsWith('https://'))) {
+      continue;
+    }
+    out[number] = poster;
+  }
+  return out;
+}
+
 /// Reads `data.seasons` from a catalog `details` envelope.
 List<KitDetailSeasonLink> parseKitDetailSeasons(Map<String, dynamic>? data) {
   final raw = data?['seasons'];

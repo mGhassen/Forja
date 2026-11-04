@@ -160,6 +160,136 @@ const Map<String, _AvatarPalette> _avatarPalettes = {
     Color(0xFFFB7185),
     Color(0xFF67E8F9),
   ),
+  'invader': _AvatarPalette(
+    Color(0xFF0B1026),
+    Color(0xFF4ADE80),
+    Color(0xFFFACC15),
+  ),
+  'ghost': _AvatarPalette(
+    Color(0xFF1E1B4B),
+    Color(0xFFFDA4AF),
+    Color(0xFF67E8F9),
+  ),
+  'knight': _AvatarPalette(
+    Color(0xFF1F2937),
+    Color(0xFFCBD5E1),
+    Color(0xFFFACC15),
+  ),
+  'wizard': _AvatarPalette(
+    Color(0xFF2E1065),
+    Color(0xFFE9D5FF),
+    Color(0xFFFACC15),
+  ),
+  'toad': _AvatarPalette(
+    Color(0xFF14532D),
+    Color(0xFFFECACA),
+    Color(0xFFEF4444),
+  ),
+  'heartbit': _AvatarPalette(
+    Color(0xFF4C0519),
+    Color(0xFFFB7185),
+    Color(0xFFFEF3C7),
+  ),
+  'boombox': _AvatarPalette(
+    Color(0xFF1C1917),
+    Color(0xFFF97316),
+    Color(0xFF22D3EE),
+  ),
+  'chip': _AvatarPalette(
+    Color(0xFF052E16),
+    Color(0xFF86EFAC),
+    Color(0xFFA3E635),
+  ),
+  'wolf': _AvatarPalette(
+    Color(0xFF1C1917),
+    Color(0xFFA8A29E),
+    Color(0xFFFACC15),
+  ),
+  'bear': _AvatarPalette(
+    Color(0xFF44403C),
+    Color(0xFFD6D3D1),
+    Color(0xFF292524),
+  ),
+  'penguin': _AvatarPalette(
+    Color(0xFF0C4A6E),
+    Color(0xFFF8FAFC),
+    Color(0xFFF97316),
+  ),
+  'frog': _AvatarPalette(
+    Color(0xFF14532D),
+    Color(0xFF4ADE80),
+    Color(0xFFFACC15),
+  ),
+  'lion': _AvatarPalette(
+    Color(0xFF9A3412),
+    Color(0xFFFDBA74),
+    Color(0xFFFACC15),
+  ),
+  'bee': _AvatarPalette(
+    Color(0xFF1E3A8A),
+    Color(0xFFFACC15),
+    Color(0xFF111827),
+  ),
+  'elf': _AvatarPalette(
+    Color(0xFF064E3B),
+    Color(0xFFFDE68A),
+    Color(0xFF67E8F9),
+  ),
+  'orc': _AvatarPalette(
+    Color(0xFF365314),
+    Color(0xFFA3E635),
+    Color(0xFF431407),
+  ),
+  'fairy': _AvatarPalette(
+    Color(0xFF831843),
+    Color(0xFFFBCFE8),
+    Color(0xFFA78BFA),
+  ),
+  'golem': _AvatarPalette(
+    Color(0xFF292524),
+    Color(0xFFA8A29E),
+    Color(0xFF22D3EE),
+  ),
+  'phoenix': _AvatarPalette(
+    Color(0xFF7C2D12),
+    Color(0xFFFBBF24),
+    Color(0xFFEF4444),
+  ),
+  'mermaid': _AvatarPalette(
+    Color(0xFF164E63),
+    Color(0xFFFBCFE8),
+    Color(0xFF22D3EE),
+  ),
+  'cyborg': _AvatarPalette(
+    Color(0xFF111827),
+    Color(0xFF94A3B8),
+    Color(0xFF22D3EE),
+  ),
+  'hacker': _AvatarPalette(
+    Color(0xFF052E16),
+    Color(0xFF4ADE80),
+    Color(0xFF14532D),
+  ),
+  'drone': _AvatarPalette(
+    Color(0xFF0F172A),
+    Color(0xFF38BDF8),
+    Color(0xFFF43F5E),
+  ),
+  'matrix': _AvatarPalette(
+    Color(0xFF022C22),
+    Color(0xFF22C55E),
+    Color(0xFF86EFAC),
+  ),
+  'laser': _AvatarPalette(
+    Color(0xFF1E1B4B),
+    Color(0xFFF472B6),
+    Color(0xFF22D3EE),
+  ),
+  'android': _AvatarPalette(
+    Color(0xFF1E293B),
+    Color(0xFFA3E635),
+    Color(0xFF38BDF8),
+  ),
 };
 
 String _hex(Color color) =>
@@ -198,6 +328,402 @@ String _avatarSvg(String rawKey) {
   <rect x="70" y="18" width="20" height="16" fill="#ded7ff"/><rect x="76" y="7" width="8" height="15" fill="#ded7ff"/>
   <rect x="43" y="111" width="18" height="8" fill="#7c3aed"/><rect x="70" y="111" width="18" height="8" fill="#7c3aed"/><rect x="97" y="111" width="18" height="8" fill="#7c3aed"/>
 </svg>''';
+    case 'arcade':
+      return '''
+<svg viewBox="0 0 160 160" xmlns="http://www.w3.org/2000/svg" shape-rendering="crispEdges">
+  <rect width="160" height="160" fill="#172554"/>
+  <rect x="28" y="16" width="104" height="128" fill="#0f172a"/>
+  <rect x="36" y="24" width="88" height="56" fill="#22d3ee"/>
+  <rect x="44" y="32" width="72" height="40" fill="#082f49"/>
+  <rect x="56" y="40" width="12" height="12" fill="#f472b6"/>
+  <rect x="92" y="40" width="12" height="12" fill="#f472b6"/>
+  <rect x="64" y="60" width="32" height="6" fill="#facc15"/>
+  <rect x="44" y="92" width="28" height="10" fill="#334155"/>
+  <rect x="88" y="88" width="16" height="16" rx="8" fill="#ef4444"/>
+  <rect x="92" y="92" width="8" height="8" fill="#fecaca"/>
+  <rect x="48" y="112" width="12" height="12" fill="#22d3ee"/>
+  <rect x="68" y="112" width="12" height="12" fill="#f472b6"/>
+  <rect x="88" y="112" width="12" height="12" fill="#facc15"/>
+  <rect x="108" y="112" width="12" height="12" fill="#a3e635"/>
+</svg>''';
+    case 'cassette':
+      return '''
+<svg viewBox="0 0 160 160" xmlns="http://www.w3.org/2000/svg" shape-rendering="crispEdges">
+  <rect width="160" height="160" fill="#f59e0b"/>
+  <rect x="20" y="36" width="120" height="88" fill="#292524"/>
+  <rect x="28" y="44" width="104" height="56" fill="#fef3c7"/>
+  <rect x="40" y="56" width="28" height="28" fill="#292524"/>
+  <rect x="92" y="56" width="28" height="28" fill="#292524"/>
+  <rect x="48" y="64" width="12" height="12" fill="#22d3ee"/>
+  <rect x="100" y="64" width="12" height="12" fill="#22d3ee"/>
+  <rect x="72" y="62" width="16" height="16" fill="#f59e0b"/>
+  <rect x="44" y="108" width="72" height="8" fill="#78716c"/>
+  <rect x="52" y="24" width="16" height="12" fill="#292524"/>
+  <rect x="92" y="24" width="16" height="12" fill="#292524"/>
+</svg>''';
+    case 'glitch':
+      return '''
+<svg viewBox="0 0 160 160" xmlns="http://www.w3.org/2000/svg" shape-rendering="crispEdges">
+  <rect width="160" height="160" fill="#111827"/>
+  <rect x="34" y="28" width="92" height="104" fill="#ef4444"/>
+  <rect x="30" y="32" width="92" height="104" fill="#22d3ee"/>
+  <rect x="38" y="36" width="84" height="92" fill="#1f2937"/>
+  <rect x="50" y="56" width="16" height="16" fill="#ef4444"/>
+  <rect x="94" y="56" width="16" height="16" fill="#22d3ee"/>
+  <rect x="48" y="84" width="64" height="8" fill="#f8fafc"/>
+  <rect x="56" y="96" width="48" height="8" fill="#a3e635"/>
+  <rect x="20" y="48" width="12" height="4" fill="#ef4444"/>
+  <rect x="128" y="72" width="16" height="4" fill="#22d3ee"/>
+  <rect x="16" y="100" width="20" height="4" fill="#a3e635"/>
+</svg>''';
+    case 'neon':
+      return '''
+<svg viewBox="0 0 160 160" xmlns="http://www.w3.org/2000/svg" shape-rendering="crispEdges">
+  <rect width="160" height="160" fill="#4a044e"/>
+  <rect x="36" y="28" width="88" height="104" fill="#701a75"/>
+  <rect x="44" y="36" width="72" height="72" fill="#2e1065"/>
+  <rect x="52" y="52" width="16" height="16" fill="#a3e635"/>
+  <rect x="92" y="52" width="16" height="16" fill="#a3e635"/>
+  <rect x="56" y="56" width="8" height="8" fill="#4a044e"/>
+  <rect x="96" y="56" width="8" height="8" fill="#4a044e"/>
+  <rect x="60" y="84" width="40" height="8" fill="#f0abfc"/>
+  <rect x="40" y="116" width="80" height="8" fill="#f0abfc"/>
+  <rect x="72" y="16" width="16" height="12" fill="#a3e635"/>
+  <rect x="24" y="40" width="8" height="8" fill="#f0abfc"/>
+  <rect x="128" y="64" width="8" height="8" fill="#a3e635"/>
+</svg>''';
+    case 'synth':
+      return '''
+<svg viewBox="0 0 160 160" xmlns="http://www.w3.org/2000/svg" shape-rendering="crispEdges">
+  <rect width="160" height="160" fill="#312e81"/>
+  <rect x="0" y="104" width="160" height="8" fill="#fb7185"/>
+  <rect x="0" y="112" width="160" height="8" fill="#f97316"/>
+  <rect x="0" y="120" width="160" height="8" fill="#facc15"/>
+  <rect x="0" y="128" width="160" height="8" fill="#67e8f9"/>
+  <rect x="40" y="28" width="80" height="72" fill="#fde68a"/>
+  <rect x="36" y="52" width="88" height="20" fill="#111827"/>
+  <rect x="48" y="56" width="24" height="12" fill="#67e8f9"/>
+  <rect x="88" y="56" width="24" height="12" fill="#fb7185"/>
+  <rect x="64" y="80" width="32" height="8" fill="#831843"/>
+  <rect x="52" y="16" width="56" height="16" fill="#1e1b4b"/>
+</svg>''';
+    case 'invader':
+      return '''
+<svg viewBox="0 0 160 160" xmlns="http://www.w3.org/2000/svg" shape-rendering="crispEdges">
+  <rect width="160" height="160" fill="#0b1026"/>
+  <rect x="20" y="20" width="8" height="8" fill="#4ade80"/><rect x="132" y="36" width="8" height="8" fill="#facc15"/>
+  <rect x="48" y="28" width="8" height="8" fill="#4ade80"/><rect x="104" y="28" width="8" height="8" fill="#4ade80"/>
+  <rect x="40" y="36" width="8" height="8" fill="#4ade80"/><rect x="48" y="36" width="64" height="8" fill="#4ade80"/><rect x="112" y="36" width="8" height="8" fill="#4ade80"/>
+  <rect x="32" y="44" width="96" height="8" fill="#4ade80"/>
+  <rect x="32" y="52" width="24" height="8" fill="#4ade80"/><rect x="64" y="52" width="32" height="8" fill="#4ade80"/><rect x="104" y="52" width="24" height="8" fill="#4ade80"/>
+  <rect x="32" y="60" width="96" height="8" fill="#4ade80"/>
+  <rect x="48" y="56" width="16" height="8" fill="#0b1026"/><rect x="96" y="56" width="16" height="8" fill="#0b1026"/>
+  <rect x="40" y="68" width="16" height="8" fill="#4ade80"/><rect x="72" y="68" width="16" height="8" fill="#4ade80"/><rect x="104" y="68" width="16" height="8" fill="#4ade80"/>
+  <rect x="32" y="76" width="8" height="8" fill="#4ade80"/><rect x="120" y="76" width="8" height="8" fill="#4ade80"/>
+  <rect x="64" y="84" width="8" height="8" fill="#facc15"/><rect x="88" y="84" width="8" height="8" fill="#facc15"/>
+</svg>''';
+    case 'ghost':
+      return '''
+<svg viewBox="0 0 160 160" xmlns="http://www.w3.org/2000/svg" shape-rendering="crispEdges">
+  <rect width="160" height="160" fill="#1e1b4b"/>
+  <rect x="48" y="28" width="64" height="8" fill="#fda4af"/>
+  <rect x="40" y="36" width="80" height="8" fill="#fda4af"/>
+  <rect x="32" y="44" width="96" height="64" fill="#fda4af"/>
+  <rect x="32" y="108" width="16" height="16" fill="#fda4af"/><rect x="56" y="108" width="16" height="16" fill="#fda4af"/>
+  <rect x="80" y="108" width="16" height="16" fill="#fda4af"/><rect x="104" y="108" width="16" height="16" fill="#fda4af"/>
+  <rect x="48" y="60" width="16" height="20" fill="#67e8f9"/><rect x="96" y="60" width="16" height="20" fill="#67e8f9"/>
+  <rect x="52" y="64" width="8" height="8" fill="#1e1b4b"/><rect x="100" y="64" width="8" height="8" fill="#1e1b4b"/>
+  <rect x="72" y="88" width="16" height="8" fill="#fb7185"/>
+</svg>''';
+    case 'knight':
+      return '''
+<svg viewBox="0 0 160 160" xmlns="http://www.w3.org/2000/svg" shape-rendering="crispEdges">
+  <rect width="160" height="160" fill="#1f2937"/>
+  <rect x="56" y="16" width="48" height="12" fill="#facc15"/>
+  <rect x="64" y="8" width="32" height="8" fill="#facc15"/>
+  <rect x="40" y="28" width="80" height="88" fill="#cbd5e1"/>
+  <rect x="48" y="36" width="64" height="64" fill="#94a3b8"/>
+  <rect x="40" y="60" width="80" height="16" fill="#0f172a"/>
+  <rect x="52" y="64" width="20" height="8" fill="#38bdf8"/><rect x="88" y="64" width="20" height="8" fill="#38bdf8"/>
+  <rect x="68" y="88" width="24" height="8" fill="#1f2937"/>
+  <rect x="32" y="116" width="96" height="24" fill="#64748b"/>
+  <rect x="48" y="124" width="64" height="8" fill="#facc15"/>
+</svg>''';
+    case 'wizard':
+      return '''
+<svg viewBox="0 0 160 160" xmlns="http://www.w3.org/2000/svg" shape-rendering="crispEdges">
+  <rect width="160" height="160" fill="#2e1065"/>
+  <rect x="72" y="8" width="16" height="16" fill="#facc15"/>
+  <rect x="64" y="24" width="32" height="16" fill="#7c3aed"/>
+  <rect x="48" y="40" width="64" height="16" fill="#7c3aed"/>
+  <rect x="32" y="56" width="96" height="12" fill="#a78bfa"/>
+  <rect x="44" y="68" width="72" height="56" fill="#e9d5ff"/>
+  <rect x="56" y="80" width="12" height="12" fill="#2e1065"/><rect x="92" y="80" width="12" height="12" fill="#2e1065"/>
+  <rect x="68" y="100" width="24" height="8" fill="#c084fc"/>
+  <rect x="52" y="116" width="56" height="20" fill="#f8fafc"/>
+  <rect x="120" y="72" width="8" height="8" fill="#facc15"/><rect x="28" y="88" width="8" height="8" fill="#67e8f9"/>
+</svg>''';
+    case 'toad':
+      return '''
+<svg viewBox="0 0 160 160" xmlns="http://www.w3.org/2000/svg" shape-rendering="crispEdges">
+  <rect width="160" height="160" fill="#14532d"/>
+  <rect x="36" y="20" width="88" height="64" fill="#fecaca"/>
+  <rect x="48" y="12" width="64" height="16" fill="#fecaca"/>
+  <rect x="44" y="28" width="20" height="20" fill="#ef4444"/><rect x="96" y="28" width="20" height="20" fill="#ef4444"/>
+  <rect x="72" y="48" width="16" height="16" fill="#ef4444"/>
+  <rect x="48" y="76" width="64" height="48" fill="#fed7aa"/>
+  <rect x="56" y="88" width="12" height="12" fill="#14532d"/><rect x="92" y="88" width="12" height="12" fill="#14532d"/>
+  <rect x="72" y="104" width="16" height="8" fill="#fb7185"/>
+  <rect x="56" y="124" width="20" height="16" fill="#fdba74"/><rect x="84" y="124" width="20" height="16" fill="#fdba74"/>
+</svg>''';
+    case 'heartbit':
+      return '''
+<svg viewBox="0 0 160 160" xmlns="http://www.w3.org/2000/svg" shape-rendering="crispEdges">
+  <rect width="160" height="160" fill="#4c0519"/>
+  <rect x="36" y="36" width="32" height="24" fill="#fb7185"/><rect x="92" y="36" width="32" height="24" fill="#fb7185"/>
+  <rect x="28" y="52" width="104" height="40" fill="#fb7185"/>
+  <rect x="40" y="92" width="80" height="24" fill="#fb7185"/>
+  <rect x="56" y="116" width="48" height="16" fill="#fb7185"/>
+  <rect x="68" y="132" width="24" height="8" fill="#fb7185"/>
+  <rect x="52" y="64" width="16" height="16" fill="#fef3c7"/><rect x="92" y="64" width="16" height="16" fill="#fef3c7"/>
+  <rect x="56" y="68" width="8" height="8" fill="#4c0519"/><rect x="96" y="68" width="8" height="8" fill="#4c0519"/>
+  <rect x="68" y="92" width="24" height="8" fill="#be123c"/>
+</svg>''';
+    case 'boombox':
+      return '''
+<svg viewBox="0 0 160 160" xmlns="http://www.w3.org/2000/svg" shape-rendering="crispEdges">
+  <rect width="160" height="160" fill="#1c1917"/>
+  <rect x="20" y="44" width="120" height="80" fill="#292524"/>
+  <rect x="28" y="52" width="40" height="40" fill="#f97316"/>
+  <rect x="92" y="52" width="40" height="40" fill="#f97316"/>
+  <rect x="36" y="60" width="24" height="24" fill="#1c1917"/>
+  <rect x="100" y="60" width="24" height="24" fill="#1c1917"/>
+  <rect x="44" y="68" width="8" height="8" fill="#22d3ee"/><rect x="108" y="68" width="8" height="8" fill="#22d3ee"/>
+  <rect x="72" y="56" width="16" height="32" fill="#44403c"/>
+  <rect x="76" y="60" width="8" height="8" fill="#a3e635"/><rect x="76" y="76" width="8" height="8" fill="#ef4444"/>
+  <rect x="48" y="100" width="64" height="12" fill="#57534e"/>
+  <rect x="56" y="28" width="48" height="16" fill="#44403c"/>
+  <rect x="64" y="20" width="8" height="12" fill="#22d3ee"/><rect x="88" y="20" width="8" height="12" fill="#22d3ee"/>
+</svg>''';
+    case 'chip':
+      return '''
+<svg viewBox="0 0 160 160" xmlns="http://www.w3.org/2000/svg" shape-rendering="crispEdges">
+  <rect width="160" height="160" fill="#052e16"/>
+  <rect x="16" y="56" width="12" height="8" fill="#86efac"/><rect x="16" y="76" width="12" height="8" fill="#86efac"/><rect x="16" y="96" width="12" height="8" fill="#86efac"/>
+  <rect x="132" y="56" width="12" height="8" fill="#86efac"/><rect x="132" y="76" width="12" height="8" fill="#86efac"/><rect x="132" y="96" width="12" height="8" fill="#86efac"/>
+  <rect x="48" y="16" width="8" height="12" fill="#86efac"/><rect x="76" y="16" width="8" height="12" fill="#86efac"/><rect x="104" y="16" width="8" height="12" fill="#86efac"/>
+  <rect x="48" y="132" width="8" height="12" fill="#86efac"/><rect x="76" y="132" width="8" height="12" fill="#86efac"/><rect x="104" y="132" width="8" height="12" fill="#86efac"/>
+  <rect x="36" y="36" width="88" height="88" fill="#166534"/>
+  <rect x="48" y="48" width="64" height="64" fill="#14532d"/>
+  <rect x="56" y="60" width="16" height="16" fill="#a3e635"/><rect x="88" y="60" width="16" height="16" fill="#a3e635"/>
+  <rect x="60" y="64" width="8" height="8" fill="#052e16"/><rect x="92" y="64" width="8" height="8" fill="#052e16"/>
+  <rect x="64" y="92" width="32" height="8" fill="#86efac"/>
+</svg>''';
+    case 'wolf':
+      return '''
+<svg viewBox="0 0 160 160" xmlns="http://www.w3.org/2000/svg" shape-rendering="crispEdges">
+  <rect width="160" height="160" fill="#1c1917"/>
+  <rect x="36" y="36" width="88" height="72" fill="#a8a29e"/>
+  <rect x="28" y="28" width="24" height="32" fill="#a8a29e"/><rect x="108" y="28" width="24" height="32" fill="#a8a29e"/>
+  <rect x="48" y="56" width="16" height="16" fill="#facc15"/><rect x="96" y="56" width="16" height="16" fill="#facc15"/>
+  <rect x="52" y="60" width="8" height="8" fill="#1c1917"/><rect x="100" y="60" width="8" height="8" fill="#1c1917"/>
+  <rect x="68" y="76" width="24" height="16" fill="#78716c"/>
+  <rect x="76" y="80" width="8" height="8" fill="#1c1917"/>
+  <rect x="44" y="108" width="72" height="24" fill="#57534e"/>
+</svg>''';
+    case 'bear':
+      return '''
+<svg viewBox="0 0 160 160" xmlns="http://www.w3.org/2000/svg" shape-rendering="crispEdges">
+  <rect width="160" height="160" fill="#44403c"/>
+  <rect x="32" y="24" width="24" height="24" fill="#d6d3d1"/><rect x="104" y="24" width="24" height="24" fill="#d6d3d1"/>
+  <rect x="40" y="40" width="80" height="72" fill="#d6d3d1"/>
+  <rect x="56" y="60" width="16" height="16" fill="#292524"/><rect x="88" y="60" width="16" height="16" fill="#292524"/>
+  <rect x="68" y="84" width="24" height="16" fill="#a8a29e"/>
+  <rect x="76" y="88" width="8" height="8" fill="#292524"/>
+  <rect x="48" y="112" width="64" height="24" fill="#78716c"/>
+</svg>''';
+    case 'penguin':
+      return '''
+<svg viewBox="0 0 160 160" xmlns="http://www.w3.org/2000/svg" shape-rendering="crispEdges">
+  <rect width="160" height="160" fill="#0c4a6e"/>
+  <rect x="48" y="24" width="64" height="96" fill="#0f172a"/>
+  <rect x="56" y="48" width="48" height="64" fill="#f8fafc"/>
+  <rect x="60" y="40" width="12" height="12" fill="#f8fafc"/><rect x="88" y="40" width="12" height="12" fill="#f8fafc"/>
+  <rect x="64" y="44" width="4" height="4" fill="#0f172a"/><rect x="92" y="44" width="4" height="4" fill="#0f172a"/>
+  <rect x="72" y="56" width="16" height="12" fill="#f97316"/>
+  <rect x="40" y="72" width="16" height="32" fill="#0f172a"/><rect x="104" y="72" width="16" height="32" fill="#0f172a"/>
+  <rect x="56" y="120" width="20" height="12" fill="#f97316"/><rect x="84" y="120" width="20" height="12" fill="#f97316"/>
+</svg>''';
+    case 'frog':
+      return '''
+<svg viewBox="0 0 160 160" xmlns="http://www.w3.org/2000/svg" shape-rendering="crispEdges">
+  <rect width="160" height="160" fill="#14532d"/>
+  <rect x="36" y="48" width="88" height="64" fill="#4ade80"/>
+  <rect x="40" y="28" width="32" height="32" fill="#4ade80"/><rect x="88" y="28" width="32" height="32" fill="#4ade80"/>
+  <rect x="48" y="36" width="16" height="16" fill="#facc15"/><rect x="96" y="36" width="16" height="16" fill="#facc15"/>
+  <rect x="52" y="40" width="8" height="8" fill="#14532d"/><rect x="100" y="40" width="8" height="8" fill="#14532d"/>
+  <rect x="68" y="80" width="24" height="8" fill="#166534"/>
+  <rect x="44" y="112" width="24" height="16" fill="#22c55e"/><rect x="92" y="112" width="24" height="16" fill="#22c55e"/>
+</svg>''';
+    case 'lion':
+      return '''
+<svg viewBox="0 0 160 160" xmlns="http://www.w3.org/2000/svg" shape-rendering="crispEdges">
+  <rect width="160" height="160" fill="#9a3412"/>
+  <rect x="24" y="32" width="112" height="96" fill="#ea580c"/>
+  <rect x="44" y="48" width="72" height="64" fill="#fdba74"/>
+  <rect x="56" y="64" width="16" height="16" fill="#431407"/><rect x="88" y="64" width="16" height="16" fill="#431407"/>
+  <rect x="68" y="88" width="24" height="12" fill="#f97316"/>
+  <rect x="76" y="92" width="8" height="8" fill="#431407"/>
+  <rect x="64" y="24" width="32" height="16" fill="#facc15"/>
+</svg>''';
+    case 'bee':
+      return '''
+<svg viewBox="0 0 160 160" xmlns="http://www.w3.org/2000/svg" shape-rendering="crispEdges">
+  <rect width="160" height="160" fill="#1e3a8a"/>
+  <rect x="20" y="48" width="32" height="40" fill="#e2e8f0"/><rect x="108" y="48" width="32" height="40" fill="#e2e8f0"/>
+  <rect x="48" y="40" width="64" height="80" fill="#facc15"/>
+  <rect x="48" y="56" width="64" height="12" fill="#111827"/>
+  <rect x="48" y="80" width="64" height="12" fill="#111827"/>
+  <rect x="60" y="48" width="12" height="12" fill="#111827"/><rect x="88" y="48" width="12" height="12" fill="#111827"/>
+  <rect x="72" y="28" width="16" height="12" fill="#111827"/>
+</svg>''';
+    case 'elf':
+      return '''
+<svg viewBox="0 0 160 160" xmlns="http://www.w3.org/2000/svg" shape-rendering="crispEdges">
+  <rect width="160" height="160" fill="#064e3b"/>
+  <rect x="28" y="44" width="24" height="12" fill="#fde68a"/><rect x="108" y="44" width="24" height="12" fill="#fde68a"/>
+  <rect x="44" y="36" width="72" height="72" fill="#fde68a"/>
+  <rect x="52" y="24" width="56" height="24" fill="#067a55"/>
+  <rect x="56" y="56" width="12" height="12" fill="#064e3b"/><rect x="92" y="56" width="12" height="12" fill="#064e3b"/>
+  <rect x="68" y="80" width="24" height="8" fill="#67e8f9"/>
+  <rect x="48" y="108" width="64" height="28" fill="#0f766e"/>
+</svg>''';
+    case 'orc':
+      return '''
+<svg viewBox="0 0 160 160" xmlns="http://www.w3.org/2000/svg" shape-rendering="crispEdges">
+  <rect width="160" height="160" fill="#365314"/>
+  <rect x="36" y="36" width="88" height="80" fill="#a3e635"/>
+  <rect x="40" y="20" width="16" height="28" fill="#a3e635"/><rect x="104" y="20" width="16" height="28" fill="#a3e635"/>
+  <rect x="52" y="56" width="16" height="16" fill="#431407"/><rect x="92" y="56" width="16" height="16" fill="#431407"/>
+  <rect x="68" y="80" width="24" height="16" fill="#65a30d"/>
+  <rect x="72" y="84" width="6" height="12" fill="#f8fafc"/><rect x="82" y="84" width="6" height="12" fill="#f8fafc"/>
+  <rect x="40" y="116" width="80" height="24" fill="#3f6212"/>
+</svg>''';
+    case 'fairy':
+      return '''
+<svg viewBox="0 0 160 160" xmlns="http://www.w3.org/2000/svg" shape-rendering="crispEdges">
+  <rect width="160" height="160" fill="#831843"/>
+  <rect x="12" y="40" width="28" height="48" fill="#a78bfa"/><rect x="120" y="40" width="28" height="48" fill="#a78bfa"/>
+  <rect x="44" y="36" width="72" height="72" fill="#fbcfe8"/>
+  <rect x="56" y="20" width="48" height="24" fill="#f9a8d4"/>
+  <rect x="56" y="56" width="12" height="12" fill="#831843"/><rect x="92" y="56" width="12" height="12" fill="#831843"/>
+  <rect x="68" y="80" width="24" height="8" fill="#db2777"/>
+  <rect x="60" y="108" width="40" height="28" fill="#c026d3"/>
+  <rect x="76" y="8" width="8" height="12" fill="#facc15"/>
+</svg>''';
+    case 'golem':
+      return '''
+<svg viewBox="0 0 160 160" xmlns="http://www.w3.org/2000/svg" shape-rendering="crispEdges">
+  <rect width="160" height="160" fill="#292524"/>
+  <rect x="32" y="28" width="96" height="100" fill="#a8a29e"/>
+  <rect x="40" y="36" width="80" height="56" fill="#78716c"/>
+  <rect x="52" y="48" width="20" height="20" fill="#22d3ee"/><rect x="88" y="48" width="20" height="20" fill="#22d3ee"/>
+  <rect x="56" y="52" width="12" height="12" fill="#0e7490"/><rect x="92" y="52" width="12" height="12" fill="#0e7490"/>
+  <rect x="60" y="84" width="40" height="12" fill="#57534e"/>
+  <rect x="44" y="112" width="28" height="16" fill="#57534e"/><rect x="88" y="112" width="28" height="16" fill="#57534e"/>
+</svg>''';
+    case 'phoenix':
+      return '''
+<svg viewBox="0 0 160 160" xmlns="http://www.w3.org/2000/svg" shape-rendering="crispEdges">
+  <rect width="160" height="160" fill="#7c2d12"/>
+  <rect x="16" y="48" width="32" height="48" fill="#ef4444"/><rect x="112" y="48" width="32" height="48" fill="#ef4444"/>
+  <rect x="40" y="32" width="80" height="80" fill="#fbbf24"/>
+  <rect x="52" y="48" width="16" height="16" fill="#7c2d12"/><rect x="92" y="48" width="16" height="16" fill="#7c2d12"/>
+  <rect x="68" y="72" width="24" height="16" fill="#f97316"/>
+  <rect x="64" y="16" width="32" height="24" fill="#ef4444"/>
+  <rect x="48" y="112" width="64" height="24" fill="#ea580c"/>
+</svg>''';
+    case 'mermaid':
+      return '''
+<svg viewBox="0 0 160 160" xmlns="http://www.w3.org/2000/svg" shape-rendering="crispEdges">
+  <rect width="160" height="160" fill="#164e63"/>
+  <rect x="44" y="24" width="72" height="64" fill="#fbcfe8"/>
+  <rect x="52" y="12" width="56" height="24" fill="#67e8f9"/>
+  <rect x="56" y="44" width="12" height="12" fill="#164e63"/><rect x="92" y="44" width="12" height="12" fill="#164e63"/>
+  <rect x="68" y="64" width="24" height="8" fill="#db2777"/>
+  <rect x="48" y="88" width="64" height="40" fill="#22d3ee"/>
+  <rect x="36" y="120" width="24" height="16" fill="#067a8a"/><rect x="100" y="120" width="24" height="16" fill="#067a8a"/>
+</svg>''';
+    case 'cyborg':
+      return '''
+<svg viewBox="0 0 160 160" xmlns="http://www.w3.org/2000/svg" shape-rendering="crispEdges">
+  <rect width="160" height="160" fill="#111827"/>
+  <rect x="36" y="28" width="88" height="96" fill="#94a3b8"/>
+  <rect x="44" y="36" width="72" height="48" fill="#475569"/>
+  <rect x="52" y="48" width="20" height="20" fill="#22d3ee"/><rect x="88" y="48" width="20" height="20" fill="#ef4444"/>
+  <rect x="56" y="52" width="12" height="12" fill="#0e7490"/><rect x="92" y="52" width="12" height="12" fill="#7f1d1d"/>
+  <rect x="60" y="96" width="40" height="8" fill="#1e293b"/>
+  <rect x="28" y="60" width="12" height="8" fill="#22d3ee"/><rect x="120" y="72" width="12" height="8" fill="#22d3ee"/>
+  <rect x="48" y="124" width="64" height="16" fill="#334155"/>
+</svg>''';
+    case 'hacker':
+      return '''
+<svg viewBox="0 0 160 160" xmlns="http://www.w3.org/2000/svg" shape-rendering="crispEdges">
+  <rect width="160" height="160" fill="#052e16"/>
+  <rect x="32" y="40" width="96" height="80" fill="#14532d"/>
+  <rect x="40" y="48" width="80" height="48" fill="#4ade80"/>
+  <rect x="52" y="60" width="12" height="12" fill="#052e16"/><rect x="96" y="60" width="12" height="12" fill="#052e16"/>
+  <rect x="64" y="80" width="32" height="8" fill="#052e16"/>
+  <rect x="48" y="20" width="64" height="20" fill="#166534"/>
+  <rect x="24" y="100" width="16" height="8" fill="#4ade80"/><rect x="120" y="56" width="16" height="8" fill="#4ade80"/>
+</svg>''';
+    case 'drone':
+      return '''
+<svg viewBox="0 0 160 160" xmlns="http://www.w3.org/2000/svg" shape-rendering="crispEdges">
+  <rect width="160" height="160" fill="#0f172a"/>
+  <rect x="16" y="40" width="32" height="8" fill="#38bdf8"/><rect x="112" y="40" width="32" height="8" fill="#38bdf8"/>
+  <rect x="20" y="32" width="24" height="8" fill="#64748b"/><rect x="116" y="32" width="24" height="8" fill="#64748b"/>
+  <rect x="48" y="56" width="64" height="48" fill="#38bdf8"/>
+  <rect x="56" y="64" width="48" height="32" fill="#1e293b"/>
+  <rect x="68" y="72" width="24" height="16" fill="#f43f5e"/>
+  <rect x="76" y="76" width="8" height="8" fill="#fecdd3"/>
+  <rect x="64" y="112" width="32" height="16" fill="#334155"/>
+</svg>''';
+    case 'matrix':
+      return '''
+<svg viewBox="0 0 160 160" xmlns="http://www.w3.org/2000/svg" shape-rendering="crispEdges">
+  <rect width="160" height="160" fill="#022c22"/>
+  <rect x="24" y="16" width="8" height="128" fill="#14532d"/><rect x="48" y="8" width="8" height="144" fill="#22c55e"/>
+  <rect x="72" y="24" width="8" height="112" fill="#86efac"/><rect x="96" y="12" width="8" height="136" fill="#22c55e"/>
+  <rect x="120" y="20" width="8" height="120" fill="#14532d"/>
+  <rect x="52" y="56" width="56" height="48" fill="#052e16"/>
+  <rect x="60" y="68" width="12" height="12" fill="#86efac"/><rect x="88" y="68" width="12" height="12" fill="#86efac"/>
+  <rect x="68" y="88" width="24" height="8" fill="#22c55e"/>
+</svg>''';
+    case 'laser':
+      return '''
+<svg viewBox="0 0 160 160" xmlns="http://www.w3.org/2000/svg" shape-rendering="crispEdges">
+  <rect width="160" height="160" fill="#1e1b4b"/>
+  <rect x="0" y="72" width="160" height="8" fill="#22d3ee"/>
+  <rect x="0" y="88" width="160" height="8" fill="#f472b6"/>
+  <rect x="44" y="32" width="72" height="72" fill="#312e81"/>
+  <rect x="52" y="40" width="56" height="40" fill="#f472b6"/>
+  <rect x="60" y="48" width="12" height="12" fill="#22d3ee"/><rect x="88" y="48" width="12" height="12" fill="#22d3ee"/>
+  <rect x="68" y="72" width="24" height="8" fill="#1e1b4b"/>
+  <rect x="56" y="112" width="48" height="24" fill="#4c1d95"/>
+</svg>''';
+    case 'android':
+      return '''
+<svg viewBox="0 0 160 160" xmlns="http://www.w3.org/2000/svg" shape-rendering="crispEdges">
+  <rect width="160" height="160" fill="#1e293b"/>
+  <rect x="48" y="20" width="8" height="20" fill="#38bdf8"/><rect x="104" y="20" width="8" height="20" fill="#38bdf8"/>
+  <rect x="40" y="36" width="80" height="72" fill="#a3e635"/>
+  <rect x="52" y="52" width="16" height="16" fill="#1e293b"/><rect x="92" y="52" width="16" height="16" fill="#1e293b"/>
+  <rect x="56" y="56" width="8" height="8" fill="#38bdf8"/><rect x="96" y="56" width="8" height="8" fill="#38bdf8"/>
+  <rect x="64" y="80" width="32" height="8" fill="#1e293b"/>
+  <rect x="32" y="60" width="12" height="32" fill="#a3e635"/><rect x="116" y="60" width="12" height="32" fill="#a3e635"/>
+  <rect x="52" y="116" width="24" height="20" fill="#65a30d"/><rect x="84" y="116" width="24" height="20" fill="#65a30d"/>
+</svg>''';
     case 'night':
       return '''
 <svg viewBox="0 0 160 160" xmlns="http://www.w3.org/2000/svg">
@@ -228,10 +754,12 @@ String _avatarSvg(String rawKey) {
 </svg>''';
   }
 
-  final keys = _avatarPalettes.keys.toList(growable: false);
-  final index = keys.indexOf(key);
-  final category = index ~/ 8;
-  final variant = index % 8;
+  final category = forjaProfileAvatarCategories.indexWhere(
+    (entry) => entry.keys.contains(key),
+  );
+  final variant = category < 0
+      ? 0
+      : forjaProfileAvatarCategories[category].keys.indexOf(key);
   final palette = _avatarPalettes[key]!;
   final background = _hex(palette.background);
   final primary = _hex(palette.foreground);
@@ -316,6 +844,12 @@ const forjaProfileAvatarCategories = <ForjaProfileAvatarCategory>[
       'ninja',
       'royal',
       'racer',
+      'elf',
+      'orc',
+      'fairy',
+      'golem',
+      'phoenix',
+      'mermaid',
     ],
   ),
   ForjaProfileAvatarCategory(
@@ -329,6 +863,12 @@ const forjaProfileAvatarCategories = <ForjaProfileAvatarCategory>[
       'dragon',
       'bunny',
       'yeti',
+      'wolf',
+      'bear',
+      'penguin',
+      'frog',
+      'lion',
+      'bee',
     ],
   ),
   ForjaProfileAvatarCategory(
@@ -346,7 +886,28 @@ const forjaProfileAvatarCategories = <ForjaProfileAvatarCategory>[
   ),
   ForjaProfileAvatarCategory(
     label: 'Retro',
-    keys: ['pixel', 'arcade', 'cassette', 'glitch', 'neon', 'synth'],
+    keys: [
+      'pixel',
+      'arcade',
+      'cassette',
+      'glitch',
+      'neon',
+      'synth',
+      'invader',
+      'ghost',
+      'knight',
+      'wizard',
+      'toad',
+      'heartbit',
+      'boombox',
+      'chip',
+      'cyborg',
+      'hacker',
+      'drone',
+      'matrix',
+      'laser',
+      'android',
+    ],
   ),
 ];
 

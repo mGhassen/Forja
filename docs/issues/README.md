@@ -569,6 +569,7 @@ drop     →  canceled/NNN-[canceled]-slug.md
 | [530-[fixed]-…](fixed/530-[fixed]-exo-skip-intro-recap-chip.md) | Exo missing Skip Intro / Recap chip | P1 | Medium | fixed | Complete · 3/3 · A 0/1 | [517](fixed/517-[fixed]-exo-introdb-seekbar-zones.md) · [032](032-[draft]-exoplayer-parity-gaps.md) |
 | [531-[fixed]-…](fixed/531-[fixed]-desktop-native-vod-chrome-match-mediakit.md) | Desktop AV/VLC catalog chrome vs MediaKit | P1 | Medium | fixed | Complete · 5/5 · A 0/1 | [RFC-107](../rfc/107-[open]-iptv-multi-engine-avplayer-vlc.md) · [532](532-[open]-desktop-native-track-apis-pip.md) |
 | [532-[open]-…](532-[open]-desktop-native-track-apis-pip.md) | Desktop native track APIs + OS PiP | P2 | Medium | open | 0/3 · A 0/1 | [531](fixed/531-[fixed]-desktop-native-vod-chrome-match-mediakit.md) · [RFC-107](../rfc/107-[open]-iptv-multi-engine-avplayer-vlc.md) |
+| [533-[fixed]-…](fixed/533-[fixed]-tmdb-season-card-posters-missing.md) | TMDB season card posters + hero swap | P2 | Medium | fixed | Complete · 3/3 · A 0/2 | [tmdb-details](../features/movies-tv/tmdb-details.md) |
 
 **Migration parity (draft):** [018](018-[draft]-migration-playback-parity-unverified.md) → [019](019-[draft]-webstreamr-enginejobs-e2e-test-gap.md)–[022](022-[draft]-playback-widget-integration-tests.md).
 

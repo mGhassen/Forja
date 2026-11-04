@@ -149,7 +149,7 @@ Not synced — device-specific or sensitive:
   typing your email). On macOS / Windows, **Settings → Profile & account** also
   lists Add / remove passkey.
 - Create, rename, and delete profiles on desktop or the web (max **5** per
-  account), with 30 avatars organized into Characters, Creatures, Space, and
+  account), with 56 avatars organized into Characters, Creatures, Space, and
   Retro categories. Signup does not invent a default profile — the first one is
   yours. Each new profile starts from platform defaults (playback, tabs, Stremio,
   IPTV portals) — it never copies the profile you were using. Add profile is

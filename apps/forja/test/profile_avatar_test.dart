@@ -4,7 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:forja/shell/brand/forja_profile_avatar.dart';
 
 void main() {
-  testWidgets('renders all thirty web profile avatars', (tester) async {
+  testWidgets('renders all fifty-six web profile avatars', (tester) async {
     const keys = [
       'forge',
       'flame',
@@ -36,6 +36,32 @@ void main() {
       'glitch',
       'neon',
       'synth',
+      'invader',
+      'ghost',
+      'knight',
+      'wizard',
+      'toad',
+      'heartbit',
+      'boombox',
+      'chip',
+      'wolf',
+      'bear',
+      'penguin',
+      'frog',
+      'lion',
+      'bee',
+      'elf',
+      'orc',
+      'fairy',
+      'golem',
+      'phoenix',
+      'mermaid',
+      'cyborg',
+      'hacker',
+      'drone',
+      'matrix',
+      'laser',
+      'android',
     ];
 
     await tester.pumpWidget(
@@ -52,7 +78,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.byType(SvgPicture), findsNWidgets(30));
+    expect(find.byType(SvgPicture), findsNWidgets(56));
     expect(tester.takeException(), isNull);
   });
 }

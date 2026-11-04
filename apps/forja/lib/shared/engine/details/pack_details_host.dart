@@ -137,6 +137,12 @@ class _PackDetailsHostState extends ConsumerState<PackDetailsHost> {
   MetaItem? _detail;
   List<KitDetailRailSection> _packRails = const [];
   List<KitDetailSeasonLink> _packSeasons = const [];
+
+  /// Pack `data.seasonPosters` (TMDB per-season card art). Not franchise links.
+  Map<int, String> _seasonPosters = const {};
+
+  /// Series hero stills — restored when a season has no poster.
+  List<String> _seriesBackdrops = const [];
   KitDetailsLayout _layout = KitDetailsLayout.classic;
   List<String> _heroBackdrops = const [];
   bool _loading = true;
@@ -789,6 +795,21 @@ class _PackDetailsHostState extends ConsumerState<PackDetailsHost> {
     return null;
   }
 
+  /// Per-season card / hero art — pack `seasonPosters` or franchise chip poster.
+  String? _seasonArtUrl(int season) {
+    final fromMap = (_seasonPosters[season] ?? '').trim();
+    if (fromMap.isNotEmpty) return fromMap;
+    final chip = (_packSeasonLink(season)?.poster ?? '').trim();
+    return chip.isEmpty ? null : chip;
+  }
+
+  List<String> _heroBackdropsForSeason(int season) {
+    final art = _seasonArtUrl(season);
+    if (art != null) return [art];
+    if (_seriesBackdrops.isNotEmpty) return _seriesBackdrops;
+    return hubHeroBackdropUrls(_show);
+  }
+
   String? get _packSeasonSubtitle {
     if (!_usesPackSeasons) return null;
     final link = _packSeasonLink(_selectedSeason);
@@ -805,6 +826,7 @@ class _PackDetailsHostState extends ConsumerState<PackDetailsHost> {
     required KitDetailsLayout layout,
     required List<String> backdrops,
     List<KitDetailSeasonLink> packSeasons = const [],
+    Map<int, String> seasonPosters = const {},
   }) {
     final applyInitial = !_appliedInitialSeasonEpisode;
     var firstSeason = 1;
@@ -860,7 +882,9 @@ class _PackDetailsHostState extends ConsumerState<PackDetailsHost> {
       _detail = meta;
       _packRails = rails;
       _packSeasons = packSeasons;
+      _seasonPosters = seasonPosters;
       _layout = layout;
+      _seriesBackdrops = backdrops;
       _heroBackdrops = backdrops;
       _loading = false;
       _seasonSwitching = false;
@@ -1023,6 +1047,7 @@ class _PackDetailsHostState extends ConsumerState<PackDetailsHost> {
         : _packRails;
     final loadedSeasons = parseKitDetailSeasons(env.data);
     final packSeasons = loadedSeasons.length > 1 ? loadedSeasons : _packSeasons;
+    final seasonPosters = parseKitDetailSeasonPosters(env.data);
     final layout = parseKitDetailsLayout(env.data);
     final backdrops = hubHeroBackdropUrls(meta);
     if (!mounted || loadGen != _detailsLoadGen) return;
@@ -1032,6 +1057,7 @@ class _PackDetailsHostState extends ConsumerState<PackDetailsHost> {
       layout: layout,
       backdrops: backdrops,
       packSeasons: packSeasons,
+      seasonPosters: seasonPosters,
     );
     unawaited(_loadWatchProgress());
     unawaited(_loadWatchedEpisodes());
@@ -1397,6 +1423,10 @@ class _PackDetailsHostState extends ConsumerState<PackDetailsHost> {
         for (final s in _packSeasons)
           if ((s.poster ?? '').trim().isNotEmpty) s.number: s.poster!.trim(),
       };
+      final seasonCardPosters = <int, String>{
+        ..._seasonPosters,
+        ...packSeasonPosters,
+      };
       final picker = TvSeasonEpisodePicker(
         tmdbId: _watchedMediaId ?? 0,
         seasonCount: seasons.length,
@@ -1405,7 +1435,7 @@ class _PackDetailsHostState extends ConsumerState<PackDetailsHost> {
         isLoadingSeason: _seasonSwitching,
         seasonData: null,
         fallbackPosterPath: show.poster,
-        seasonPosters: _usesPackSeasons ? packSeasonPosters : const {},
+        seasonPosters: seasonCardPosters,
         seasonLabels: _usesPackSeasons ? packSeasonLabels : const {},
         seasonYears: _usesPackSeasons ? packSeasonYears : const {},
         customEpisodesBySeason: _episodeMapsForPicker(videos),
@@ -1425,6 +1455,7 @@ class _PackDetailsHostState extends ConsumerState<PackDetailsHost> {
           setState(() {
             _selectedSeason = season;
             _selectedEpisode = eps.isEmpty ? 1 : (eps.first.episode ?? 1);
+            _heroBackdrops = _heroBackdropsForSeason(season);
           });
           _pinDetailsSeasonEpisodeFocusMemory(season);
         },

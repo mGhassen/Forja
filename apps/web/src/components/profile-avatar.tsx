@@ -14,6 +14,12 @@ export const PROFILE_AVATAR_CATEGORIES = [
       { key: 'ninja', label: 'Ninja', colors: ['#111827', '#c084fc', '#05070c'] },
       { key: 'royal', label: 'Royal', colors: ['#6d28d9', '#f6d0ad', '#facc15'] },
       { key: 'racer', label: 'Racer', colors: ['#dc2626', '#f8d5ba', '#111827'] },
+      { key: 'elf', label: 'Elf', colors: ['#064e3b', '#fde68a', '#67e8f9'] },
+      { key: 'orc', label: 'Orc', colors: ['#365314', '#a3e635', '#431407'] },
+      { key: 'fairy', label: 'Fairy', colors: ['#831843', '#fbcfe8', '#a78bfa'] },
+      { key: 'golem', label: 'Golem', colors: ['#292524', '#a8a29e', '#22d3ee'] },
+      { key: 'phoenix', label: 'Phoenix', colors: ['#7c2d12', '#fbbf24', '#ef4444'] },
+      { key: 'mermaid', label: 'Mermaid', colors: ['#164e63', '#fbcfe8', '#22d3ee'] },
     ],
   },
   {
@@ -28,6 +34,12 @@ export const PROFILE_AVATAR_CATEGORIES = [
       { key: 'dragon', label: 'Dragon', colors: ['#166534', '#86efac', '#facc15'] },
       { key: 'bunny', label: 'Bunny', colors: ['#f9a8d4', '#fff1f2', '#831843'] },
       { key: 'yeti', label: 'Yeti', colors: ['#dbeafe', '#f8fafc', '#1e40af'] },
+      { key: 'wolf', label: 'Wolf', colors: ['#1c1917', '#a8a29e', '#facc15'] },
+      { key: 'bear', label: 'Bear', colors: ['#44403c', '#d6d3d1', '#292524'] },
+      { key: 'penguin', label: 'Penguin', colors: ['#0c4a6e', '#f8fafc', '#f97316'] },
+      { key: 'frog', label: 'Frog', colors: ['#14532d', '#4ade80', '#facc15'] },
+      { key: 'lion', label: 'Lion', colors: ['#9a3412', '#fdba74', '#facc15'] },
+      { key: 'bee', label: 'Bee', colors: ['#1e3a8a', '#facc15', '#111827'] },
     ],
   },
   {
@@ -54,6 +66,20 @@ export const PROFILE_AVATAR_CATEGORIES = [
       { key: 'glitch', label: 'Glitch', colors: ['#111827', '#ef4444', '#22d3ee'] },
       { key: 'neon', label: 'Neon', colors: ['#4a044e', '#f0abfc', '#a3e635'] },
       { key: 'synth', label: 'Synth', colors: ['#312e81', '#fb7185', '#67e8f9'] },
+      { key: 'invader', label: 'Invader', colors: ['#0b1026', '#4ade80', '#facc15'] },
+      { key: 'ghost', label: 'Ghost', colors: ['#1e1b4b', '#fda4af', '#67e8f9'] },
+      { key: 'knight', label: 'Knight', colors: ['#1f2937', '#cbd5e1', '#facc15'] },
+      { key: 'wizard', label: 'Wizard', colors: ['#2e1065', '#e9d5ff', '#facc15'] },
+      { key: 'toad', label: 'Toad', colors: ['#14532d', '#fecaca', '#ef4444'] },
+      { key: 'heartbit', label: 'Heartbit', colors: ['#4c0519', '#fb7185', '#fef3c7'] },
+      { key: 'boombox', label: 'Boombox', colors: ['#1c1917', '#f97316', '#22d3ee'] },
+      { key: 'chip', label: 'Chip', colors: ['#052e16', '#86efac', '#a3e635'] },
+      { key: 'cyborg', label: 'Cyborg', colors: ['#111827', '#94a3b8', '#22d3ee'] },
+      { key: 'hacker', label: 'Hacker', colors: ['#052e16', '#4ade80', '#14532d'] },
+      { key: 'drone', label: 'Drone', colors: ['#0f172a', '#38bdf8', '#f43f5e'] },
+      { key: 'matrix', label: 'Matrix', colors: ['#022c22', '#22c55e', '#86efac'] },
+      { key: 'laser', label: 'Laser', colors: ['#1e1b4b', '#f472b6', '#22d3ee'] },
+      { key: 'android', label: 'Android', colors: ['#1e293b', '#a3e635', '#38bdf8'] },
     ],
   },
 ] as const
@@ -109,23 +135,60 @@ export function ProfileAvatar({
   )
 }
 
-function AvatarArtwork({ avatarKey }: { avatarKey: ProfileAvatarKey }) {
-  const original =
-    avatarKey === 'forge' ||
-    avatarKey === 'flame' ||
-    avatarKey === 'orbit' ||
-    avatarKey === 'pixel' ||
-    avatarKey === 'night' ||
-    avatarKey === 'mint'
+const CUSTOM_AVATAR_KEYS = new Set<ProfileAvatarKey>([
+  'forge',
+  'flame',
+  'orbit',
+  'pixel',
+  'arcade',
+  'cassette',
+  'glitch',
+  'neon',
+  'synth',
+  'invader',
+  'ghost',
+  'knight',
+  'wizard',
+  'toad',
+  'heartbit',
+  'boombox',
+  'chip',
+  'wolf',
+  'bear',
+  'penguin',
+  'frog',
+  'lion',
+  'bee',
+  'elf',
+  'orc',
+  'fairy',
+  'golem',
+  'phoenix',
+  'mermaid',
+  'cyborg',
+  'hacker',
+  'drone',
+  'matrix',
+  'laser',
+  'android',
+  'night',
+  'mint',
+])
 
-  if (!original) {
-    const index = PROFILE_AVATARS.findIndex((avatar) => avatar.key === avatarKey)
-    const avatar = PROFILE_AVATARS[index]
+function AvatarArtwork({ avatarKey }: { avatarKey: ProfileAvatarKey }) {
+  if (!CUSTOM_AVATAR_KEYS.has(avatarKey)) {
+    const avatar = PROFILE_AVATARS.find((entry) => entry.key === avatarKey)!
+    const category = PROFILE_AVATAR_CATEGORIES.findIndex((entry) =>
+      entry.avatars.some((item) => item.key === avatarKey),
+    )
+    const variant = PROFILE_AVATAR_CATEGORIES[category].avatars.findIndex(
+      (item) => item.key === avatarKey,
+    )
     return (
       <GeneratedAvatarArtwork
         colors={avatar.colors}
-        category={Math.floor(index / 8)}
-        variant={index % 8}
+        category={category}
+        variant={variant}
       />
     )
   }
@@ -177,6 +240,516 @@ function AvatarArtwork({ avatarKey }: { avatarKey: ProfileAvatarKey }) {
           <rect x="43" y="111" width="18" height="8" fill="#7c3aed" />
           <rect x="70" y="111" width="18" height="8" fill="#7c3aed" />
           <rect x="97" y="111" width="18" height="8" fill="#7c3aed" />
+        </svg>
+      )
+    case 'arcade':
+      return (
+        <svg viewBox="0 0 160 160" className="size-full" aria-hidden shapeRendering="crispEdges">
+          <rect width="160" height="160" fill="#172554" />
+          <rect x="28" y="16" width="104" height="128" fill="#0f172a" />
+          <rect x="36" y="24" width="88" height="56" fill="#22d3ee" />
+          <rect x="44" y="32" width="72" height="40" fill="#082f49" />
+          <rect x="56" y="40" width="12" height="12" fill="#f472b6" />
+          <rect x="92" y="40" width="12" height="12" fill="#f472b6" />
+          <rect x="64" y="60" width="32" height="6" fill="#facc15" />
+          <rect x="44" y="92" width="28" height="10" fill="#334155" />
+          <rect x="88" y="88" width="16" height="16" rx="8" fill="#ef4444" />
+          <rect x="92" y="92" width="8" height="8" fill="#fecaca" />
+          <rect x="48" y="112" width="12" height="12" fill="#22d3ee" />
+          <rect x="68" y="112" width="12" height="12" fill="#f472b6" />
+          <rect x="88" y="112" width="12" height="12" fill="#facc15" />
+          <rect x="108" y="112" width="12" height="12" fill="#a3e635" />
+        </svg>
+      )
+    case 'cassette':
+      return (
+        <svg viewBox="0 0 160 160" className="size-full" aria-hidden shapeRendering="crispEdges">
+          <rect width="160" height="160" fill="#f59e0b" />
+          <rect x="20" y="36" width="120" height="88" fill="#292524" />
+          <rect x="28" y="44" width="104" height="56" fill="#fef3c7" />
+          <rect x="40" y="56" width="28" height="28" fill="#292524" />
+          <rect x="92" y="56" width="28" height="28" fill="#292524" />
+          <rect x="48" y="64" width="12" height="12" fill="#22d3ee" />
+          <rect x="100" y="64" width="12" height="12" fill="#22d3ee" />
+          <rect x="72" y="62" width="16" height="16" fill="#f59e0b" />
+          <rect x="44" y="108" width="72" height="8" fill="#78716c" />
+          <rect x="52" y="24" width="16" height="12" fill="#292524" />
+          <rect x="92" y="24" width="16" height="12" fill="#292524" />
+        </svg>
+      )
+    case 'glitch':
+      return (
+        <svg viewBox="0 0 160 160" className="size-full" aria-hidden shapeRendering="crispEdges">
+          <rect width="160" height="160" fill="#111827" />
+          <rect x="34" y="28" width="92" height="104" fill="#ef4444" />
+          <rect x="30" y="32" width="92" height="104" fill="#22d3ee" />
+          <rect x="38" y="36" width="84" height="92" fill="#1f2937" />
+          <rect x="50" y="56" width="16" height="16" fill="#ef4444" />
+          <rect x="94" y="56" width="16" height="16" fill="#22d3ee" />
+          <rect x="48" y="84" width="64" height="8" fill="#f8fafc" />
+          <rect x="56" y="96" width="48" height="8" fill="#a3e635" />
+          <rect x="20" y="48" width="12" height="4" fill="#ef4444" />
+          <rect x="128" y="72" width="16" height="4" fill="#22d3ee" />
+          <rect x="16" y="100" width="20" height="4" fill="#a3e635" />
+        </svg>
+      )
+    case 'neon':
+      return (
+        <svg viewBox="0 0 160 160" className="size-full" aria-hidden shapeRendering="crispEdges">
+          <rect width="160" height="160" fill="#4a044e" />
+          <rect x="36" y="28" width="88" height="104" fill="#701a75" />
+          <rect x="44" y="36" width="72" height="72" fill="#2e1065" />
+          <rect x="52" y="52" width="16" height="16" fill="#a3e635" />
+          <rect x="92" y="52" width="16" height="16" fill="#a3e635" />
+          <rect x="56" y="56" width="8" height="8" fill="#4a044e" />
+          <rect x="96" y="56" width="8" height="8" fill="#4a044e" />
+          <rect x="60" y="84" width="40" height="8" fill="#f0abfc" />
+          <rect x="40" y="116" width="80" height="8" fill="#f0abfc" />
+          <rect x="72" y="16" width="16" height="12" fill="#a3e635" />
+          <rect x="24" y="40" width="8" height="8" fill="#f0abfc" />
+          <rect x="128" y="64" width="8" height="8" fill="#a3e635" />
+        </svg>
+      )
+    case 'synth':
+      return (
+        <svg viewBox="0 0 160 160" className="size-full" aria-hidden shapeRendering="crispEdges">
+          <rect width="160" height="160" fill="#312e81" />
+          <rect x="0" y="104" width="160" height="8" fill="#fb7185" />
+          <rect x="0" y="112" width="160" height="8" fill="#f97316" />
+          <rect x="0" y="120" width="160" height="8" fill="#facc15" />
+          <rect x="0" y="128" width="160" height="8" fill="#67e8f9" />
+          <rect x="40" y="28" width="80" height="72" fill="#fde68a" />
+          <rect x="36" y="52" width="88" height="20" fill="#111827" />
+          <rect x="48" y="56" width="24" height="12" fill="#67e8f9" />
+          <rect x="88" y="56" width="24" height="12" fill="#fb7185" />
+          <rect x="64" y="80" width="32" height="8" fill="#831843" />
+          <rect x="52" y="16" width="56" height="16" fill="#1e1b4b" />
+        </svg>
+      )
+    case 'invader':
+      return (
+        <svg viewBox="0 0 160 160" className="size-full" aria-hidden shapeRendering="crispEdges">
+          <rect width="160" height="160" fill="#0b1026" />
+          <rect x="20" y="20" width="8" height="8" fill="#4ade80" />
+          <rect x="132" y="36" width="8" height="8" fill="#facc15" />
+          <rect x="48" y="28" width="8" height="8" fill="#4ade80" />
+          <rect x="104" y="28" width="8" height="8" fill="#4ade80" />
+          <rect x="40" y="36" width="8" height="8" fill="#4ade80" />
+          <rect x="48" y="36" width="64" height="8" fill="#4ade80" />
+          <rect x="112" y="36" width="8" height="8" fill="#4ade80" />
+          <rect x="32" y="44" width="96" height="8" fill="#4ade80" />
+          <rect x="32" y="52" width="24" height="8" fill="#4ade80" />
+          <rect x="64" y="52" width="32" height="8" fill="#4ade80" />
+          <rect x="104" y="52" width="24" height="8" fill="#4ade80" />
+          <rect x="32" y="60" width="96" height="8" fill="#4ade80" />
+          <rect x="48" y="56" width="16" height="8" fill="#0b1026" />
+          <rect x="96" y="56" width="16" height="8" fill="#0b1026" />
+          <rect x="40" y="68" width="16" height="8" fill="#4ade80" />
+          <rect x="72" y="68" width="16" height="8" fill="#4ade80" />
+          <rect x="104" y="68" width="16" height="8" fill="#4ade80" />
+          <rect x="32" y="76" width="8" height="8" fill="#4ade80" />
+          <rect x="120" y="76" width="8" height="8" fill="#4ade80" />
+          <rect x="64" y="84" width="8" height="8" fill="#facc15" />
+          <rect x="88" y="84" width="8" height="8" fill="#facc15" />
+        </svg>
+      )
+    case 'ghost':
+      return (
+        <svg viewBox="0 0 160 160" className="size-full" aria-hidden shapeRendering="crispEdges">
+          <rect width="160" height="160" fill="#1e1b4b" />
+          <rect x="48" y="28" width="64" height="8" fill="#fda4af" />
+          <rect x="40" y="36" width="80" height="8" fill="#fda4af" />
+          <rect x="32" y="44" width="96" height="64" fill="#fda4af" />
+          <rect x="32" y="108" width="16" height="16" fill="#fda4af" />
+          <rect x="56" y="108" width="16" height="16" fill="#fda4af" />
+          <rect x="80" y="108" width="16" height="16" fill="#fda4af" />
+          <rect x="104" y="108" width="16" height="16" fill="#fda4af" />
+          <rect x="48" y="60" width="16" height="20" fill="#67e8f9" />
+          <rect x="96" y="60" width="16" height="20" fill="#67e8f9" />
+          <rect x="52" y="64" width="8" height="8" fill="#1e1b4b" />
+          <rect x="100" y="64" width="8" height="8" fill="#1e1b4b" />
+          <rect x="72" y="88" width="16" height="8" fill="#fb7185" />
+        </svg>
+      )
+    case 'knight':
+      return (
+        <svg viewBox="0 0 160 160" className="size-full" aria-hidden shapeRendering="crispEdges">
+          <rect width="160" height="160" fill="#1f2937" />
+          <rect x="56" y="16" width="48" height="12" fill="#facc15" />
+          <rect x="64" y="8" width="32" height="8" fill="#facc15" />
+          <rect x="40" y="28" width="80" height="88" fill="#cbd5e1" />
+          <rect x="48" y="36" width="64" height="64" fill="#94a3b8" />
+          <rect x="40" y="60" width="80" height="16" fill="#0f172a" />
+          <rect x="52" y="64" width="20" height="8" fill="#38bdf8" />
+          <rect x="88" y="64" width="20" height="8" fill="#38bdf8" />
+          <rect x="68" y="88" width="24" height="8" fill="#1f2937" />
+          <rect x="32" y="116" width="96" height="24" fill="#64748b" />
+          <rect x="48" y="124" width="64" height="8" fill="#facc15" />
+        </svg>
+      )
+    case 'wizard':
+      return (
+        <svg viewBox="0 0 160 160" className="size-full" aria-hidden shapeRendering="crispEdges">
+          <rect width="160" height="160" fill="#2e1065" />
+          <rect x="72" y="8" width="16" height="16" fill="#facc15" />
+          <rect x="64" y="24" width="32" height="16" fill="#7c3aed" />
+          <rect x="48" y="40" width="64" height="16" fill="#7c3aed" />
+          <rect x="32" y="56" width="96" height="12" fill="#a78bfa" />
+          <rect x="44" y="68" width="72" height="56" fill="#e9d5ff" />
+          <rect x="56" y="80" width="12" height="12" fill="#2e1065" />
+          <rect x="92" y="80" width="12" height="12" fill="#2e1065" />
+          <rect x="68" y="100" width="24" height="8" fill="#c084fc" />
+          <rect x="52" y="116" width="56" height="20" fill="#f8fafc" />
+          <rect x="120" y="72" width="8" height="8" fill="#facc15" />
+          <rect x="28" y="88" width="8" height="8" fill="#67e8f9" />
+        </svg>
+      )
+    case 'toad':
+      return (
+        <svg viewBox="0 0 160 160" className="size-full" aria-hidden shapeRendering="crispEdges">
+          <rect width="160" height="160" fill="#14532d" />
+          <rect x="36" y="20" width="88" height="64" fill="#fecaca" />
+          <rect x="48" y="12" width="64" height="16" fill="#fecaca" />
+          <rect x="44" y="28" width="20" height="20" fill="#ef4444" />
+          <rect x="96" y="28" width="20" height="20" fill="#ef4444" />
+          <rect x="72" y="48" width="16" height="16" fill="#ef4444" />
+          <rect x="48" y="76" width="64" height="48" fill="#fed7aa" />
+          <rect x="56" y="88" width="12" height="12" fill="#14532d" />
+          <rect x="92" y="88" width="12" height="12" fill="#14532d" />
+          <rect x="72" y="104" width="16" height="8" fill="#fb7185" />
+          <rect x="56" y="124" width="20" height="16" fill="#fdba74" />
+          <rect x="84" y="124" width="20" height="16" fill="#fdba74" />
+        </svg>
+      )
+    case 'heartbit':
+      return (
+        <svg viewBox="0 0 160 160" className="size-full" aria-hidden shapeRendering="crispEdges">
+          <rect width="160" height="160" fill="#4c0519" />
+          <rect x="36" y="36" width="32" height="24" fill="#fb7185" />
+          <rect x="92" y="36" width="32" height="24" fill="#fb7185" />
+          <rect x="28" y="52" width="104" height="40" fill="#fb7185" />
+          <rect x="40" y="92" width="80" height="24" fill="#fb7185" />
+          <rect x="56" y="116" width="48" height="16" fill="#fb7185" />
+          <rect x="68" y="132" width="24" height="8" fill="#fb7185" />
+          <rect x="52" y="64" width="16" height="16" fill="#fef3c7" />
+          <rect x="92" y="64" width="16" height="16" fill="#fef3c7" />
+          <rect x="56" y="68" width="8" height="8" fill="#4c0519" />
+          <rect x="96" y="68" width="8" height="8" fill="#4c0519" />
+          <rect x="68" y="92" width="24" height="8" fill="#be123c" />
+        </svg>
+      )
+    case 'boombox':
+      return (
+        <svg viewBox="0 0 160 160" className="size-full" aria-hidden shapeRendering="crispEdges">
+          <rect width="160" height="160" fill="#1c1917" />
+          <rect x="20" y="44" width="120" height="80" fill="#292524" />
+          <rect x="28" y="52" width="40" height="40" fill="#f97316" />
+          <rect x="92" y="52" width="40" height="40" fill="#f97316" />
+          <rect x="36" y="60" width="24" height="24" fill="#1c1917" />
+          <rect x="100" y="60" width="24" height="24" fill="#1c1917" />
+          <rect x="44" y="68" width="8" height="8" fill="#22d3ee" />
+          <rect x="108" y="68" width="8" height="8" fill="#22d3ee" />
+          <rect x="72" y="56" width="16" height="32" fill="#44403c" />
+          <rect x="76" y="60" width="8" height="8" fill="#a3e635" />
+          <rect x="76" y="76" width="8" height="8" fill="#ef4444" />
+          <rect x="48" y="100" width="64" height="12" fill="#57534e" />
+          <rect x="56" y="28" width="48" height="16" fill="#44403c" />
+          <rect x="64" y="20" width="8" height="12" fill="#22d3ee" />
+          <rect x="88" y="20" width="8" height="12" fill="#22d3ee" />
+        </svg>
+      )
+    case 'chip':
+      return (
+        <svg viewBox="0 0 160 160" className="size-full" aria-hidden shapeRendering="crispEdges">
+          <rect width="160" height="160" fill="#052e16" />
+          <rect x="16" y="56" width="12" height="8" fill="#86efac" />
+          <rect x="16" y="76" width="12" height="8" fill="#86efac" />
+          <rect x="16" y="96" width="12" height="8" fill="#86efac" />
+          <rect x="132" y="56" width="12" height="8" fill="#86efac" />
+          <rect x="132" y="76" width="12" height="8" fill="#86efac" />
+          <rect x="132" y="96" width="12" height="8" fill="#86efac" />
+          <rect x="48" y="16" width="8" height="12" fill="#86efac" />
+          <rect x="76" y="16" width="8" height="12" fill="#86efac" />
+          <rect x="104" y="16" width="8" height="12" fill="#86efac" />
+          <rect x="48" y="132" width="8" height="12" fill="#86efac" />
+          <rect x="76" y="132" width="8" height="12" fill="#86efac" />
+          <rect x="104" y="132" width="8" height="12" fill="#86efac" />
+          <rect x="36" y="36" width="88" height="88" fill="#166534" />
+          <rect x="48" y="48" width="64" height="64" fill="#14532d" />
+          <rect x="56" y="60" width="16" height="16" fill="#a3e635" />
+          <rect x="88" y="60" width="16" height="16" fill="#a3e635" />
+          <rect x="60" y="64" width="8" height="8" fill="#052e16" />
+          <rect x="92" y="64" width="8" height="8" fill="#052e16" />
+          <rect x="64" y="92" width="32" height="8" fill="#86efac" />
+        </svg>
+      )
+    case 'wolf':
+      return (
+        <svg viewBox="0 0 160 160" className="size-full" aria-hidden shapeRendering="crispEdges">
+          <rect width="160" height="160" fill="#1c1917" />
+          <rect x="36" y="36" width="88" height="72" fill="#a8a29e" />
+          <rect x="28" y="28" width="24" height="32" fill="#a8a29e" />
+          <rect x="108" y="28" width="24" height="32" fill="#a8a29e" />
+          <rect x="48" y="56" width="16" height="16" fill="#facc15" />
+          <rect x="96" y="56" width="16" height="16" fill="#facc15" />
+          <rect x="52" y="60" width="8" height="8" fill="#1c1917" />
+          <rect x="100" y="60" width="8" height="8" fill="#1c1917" />
+          <rect x="68" y="76" width="24" height="16" fill="#78716c" />
+          <rect x="76" y="80" width="8" height="8" fill="#1c1917" />
+          <rect x="44" y="108" width="72" height="24" fill="#57534e" />
+        </svg>
+      )
+    case 'bear':
+      return (
+        <svg viewBox="0 0 160 160" className="size-full" aria-hidden shapeRendering="crispEdges">
+          <rect width="160" height="160" fill="#44403c" />
+          <rect x="32" y="24" width="24" height="24" fill="#d6d3d1" />
+          <rect x="104" y="24" width="24" height="24" fill="#d6d3d1" />
+          <rect x="40" y="40" width="80" height="72" fill="#d6d3d1" />
+          <rect x="56" y="60" width="16" height="16" fill="#292524" />
+          <rect x="88" y="60" width="16" height="16" fill="#292524" />
+          <rect x="68" y="84" width="24" height="16" fill="#a8a29e" />
+          <rect x="76" y="88" width="8" height="8" fill="#292524" />
+          <rect x="48" y="112" width="64" height="24" fill="#78716c" />
+        </svg>
+      )
+    case 'penguin':
+      return (
+        <svg viewBox="0 0 160 160" className="size-full" aria-hidden shapeRendering="crispEdges">
+          <rect width="160" height="160" fill="#0c4a6e" />
+          <rect x="48" y="24" width="64" height="96" fill="#0f172a" />
+          <rect x="56" y="48" width="48" height="64" fill="#f8fafc" />
+          <rect x="60" y="40" width="12" height="12" fill="#f8fafc" />
+          <rect x="88" y="40" width="12" height="12" fill="#f8fafc" />
+          <rect x="64" y="44" width="4" height="4" fill="#0f172a" />
+          <rect x="92" y="44" width="4" height="4" fill="#0f172a" />
+          <rect x="72" y="56" width="16" height="12" fill="#f97316" />
+          <rect x="40" y="72" width="16" height="32" fill="#0f172a" />
+          <rect x="104" y="72" width="16" height="32" fill="#0f172a" />
+          <rect x="56" y="120" width="20" height="12" fill="#f97316" />
+          <rect x="84" y="120" width="20" height="12" fill="#f97316" />
+        </svg>
+      )
+    case 'frog':
+      return (
+        <svg viewBox="0 0 160 160" className="size-full" aria-hidden shapeRendering="crispEdges">
+          <rect width="160" height="160" fill="#14532d" />
+          <rect x="36" y="48" width="88" height="64" fill="#4ade80" />
+          <rect x="40" y="28" width="32" height="32" fill="#4ade80" />
+          <rect x="88" y="28" width="32" height="32" fill="#4ade80" />
+          <rect x="48" y="36" width="16" height="16" fill="#facc15" />
+          <rect x="96" y="36" width="16" height="16" fill="#facc15" />
+          <rect x="52" y="40" width="8" height="8" fill="#14532d" />
+          <rect x="100" y="40" width="8" height="8" fill="#14532d" />
+          <rect x="68" y="80" width="24" height="8" fill="#166534" />
+          <rect x="44" y="112" width="24" height="16" fill="#22c55e" />
+          <rect x="92" y="112" width="24" height="16" fill="#22c55e" />
+        </svg>
+      )
+    case 'lion':
+      return (
+        <svg viewBox="0 0 160 160" className="size-full" aria-hidden shapeRendering="crispEdges">
+          <rect width="160" height="160" fill="#9a3412" />
+          <rect x="24" y="32" width="112" height="96" fill="#ea580c" />
+          <rect x="44" y="48" width="72" height="64" fill="#fdba74" />
+          <rect x="56" y="64" width="16" height="16" fill="#431407" />
+          <rect x="88" y="64" width="16" height="16" fill="#431407" />
+          <rect x="68" y="88" width="24" height="12" fill="#f97316" />
+          <rect x="76" y="92" width="8" height="8" fill="#431407" />
+          <rect x="64" y="24" width="32" height="16" fill="#facc15" />
+        </svg>
+      )
+    case 'bee':
+      return (
+        <svg viewBox="0 0 160 160" className="size-full" aria-hidden shapeRendering="crispEdges">
+          <rect width="160" height="160" fill="#1e3a8a" />
+          <rect x="20" y="48" width="32" height="40" fill="#e2e8f0" />
+          <rect x="108" y="48" width="32" height="40" fill="#e2e8f0" />
+          <rect x="48" y="40" width="64" height="80" fill="#facc15" />
+          <rect x="48" y="56" width="64" height="12" fill="#111827" />
+          <rect x="48" y="80" width="64" height="12" fill="#111827" />
+          <rect x="60" y="48" width="12" height="12" fill="#111827" />
+          <rect x="88" y="48" width="12" height="12" fill="#111827" />
+          <rect x="72" y="28" width="16" height="12" fill="#111827" />
+        </svg>
+      )
+    case 'elf':
+      return (
+        <svg viewBox="0 0 160 160" className="size-full" aria-hidden shapeRendering="crispEdges">
+          <rect width="160" height="160" fill="#064e3b" />
+          <rect x="28" y="44" width="24" height="12" fill="#fde68a" />
+          <rect x="108" y="44" width="24" height="12" fill="#fde68a" />
+          <rect x="44" y="36" width="72" height="72" fill="#fde68a" />
+          <rect x="52" y="24" width="56" height="24" fill="#067a55" />
+          <rect x="56" y="56" width="12" height="12" fill="#064e3b" />
+          <rect x="92" y="56" width="12" height="12" fill="#064e3b" />
+          <rect x="68" y="80" width="24" height="8" fill="#67e8f9" />
+          <rect x="48" y="108" width="64" height="28" fill="#0f766e" />
+        </svg>
+      )
+    case 'orc':
+      return (
+        <svg viewBox="0 0 160 160" className="size-full" aria-hidden shapeRendering="crispEdges">
+          <rect width="160" height="160" fill="#365314" />
+          <rect x="36" y="36" width="88" height="80" fill="#a3e635" />
+          <rect x="40" y="20" width="16" height="28" fill="#a3e635" />
+          <rect x="104" y="20" width="16" height="28" fill="#a3e635" />
+          <rect x="52" y="56" width="16" height="16" fill="#431407" />
+          <rect x="92" y="56" width="16" height="16" fill="#431407" />
+          <rect x="68" y="80" width="24" height="16" fill="#65a30d" />
+          <rect x="72" y="84" width="6" height="12" fill="#f8fafc" />
+          <rect x="82" y="84" width="6" height="12" fill="#f8fafc" />
+          <rect x="40" y="116" width="80" height="24" fill="#3f6212" />
+        </svg>
+      )
+    case 'fairy':
+      return (
+        <svg viewBox="0 0 160 160" className="size-full" aria-hidden shapeRendering="crispEdges">
+          <rect width="160" height="160" fill="#831843" />
+          <rect x="12" y="40" width="28" height="48" fill="#a78bfa" />
+          <rect x="120" y="40" width="28" height="48" fill="#a78bfa" />
+          <rect x="44" y="36" width="72" height="72" fill="#fbcfe8" />
+          <rect x="56" y="20" width="48" height="24" fill="#f9a8d4" />
+          <rect x="56" y="56" width="12" height="12" fill="#831843" />
+          <rect x="92" y="56" width="12" height="12" fill="#831843" />
+          <rect x="68" y="80" width="24" height="8" fill="#db2777" />
+          <rect x="60" y="108" width="40" height="28" fill="#c026d3" />
+          <rect x="76" y="8" width="8" height="12" fill="#facc15" />
+        </svg>
+      )
+    case 'golem':
+      return (
+        <svg viewBox="0 0 160 160" className="size-full" aria-hidden shapeRendering="crispEdges">
+          <rect width="160" height="160" fill="#292524" />
+          <rect x="32" y="28" width="96" height="100" fill="#a8a29e" />
+          <rect x="40" y="36" width="80" height="56" fill="#78716c" />
+          <rect x="52" y="48" width="20" height="20" fill="#22d3ee" />
+          <rect x="88" y="48" width="20" height="20" fill="#22d3ee" />
+          <rect x="56" y="52" width="12" height="12" fill="#0e7490" />
+          <rect x="92" y="52" width="12" height="12" fill="#0e7490" />
+          <rect x="60" y="84" width="40" height="12" fill="#57534e" />
+          <rect x="44" y="112" width="28" height="16" fill="#57534e" />
+          <rect x="88" y="112" width="28" height="16" fill="#57534e" />
+        </svg>
+      )
+    case 'phoenix':
+      return (
+        <svg viewBox="0 0 160 160" className="size-full" aria-hidden shapeRendering="crispEdges">
+          <rect width="160" height="160" fill="#7c2d12" />
+          <rect x="16" y="48" width="32" height="48" fill="#ef4444" />
+          <rect x="112" y="48" width="32" height="48" fill="#ef4444" />
+          <rect x="40" y="32" width="80" height="80" fill="#fbbf24" />
+          <rect x="52" y="48" width="16" height="16" fill="#7c2d12" />
+          <rect x="92" y="48" width="16" height="16" fill="#7c2d12" />
+          <rect x="68" y="72" width="24" height="16" fill="#f97316" />
+          <rect x="64" y="16" width="32" height="24" fill="#ef4444" />
+          <rect x="48" y="112" width="64" height="24" fill="#ea580c" />
+        </svg>
+      )
+    case 'mermaid':
+      return (
+        <svg viewBox="0 0 160 160" className="size-full" aria-hidden shapeRendering="crispEdges">
+          <rect width="160" height="160" fill="#164e63" />
+          <rect x="44" y="24" width="72" height="64" fill="#fbcfe8" />
+          <rect x="52" y="12" width="56" height="24" fill="#67e8f9" />
+          <rect x="56" y="44" width="12" height="12" fill="#164e63" />
+          <rect x="92" y="44" width="12" height="12" fill="#164e63" />
+          <rect x="68" y="64" width="24" height="8" fill="#db2777" />
+          <rect x="48" y="88" width="64" height="40" fill="#22d3ee" />
+          <rect x="36" y="120" width="24" height="16" fill="#067a8a" />
+          <rect x="100" y="120" width="24" height="16" fill="#067a8a" />
+        </svg>
+      )
+    case 'cyborg':
+      return (
+        <svg viewBox="0 0 160 160" className="size-full" aria-hidden shapeRendering="crispEdges">
+          <rect width="160" height="160" fill="#111827" />
+          <rect x="36" y="28" width="88" height="96" fill="#94a3b8" />
+          <rect x="44" y="36" width="72" height="48" fill="#475569" />
+          <rect x="52" y="48" width="20" height="20" fill="#22d3ee" />
+          <rect x="88" y="48" width="20" height="20" fill="#ef4444" />
+          <rect x="56" y="52" width="12" height="12" fill="#0e7490" />
+          <rect x="92" y="52" width="12" height="12" fill="#7f1d1d" />
+          <rect x="60" y="96" width="40" height="8" fill="#1e293b" />
+          <rect x="28" y="60" width="12" height="8" fill="#22d3ee" />
+          <rect x="120" y="72" width="12" height="8" fill="#22d3ee" />
+          <rect x="48" y="124" width="64" height="16" fill="#334155" />
+        </svg>
+      )
+    case 'hacker':
+      return (
+        <svg viewBox="0 0 160 160" className="size-full" aria-hidden shapeRendering="crispEdges">
+          <rect width="160" height="160" fill="#052e16" />
+          <rect x="32" y="40" width="96" height="80" fill="#14532d" />
+          <rect x="40" y="48" width="80" height="48" fill="#4ade80" />
+          <rect x="52" y="60" width="12" height="12" fill="#052e16" />
+          <rect x="96" y="60" width="12" height="12" fill="#052e16" />
+          <rect x="64" y="80" width="32" height="8" fill="#052e16" />
+          <rect x="48" y="20" width="64" height="20" fill="#166534" />
+          <rect x="24" y="100" width="16" height="8" fill="#4ade80" />
+          <rect x="120" y="56" width="16" height="8" fill="#4ade80" />
+        </svg>
+      )
+    case 'drone':
+      return (
+        <svg viewBox="0 0 160 160" className="size-full" aria-hidden shapeRendering="crispEdges">
+          <rect width="160" height="160" fill="#0f172a" />
+          <rect x="16" y="40" width="32" height="8" fill="#38bdf8" />
+          <rect x="112" y="40" width="32" height="8" fill="#38bdf8" />
+          <rect x="20" y="32" width="24" height="8" fill="#64748b" />
+          <rect x="116" y="32" width="24" height="8" fill="#64748b" />
+          <rect x="48" y="56" width="64" height="48" fill="#38bdf8" />
+          <rect x="56" y="64" width="48" height="32" fill="#1e293b" />
+          <rect x="68" y="72" width="24" height="16" fill="#f43f5e" />
+          <rect x="76" y="76" width="8" height="8" fill="#fecdd3" />
+          <rect x="64" y="112" width="32" height="16" fill="#334155" />
+        </svg>
+      )
+    case 'matrix':
+      return (
+        <svg viewBox="0 0 160 160" className="size-full" aria-hidden shapeRendering="crispEdges">
+          <rect width="160" height="160" fill="#022c22" />
+          <rect x="24" y="16" width="8" height="128" fill="#14532d" />
+          <rect x="48" y="8" width="8" height="144" fill="#22c55e" />
+          <rect x="72" y="24" width="8" height="112" fill="#86efac" />
+          <rect x="96" y="12" width="8" height="136" fill="#22c55e" />
+          <rect x="120" y="20" width="8" height="120" fill="#14532d" />
+          <rect x="52" y="56" width="56" height="48" fill="#052e16" />
+          <rect x="60" y="68" width="12" height="12" fill="#86efac" />
+          <rect x="88" y="68" width="12" height="12" fill="#86efac" />
+          <rect x="68" y="88" width="24" height="8" fill="#22c55e" />
+        </svg>
+      )
+    case 'laser':
+      return (
+        <svg viewBox="0 0 160 160" className="size-full" aria-hidden shapeRendering="crispEdges">
+          <rect width="160" height="160" fill="#1e1b4b" />
+          <rect x="0" y="72" width="160" height="8" fill="#22d3ee" />
+          <rect x="0" y="88" width="160" height="8" fill="#f472b6" />
+          <rect x="44" y="32" width="72" height="72" fill="#312e81" />
+          <rect x="52" y="40" width="56" height="40" fill="#f472b6" />
+          <rect x="60" y="48" width="12" height="12" fill="#22d3ee" />
+          <rect x="88" y="48" width="12" height="12" fill="#22d3ee" />
+          <rect x="68" y="72" width="24" height="8" fill="#1e1b4b" />
+          <rect x="56" y="112" width="48" height="24" fill="#4c1d95" />
+        </svg>
+      )
+    case 'android':
+      return (
+        <svg viewBox="0 0 160 160" className="size-full" aria-hidden shapeRendering="crispEdges">
+          <rect width="160" height="160" fill="#1e293b" />
+          <rect x="48" y="20" width="8" height="20" fill="#38bdf8" />
+          <rect x="104" y="20" width="8" height="20" fill="#38bdf8" />
+          <rect x="40" y="36" width="80" height="72" fill="#a3e635" />
+          <rect x="52" y="52" width="16" height="16" fill="#1e293b" />
+          <rect x="92" y="52" width="16" height="16" fill="#1e293b" />
+          <rect x="56" y="56" width="8" height="8" fill="#38bdf8" />
+          <rect x="96" y="56" width="8" height="8" fill="#38bdf8" />
+          <rect x="64" y="80" width="32" height="8" fill="#1e293b" />
+          <rect x="32" y="60" width="12" height="32" fill="#a3e635" />
+          <rect x="116" y="60" width="12" height="32" fill="#a3e635" />
+          <rect x="52" y="116" width="24" height="20" fill="#65a30d" />
+          <rect x="84" y="116" width="24" height="20" fill="#65a30d" />
         </svg>
       )
     case 'night':

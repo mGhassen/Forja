@@ -48,4 +48,26 @@ void main() {
       hasLength(1),
     );
   });
+
+  test('parseKitDetailSeasonPosters reads absolute http urls', () {
+    final posters = parseKitDetailSeasonPosters({
+      'seasonPosters': {
+        '2': 'https://tmdb.forjahq.xyz/t/p/w500/s2.jpg',
+        '1': 'https://image.tmdb.org/t/p/w500/s1.jpg',
+        '0': 'https://cdn.example/skip.jpg',
+        'bad': 'https://cdn.example/x.jpg',
+        '3': '/relative.jpg',
+        '4': '',
+      },
+    });
+    expect(posters, hasLength(2));
+    expect(posters[1], 'https://tmdb.forjahq.xyz/t/p/w500/s1.jpg');
+    expect(posters[2], 'https://tmdb.forjahq.xyz/t/p/w500/s2.jpg');
+  });
+
+  test('parseKitDetailSeasonPosters empty when omitted', () {
+    expect(parseKitDetailSeasonPosters(null), isEmpty);
+    expect(parseKitDetailSeasonPosters({}), isEmpty);
+    expect(parseKitDetailSeasonPosters({'seasonPosters': []}), isEmpty);
+  });
 }
